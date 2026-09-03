@@ -282,6 +282,16 @@ describe('Week 1 Backend API Integration Tests (Sahil Sonar)', () => {
 
       expect(res.status).toBe(400);
     });
+
+    it('should reject status update with invalid document UUID format (400 Bad Request)', async () => {
+      const res = await request(app)
+        .patch('/documents/invalid-uuid-format/status')
+        .set('Authorization', `Bearer ${officerToken}`)
+        .send({ status: 'Approved' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    });
   });
 
   // -------------------------------------------------------------
@@ -366,6 +376,15 @@ describe('Week 1 Backend API Integration Tests (Sahil Sonar)', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.data.id).toBe(advisor2DocId);
+    });
+
+    it('should reject GET /documents/:id with invalid UUID format (400 Bad Request)', async () => {
+      const res = await request(app)
+        .get('/documents/not-a-valid-uuid')
+        .set('Authorization', `Bearer ${officerToken}`);
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
     });
   });
 });
