@@ -7,7 +7,7 @@
  * @author Keith
  */
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useDocuments } from "../hooks/use-documents";
 import { useUploadDocument } from "../hooks/use-upload-document";
 import { UploadDocumentModal } from "./upload-document-modal";
@@ -45,6 +45,10 @@ import {
   CheckCircle2,
   Clock3,
   BarChart3,
+  XCircle,
+  Percent,
+  CalendarDays,
+  TrendingUp,
 } from "lucide-react";
 import type { DocumentItem } from "@/lib/validation/document";
 import { cn } from "@/lib/utils";
@@ -57,6 +61,9 @@ import { cn } from "@/lib/utils";
  */
 export function MyDocumentsTable() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const activeView = searchParams.get("tab") || "dashboard";
+  const isDashboardView = activeView === "dashboard";
   const { documents, isPending, refetch } = useDocuments("my-submissions");
   const {
     isOpen,
@@ -96,6 +103,36 @@ export function MyDocumentsTable() {
   const approvedCount = documents.filter((d) => d.status === "Approved").length;
   const needsRevisionItems = documents.filter((d) => d.status === "Needs Revision");
   const needsRevisionCount = needsRevisionItems.length;
+  const rejectedCount = documents.filter((d) => d.status === "Rejected").length;
+  const completionRate = documents.length ? Math.round((approvedCount / documents.length) * 100) : 0;
+  const revisionRate = documents.length ? Math.round((needsRevisionCount / documents.length) * 100) : 0;
+  const currentDate = new Date();
+  const currentMonth = currentDate.getMonth();
+  const currentYear = currentDate.getFullYear();
+  const monthLabel = currentDate.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  const firstDayOffset = new Date(currentYear, currentMonth, 1).getDay();
+  const daysInCurrentMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const submissionDays = new Set(
+    documents
+      .map((document) => new Date(document.submittedAt))
+      .filter((submittedDate) => submittedDate.getMonth() === currentMonth && submittedDate.getFullYear() === currentYear)
+      .map((submittedDate) => submittedDate.getDate())
+  );
+  const calendarCells = Array.from({ length: firstDayOffset + daysInCurrentMonth }, (_, index) =>
+    index < firstDayOffset ? null : index - firstDayOffset + 1
+  );
+  const monthlyActivity = Array.from({ length: 6 }, (_, index) => {
+    const monthDate = new Date(currentYear, currentMonth - (5 - index), 1);
+    const monthDocuments = documents.filter((document) => {
+      const submittedDate = new Date(document.submittedAt);
+      return submittedDate.getMonth() === monthDate.getMonth() && submittedDate.getFullYear() === monthDate.getFullYear();
+    });
+    return {
+      label: monthDate.toLocaleDateString(undefined, { month: "short" }),
+      count: monthDocuments.length,
+    };
+  });
+  const highestMonthlyActivity = Math.max(...monthlyActivity.map((month) => month.count), 1);
 
   const handleSaveEdit = (updated: Partial<DocumentItem> & { id: string }) => {
     const target = documents.find((d) => d.id === updated.id);
@@ -178,6 +215,8 @@ export function MyDocumentsTable() {
         </div>
       )}
 
+      {isDashboardView && (
+      <>
       {/* Bento overview */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12">
         <div
@@ -242,11 +281,80 @@ export function MyDocumentsTable() {
 
         <div className="neu-soft bg-blue-50/35 rounded-xl p-4 space-y-2 sm:col-span-1 lg:col-span-4">
           <div className="flex items-center justify-between"><p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Review health</p><span className="text-[10px] font-semibold text-primary">Active</span></div>
-          <div className="flex items-end gap-2"><span className="text-3xl font-bold text-slate-900">{documents.length ? Math.round((approvedCount / documents.length) * 100) : 0}%</span><span className="pb-1 text-[11px] text-slate-500">approval completion</span></div>
-          <div className="neu-inset h-2 overflow-hidden rounded-full"><div className="h-full rounded-full bg-primary transition-all" style={{ width: `${documents.length ? (approvedCount / documents.length) * 100 : 0}%` }} /></div>
+          <div className="flex items-end gap-2"><span className="text-3xl font-bold text-slate-900">{completionRate}%</span><span className="pb-1 text-[11px] text-slate-500">approval completion</span></div>
+          <div className="neu-inset h-2 overflow-hidden rounded-full"><div className="h-full rounded-full bg-primary transition-all" style={{ width: `${completionRate}%` }} /></div>
+        </div>
+
+        <div
+          onClick={() => setActiveFilter("Rejected")}
+          className={cn(
+            "neu-soft bg-rose-50/45 rounded-xl p-4 space-y-2 cursor-pointer transition-shadow sm:col-span-1 lg:col-span-3",
+            activeFilter === "Rejected" ? "shadow-[inset_3px_3px_7px_hsl(215_20%_78%_/_0.58),inset_-3px_-3px_7px_hsl(0_0%_100%_/_0.86)]" : "hover:shadow-[6px_6px_12px_hsl(215_20%_78%_/_0.72),-6px_-6px_12px_hsl(0_0%_100%_/_0.9)]"
+          )}
+        >
+          <div className="flex items-center justify-between"><p className="text-[10px] font-bold text-rose-800 uppercase tracking-wider">Rejected</p><XCircle className="h-4 w-4 text-rose-700" /></div>
+          <h3 className="text-3xl font-bold text-slate-900">{rejectedCount}</h3>
+          <p className="text-[11px] text-slate-500">Not approved for filing</p>
+        </div>
+
+        <div className="neu-soft bg-violet-50/45 rounded-xl p-4 space-y-2 sm:col-span-1 lg:col-span-4">
+          <div className="flex items-center justify-between"><p className="text-[10px] font-bold text-violet-800 uppercase tracking-wider">Revision rate</p><Percent className="h-4 w-4 text-violet-700" /></div>
+          <h3 className="text-3xl font-bold text-slate-900">{revisionRate}%</h3>
+          <p className="text-[11px] text-slate-500">Submissions needing changes</p>
         </div>
       </div>
+      </>
+      )}
 
+      {isDashboardView && <div className="grid grid-cols-1 gap-3 lg:grid-cols-7">
+        <div className="neu-soft rounded-xl bg-white/70 p-4 lg:col-span-4">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Submission activity</p>
+              <p className="mt-1 text-xs text-slate-500">Documents submitted over the last six months</p>
+            </div>
+            <TrendingUp className="h-4 w-4 text-primary" />
+          </div>
+          <div className="flex h-36 items-end gap-2 border-b border-slate-200 pb-2">
+            {monthlyActivity.map((month) => (
+              <div key={`${month.label}-${month.count}`} className="flex h-full flex-1 flex-col items-center justify-end gap-2">
+                <span className="text-[10px] font-bold text-slate-700">{month.count}</span>
+                <div className="flex h-24 w-full items-end rounded-t bg-slate-100">
+                  <div className="w-full rounded-t bg-primary transition-all" style={{ height: `${(month.count / highestMonthlyActivity) * 100}%` }} />
+                </div>
+                <span className="text-[10px] font-semibold text-slate-500">{month.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="neu-soft rounded-xl bg-white/70 p-4 lg:col-span-3">
+          <div className="mb-3 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Submission calendar</p>
+              <p className="mt-1 text-xs font-semibold text-slate-800">{monthLabel}</p>
+            </div>
+            <CalendarDays className="h-4 w-4 text-primary" />
+          </div>
+          <div className="grid grid-cols-7 gap-1 text-center text-[9px] font-bold uppercase text-slate-400">
+            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((weekday, index) => <span key={`${weekday}-${index}`}>{weekday}</span>)}
+            {calendarCells.map((day, index) => (
+              <span
+                key={day ?? `empty-${index}`}
+                className={cn(
+                  "flex aspect-square items-center justify-center rounded text-[10px]",
+                  day && submissionDays.has(day) ? "bg-primary font-bold text-white" : "text-slate-600"
+                )}
+              >
+                {day}
+              </span>
+            ))}
+          </div>
+          <p className="mt-3 text-[10px] text-slate-500">{submissionDays.size} active submission date{submissionDays.size === 1 ? "" : "s"} this month</p>
+        </div>
+      </div>}
+
+      {!isDashboardView && <>
       {/* Toolbar: Search and Filter Chips */}
       <div className="neu-surface flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-2.5 rounded-xl">
         <div className="flex items-center space-x-1 overflow-x-auto">
@@ -276,7 +384,10 @@ export function MyDocumentsTable() {
           />
         </div>
       </div>
+      </>}
 
+      {!isDashboardView && (
+      <>
       {/* Main Submissions Table */}
       <div className="neu-surface rounded-xl overflow-hidden text-xs">
         {isPending ? (
@@ -401,6 +512,8 @@ export function MyDocumentsTable() {
           </Table>
         )}
       </div>
+      </>
+      )}
 
       {/* Modals */}
       <UploadDocumentModal

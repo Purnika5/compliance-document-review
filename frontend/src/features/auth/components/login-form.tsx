@@ -14,6 +14,7 @@ import { loginSchema } from "@/lib/validation/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
+import { CompanyLogo } from "@/components/ui/brand-logos";
 import {
   Card,
   CardHeader,
@@ -31,6 +32,9 @@ export function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const authenticationMessage = error?.includes("401")
+    ? "The email or password is incorrect. Check your credentials and try again."
+    : error ?? undefined;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,9 +60,7 @@ export function LoginForm() {
     <div className="w-full max-w-md mx-auto">
       <Card className="neu-surface rounded-xl overflow-hidden">
         <CardHeader className="text-center space-y-1 pb-4 pt-6">
-          <div className="mx-auto h-10 w-10 rounded bg-slate-900 text-white flex items-center justify-center font-bold text-sm">
-            SC
-          </div>
+          <CompanyLogo className="justify-center" />
           <CardTitle className="text-xl font-bold text-slate-900 tracking-tight">
             Institutional Portal Login
           </CardTitle>
@@ -71,8 +73,9 @@ export function LoginForm() {
           {error && (
             <Alert
               variant="destructive"
-              title="Authentication Failed"
-              message={error}
+              className="border-rose-200 bg-rose-50/80 p-3 text-rose-950 shadow-sm [&>svg]:left-3 [&>svg]:top-3 [&>svg~*]:pl-6"
+              title="Unable to sign in"
+              message={authenticationMessage}
             />
           )}
 
@@ -118,35 +121,7 @@ export function LoginForm() {
           </form>
 
           {/* Role selector quick fill for demo */}
-          <div className="pt-2 border-t border-slate-100">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 text-center mb-2">
-              Quick Role Test Fill
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail("sarah.jenkins@springercapital.com");
-                  setPassword("Password123!");
-                }}
-                className="neu-soft p-2 rounded-lg text-left transition-colors cursor-pointer hover:text-primary"
-              >
-                <p className="text-xs font-semibold text-slate-900">Advisor</p>
-                <p className="text-[10px] text-slate-500">Sarah Jenkins</p>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail("alex.smith@springercapital.com");
-                  setPassword("Password123!");
-                }}
-                className="neu-soft p-2 rounded-lg text-left transition-colors cursor-pointer hover:text-primary"
-              >
-                <p className="text-xs font-semibold text-slate-900">Officer</p>
-                <p className="text-[10px] text-slate-500">Alex Smith</p>
-              </button>
-            </div>
-          </div>
+
         </CardContent>
 
         <CardFooter className="flex flex-col space-y-3 pt-2 pb-6 border-t border-white/60 bg-background/40">

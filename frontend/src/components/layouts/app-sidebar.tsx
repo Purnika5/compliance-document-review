@@ -8,19 +8,17 @@
  */
 import React, { useSyncExternalStore } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { authStore, type UserSession } from "@/lib/auth/auth-store";
 import { CompanyLogo } from "@/components/ui/brand-logos";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   Files,
-  FileClock,
   History,
   ShieldCheck,
   LogOut,
   CheckSquare,
-  AlertTriangle,
   ChevronRight,
 } from "lucide-react";
 
@@ -34,6 +32,7 @@ export function AppSidebar({
   onCloseMobile,
 }: AppSidebarProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const session = useSyncExternalStore<UserSession | null>(
     authStore.subscribe,
@@ -61,22 +60,15 @@ export function AppSidebar({
   const advisorNavItems: NavItem[] = [
     {
       label: "Dashboard",
-      href: "/submissions",
+      href: "/submissions?tab=dashboard",
       icon: LayoutDashboard,
-      active: pathname === "/submissions",
+      active: pathname === "/submissions" && searchParams.get("tab") === "dashboard",
     },
     {
       label: "My Documents",
       href: "/submissions?tab=all",
       icon: Files,
-      active: pathname === "/submissions" && !pathname.includes("tab=revision"),
-    },
-    {
-      label: "Revision Requests",
-      href: "/submissions?tab=revision",
-      icon: AlertTriangle,
-      badge: "1",
-      active: pathname === "/submissions" && typeof window !== "undefined" && window.location.search.includes("revision"),
+      active: pathname === "/submissions" && searchParams.get("tab") !== "dashboard" && searchParams.get("tab") !== "revision",
     },
   ];
 
@@ -92,13 +84,6 @@ export function AppSidebar({
       href: "/queue?tab=assigned",
       icon: CheckSquare,
       active: pathname === "/queue" && typeof window !== "undefined" && window.location.search.includes("assigned"),
-    },
-    {
-      label: "Revision Requests",
-      href: "/queue?tab=revision",
-      icon: FileClock,
-      badge: "1",
-      active: pathname === "/queue" && typeof window !== "undefined" && window.location.search.includes("revision"),
     },
     {
       label: "Audit History",
@@ -128,11 +113,11 @@ export function AppSidebar({
         )}
       >
         {/* Brand Header */}
-        <div className="h-14 px-4 border-b border-slate-200 flex items-center justify-between bg-background">
-          <Link href="/" className="flex items-center">
-            <CompanyLogo />
+        <div className="h-14 px-3 border-b border-slate-200 flex items-center justify-between gap-1 bg-background">
+          <Link href="/" className="min-w-0 flex-1 overflow-hidden">
+            <CompanyLogo className="origin-left scale-[0.82] whitespace-nowrap" />
           </Link>
-          <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-bold">
+          <span className="shrink-0 text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-bold">
             v2.4
           </span>
         </div>
@@ -227,10 +212,10 @@ export function AppSidebar({
               </div>
               <div className="min-w-0">
                 <p className="text-xs font-bold text-slate-900 truncate">
-                  {session?.name || "Sarah Jenkins"}
+                  {session?.name || "User account"}
                 </p>
                 <p className="text-[10px] text-slate-500 truncate">
-                  {session?.email || "advisor@springercapital.com"}
+                  {session?.email || "Not signed in"}
                 </p>
               </div>
             </div>

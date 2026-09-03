@@ -34,7 +34,9 @@ export function RoleGuard({ allowedRole, children }: RoleGuardProps) {
   );
 
   useEffect(() => {
-    if (session && session.role !== allowedRole) {
+    if (!session) {
+      router.replace("/login");
+    } else if (session.role !== allowedRole) {
       router.replace(session.role === "Advisor" ? "/submissions" : "/queue");
     }
   }, [session, allowedRole, router]);
