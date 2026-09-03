@@ -11,6 +11,10 @@ export class DocumentController {
       throw new AppError('A document file is required (PDF, DOCX, XLSX, TXT)', 400, 'FILE_REQUIRED');
     }
 
+    if (req.file.size === 0) {
+      throw new AppError('The uploaded file cannot be empty', 400, 'FILE_EMPTY');
+    }
+
     const { title, description } = req.body;
     const document = await DocumentService.submitDocument({
       title: title.trim(),

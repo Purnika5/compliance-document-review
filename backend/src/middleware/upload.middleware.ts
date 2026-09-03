@@ -25,10 +25,13 @@ const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCa
   const allowedExtensions = ['.pdf', '.docx', '.doc', '.xlsx', '.xls', '.txt'];
   const ext = path.extname(file.originalname).toLowerCase();
 
-  if (allowedExtensions.includes(ext) || config.uploads.allowedMimeTypes.includes(file.mimetype)) {
+  const isExtensionValid = allowedExtensions.includes(ext);
+  const isMimeValid = config.uploads.allowedMimeTypes.includes(file.mimetype);
+
+  if (isExtensionValid && isMimeValid) {
     cb(null, true);
   } else {
-    cb(new AppError(`Unsupported file format '${ext}'. Allowed formats: PDF, DOCX, XLSX, TXT.`, 400, 'UNSUPPORTED_FILE_TYPE'));
+    cb(new AppError(`Unsupported file format '${ext || 'unknown'}'. Allowed formats: PDF, DOCX, XLSX, TXT.`, 400, 'UNSUPPORTED_FILE_TYPE'));
   }
 };
 

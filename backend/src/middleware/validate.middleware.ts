@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { ZodTypeAny } from 'zod';
+import { ZodType, ZodTypeAny } from 'zod';
 
 export interface RequestValidationSchema {
   body?: ZodTypeAny;
@@ -10,7 +10,9 @@ export interface RequestValidationSchema {
 export const validate = (schema: RequestValidationSchema | ZodTypeAny) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      if ('body' in schema || 'query' in schema || 'params' in schema) {
+      if (schema instanceof ZodType) {
+        req.body = await schema.parseAsync(req.body);
+      } else {
         const target = schema as RequestValidationSchema;
         if (target.body) {
           req.body = await target.body.parseAsync(req.body);
@@ -21,8 +23,6 @@ export const validate = (schema: RequestValidationSchema | ZodTypeAny) => {
         if (target.params) {
           req.params = await target.params.parseAsync(req.params);
         }
-      } else {
-        req.body = await (schema as ZodTypeAny).parseAsync(req.body);
       }
       next();
     } catch (error) {
