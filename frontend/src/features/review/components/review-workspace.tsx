@@ -28,7 +28,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import type { DocumentStatusType, DocumentItem } from "@/lib/validation/document";
-import { updateDocumentStatusAction } from "@/lib/actions/document-actions";
+import { getDocumentAction, updateDocumentStatusAction } from "@/lib/actions/document-actions";
 import { EditDocumentModal } from "@/features/documents/components/edit-document-modal";
 import { AIAssistPanel, MOCK_AI_FLAGS, type IAIFlagItem } from "@/features/documents/components/ai-assist-panel";
 import { RevisionThread } from "@/features/audit/components/revision-thread";
@@ -57,9 +57,34 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
   const [activeDecision, setActiveDecision] = useState<"Approved" | "Needs Revision" | "Rejected" | null>(null);
   const [mobileActiveZone, setMobileActiveZone] = useState<"document" | "ai" | "decision">("document");
   const [isAiDrawerOpenTablet, setIsAiDrawerOpenTablet] = useState(false);
+  const [isLoadingDocument, setIsLoadingDocument] = useState(true);
+  const [documentError, setDocumentError] = useState<string | null>(null);
 
   const totalPages = 3;
   const passageRef = useRef<HTMLTableRowElement>(null);
+
+  useEffect(() => {
+    let isActive = true;
+
+    getDocumentAction(documentId)
+      .then((document) => {
+        if (!isActive) return;
+        setTitle(document.title);
+        setCategory(document.category);
+        setStatus(document.status);
+      })
+      .catch((error: unknown) => {
+        if (!isActive) return;
+        setDocumentError(error instanceof Error ? error.message : "Unable to load this document.");
+      })
+      .finally(() => {
+        if (isActive) setIsLoadingDocument(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [documentId]);
 
   const currentDocItem: DocumentItem = {
     id: documentId,
@@ -170,6 +195,12 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
         </div>
       </div>
 
+      {isLoadingDocument && (
+        <Alert variant="info" title="Loading document" message="Retrieving the document from the compliance service." />
+      )}
+      {documentError && (
+        <ErrorState title="Unable to load document" message={documentError} />
+      )}
       {actionSuccess && (
         <Alert variant="success" title="Regulatory Action Executed" message={actionSuccess} />
       )}

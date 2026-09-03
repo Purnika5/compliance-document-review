@@ -1,5 +1,15 @@
 import { uploadDocumentSchema, type UploadDocumentInput, type DocumentItem, type DocumentStatusType } from "@/lib/validation/document";
-import { fetchMySubmissionsRequest, fetchQueueRequest, uploadDocumentRequest, updateDocumentStatusRequest } from "@/lib/api/documents";
+import {
+  fetchDocumentRequest,
+  fetchMySubmissionsRequest,
+  fetchQueueRequest,
+  uploadDocumentRequest,
+  updateDocumentStatusRequest,
+} from "@/lib/api/documents";
+
+export async function getDocumentAction(documentId: string): Promise<DocumentItem> {
+  return fetchDocumentRequest(documentId);
+}
 
 export async function getMySubmissionsAction(): Promise<DocumentItem[]> {
   return fetchMySubmissionsRequest();
