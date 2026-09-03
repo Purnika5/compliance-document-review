@@ -15,3 +15,5 @@ npm run dev
 ```
 
 For detailed documentation, architecture breakdown, and component guides, please refer to [frontend/README.md](./frontend/README.md).
+
+The repository also includes the backend API, data, and AI track directories.
