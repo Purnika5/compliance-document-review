@@ -12,8 +12,22 @@ export interface UserSession {
   token: string;
 }
 
-/** Holds the current session only for the lifetime of the browser tab. */
-let currentSession: UserSession | null = null;
+const SESSION_STORAGE_KEY = "springer-capital-session";
+
+/** Restores the current session when running in the browser. */
+function getStoredSession(): UserSession | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const storedSession = window.sessionStorage.getItem(SESSION_STORAGE_KEY);
+    return storedSession ? (JSON.parse(storedSession) as UserSession) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Holds the current session for the browser tab and its page refreshes. */
+let currentSession: UserSession | null = getStoredSession();
 
 /** Subscribers notified whenever the current session changes. */
 const listeners: Set<() => void> = new Set();
@@ -48,12 +62,22 @@ export const authStore = {
   /** Replaces the current session and notifies all subscribed consumers. */
   setSession(session: UserSession | null) {
     currentSession = session;
+    if (typeof window !== "undefined") {
+      if (session) {
+        window.sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+      } else {
+        window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
+      }
+    }
     listeners.forEach((listener) => listener());
   },
 
   /** Clears the current session and notifies all subscribed consumers. */
   clearSession() {
     currentSession = null;
+    if (typeof window !== "undefined") {
+      window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
+    }
     listeners.forEach((listener) => listener());
   },
 

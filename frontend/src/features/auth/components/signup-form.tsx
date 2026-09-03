@@ -14,6 +14,7 @@ import { signupSchema } from "@/lib/validation/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
+import { CompanyLogo } from "@/components/ui/brand-logos";
 import {
   Card,
   CardHeader,
@@ -67,9 +68,7 @@ export function SignupForm() {
     <div className="w-full max-w-md mx-auto">
       <Card className="neu-surface rounded-xl overflow-hidden">
         <CardHeader className="text-center space-y-1 pb-4 pt-6">
-          <div className="mx-auto h-10 w-10 rounded bg-slate-900 text-white flex items-center justify-center font-bold text-sm">
-            SC
-          </div>
+          <CompanyLogo className="justify-center" />
           <CardTitle className="text-xl font-bold text-slate-900 tracking-tight">
             Create Personnel Account
           </CardTitle>
