@@ -1,20 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
-import { z } from 'zod';
 import { DocumentService } from '../services/document.service';
 import { sendSuccess } from '../utils/response';
 import { AppError } from '../middleware/error.middleware';
 import { DocumentStatus } from '../types/models';
-
-export const updateStatusSchema = z.object({
-  status: z.enum(['Approved', 'Needs Revision', 'Rejected'], {
-    errorMap: () => ({ message: "Status must be 'Approved', 'Needs Revision', or 'Rejected'" })
-  })
-});
-
-export const documentQuerySchema = z.object({
-  status: z.string().optional(),
-  advisor_id: z.string().uuid().optional()
-});
 
 export class DocumentController {
   public static async submit(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -44,14 +32,14 @@ export class DocumentController {
   public static async updateStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { id } = req.params;
-      const validated = updateStatusSchema.parse(req.body);
+      const { status } = req.body;
 
       const updatedDoc = await DocumentService.updateDocumentStatus(
         id,
-        validated.status as DocumentStatus
+        status as DocumentStatus
       );
 
-      sendSuccess(res, updatedDoc, 200, `Document status updated to '${validated.status}'`);
+      sendSuccess(res, updatedDoc, 200, `Document status updated to '${status}'`);
     } catch (error) {
       next(error);
     }
@@ -59,8 +47,7 @@ export class DocumentController {
 
   public static async list(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const validatedQuery = documentQuerySchema.parse(req.query);
-      const documents = await DocumentService.listDocuments(req.user!, validatedQuery);
+      const documents = await DocumentService.listDocuments(req.user!, req.query);
       sendSuccess(res, documents, 200, 'Documents retrieved successfully');
     } catch (error) {
       next(error);
