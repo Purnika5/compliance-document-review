@@ -9,7 +9,7 @@ A modern, high-performance web application built with **Next.js 16**, **React 19
 - **Role-Based Workflow**: Distinct interfaces and capabilities tailored for **Advisors** and **Officers**.
 - **Document Queue Management**: Filterable tables, tabs for status navigation (`Pending`, `Approved`, `Needs Revision`, `Rejected`), and real-time status badges.
 - **Document Upload Modal**: Interactive modal with client-side Zod schema validation.
-- **Authentication System**: Login & Signup flows with mocked/backend fallback state management via Zustand-style `authStore`.
+- **Authentication System**: Login and Signup flows connected to the backend API, with an in-memory Zustand-style `authStore` for the current session.
 - **Shadcn UI System**: Sleek, clean, accessible UI components with consistent design tokens, dark/light compatibility, and responsive layouts.
 
 ---
@@ -54,6 +54,18 @@ frontend/
 ```
 
 ---
+
+## 🔌 Backend API Connection
+
+The frontend calls the backend directly using `NEXT_PUBLIC_API_URL`. The local configuration should point to the backend root because its routes are mounted at `/auth`, `/documents`, and `/health`:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:5000
+```
+
+The frontend stores the access token in memory and sends it as a Bearer token on API requests. JWT verification and refresh-token handling remain backend responsibilities; the frontend uses `GET /auth/me` to validate the current session.
+
+Start the backend on port `5000` before using authenticated frontend features.
 
 ## 🚦 Getting Started
 

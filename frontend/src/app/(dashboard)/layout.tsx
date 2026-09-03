@@ -5,6 +5,13 @@ import { AppSidebar } from "@/components/layouts/app-sidebar";
 import { AppHeader } from "@/components/layouts/app-header";
 import { ChatbotWidget } from "@/components/ui/chatbot-widget";
 
+/**
+ * DOCU: Provides the authenticated dashboard shell with navigation and copilot access.
+ * Last Updated Date: September 3, 2026
+ * @param children - Rendered dashboard route content.
+ * @returns The dashboard layout.
+ * @author Keith
+ */
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   return (

@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * DOCU: Renders the officer document queue and review actions.
+ * Last Updated Date: September 3, 2026
+ * @returns The document queue table view.
+ * @author Keith
+ */
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDocuments } from "../hooks/use-documents";
@@ -46,6 +52,12 @@ import { cn } from "@/lib/utils";
 
 type FilterTab = "All" | "Pending" | "Needs Revision" | "Approved" | "Rejected";
 
+/**
+ * DOCU: Renders the officer document queue and review controls.
+ * Last Updated Date: September 3, 2026
+ * @returns The document queue view.
+ * @author Keith
+ */
 export function DocumentQueueTable() {
   const router = useRouter();
   const { documents, isPending, refetch } = useDocuments("queue");

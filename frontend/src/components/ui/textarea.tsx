@@ -1,3 +1,9 @@
+/**
+ * DOCU: Provides the shared styled multiline text input primitive.
+ * Last Updated Date: September 3, 2026
+ * @returns A reusable styled textarea primitive.
+ * @author Keith
+ */
 import * as React from "react"
 
 import { cn } from "@/lib/utils"

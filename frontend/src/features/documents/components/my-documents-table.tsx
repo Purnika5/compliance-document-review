@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * DOCU: Renders the advisor's submitted document list.
+ * Last Updated Date: September 3, 2026
+ * @returns The submissions table view.
+ * @author Keith
+ */
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDocuments } from "../hooks/use-documents";
@@ -43,6 +49,12 @@ import {
 import type { DocumentItem } from "@/lib/validation/document";
 import { cn } from "@/lib/utils";
 
+/**
+ * DOCU: Renders the authenticated advisor's document submissions.
+ * Last Updated Date: September 3, 2026
+ * @returns The submissions table view.
+ * @author Keith
+ */
 export function MyDocumentsTable() {
   const router = useRouter();
   const { documents, isPending, refetch } = useDocuments("my-submissions");

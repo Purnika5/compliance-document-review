@@ -1,3 +1,9 @@
+/**
+ * DOCU: Provides branded Springer Capital and AI logo components.
+ * Last Updated Date: September 3, 2026
+ * @returns Reusable branded logo views.
+ * @author Keith
+ */
 import React from "react";
 import { cn } from "@/lib/utils";
 

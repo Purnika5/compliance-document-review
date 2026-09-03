@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * DOCU: Renders the review decision dialog for document status updates.
+ * Last Updated Date: September 3, 2026
+ * @returns The decision dialog view.
+ * @author Keith
+ */
 import React, { useState } from "react";
 import {
   Dialog,
@@ -27,6 +33,13 @@ export interface DecisionDialogProps {
   isSubmitting?: boolean;
 }
 
+/**
+ * DOCU: Renders a confirmation dialog for document review decisions.
+ * Last Updated Date: September 3, 2026
+ * @param props - Decision state, selected status, and callbacks.
+ * @returns The decision dialog view.
+ * @author Keith
+ */
 export function DecisionDialog({
   isOpen,
   onClose,

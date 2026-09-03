@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * DOCU: Renders the shared application navigation bar.
+ * Last Updated Date: September 3, 2026
+ * @returns The application navigation view.
+ * @author Keith
+ */
 import React, { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";

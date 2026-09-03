@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * DOCU: Provides the shared progress indicator primitive.
+ * Last Updated Date: September 3, 2026
+ * @returns A reusable progress indicator.
+ * @author Keith
+ */
 import * as React from "react";
 import * as ProgressPrimitive from "@radix-ui/react-progress";
 import { cn } from "@/lib/utils";

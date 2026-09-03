@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * DOCU: Renders the authenticated application header.
+ * Last Updated Date: September 3, 2026
+ * @returns The application header view.
+ * @author Keith
+ */
 import React, { useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { authStore, type UserSession } from "@/lib/auth/auth-store";

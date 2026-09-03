@@ -1,3 +1,9 @@
+/**
+ * DOCU: Provides accessible modal dialog primitives.
+ * Last Updated Date: September 3, 2026
+ * @returns Composable modal dialog primitives.
+ * @author Keith
+ */
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";

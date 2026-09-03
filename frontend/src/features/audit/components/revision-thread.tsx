@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * DOCU: Renders the chronological revision discussion for a document.
+ * Last Updated Date: September 3, 2026
+ * @returns The revision thread view.
+ * @author Keith
+ */
 import React, { useState, useRef } from "react";
 import { Send, User, Shield, Clock, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -18,37 +24,6 @@ export interface IRevisionEvent {
   timestamp: string;
 }
 
-export const MOCK_REVISION_EVENTS: IRevisionEvent[] = [
-  {
-    id: "rev-1",
-    version: "v1.0",
-    author: "Sarah Jenkins",
-    role: "Advisor",
-    action: "Initial Document Submission",
-    comment: "Submitted Q3 Asset Allocation Proposal with offshore portfolio rebalancing model for institutional portfolio #4092.",
-    timestamp: "May 20, 2026 · 10:24 AM",
-  },
-  {
-    id: "rev-2",
-    version: "v1.0",
-    author: "Officer Alex Smith",
-    role: "Officer",
-    action: "Revision Requested",
-    statusChange: { from: "Pending", to: "Needs Revision" },
-    comment: "Please provide secondary beneficial ownership disclosures for the 15% private REIT holding under Rule FD-2.1.3.",
-    timestamp: "May 21, 2026 · 2:41 PM",
-  },
-  {
-    id: "rev-3",
-    version: "v1.1",
-    author: "Sarah Jenkins",
-    role: "Advisor",
-    action: "Resubmitted with Revised Disclosure",
-    comment: "Attached secondary disclosure affidavit form D-442 signed by principal managing partner.",
-    timestamp: "May 22, 2026 · 9:15 AM",
-  },
-];
-
 export interface RevisionThreadProps {
   documentId: string;
   events?: IRevisionEvent[];
@@ -56,9 +31,19 @@ export interface RevisionThreadProps {
   readOnly?: boolean;
 }
 
+/**
+ * DOCU: Renders the revision history and optional comment form for a document.
+ * Last Updated Date: September 3, 2026
+ * @param documentId - Document identifier displayed in the revision header.
+ * @param events - Revision events supplied by the document workflow.
+ * @param onAddComment - Optional callback invoked after a comment is added.
+ * @param readOnly - Whether comment submission controls are disabled.
+ * @returns The revision thread view.
+ * @author Keith
+ */
 export function RevisionThread({
   documentId,
-  events = MOCK_REVISION_EVENTS,
+  events = [],
   onAddComment,
   readOnly = false,
 }: RevisionThreadProps) {
@@ -67,6 +52,13 @@ export function RevisionThread({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const revCountRef = useRef(timeline.length);
 
+  /**
+   * DOCU: Validates and appends a new revision comment to the local timeline.
+   * Last Updated Date: September 3, 2026
+   * @param e - Form submission event from the comment form.
+   * @returns Nothing; updates the timeline and optional parent callback.
+   * @author Keith
+   */
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newComment.trim()) return;

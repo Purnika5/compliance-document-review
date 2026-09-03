@@ -1,3 +1,9 @@
+/**
+ * DOCU: Provides typed tab navigation primitives.
+ * Last Updated Date: September 3, 2026
+ * @returns Reusable tab navigation primitives.
+ * @author Keith
+ */
 import * as React from "react";
 import * as TabsPrimitive from "@radix-ui/react-tabs";
 import { cn } from "@/lib/utils";

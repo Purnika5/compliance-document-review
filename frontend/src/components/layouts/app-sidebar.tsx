@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * DOCU: Renders role-aware dashboard navigation.
+ * Last Updated Date: September 3, 2026
+ * @returns The dashboard sidebar view.
+ * @author Keith
+ */
 import React, { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";

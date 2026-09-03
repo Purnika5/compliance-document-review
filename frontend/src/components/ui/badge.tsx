@@ -1,3 +1,9 @@
+/**
+ * DOCU: Provides reusable status and label badge components.
+ * Last Updated Date: September 3, 2026
+ * @returns Badge primitives for compact labels and statuses.
+ * @author Keith
+ */
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";

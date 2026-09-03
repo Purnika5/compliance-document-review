@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * DOCU: Renders the document detail placeholder and review metadata.
+ * Last Updated Date: September 3, 2026
+ * @returns The document detail placeholder view.
+ * @author Keith
+ */
 import React, { useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +36,13 @@ export interface DocumentDetailPlaceholderProps {
   documentId: string;
 }
 
+/**
+ * DOCU: Renders a document detail view with review controls.
+ * Last Updated Date: September 3, 2026
+ * @param documentId - Document identifier displayed and updated in the view.
+ * @returns The document detail view.
+ * @author Keith
+ */
 export function DocumentDetailPlaceholder({ documentId }: DocumentDetailPlaceholderProps) {
   const [status, setStatus] = useState<DocumentStatusType>("Pending");
   const [title, setTitle] = useState<string>("Q3 High Net Worth Asset Allocation Strategy");

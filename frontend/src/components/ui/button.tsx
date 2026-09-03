@@ -1,3 +1,9 @@
+/**
+ * DOCU: Provides the shared button primitive and its visual variants.
+ * Last Updated Date: September 3, 2026
+ * @returns A reusable styled button primitive.
+ * @author Keith
+ */
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";

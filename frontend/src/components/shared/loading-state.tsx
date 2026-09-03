@@ -1,3 +1,9 @@
+/**
+ * DOCU: Renders loading placeholders for shared content states.
+ * Last Updated Date: September 3, 2026
+ * @returns The loading-state view.
+ * @author Keith
+ */
 import * as React from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";

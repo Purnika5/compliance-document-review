@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * DOCU: Renders the document metadata editing modal.
+ * Last Updated Date: September 3, 2026
+ * @returns The edit document modal view.
+ * @author Keith
+ */
 import React, { useState } from "react";
 import {
   Dialog,

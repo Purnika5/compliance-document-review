@@ -1,10 +1,23 @@
 "use client";
 
+/**
+ * DOCU: Provides authentication and optional role-based route guard behavior.
+ * Last Updated Date: September 3, 2026
+ * @returns The current authentication guard state.
+ * @author Keith
+ */
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { authStore, type UserSession } from "@/lib/auth/auth-store";
 import type { Role } from "@/lib/validation/auth";
 
+/**
+ * DOCU: Guards a route by checking session presence and an optional role.
+ * Last Updated Date: September 3, 2026
+ * @param allowedRole - Optional role required to access the route.
+ * @returns Authentication guard state and redirect status.
+ * @author Keith
+ */
 export function useAuthGuard(allowedRole?: Role) {
   const router = useRouter();
 
@@ -39,6 +52,12 @@ export function useAuthGuard(allowedRole?: Role) {
   return { session, isAuthorized };
 }
 
+/**
+ * DOCU: Redirects an already authenticated user away from public auth pages.
+ * Last Updated Date: September 3, 2026
+ * @returns Whether the current session is being evaluated.
+ * @author Keith
+ */
 export function useRedirectIfAuthenticated() {
   const router = useRouter();
   const session = useSyncExternalStore<UserSession | null>(

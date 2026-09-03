@@ -1,3 +1,9 @@
+/**
+ * DOCU: Provides accessible alert messaging with semantic variants.
+ * Last Updated Date: September 3, 2026
+ * @returns Alert primitives for status and feedback messages.
+ * @author Keith
+ */
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { AlertCircle, AlertTriangle, CheckCircle2, Info } from "lucide-react";

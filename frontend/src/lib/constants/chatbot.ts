@@ -1,3 +1,9 @@
+/**
+ * DOCU: Defines the default messages and configuration for the compliance copilot.
+ * Last Updated Date: September 3, 2026
+ * @returns Shared chatbot constants used by the widget.
+ * @author Keith
+ */
 import type { IChatMessage } from "@/types/chatbot.types";
 
 export const INITIAL_MESSAGES: IChatMessage[] = [

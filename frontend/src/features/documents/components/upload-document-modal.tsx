@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * DOCU: Renders the document upload form and submission workflow.
+ * Last Updated Date: September 3, 2026
+ * @returns The upload document modal view.
+ * @author Keith
+ */
 import React, { useState, useRef } from "react";
 import {
   Dialog,

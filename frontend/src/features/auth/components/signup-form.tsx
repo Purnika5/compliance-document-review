@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * DOCU: Renders and manages the personnel registration form.
+ * Last Updated Date: September 3, 2026
+ * @returns The signup form view.
+ * @author Keith
+ */
 import React, { useState } from "react";
 import Link from "next/link";
 import { useSignup } from "../hooks/use-signup";

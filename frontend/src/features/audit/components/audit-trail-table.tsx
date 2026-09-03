@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * DOCU: Renders the document audit trail and recorded compliance events.
+ * Last Updated Date: September 3, 2026
+ * @returns The audit trail table view.
+ * @author Keith
+ */
 import React, { useState } from "react";
 import {
   Table,
@@ -28,74 +34,6 @@ export interface IAuditLogEntry {
   statusResult?: string;
 }
 
-export const MOCK_AUDIT_LOGS: IAuditLogEntry[] = [
-  {
-    id: "AUD-89101",
-    documentId: "DOC-2026-001",
-    documentTitle: "Q3 Investment Strategy & Asset Allocation Proposal",
-    timestamp: "2026-09-02 14:15:22 UTC",
-    relativeTime: "10 mins ago",
-    user: "Officer Alex Smith",
-    role: "Officer",
-    action: "AI Rule Inspection Executed",
-    version: "v1.1",
-    details: "Inspected Flag FD-2.1.3 (Beneficial ownership threshold violation)",
-    statusResult: "Under Review",
-  },
-  {
-    id: "AUD-89100",
-    documentId: "DOC-2026-001",
-    documentTitle: "Q3 Investment Strategy & Asset Allocation Proposal",
-    timestamp: "2026-09-01 10:30:00 UTC",
-    relativeTime: "Yesterday",
-    user: "Sarah Jenkins",
-    role: "Advisor",
-    action: "Document Submission",
-    version: "v1.0",
-    details: "Uploaded file Q3_Strategic_Allocation.pdf (2.4 MB)",
-    statusResult: "Pending",
-  },
-  {
-    id: "AUD-89098",
-    documentId: "DOC-2026-002",
-    documentTitle: "High Net Worth Client Risk Assessment Audit",
-    timestamp: "2026-08-28 16:45:10 UTC",
-    relativeTime: "5 days ago",
-    user: "Officer Alex Smith",
-    role: "Officer",
-    action: "Proposal Approval Executed",
-    version: "v1.0",
-    details: "Approved without exceptions following FINRA Rule 2111 suitability signoff",
-    statusResult: "Approved",
-  },
-  {
-    id: "AUD-89094",
-    documentId: "DOC-2026-003",
-    documentTitle: "Annual Compliance Verification Statement 2026",
-    timestamp: "2026-08-25 11:20:45 UTC",
-    relativeTime: "8 days ago",
-    user: "Officer Alex Smith",
-    role: "Officer",
-    action: "Revision Required",
-    version: "v1.0",
-    details: "Issued deficiency notification regarding overseas trust holdings",
-    statusResult: "Needs Revision",
-  },
-  {
-    id: "AUD-89088",
-    documentId: "DOC-2026-004",
-    documentTitle: "Tax Optimization Framework - Overseas Holdings",
-    timestamp: "2026-08-20 09:12:00 UTC",
-    relativeTime: "13 days ago",
-    user: "Officer Alex Smith",
-    role: "Officer",
-    action: "Proposal Rejection Executed",
-    version: "v1.0",
-    details: "Rejected per non-compliant offshore tax jurisdiction disclosure failure",
-    statusResult: "Rejected",
-  },
-];
-
 export interface AuditTrailTableProps {
   documentIdFilter?: string;
   entries?: IAuditLogEntry[];
@@ -103,7 +41,7 @@ export interface AuditTrailTableProps {
 
 export function AuditTrailTable({
   documentIdFilter,
-  entries = MOCK_AUDIT_LOGS,
+  entries = [],
 }: AuditTrailTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
 

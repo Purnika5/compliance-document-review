@@ -1,3 +1,9 @@
+/**
+ * DOCU: Defines Zod schemas and types for document workflows.
+ * Last Updated Date: September 3, 2026
+ * @returns Shared document validation contracts.
+ * @author Keith
+ */
 import { z } from "zod";
 
 export const documentStatusEnum = z.enum(["Pending", "Approved", "Needs Revision", "Rejected"]);

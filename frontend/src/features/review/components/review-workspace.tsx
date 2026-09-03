@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * DOCU: Renders the complete document review workspace and decision flow.
+ * Last Updated Date: September 3, 2026
+ * @returns The document review workspace view.
+ * @author Keith
+ */
 import React, { useState, useRef, useEffect, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -41,6 +47,13 @@ export interface ReviewWorkspaceProps {
   documentId: string;
 }
 
+/**
+ * DOCU: Renders the complete document review workspace and decision flow.
+ * Last Updated Date: September 3, 2026
+ * @param documentId - Document identifier loaded into the workspace.
+ * @returns The document review workspace view.
+ * @author Keith
+ */
 export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
   const session = useSyncExternalStore(authStore.subscribe, authStore.getSession, authStore.getServerSnapshot);
   const isOfficer = session?.role === "Officer";

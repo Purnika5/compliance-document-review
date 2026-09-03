@@ -1,9 +1,22 @@
 "use client";
 
+/**
+ * DOCU: Provides document list loading, refresh, and error state management.
+ * Last Updated Date: September 3, 2026
+ * @returns Document list state and refresh controls.
+ * @author Keith
+ */
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { getMySubmissionsAction, getQueueAction } from "@/lib/actions/document-actions";
 import type { DocumentItem, DocumentStatusType } from "@/lib/validation/document";
 
+/**
+ * DOCU: Loads and refreshes documents for submissions or the officer queue.
+ * Last Updated Date: September 3, 2026
+ * @param mode - Document list source to load.
+ * @returns Document data, loading state, error state, and refresh function.
+ * @author Keith
+ */
 export function useDocuments(mode: "my-submissions" | "queue" = "queue") {
   const [allDocuments, setAllDocuments] = useState<DocumentItem[]>([]);
   const [activeStatus, setActiveStatus] = useState<string>("All");
