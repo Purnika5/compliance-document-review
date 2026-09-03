@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
     id              SERIAL PRIMARY KEY,
     name            VARCHAR(255) NOT NULL,
     email           VARCHAR(255) UNIQUE NOT NULL,
-    role            VARCHAR(20) NOT NULL CHECK (role IN ('advisor', 'officer')),
+    role            VARCHAR(20) NOT NULL CHECK (role IN ('Advisor', 'officer')),
     created_at      TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
@@ -20,8 +20,8 @@ CREATE TABLE IF NOT EXISTS documents (
     file_type           VARCHAR(20) NOT NULL,        -- pdf, docx, xlsx
     file_size_bytes     INTEGER NOT NULL,
     storage_path        TEXT NOT NULL,                -- where the raw file lives (disk/S3 path)
-    status              VARCHAR(20) NOT NULL DEFAULT 'pending'
-                        CHECK (status IN ('pending', 'approved', 'needs_revision', 'rejected')),
+    status              VARCHAR(20) NOT NULL DEFAULT 'Pending'
+                        CHECK (status IN ('Pending', 'approved', 'needs_revision', 'rejected')),
     -- Self-reference: a resubmission points back to the original document
     original_document_id INTEGER REFERENCES documents(id),
     submitted_at        TIMESTAMP NOT NULL DEFAULT NOW(),
