@@ -1,0 +1,137 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  /* Reference palette: electric blue, cyan, and magenta with semantic states */
+  --color-status-approved-bg: hsl(174 70% 93%);
+  --color-status-approved-text: hsl(183 72% 25%);
+  --color-status-approved-border: hsl(174 52% 78%);
+
+  --color-status-pending-bg: hsl(45 90% 96%);
+  --color-status-pending-text: hsl(35 90% 28%);
+  --color-status-pending-border: hsl(40 60% 86%);
+
+  --color-status-revision-bg: hsl(326 85% 95%);
+  --color-status-revision-text: hsl(326 65% 36%);
+  --color-status-revision-border: hsl(326 55% 84%);
+
+  --color-status-rejected-bg: hsl(0 50% 97%);
+  --color-status-rejected-text: hsl(0 65% 38%);
+  --color-status-rejected-border: hsl(0 40% 88%);
+
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+}
+
+:root {
+  /* Glass bento palette: luminous blue surface with cyan and pink accents */
+  --background: 222 70% 94%;      /* soft blue-gray */
+  --foreground: 222.2 30% 20%;     /* softened navy text */
+  
+  --card: 210 20% 94%;
+  --card-foreground: 222.2 47% 11.2%;
+  
+  --popover: 210 20% 94%;
+  --popover-foreground: 222.2 47% 11.2%;
+
+  /* Disciplined Forest Green Accent for Primary Actions */
+  --primary: 239 72% 52%;          /* royal indigo brand accent */
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 210 16% 90%;
+  --secondary-foreground: 222.2 47% 15%;
+
+  --muted: 210 16% 90%;
+  --muted-foreground: 215.4 16.3% 42%;
+
+  --accent: 190 80% 88%;
+  --accent-foreground: 239 72% 38%;
+
+  --destructive: 0 65% 42%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 214.3 22% 85%;
+  --input: 214.3 22% 85%;
+  --ring: 190 78% 48%;
+  --radius: 0.5rem;
+}
+
+@layer components {
+  .neu-surface {
+    border: 1px solid hsl(220 42% 91% / 0.92);
+    background: hsl(var(--card));
+    box-shadow: 8px 8px 18px hsl(228 42% 74% / 0.42), -8px -8px 18px hsl(0 0% 100% / 0.9);
+  }
+
+  .neu-soft {
+    border: 1px solid hsl(220 42% 91% / 0.92);
+    background: hsl(var(--card));
+    box-shadow: 4px 4px 11px hsl(228 42% 74% / 0.36), -4px -4px 11px hsl(0 0% 100% / 0.86);
+  }
+
+  .neu-inset {
+    border: 1px solid hsl(220 42% 91% / 0.92);
+    background: hsl(var(--background));
+    box-shadow: inset 3px 3px 7px hsl(228 42% 74% / 0.36), inset -3px -3px 7px hsl(0 0% 100% / 0.86);
+  }
+
+  .glass-accent {
+    border: 1px solid hsl(220 72% 62% / 0.48);
+    background: hsl(239 72% 52% / 0.96);
+    box-shadow: 6px 6px 14px hsl(228 42% 74% / 0.36), inset 1px 1px 0 hsl(0 0% 100% / 0.24);
+  }
+
+  .glass-pink {
+    border: 1px solid hsl(326 75% 82% / 0.8);
+    background: hsl(326 72% 61% / 0.94);
+    box-shadow: 5px 5px 12px hsl(228 42% 74% / 0.3), inset 1px 1px 0 hsl(0 0% 100% / 0.24);
+  }
+
+  .detail-highlight {
+    border: 1px solid hsl(190 78% 78% / 0.9);
+    background: hsl(190 64% 97% / 0.86);
+    box-shadow: inset 3px 3px 7px hsl(190 45% 78% / 0.24), 2px 2px 7px hsl(228 42% 74% / 0.18);
+  }
+
+  .detail-highlight-pink {
+    border: 1px solid hsl(326 78% 80% / 0.9);
+    background: hsl(326 85% 97% / 0.78);
+    box-shadow: inset 3px 3px 7px hsl(326 45% 80% / 0.2), 2px 2px 7px hsl(228 42% 74% / 0.16);
+  }
+}
+
+@layer base {
+  body {
+    background-color: hsl(var(--background));
+    background-image: radial-gradient(circle at 8% 4%, hsl(326 82% 70% / 0.07), transparent 24%), radial-gradient(circle at 92% 8%, hsl(190 82% 62% / 0.09), transparent 26%);
+    color: hsl(var(--foreground));
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "tnum";
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Dense institutional finance tables */
+  table {
+    font-variant-numeric: tabular-nums;
+  }
+}
