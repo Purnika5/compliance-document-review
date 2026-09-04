@@ -107,7 +107,7 @@ def to_insert_dict(meta: DocumentMetadata) -> dict:
         "file_type": meta.file_type,
         "file_size_bytes": meta.file_size_bytes,
         "storage_path": meta.storage_path,
-        "status": "pending",
+        "status": "Pending",
         "submitted_at": meta.submitted_at,
     }
 
