@@ -11,6 +11,9 @@ Responsibilities:
 
 This module is intentionally storage-agnostic: `save_to_storage()` writes to
 local disk for now, but is the one place to swap in S3/Azure Blob later.
+
+Note: advisor_id is a UUID (not int), matching the Backend's UUID primary
+key convention used throughout the schema (see schema.sql).
 """
 
 import os
@@ -25,7 +28,7 @@ STORAGE_DIR = "storage/documents"
 
 @dataclass
 class DocumentMetadata:
-    advisor_id: int
+    advisor_id: uuid.UUID
     file_name: str
     file_type: str
     file_size_bytes: int
@@ -74,11 +77,13 @@ def save_to_storage(file_bytes: bytes, original_file_name: str) -> str:
     return storage_path
 
 
-def ingest_document(advisor_id: int, file_name: str, file_bytes: bytes) -> DocumentMetadata:
+def ingest_document(advisor_id: uuid.UUID, file_name: str, file_bytes: bytes) -> DocumentMetadata:
     """
     Main entry point: validates, stores, and extracts metadata for an
     uploaded document. Returns a DocumentMetadata object ready to be
     inserted into the `documents` table (see schema.sql).
+
+    advisor_id must be a UUID matching an existing row in `users(id)`.
 
     Raises IngestionError on invalid input — the caller (API layer) is
     responsible for turning that into an appropriate HTTP error response.
@@ -98,16 +103,35 @@ def ingest_document(advisor_id: int, file_name: str, file_bytes: bytes) -> Docum
     )
 
 
-def to_insert_dict(meta: DocumentMetadata) -> dict:
+# SQL to resolve the 'Pending' status UUID at insert time. `documents.status_id`
+# is NOT NULL, so every insert must include a real status_id — this query is
+# the single source of truth for "what UUID does 'Pending' currently have".
+GET_PENDING_STATUS_ID_SQL = "SELECT id FROM document_statuses WHERE name = 'Pending';"
+
+
+def to_insert_dict(meta: DocumentMetadata, status_id: uuid.UUID) -> dict:
     """Convert DocumentMetadata into a dict matching the `documents` table
-    columns, ready for an INSERT (via psycopg2, SQLAlchemy, etc.)."""
+    columns, ready for an INSERT (via psycopg2, SQLAlchemy, etc.).
+
+    `status_id` is required (not optional) because `documents.status_id` is
+    NOT NULL in the schema. The caller must resolve it first, e.g.:
+
+        cur.execute(GET_PENDING_STATUS_ID_SQL)
+        pending_status_id = cur.fetchone()[0]
+        row = to_insert_dict(meta, pending_status_id)
+
+    Newly ingested documents always start as 'Pending', so callers resolve
+    that specific status_id and pass it in here — this function will not
+    silently default it, to avoid a mismatch with whatever UUID
+    'Pending' actually has in the database.
+    """
     return {
         "advisor_id": meta.advisor_id,
         "file_name": meta.file_name,
         "file_type": meta.file_type,
         "file_size_bytes": meta.file_size_bytes,
         "storage_path": meta.storage_path,
-        "status": "Pending",
+        "status_id": status_id,
         "submitted_at": meta.submitted_at,
     }
 
@@ -117,8 +141,17 @@ def to_insert_dict(meta: DocumentMetadata) -> dict:
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
     fake_pdf_bytes = b"%PDF-1.4 fake content for testing"
-    result = ingest_document(advisor_id=1, file_name="disclosure_form.pdf", file_bytes=fake_pdf_bytes)
+    result = ingest_document(
+        advisor_id=uuid.uuid4(),
+        file_name="disclosure_form.pdf",
+        file_bytes=fake_pdf_bytes,
+    )
     print("Ingested successfully:")
     print(result)
+
+    # In real usage, status_id comes from querying document_statuses (see
+    # GET_PENDING_STATUS_ID_SQL above). Faked here since there's no live DB
+    # connection in this standalone test.
+    fake_pending_status_id = uuid.uuid4()
     print("\nReady for DB insert:")
-    print(to_insert_dict(result))
+    print(to_insert_dict(result, status_id=fake_pending_status_id))
