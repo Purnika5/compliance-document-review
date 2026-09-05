@@ -110,7 +110,7 @@ export function SignupForm() {
                 <Mail className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
                 <Input
                   type="email"
-                  placeholder="name@springercapital.com"
+                  placeholder="name@springer.capital"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="neu-inset pl-9 h-9 text-xs rounded-md focus-visible:ring-1 focus-visible:ring-ring"

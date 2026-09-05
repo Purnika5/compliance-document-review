@@ -15,8 +15,8 @@ export const emailSchema = z
   .string()
   .email("Please enter a valid email address")
   .refine(
-    (email) => email.toLowerCase().endsWith("@springercapital.com"),
-    "Email must end with @springercapital.com"
+    (email) => email.toLowerCase().endsWith("@springer.capital"),
+    "Email must end with @springer.capital"
   );
 
 export const passwordSchema = z.string().min(8, "Password must be at least 8 characters long");

@@ -54,7 +54,7 @@ export async function getQueueAction(statusFilter?: string): Promise<DocumentIte
  */
 export async function uploadDocumentAction(input: UploadDocumentInput): Promise<DocumentItem> {
   const parsed = uploadDocumentSchema.parse(input);
-  return uploadDocumentRequest(parsed);
+  return uploadDocumentRequest({ ...parsed, file: input.file });
 }
 
 /**

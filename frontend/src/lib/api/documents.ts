@@ -113,6 +113,13 @@ export async function uploadDocumentRequest(data: UploadDocumentInput): Promise<
   formData.append("title", data.title);
   if (data.notes) formData.append("description", data.notes);
 
+  if (data.file) {
+    formData.append("file", data.file);
+  } else {
+    const dummyBlob = new Blob(["Compliance review document: " + data.title], { type: "text/plain" });
+    formData.append("file", dummyBlob, `${data.title.replace(/[^a-zA-Z0-9_-]/g, "_")}.txt`);
+  }
+
   const envelope = await client.request<Envelope<ApiDocument>>("/documents", {
     method: "POST",
     body: formData,

@@ -15,7 +15,9 @@ export const uploadDocumentSchema = z.object({
   notes: z.string().optional(),
 });
 
-export type UploadDocumentInput = z.infer<typeof uploadDocumentSchema>;
+export type UploadDocumentInput = z.infer<typeof uploadDocumentSchema> & {
+  file?: File;
+};
 
 export interface DocumentItem {
   id: string;

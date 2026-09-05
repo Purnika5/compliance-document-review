@@ -58,25 +58,6 @@ interface IFileValidationItem {
   message: string;
 }
 
-const DEFAULT_FILES: IFileValidationItem[] = [
-  {
-    id: "f-1",
-    name: "Q3_Strategic_Asset_Allocation.pdf",
-    size: "2.4 MB",
-    type: "PDF",
-    status: "valid",
-    message: "Valid PDF format & signature metadata verified",
-  },
-  {
-    id: "f-2",
-    name: "Client_Risk_Profile_2026.docx",
-    size: "1.1 MB",
-    type: "DOCX",
-    status: "valid",
-    message: "Suitability questionnaire annex verified",
-  },
-];
-
 export function UploadDocumentModal({
   isOpen,
   onClose,
@@ -84,12 +65,13 @@ export function UploadDocumentModal({
   isPending,
   error,
 }: UploadDocumentModalProps) {
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [step, setStep] = useState<"details" | "validation" | "success">("details");
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("Investment Proposal");
   const [notes, setNotes] = useState("");
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [files, setFiles] = useState<IFileValidationItem[]>(DEFAULT_FILES);
+  const [files, setFiles] = useState<IFileValidationItem[]>([]);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -98,14 +80,22 @@ export function UploadDocumentModal({
     e.preventDefault();
     setFormErrors({});
 
+    const fieldErrors: Record<string, string> = {};
+
+    if (!selectedFile && files.length === 0) {
+      fieldErrors.file = "Please choose or drop a document file to upload";
+    }
+
     const result = uploadDocumentSchema.safeParse({ title, category, notes });
     if (!result.success) {
-      const fieldErrors: Record<string, string> = {};
       result.error.issues.forEach((issue) => {
         if (issue.path[0]) {
           fieldErrors[issue.path[0] as string] = issue.message;
         }
       });
+    }
+
+    if (Object.keys(fieldErrors).length > 0) {
       setFormErrors(fieldErrors);
       return;
     }
@@ -125,14 +115,17 @@ export function UploadDocumentModal({
   };
 
   const handleFinalSubmit = async () => {
-    await onUpload({ title, category, notes });
-    setStep("success");
+    const res = await onUpload({ title, category, notes, file: selectedFile || undefined });
+    if (res) {
+      setStep("success");
+    }
   };
 
   const handleCloseAndReset = () => {
     setTitle("");
     setCategory("Investment Proposal");
     setNotes("");
+    setSelectedFile(null);
     setStep("details");
     setUploadProgress(0);
     onClose();
@@ -143,6 +136,7 @@ export function UploadDocumentModal({
     setIsDragOver(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const dropped = e.dataTransfer.files[0];
+      setSelectedFile(dropped);
       const newFile: IFileValidationItem = {
         id: `f-${Date.now()}`,
         name: dropped.name,
@@ -151,7 +145,7 @@ export function UploadDocumentModal({
         status: "valid",
         message: "File integrity and size constraints passed",
       };
-      setFiles((prev) => [newFile, ...prev]);
+      setFiles([newFile]);
       if (!title) setTitle(dropped.name.replace(/\.[^/.]+$/, "").replace(/_/g, " "));
     }
   };
@@ -159,6 +153,7 @@ export function UploadDocumentModal({
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const selected = e.target.files[0];
+      setSelectedFile(selected);
       const newFile: IFileValidationItem = {
         id: `f-${Date.now()}`,
         name: selected.name,
@@ -167,13 +162,14 @@ export function UploadDocumentModal({
         status: "valid",
         message: "File integrity and size constraints passed",
       };
-      setFiles((prev) => [newFile, ...prev]);
+      setFiles([newFile]);
       if (!title) setTitle(selected.name.replace(/\.[^/.]+$/, "").replace(/_/g, " "));
     }
   };
 
   const removeFile = (id: string) => {
     setFiles((prev) => prev.filter((f) => f.id !== id));
+    setSelectedFile(null);
   };
 
   return (
@@ -308,6 +304,9 @@ export function UploadDocumentModal({
                 Supported: PDF, DOCX, XLSX (Max 25 MB)
               </p>
             </div>
+            {formErrors.file && (
+              <p className="text-[11px] font-semibold text-red-600">{formErrors.file}</p>
+            )}
 
             {/* Attached file summary */}
             {files.length > 0 && (
