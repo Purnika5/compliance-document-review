@@ -98,6 +98,22 @@ services:
     networks:
       - compliance-network
 
+  # ----------------------------------------------------------------------------
+  # 5. Gemini AI Service (FastAPI)
+  # ----------------------------------------------------------------------------
+  ai-service:
+    build:
+      context: .
+      dockerfile: ai/Dockerfile
+    container_name: compliance-ai
+    restart: unless-stopped
+    environment:
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    ports:
+      - "${AI_PORT:-8000}:8000"
+    networks:
+      - compliance-network
+
 volumes:
   postgres_data:
     driver: local
