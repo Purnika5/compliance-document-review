@@ -2,7 +2,7 @@
 
 /**
  * DOCU: Renders the advisor's submitted document list.
- * Last Updated Date: September 3, 2026
+ * Last Updated Date: September 7, 2026
  * @returns The submissions table view.
  * @author Keith
  */
@@ -55,7 +55,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * DOCU: Renders the authenticated advisor's document submissions.
- * Last Updated Date: September 3, 2026
+ * Last Updated Date: September 7, 2026
  * @returns The submissions table view.
  * @author Keith
  */
@@ -183,7 +183,9 @@ export function MyDocumentsTable() {
 
       {/* PROMINENT REVISION REQUEST SURFACING (User Story 2 & 3: Revision unmissable) */}
       {needsRevisionCount > 0 && (
-        <div className="neu-soft p-4 rounded-xl border-amber-300 bg-amber-50/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="relative overflow-hidden neu-soft p-4 rounded-xl border border-amber-300 bg-amber-50/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-slide-down">
+          {/* Animated gradient left strip */}
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-amber-400 via-orange-400 to-amber-400 animate-pulse" />
           <div className="flex items-start gap-3">
             <div className="h-8 w-8 rounded bg-amber-100 border border-amber-200 text-amber-900 flex items-center justify-center shrink-0 mt-0.5">
               <AlertTriangle className="h-4 w-4" />
@@ -222,7 +224,7 @@ export function MyDocumentsTable() {
         <div
           onClick={() => setActiveFilter("All")}
           className={cn(
-            "neu-soft bg-blue-50/35 rounded-xl p-5 space-y-3 cursor-pointer transition-shadow sm:col-span-2 lg:col-span-5 lg:row-span-2",
+            "neu-soft bg-blue-50/35 rounded-xl p-5 space-y-3 cursor-pointer hover-lift sm:col-span-2 lg:col-span-5 lg:row-span-2 animate-slide-up stagger-1",
             activeFilter === "All" ? "shadow-[inset_3px_3px_7px_hsl(215_20%_78%_/_0.58),inset_-3px_-3px_7px_hsl(0_0%_100%_/_0.86)]" : "hover:shadow-[6px_6px_12px_hsl(215_20%_78%_/_0.72),-6px_-6px_12px_hsl(0_0%_100%_/_0.9)]"
           )}
         >
@@ -246,7 +248,7 @@ export function MyDocumentsTable() {
         <div
           onClick={() => setActiveFilter("Pending")}
           className={cn(
-            "neu-soft bg-amber-50/45 rounded-xl p-4 space-y-2 cursor-pointer transition-shadow sm:col-span-1 lg:col-span-3",
+            "neu-soft bg-amber-50/45 rounded-xl p-4 space-y-2 cursor-pointer hover-lift sm:col-span-1 lg:col-span-3 animate-slide-up stagger-2",
             activeFilter === "Pending" ? "shadow-[inset_3px_3px_7px_hsl(215_20%_78%_/_0.58),inset_-3px_-3px_7px_hsl(0_0%_100%_/_0.86)]" : "hover:shadow-[6px_6px_12px_hsl(215_20%_78%_/_0.72),-6px_-6px_12px_hsl(0_0%_100%_/_0.9)]"
           )}
         >
@@ -258,7 +260,7 @@ export function MyDocumentsTable() {
         <div
           onClick={() => setActiveFilter("Needs Revision")}
           className={cn(
-            "neu-soft bg-pink-50/45 rounded-xl p-4 space-y-2 cursor-pointer transition-shadow sm:col-span-1 lg:col-span-4",
+            "neu-soft bg-pink-50/45 rounded-xl p-4 space-y-2 cursor-pointer hover-lift sm:col-span-1 lg:col-span-4 animate-slide-up stagger-3",
             activeFilter === "Needs Revision" ? "shadow-[inset_3px_3px_7px_hsl(215_20%_78%_/_0.58),inset_-3px_-3px_7px_hsl(0_0%_100%_/_0.86)]" : "hover:shadow-[6px_6px_12px_hsl(215_20%_78%_/_0.72),-6px_-6px_12px_hsl(0_0%_100%_/_0.9)]"
           )}
         >
@@ -270,7 +272,7 @@ export function MyDocumentsTable() {
         <div
           onClick={() => setActiveFilter("Approved")}
           className={cn(
-            "neu-soft bg-cyan-50/45 rounded-xl p-4 space-y-2 cursor-pointer transition-shadow sm:col-span-1 lg:col-span-3",
+            "neu-soft bg-cyan-50/45 rounded-xl p-4 space-y-2 cursor-pointer hover-lift sm:col-span-1 lg:col-span-3 animate-slide-up stagger-4",
             activeFilter === "Approved" ? "shadow-[inset_3px_3px_7px_hsl(215_20%_78%_/_0.58),inset_-3px_-3px_7px_hsl(0_0%_100%_/_0.86)]" : "hover:shadow-[6px_6px_12px_hsl(215_20%_78%_/_0.72),-6px_-6px_12px_hsl(0_0%_100%_/_0.9)]"
           )}
         >
@@ -279,7 +281,7 @@ export function MyDocumentsTable() {
           <p className="text-[11px] text-slate-500">Signed and verified</p>
         </div>
 
-        <div className="neu-soft bg-blue-50/35 rounded-xl p-4 space-y-2 sm:col-span-1 lg:col-span-4">
+        <div className="neu-soft bg-blue-50/35 rounded-xl p-4 space-y-2 sm:col-span-1 lg:col-span-4 hover-lift animate-slide-up stagger-5">
           <div className="flex items-center justify-between"><p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Review health</p><span className="text-[10px] font-semibold text-primary">Active</span></div>
           <div className="flex items-end gap-2"><span className="text-3xl font-bold text-slate-900">{completionRate}%</span><span className="pb-1 text-[11px] text-slate-500">approval completion</span></div>
           <div className="neu-inset h-2 overflow-hidden rounded-full"><div className="h-full rounded-full bg-primary transition-all" style={{ width: `${completionRate}%` }} /></div>
@@ -288,7 +290,7 @@ export function MyDocumentsTable() {
         <div
           onClick={() => setActiveFilter("Rejected")}
           className={cn(
-            "neu-soft bg-rose-50/45 rounded-xl p-4 space-y-2 cursor-pointer transition-shadow sm:col-span-1 lg:col-span-3",
+            "neu-soft bg-rose-50/45 rounded-xl p-4 space-y-2 cursor-pointer hover-lift sm:col-span-1 lg:col-span-3 animate-slide-up stagger-5",
             activeFilter === "Rejected" ? "shadow-[inset_3px_3px_7px_hsl(215_20%_78%_/_0.58),inset_-3px_-3px_7px_hsl(0_0%_100%_/_0.86)]" : "hover:shadow-[6px_6px_12px_hsl(215_20%_78%_/_0.72),-6px_-6px_12px_hsl(0_0%_100%_/_0.9)]"
           )}
         >
@@ -297,7 +299,7 @@ export function MyDocumentsTable() {
           <p className="text-[11px] text-slate-500">Not approved for filing</p>
         </div>
 
-        <div className="neu-soft bg-violet-50/45 rounded-xl p-4 space-y-2 sm:col-span-1 lg:col-span-4">
+        <div className="neu-soft bg-violet-50/45 rounded-xl p-4 space-y-2 sm:col-span-1 lg:col-span-4 hover-lift animate-slide-up stagger-5">
           <div className="flex items-center justify-between"><p className="text-[10px] font-bold text-violet-800 uppercase tracking-wider">Revision rate</p><Percent className="h-4 w-4 text-violet-700" /></div>
           <h3 className="text-3xl font-bold text-slate-900">{revisionRate}%</h3>
           <p className="text-[11px] text-slate-500">Submissions needing changes</p>
@@ -429,10 +431,11 @@ export function MyDocumentsTable() {
             </TableHeader>
 
             <TableBody>
-              {filteredDocuments.map((doc) => (
+              {filteredDocuments.map((doc, rowIdx) => (
                 <TableRow
                   key={doc.id}
-                  className="hover:bg-slate-50/70 transition-colors cursor-pointer border-b border-slate-100"
+                  className="hover:bg-slate-50/80 transition-all cursor-pointer border-b border-slate-100 animate-fade-in"
+                  style={{ animationDelay: `${rowIdx * 30}ms` }}
                   onClick={() => router.push(`/documents/${doc.id}`)}
                 >
                   <TableCell className="pl-4 font-mono font-bold text-slate-900">

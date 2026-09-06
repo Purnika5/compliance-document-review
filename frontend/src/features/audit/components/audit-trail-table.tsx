@@ -2,7 +2,7 @@
 
 /**
  * DOCU: Renders the document audit trail and recorded compliance events.
- * Last Updated Date: September 3, 2026
+ * Last Updated Date: September 7, 2026
  * @returns The audit trail table view.
  * @author Keith
  */
@@ -39,6 +39,13 @@ export interface AuditTrailTableProps {
   entries?: IAuditLogEntry[];
 }
 
+/**
+ * DOCU: Renders a searchable, printable regulatory audit log table.
+ * Last Updated Date: September 7, 2026
+ * @param props - Table filter props and optional initial audit entries.
+ * @returns The audit trail table component.
+ * @author Keith
+ */
 export function AuditTrailTable({
   documentIdFilter,
   entries = [],

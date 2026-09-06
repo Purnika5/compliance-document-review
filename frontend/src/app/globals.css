@@ -1,6 +1,6 @@
 /**
  * DOCU: Defines the shared Tailwind entry point and application design tokens.
- * Last Updated Date: September 3, 2026
+ * Last Updated Date: September 7, 2026
  * @author Keith
  */
 @import "tailwindcss";
@@ -26,7 +26,7 @@
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
 
-  /* Reference palette: electric blue, cyan, and magenta with semantic states */
+  /* Status semantic palette */
   --color-status-approved-bg: hsl(174 70% 93%);
   --color-status-approved-text: hsl(183 72% 25%);
   --color-status-approved-border: hsl(174 52% 78%);
@@ -46,21 +46,26 @@
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 2px);
+
+  /* Animation durations */
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
 }
 
 :root {
   /* Glass bento palette: luminous blue surface with cyan and pink accents */
-  --background: 222 70% 94%;      /* soft blue-gray */
+  --background: 222 70% 94%;       /* soft blue-gray */
   --foreground: 222.2 30% 20%;     /* softened navy text */
-  
+
   --card: 210 20% 94%;
   --card-foreground: 222.2 47% 11.2%;
-  
+
   --popover: 210 20% 94%;
   --popover-foreground: 222.2 47% 11.2%;
 
-  /* Disciplined Forest Green Accent for Primary Actions */
-  --primary: 239 72% 52%;          /* royal indigo brand accent */
+  /* Royal indigo brand accent */
+  --primary: 239 72% 52%;
   --primary-foreground: 0 0% 100%;
 
   --secondary: 210 16% 90%;
@@ -81,34 +86,156 @@
   --radius: 0.5rem;
 }
 
+/* ─── Keyframe Animations ──────────────────────────────────────────────── */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes toastSlideIn {
+  from { opacity: 0; transform: translateX(100%) scale(0.96); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.75); }
+}
+
+@keyframes pulseRing {
+  0%   { box-shadow: 0 0 0 0 hsl(239 72% 52% / 0.4); }
+  70%  { box-shadow: 0 0 0 6px hsl(239 72% 52% / 0); }
+  100% { box-shadow: 0 0 0 0 hsl(239 72% 52% / 0); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes orbFloat {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50%       { transform: translateY(-20px) scale(1.05); }
+}
+
+@keyframes checkPop {
+  0%   { transform: scale(0) rotate(-15deg); opacity: 0; }
+  60%  { transform: scale(1.15) rotate(4deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+@keyframes progressShimmer {
+  0%   { background-position: -200px 0; }
+  100% { background-position: calc(200px + 100%) 0; }
+}
+
+/* ─── Utility Animation Classes ────────────────────────────────────────── */
+
+@layer utilities {
+  .animate-fade-in    { animation: fadeIn 0.25s ease-out both; }
+  .animate-slide-up   { animation: slideUp 0.3s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .animate-slide-down { animation: slideDown 0.25s ease-out both; }
+  .animate-slide-in-right { animation: slideInRight 0.3s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .animate-toast-in   { animation: toastSlideIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .animate-pulse-dot  { animation: pulseDot 1.8s ease-in-out infinite; }
+  .animate-pulse-ring { animation: pulseRing 2s ease-in-out infinite; }
+  .animate-orb-float  { animation: orbFloat 7s ease-in-out infinite; }
+  .animate-check-pop  { animation: checkPop 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+  /* Stagger helpers */
+  .stagger-1 { animation-delay: 40ms; }
+  .stagger-2 { animation-delay: 80ms; }
+  .stagger-3 { animation-delay: 120ms; }
+  .stagger-4 { animation-delay: 160ms; }
+  .stagger-5 { animation-delay: 200ms; }
+
+  /* Shimmer text gradient */
+  .text-shimmer {
+    background: linear-gradient(90deg,
+      hsl(239 72% 52%),
+      hsl(190 80% 55%),
+      hsl(239 72% 52%)
+    );
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: shimmer 3s linear infinite;
+  }
+
+  /* Card hover lift */
+  .hover-lift {
+    transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px hsl(228 42% 68% / 0.35), -4px -4px 10px hsl(0 0% 100% / 0.8);
+  }
+
+  /* Chip / badge pill */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+}
+
+/* ─── Component Utilities ───────────────────────────────────────────────── */
+
 @layer components {
   .neu-surface {
     border: 1px solid hsl(220 42% 91% / 0.92);
     background: hsl(var(--card));
-    box-shadow: 8px 8px 18px hsl(228 42% 74% / 0.42), -8px -8px 18px hsl(0 0% 100% / 0.9);
+    box-shadow: 8px 8px 20px hsl(228 42% 72% / 0.45), -8px -8px 20px hsl(0 0% 100% / 0.92);
+    transition: box-shadow 0.2s ease;
   }
 
   .neu-soft {
     border: 1px solid hsl(220 42% 91% / 0.92);
     background: hsl(var(--card));
-    box-shadow: 4px 4px 11px hsl(228 42% 74% / 0.36), -4px -4px 11px hsl(0 0% 100% / 0.86);
+    box-shadow: 4px 4px 12px hsl(228 42% 74% / 0.38), -4px -4px 12px hsl(0 0% 100% / 0.88);
+    transition: box-shadow 0.2s ease;
   }
 
   .neu-inset {
     border: 1px solid hsl(220 42% 91% / 0.92);
     background: hsl(var(--background));
-    box-shadow: inset 3px 3px 7px hsl(228 42% 74% / 0.36), inset -3px -3px 7px hsl(0 0% 100% / 0.86);
+    box-shadow: inset 3px 3px 8px hsl(228 42% 74% / 0.38), inset -3px -3px 8px hsl(0 0% 100% / 0.88);
   }
 
   .glass-accent {
     border: 1px solid hsl(220 72% 62% / 0.48);
-    background: hsl(239 72% 52% / 0.96);
-    box-shadow: 6px 6px 14px hsl(228 42% 74% / 0.36), inset 1px 1px 0 hsl(0 0% 100% / 0.24);
+    background: linear-gradient(135deg, hsl(239 72% 55% / 0.98), hsl(239 72% 44% / 0.96));
+    box-shadow: 6px 6px 16px hsl(228 42% 68% / 0.4), inset 1px 1px 0 hsl(0 0% 100% / 0.28);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
   }
 
   .glass-pink {
     border: 1px solid hsl(326 75% 82% / 0.8);
-    background: hsl(326 72% 61% / 0.94);
+    background: linear-gradient(135deg, hsl(326 72% 64% / 0.96), hsl(326 72% 55% / 0.94));
     box-shadow: 5px 5px 12px hsl(228 42% 74% / 0.3), inset 1px 1px 0 hsl(0 0% 100% / 0.24);
   }
 
@@ -123,12 +250,73 @@
     background: hsl(326 85% 97% / 0.78);
     box-shadow: inset 3px 3px 7px hsl(326 45% 80% / 0.2), 2px 2px 7px hsl(228 42% 74% / 0.16);
   }
+
+  /* Gradient accent card top-border strip */
+  .card-accent-strip::before {
+    content: "";
+    display: block;
+    height: 3px;
+    background: linear-gradient(90deg, hsl(239 72% 52%), hsl(190 80% 55%), hsl(326 72% 61%));
+    border-radius: 8px 8px 0 0;
+  }
+
+  /* Gradient left-border strip for alerts */
+  .alert-strip-success { border-left: 4px solid hsl(152 69% 42%); }
+  .alert-strip-error   { border-left: 4px solid hsl(0 65% 52%); }
+  .alert-strip-warning { border-left: 4px solid hsl(38 92% 50%); }
+  .alert-strip-info    { border-left: 4px solid hsl(217 91% 60%); }
+  .alert-strip-default { border-left: 4px solid hsl(215 16% 72%); }
+
+  /* Decision button variants */
+  .btn-approve {
+    background: linear-gradient(135deg, hsl(152 69% 38%), hsl(152 69% 30%));
+    color: white;
+    border: 1px solid hsl(152 69% 32%);
+    box-shadow: 0 2px 8px hsl(152 69% 38% / 0.4);
+    transition: all 0.2s ease;
+  }
+  .btn-approve:hover:not(:disabled) {
+    background: linear-gradient(135deg, hsl(152 69% 34%), hsl(152 69% 26%));
+    box-shadow: 0 4px 12px hsl(152 69% 38% / 0.5);
+    transform: translateY(-1px);
+  }
+
+  .btn-reject {
+    background: linear-gradient(135deg, hsl(0 72% 50%), hsl(0 72% 40%));
+    color: white;
+    border: 1px solid hsl(0 72% 42%);
+    box-shadow: 0 2px 8px hsl(0 72% 50% / 0.4);
+    transition: all 0.2s ease;
+  }
+  .btn-reject:hover:not(:disabled) {
+    background: linear-gradient(135deg, hsl(0 72% 44%), hsl(0 72% 36%));
+    box-shadow: 0 4px 12px hsl(0 72% 50% / 0.5);
+    transform: translateY(-1px);
+  }
+
+  .btn-revision {
+    background: linear-gradient(135deg, hsl(38 92% 48%), hsl(32 92% 40%));
+    color: white;
+    border: 1px solid hsl(35 90% 42%);
+    box-shadow: 0 2px 8px hsl(38 92% 48% / 0.4);
+    transition: all 0.2s ease;
+  }
+  .btn-revision:hover:not(:disabled) {
+    background: linear-gradient(135deg, hsl(38 92% 42%), hsl(32 92% 35%));
+    box-shadow: 0 4px 12px hsl(38 92% 48% / 0.5);
+    transform: translateY(-1px);
+  }
 }
+
+/* ─── Base Styles ───────────────────────────────────────────────────────── */
 
 @layer base {
   body {
     background-color: hsl(var(--background));
-    background-image: radial-gradient(circle at 8% 4%, hsl(326 82% 70% / 0.07), transparent 24%), radial-gradient(circle at 92% 8%, hsl(190 82% 62% / 0.09), transparent 26%);
+    background-image:
+      radial-gradient(circle at 8% 4%,   hsl(326 82% 70% / 0.08), transparent 26%),
+      radial-gradient(circle at 92% 8%,  hsl(190 82% 62% / 0.10), transparent 28%),
+      radial-gradient(circle at 50% 90%, hsl(239 72% 52% / 0.06), transparent 35%);
     color: hsl(var(--foreground));
     font-feature-settings: "cv02", "cv03", "cv04", "cv11", "tnum";
     font-variant-numeric: tabular-nums;
@@ -138,5 +326,11 @@
   /* Dense institutional finance tables */
   table {
     font-variant-numeric: tabular-nums;
+  }
+
+  /* Smooth focus ring transitions */
+  *:focus-visible {
+    outline: none;
+    transition: box-shadow 0.15s ease;
   }
 }

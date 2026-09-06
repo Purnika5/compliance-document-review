@@ -2,7 +2,7 @@
 
 /**
  * DOCU: Renders the chronological revision discussion for a document.
- * Last Updated Date: September 3, 2026
+ * Last Updated Date: September 7, 2026
  * @returns The revision thread view.
  * @author Keith
  */
@@ -33,7 +33,7 @@ export interface RevisionThreadProps {
 
 /**
  * DOCU: Renders the revision history and optional comment form for a document.
- * Last Updated Date: September 3, 2026
+ * Last Updated Date: September 7, 2026
  * @param documentId - Document identifier displayed in the revision header.
  * @param events - Revision events supplied by the document workflow.
  * @param onAddComment - Optional callback invoked after a comment is added.
@@ -54,7 +54,7 @@ export function RevisionThread({
 
   /**
    * DOCU: Validates and appends a new revision comment to the local timeline.
-   * Last Updated Date: September 3, 2026
+   * Last Updated Date: September 7, 2026
    * @param e - Form submission event from the comment form.
    * @returns Nothing; updates the timeline and optional parent callback.
    * @author Keith

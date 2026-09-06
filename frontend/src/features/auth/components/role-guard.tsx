@@ -2,24 +2,24 @@
 
 /**
  * DOCU: Restricts rendered content to users with the required role.
- * Last Updated Date: September 3, 2026
+ * Last Updated Date: September 7, 2026
  * @returns Guarded content or the appropriate access state.
  * @author Keith
  */
 import React, { useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { authStore, type UserSession } from "@/lib/auth/auth-store";
-import type { Role } from "@/lib/validation/auth";
+import type { RoleType } from "@/entities/enums/auth.enum";
 import { Loader2 } from "lucide-react";
 
 export interface RoleGuardProps {
-  allowedRole: Role;
+  allowedRole: RoleType;
   children: React.ReactNode;
 }
 
 /**
  * DOCU: Renders children only when the current user has the allowed role.
- * Last Updated Date: September 3, 2026
+ * Last Updated Date: September 7, 2026
  * @param allowedRole - Role required to render the children.
  * @param children - Protected route content.
  * @returns Protected content or an access state.

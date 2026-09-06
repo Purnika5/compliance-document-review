@@ -2,7 +2,7 @@
 
 /**
  * DOCU: Renders AI-generated compliance flags and document assistance controls.
- * Last Updated Date: September 3, 2026
+ * Last Updated Date: September 7, 2026
  * @returns The AI assistance panel view.
  * @author Keith
  */

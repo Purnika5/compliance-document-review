@@ -1,11 +1,14 @@
 /**
- * DOCU: Defines the default messages and configuration for the compliance copilot.
- * Last Updated Date: September 3, 2026
+ * DOCU: Defines the default messages, recommended questions, and response presets for the compliance copilot widget.
+ * Last Updated Date: September 7, 2026
  * @returns Shared chatbot constants used by the widget.
  * @author Keith
  */
 import type { IChatMessage } from "@/types/chatbot.types";
 
+/**
+ * DOCU: Initial greeting message loaded when opening the copilot assistant.
+ */
 export const INITIAL_MESSAGES: IChatMessage[] = [
   {
     id: "1",
@@ -15,6 +18,9 @@ export const INITIAL_MESSAGES: IChatMessage[] = [
   },
 ];
 
+/**
+ * DOCU: Quick-select suggested compliance and workflow questions displayed above the chat prompt.
+ */
 export const SUGGESTED_QUESTIONS: string[] = [
   "How do I upload a proposal?",
   "What is the review process for Officers?",
@@ -22,6 +28,9 @@ export const SUGGESTED_QUESTIONS: string[] = [
   "How do role permissions work?",
 ];
 
+/**
+ * DOCU: Keyword-matched responses providing contextual compliance and navigation help.
+ */
 export const MOCK_BOT_RESPONSES: Record<string, string> = {
   upload:
     "To upload a new document as an Advisor:\n1. Go to 'My Submissions' dashboard.\n2. Click the '+ Upload Document' button.\n3. Fill in the title, category, and notes, then click 'Submit Document'.",

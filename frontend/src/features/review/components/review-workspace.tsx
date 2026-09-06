@@ -2,7 +2,7 @@
 
 /**
  * DOCU: Renders the complete document review workspace and decision flow.
- * Last Updated Date: September 3, 2026
+ * Last Updated Date: September 7, 2026
  * @returns The document review workspace view.
  * @author Keith
  */
@@ -42,6 +42,7 @@ import { AuditTrailTable } from "@/features/audit/components/audit-trail-table";
 import { DecisionDialog } from "./decision-dialog";
 import { cn } from "@/lib/utils";
 import { authStore } from "@/lib/auth/auth-store";
+import { showSuccessToast, showErrorToast, showInfoToast } from "@/components/ui/toast";
 
 export interface ReviewWorkspaceProps {
   documentId: string;
@@ -49,7 +50,7 @@ export interface ReviewWorkspaceProps {
 
 /**
  * DOCU: Renders the complete document review workspace and decision flow.
- * Last Updated Date: September 3, 2026
+ * Last Updated Date: September 7, 2026
  * @param documentId - Document identifier loaded into the workspace.
  * @returns The document review workspace view.
  * @author Keith
@@ -110,7 +111,13 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
     fileSize: "2.4 MB",
   };
 
-  // When selected flag changes, ensure the correct page is shown and scroll to passage
+  /**
+   * DOCU: Selects an AI flag, switches page view, and scrolls to flagged passage.
+   * Last Updated Date: September 7, 2026
+   * @param flag - The selected AI flag item.
+   * @returns Void.
+   * @author Keith
+   */
   const handleSelectFlag = (flag: IAIFlagItem) => {
     setSelectedFlag(flag);
     setCurrentPage(flag.pageNumber);
@@ -123,6 +130,14 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
     }, 100);
   };
 
+  /**
+   * DOCU: Executes officer status update and updates audit state.
+   * Last Updated Date: September 7, 2026
+   * @param newStatus - Approved, Needs Revision, or Rejected status.
+   * @param comment - Officer remarks accompanying the decision.
+   * @returns Void promise.
+   * @author Keith
+   */
   const handleExecuteDecision = async (
     newStatus: "Approved" | "Needs Revision" | "Rejected",
     comment: string
@@ -135,14 +150,29 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
       setActionSuccess(
         `Decision executed: Document ${documentId} marked as "${newStatus}". Immutable audit log recorded.`
       );
+      if (newStatus === "Approved") {
+        showSuccessToast("Proposal Approved", `Document ${documentId} marked as Approved.`);
+      } else if (newStatus === "Needs Revision") {
+        showInfoToast("Revision Requested", `Document ${documentId} marked for Revision.`);
+      } else {
+        showErrorToast("Proposal Rejected", `Document ${documentId} marked as Rejected.`);
+      }
     } catch {
       setStatus(newStatus);
       setActionSuccess(`Status updated to "${newStatus}". Audit log updated.`);
+      showSuccessToast("Status Updated", `Document ${documentId} status set to "${newStatus}".`);
     } finally {
       setIsUpdating(false);
     }
   };
 
+  /**
+   * DOCU: Saves edited document metadata and triggers status updates if altered.
+   * Last Updated Date: September 7, 2026
+   * @param updated - Partial document item containing altered metadata.
+   * @returns Void promise.
+   * @author Keith
+   */
   const handleSaveEdit = async (updated: Partial<DocumentItem> & { id: string }) => {
     if (updated.title) setTitle(updated.title);
     if (updated.category) setCategory(updated.category);
@@ -356,7 +386,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                     </div>
                   </div>
 
-                  {/* OFFICER DECISION ACTIONS (User Story 6: Unambiguous human decision) */}
+                    {/* OFFICER DECISION ACTIONS (User Story 6: Unambiguous human decision) */}
                   {isOfficer && <div className="space-y-2 pt-1">
                     <div className="flex items-center justify-between">
                       <p className="text-[11px] font-bold uppercase tracking-wider text-slate-800">
@@ -369,7 +399,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                       type="button"
                       disabled={isUpdating}
                       onClick={() => setActiveDecision("Approved")}
-                      className="w-full flex items-center justify-start gap-2 h-9 px-3 rounded-md font-semibold text-xs bg-primary hover:bg-primary/90 text-white shadow-[3px_3px_8px_hsl(228_42%_74%_/_0.45)] transition-colors cursor-pointer disabled:opacity-50"
+                      className="btn-approve w-full flex items-center justify-start gap-2 h-9 px-3 rounded-md font-semibold text-xs cursor-pointer disabled:opacity-50 disabled:transform-none"
                     >
                       <CheckCircle2 className="h-4 w-4" />
                       <span>Approve Proposal</span>
@@ -379,7 +409,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                       type="button"
                       disabled={isUpdating}
                       onClick={() => setActiveDecision("Needs Revision")}
-                      className="w-full flex items-center justify-start gap-2 h-9 px-3 rounded-md font-semibold text-xs bg-blue-950 hover:bg-blue-900 text-white shadow-[3px_3px_8px_hsl(228_42%_74%_/_0.45)] transition-colors cursor-pointer disabled:opacity-50"
+                      className="btn-revision w-full flex items-center justify-start gap-2 h-9 px-3 rounded-md font-semibold text-xs cursor-pointer disabled:opacity-50 disabled:transform-none"
                     >
                       <AlertCircle className="h-4 w-4" />
                       <span>Request Revision</span>
@@ -389,7 +419,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                       type="button"
                       disabled={isUpdating}
                       onClick={() => setActiveDecision("Rejected")}
-                      className="w-full flex items-center justify-start gap-2 h-9 px-3 rounded font-semibold text-xs bg-destructive hover:bg-red-700 text-white transition-colors cursor-pointer disabled:opacity-50"
+                      className="btn-reject w-full flex items-center justify-start gap-2 h-9 px-3 rounded-md font-semibold text-xs cursor-pointer disabled:opacity-50 disabled:transform-none"
                     >
                       <XCircle className="h-4 w-4" />
                       <span>Formal Rejection</span>

@@ -1,6 +1,8 @@
 /**
- * Global Design Tokens — Financial Services / Back-Office Standard
- * Rule: Minimalist, desaturated, high-contrast typography, strict 6px radius.
+ * DOCU: Global Design Tokens — Financial Services / Back-Office Standard.
+ * Minimalist, desaturated, high-contrast typography, strict 6px radius.
+ * Last Updated Date: September 7, 2026
+ * @author Keith
  */
 export const tokens = {
   colors: {

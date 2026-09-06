@@ -1,6 +1,6 @@
 /**
  * DOCU: Renders one AI compliance flag and its severity details.
- * Last Updated Date: September 3, 2026
+ * Last Updated Date: September 7, 2026
  * @returns The compliance flag card view.
  * @author Keith
  */
@@ -17,7 +17,7 @@ export interface ComplianceFlagCardProps {
 
 /**
  * DOCU: Renders a compliance flag with severity and selection behavior.
- * Last Updated Date: September 3, 2026
+ * Last Updated Date: September 7, 2026
  * @param props - Flag data and selection callback.
  * @returns The compliance flag card view.
  * @author Keith
@@ -27,6 +27,12 @@ export function ComplianceFlagCard({
   isSelected = false,
   onSelect,
 }: ComplianceFlagCardProps) {
+  /**
+   * DOCU: Resolves styling class tokens based on flag severity level.
+   * Last Updated Date: September 7, 2026
+   * @returns Tailwind class string for badge styling.
+   * @author Keith
+   */
   const getSeverityBadge = () => {
     switch (flag.severity) {
       case "HIGH":

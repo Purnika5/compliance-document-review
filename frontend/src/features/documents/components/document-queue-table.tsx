@@ -2,7 +2,7 @@
 
 /**
  * DOCU: Renders the officer document queue and review actions.
- * Last Updated Date: September 3, 2026
+ * Last Updated Date: September 7, 2026
  * @returns The document queue table view.
  * @author Keith
  */
@@ -55,7 +55,7 @@ type FilterTab = "All" | "Pending" | "Needs Revision" | "Approved" | "Rejected";
 
 /**
  * DOCU: Renders the officer document queue and review controls.
- * Last Updated Date: September 3, 2026
+ * Last Updated Date: September 7, 2026
  * @returns The document queue view.
  * @author Keith
  */

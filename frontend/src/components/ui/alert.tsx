@@ -1,6 +1,6 @@
 /**
  * DOCU: Provides accessible alert messaging with semantic variants.
- * Last Updated Date: September 3, 2026
+ * Last Updated Date: September 7, 2026
  * @returns Alert primitives for status and feedback messages.
  * @author Keith
  */
@@ -10,21 +10,22 @@ import { AlertCircle, AlertTriangle, CheckCircle2, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const alertVariants = cva(
-  "relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-slate-950 shadow-xs text-sm",
+  "relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 text-sm overflow-hidden animate-fade-in",
   {
     variants: {
       variant: {
-        default: "bg-white text-slate-950 border-slate-200 [&>svg]:text-slate-950",
+        default:
+          "bg-white text-slate-950 border-slate-200 [&>svg]:text-slate-950 border-l-4 border-l-slate-300",
         destructive:
-          "border-red-200 bg-red-50 text-red-900 [&>svg]:text-red-600 dark:border-red-900/50 dark:bg-red-950/50 dark:text-red-200",
+          "border-red-200 bg-red-50 text-red-900 [&>svg]:text-red-600 border-l-4 border-l-red-500",
         error:
-          "border-red-200 bg-red-50 text-red-900 [&>svg]:text-red-600",
+          "border-red-200 bg-red-50 text-red-900 [&>svg]:text-red-600 border-l-4 border-l-red-500",
         warning:
-          "border-amber-200 bg-amber-50 text-amber-900 [&>svg]:text-amber-600",
+          "border-amber-200 bg-amber-50 text-amber-900 [&>svg]:text-amber-600 border-l-4 border-l-amber-500",
         success:
-          "border-emerald-200 bg-emerald-50 text-emerald-900 [&>svg]:text-emerald-600",
+          "border-emerald-200 bg-emerald-50 text-emerald-900 [&>svg]:text-emerald-600 border-l-4 border-l-emerald-500",
         info:
-          "border-blue-200 bg-blue-50 text-blue-900 [&>svg]:text-blue-600",
+          "border-blue-200 bg-blue-50 text-blue-900 [&>svg]:text-blue-600 border-l-4 border-l-blue-500",
       },
     },
     defaultVariants: {
@@ -34,12 +35,12 @@ const alertVariants = cva(
 );
 
 const alertIcons = {
-  default: AlertCircle,
+  default:     AlertCircle,
   destructive: AlertCircle,
-  error: AlertCircle,
-  warning: AlertTriangle,
-  success: CheckCircle2,
-  info: Info,
+  error:       AlertCircle,
+  warning:     AlertTriangle,
+  success:     CheckCircle2,
+  info:        Info,
 };
 
 export interface IAlertProps

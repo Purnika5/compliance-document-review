@@ -1,6 +1,6 @@
 /**
  * DOCU: Renders a consistent badge for document review statuses.
- * Last Updated Date: September 3, 2026
+ * Last Updated Date: September 7, 2026
  * @returns The status badge view.
  * @author Keith
  */
@@ -25,7 +25,7 @@ export type ExtendedStatusType =
   | "In Review";
 
 const statusBadgeVariants = cva(
-  "inline-flex items-center gap-1.5 rounded-[4px] border px-2 py-0.5 text-[11px] font-semibold tracking-tight select-none transition-colors",
+  "inline-flex items-center gap-1.5 rounded-[5px] border px-2 py-0.5 text-[11px] font-semibold tracking-tight select-none transition-all animate-fade-in",
   {
     variants: {
       status: {
@@ -57,14 +57,29 @@ const statusIcons: Record<
   string,
   React.ComponentType<{ className?: string }>
 > = {
-  Approved: CheckCircle2,
-  Pending: Clock3,
-  "Under Review": Clock3,
-  "In Review": Clock3,
-  Submitted: FileCheck2,
+  Approved:        CheckCircle2,
+  Pending:         Clock3,
+  "Under Review":  Clock3,
+  "In Review":     Clock3,
+  Submitted:       FileCheck2,
   "Needs Revision": AlertCircle,
-  Rejected: XCircle,
-  Draft: FileEdit,
+  Rejected:        XCircle,
+  Draft:           FileEdit,
+};
+
+/** Statuses that get a pulsing dot indicator */
+const PULSING_STATUSES = new Set(["Pending", "Under Review", "In Review", "Needs Revision"]);
+
+/** Dot colors per status */
+const statusDotColor: Record<string, string> = {
+  Pending:          "bg-amber-500",
+  "Under Review":   "bg-amber-500",
+  "In Review":      "bg-amber-500",
+  "Needs Revision": "bg-pink-500",
+  Approved:         "bg-cyan-500",
+  Rejected:         "bg-rose-500",
+  Draft:            "bg-slate-400",
+  Submitted:        "bg-slate-500",
 };
 
 export interface StatusBadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
@@ -79,20 +94,38 @@ export function StatusBadge({
   children,
   ...props
 }: StatusBadgeProps) {
-  const normalizedStatus = (status || "Pending") as keyof typeof statusIcons;
-  const IconComponent = statusIcons[normalizedStatus] || Clock3;
+  const normalizedStatus   = (status || "Pending") as keyof typeof statusIcons;
+  const IconComponent      = statusIcons[normalizedStatus] || Clock3;
+  const isPulsing          = PULSING_STATUSES.has(normalizedStatus);
+  const dotColor           = statusDotColor[normalizedStatus] || "bg-slate-400";
 
   return (
     <span
       className={cn(
         statusBadgeVariants({
-          status: (normalizedStatus in statusIcons ? normalizedStatus : "Pending") as "Approved" | "Pending" | "Under Review" | "In Review" | "Submitted" | "Needs Revision" | "Rejected" | "Draft",
+          status: (normalizedStatus in statusIcons ? normalizedStatus : "Pending") as
+            | "Approved"
+            | "Pending"
+            | "Under Review"
+            | "In Review"
+            | "Submitted"
+            | "Needs Revision"
+            | "Rejected"
+            | "Draft",
         }),
         className
       )}
       {...props}
     >
-      {showIcon && <IconComponent className="h-3 w-3 shrink-0" aria-hidden="true" />}
+      {/* Pulsing live dot for active states */}
+      {isPulsing ? (
+        <span
+          className={cn("h-1.5 w-1.5 rounded-full shrink-0 animate-pulse-dot", dotColor)}
+          aria-hidden="true"
+        />
+      ) : (
+        showIcon && <IconComponent className="h-3 w-3 shrink-0" aria-hidden="true" />
+      )}
       <span>{children || status}</span>
     </span>
   );

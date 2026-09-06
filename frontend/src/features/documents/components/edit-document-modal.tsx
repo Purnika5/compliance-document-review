@@ -2,7 +2,7 @@
 
 /**
  * DOCU: Renders the document metadata editing modal.
- * Last Updated Date: September 3, 2026
+ * Last Updated Date: September 7, 2026
  * @returns The edit document modal view.
  * @author Keith
  */
@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Edit3, CheckCircle2 } from "lucide-react";
 import type { DocumentItem, DocumentStatusType } from "@/lib/validation/document";
+import { showSuccessToast } from "@/components/ui/toast";
 
 export interface EditDocumentModalProps {
   document: DocumentItem | null;
@@ -87,6 +88,7 @@ function EditDocumentForm({
         category,
         status,
       });
+      showSuccessToast("Metadata Updated", `Document "${document.id}" changes saved.`);
       onClose();
     } finally {
       setIsSaving(false);

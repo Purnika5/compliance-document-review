@@ -2,7 +2,7 @@
 
 /**
  * DOCU: Renders the document upload form and submission workflow.
- * Last Updated Date: September 3, 2026
+ * Last Updated Date: September 7, 2026
  * @returns The upload document modal view.
  * @author Keith
  */
@@ -40,6 +40,7 @@ import {
 } from "lucide-react";
 import { uploadDocumentSchema, type UploadDocumentInput } from "@/lib/validation/document";
 import { cn } from "@/lib/utils";
+import { showSuccessToast, showErrorToast } from "@/components/ui/toast";
 
 export interface UploadDocumentModalProps {
   isOpen: boolean;
@@ -125,8 +126,14 @@ export function UploadDocumentModal({
   };
 
   const handleFinalSubmit = async () => {
-    await onUpload({ title, category, notes });
-    setStep("success");
+    try {
+      await onUpload({ title, category, notes });
+      setStep("success");
+      showSuccessToast("Document Uploaded", `"${title}" has been submitted for review.`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Upload failed.";
+      showErrorToast("Upload Failed", message);
+    }
   };
 
   const handleCloseAndReset = () => {
@@ -202,6 +209,24 @@ export function UploadDocumentModal({
             </div>
           </div>
         </DialogHeader>
+
+        {/* Step Progress Pill Bar */}
+        <div className="flex items-center gap-1.5 px-1 pb-1">
+          {(["details", "validation", "success"] as const).map((s, idx) => (
+            <React.Fragment key={s}>
+              <div
+                className={cn(
+                  "h-1.5 flex-1 rounded-full transition-all duration-500",
+                  step === s
+                    ? "bg-primary"
+                    : ["details", "validation", "success"].indexOf(step) > idx
+                    ? "bg-primary/40"
+                    : "bg-slate-200"
+                )}
+              />
+            </React.Fragment>
+          ))}
+        </div>
 
         {error && <Alert variant="error" title="Submission Failed" message={error} />}
 
@@ -285,9 +310,9 @@ export function UploadDocumentModal({
               onDrop={handleFileDrop}
               onClick={() => fileInputRef.current?.click()}
               className={cn(
-                "border border-dashed rounded p-4 flex flex-col items-center justify-center transition-colors cursor-pointer text-center",
+                "border border-dashed rounded-lg p-4 flex flex-col items-center justify-center transition-all cursor-pointer text-center",
                 isDragOver
-                  ? "border-primary bg-emerald-50/40"
+                  ? "border-primary bg-gradient-to-br from-primary/5 to-cyan-50/60 scale-[1.01] shadow-inner"
                   : "border-slate-300 bg-background hover:bg-slate-100/70 hover:border-slate-400"
               )}
             >
@@ -384,15 +409,16 @@ export function UploadDocumentModal({
 
             {/* Validation Checklist Items */}
             <div className="space-y-2 max-h-56 overflow-y-auto">
-              {files.map((file) => (
+              {files.map((file, fileIdx) => (
                 <div
                   key={file.id}
                   className={cn(
-                    "p-2.5 rounded border flex items-center justify-between text-xs",
+                    "p-2.5 rounded border flex items-center justify-between text-xs animate-slide-up",
                     file.status === "valid" && "bg-emerald-50/40 border-emerald-200",
                     file.status === "warning" && "bg-amber-50/40 border-amber-200",
                     file.status === "invalid" && "bg-red-50/40 border-red-200"
                   )}
+                  style={{ animationDelay: `${fileIdx * 60}ms` }}
                 >
                   <div className="flex items-center space-x-2.5 min-w-0">
                     <div className="h-7 w-7 rounded bg-white border border-slate-200 flex items-center justify-center font-bold text-[10px] text-slate-700 shrink-0">
@@ -441,9 +467,12 @@ export function UploadDocumentModal({
         )}
 
         {step === "success" && (
-          <div className="py-6 flex flex-col items-center text-center space-y-3">
-            <div className="h-12 w-12 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-200 flex items-center justify-center">
-              <CheckCircle2 className="h-6 w-6" />
+          <div className="py-6 flex flex-col items-center text-center space-y-3 animate-slide-up">
+            <div className="relative h-14 w-14">
+              <div className="absolute inset-0 rounded-full bg-emerald-100 border border-emerald-200 animate-pulse opacity-60" />
+              <div className="relative h-14 w-14 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center">
+                <CheckCircle2 className="h-7 w-7 text-emerald-700 animate-check-pop" />
+              </div>
             </div>
             <div className="space-y-1">
               <h3 className="text-sm font-bold text-slate-900">

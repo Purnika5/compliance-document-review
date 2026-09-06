@@ -2,7 +2,7 @@
 
 /**
  * DOCU: Provides document list loading, refresh, and error state management.
- * Last Updated Date: September 3, 2026
+ * Last Updated Date: September 7, 2026
  * @returns Document list state and refresh controls.
  * @author Keith
  */
@@ -12,7 +12,7 @@ import type { DocumentItem, DocumentStatusType } from "@/lib/validation/document
 
 /**
  * DOCU: Loads and refreshes documents for submissions or the officer queue.
- * Last Updated Date: September 3, 2026
+ * Last Updated Date: September 7, 2026
  * @param mode - Document list source to load.
  * @returns Document data, loading state, error state, and refresh function.
  * @author Keith

@@ -2,7 +2,7 @@
 
 /**
  * DOCU: Renders the document detail placeholder and review metadata.
- * Last Updated Date: September 3, 2026
+ * Last Updated Date: September 7, 2026
  * @returns The document detail placeholder view.
  * @author Keith
  */
@@ -38,7 +38,7 @@ export interface DocumentDetailPlaceholderProps {
 
 /**
  * DOCU: Renders a document detail view with review controls.
- * Last Updated Date: September 3, 2026
+ * Last Updated Date: September 7, 2026
  * @param documentId - Document identifier displayed and updated in the view.
  * @returns The document detail view.
  * @author Keith

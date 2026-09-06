@@ -2,7 +2,7 @@
 
 /**
  * DOCU: Renders the review decision dialog for document status updates.
- * Last Updated Date: September 3, 2026
+ * Last Updated Date: September 7, 2026
  * @returns The decision dialog view.
  * @author Keith
  */
@@ -35,7 +35,7 @@ export interface DecisionDialogProps {
 
 /**
  * DOCU: Renders a confirmation dialog for document review decisions.
- * Last Updated Date: September 3, 2026
+ * Last Updated Date: September 7, 2026
  * @param props - Decision state, selected status, and callbacks.
  * @returns The decision dialog view.
  * @author Keith
@@ -58,6 +58,12 @@ export function DecisionDialog({
   const isRevision = decisionType === "Needs Revision";
   const isRejection = decisionType === "Rejected";
 
+  /**
+   * DOCU: Validates compliance remarks and confirms officer decision execution.
+   * Last Updated Date: September 7, 2026
+   * @returns Void promise.
+   * @author Keith
+   */
   const handleConfirm = async () => {
     // Revisions and rejections require mandatory officer remarks for audit compliance
     if ((isRevision || isRejection) && !comment.trim()) {
@@ -75,6 +81,12 @@ export function DecisionDialog({
     onClose();
   };
 
+  /**
+   * DOCU: Computes UI dialog titles, icons, and action text based on decision type.
+   * Last Updated Date: September 7, 2026
+   * @returns Dialog UI configuration object.
+   * @author Keith
+   */
   const getDialogConfig = () => {
     if (isApproval) {
       return {
