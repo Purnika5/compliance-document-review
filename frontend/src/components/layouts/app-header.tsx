@@ -36,14 +36,14 @@ export interface AppHeaderProps {
 export function AppHeader({
   onToggleSidebarMobile,
 }: AppHeaderProps) {
-  const router  = useRouter();
+  const router = useRouter();
   const session = useSyncExternalStore<UserSession | null>(
     authStore.subscribe,
     authStore.getSession,
     authStore.getServerSnapshot
   );
 
-  const role      = session?.role || "Advisor";
+  const role = session?.role || "Advisor";
   const isOfficer = role === "Officer";
 
   const handleLogout = () => {
@@ -126,10 +126,10 @@ export function AppHeader({
             </DropdownMenuLabel>
             <DropdownMenuSeparator className="bg-border" />
             <DropdownMenuItem
-              className="text-xs cursor-pointer gap-2 font-medium text-foreground/90 rounded-md px-2 py-1.5"
+              className="group text-xs cursor-pointer gap-2 font-medium text-foreground/90 rounded-md px-2 py-1.5 hover:bg-[#062a20] hover:text-[#54d0a2] transition-colors"
               onClick={() => router.push("/settings")}
             >
-              <Settings className="h-3.5 w-3.5 text-muted-foreground" /> Account &amp; Preferences
+              <Settings className="h-3.5 w-3.5 text-muted-foreground group-hover:text-[#54d0a2] transition-colors" /> Account &amp; Preferences
             </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-border" />
             <DropdownMenuItem

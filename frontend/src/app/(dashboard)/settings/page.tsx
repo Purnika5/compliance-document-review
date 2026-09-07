@@ -43,7 +43,7 @@ export default function SettingsPage() {
   const [email, setEmail] = useState(session?.email || "");
   const [title, setTitle] = useState(isOfficer ? "Compliance Officer" : "Wealth Advisor");
   const [phone, setPhone] = useState("");
-  
+
   // Preference toggles
   const [sensitivity, setSensitivity] = useState<"strict" | "balanced" | "throughput">("strict");
   const [autoEnforceDisclaimers, setAutoEnforceDisclaimers] = useState(true);
@@ -267,13 +267,13 @@ export default function SettingsPage() {
                   className={cn(
                     "p-3 rounded-xl border text-left transition-all cursor-pointer",
                     sensitivity === "strict"
-                      ? "bg-primary/20 border-primary text-foreground"
-                      : "bg-background/50 border-border text-muted-foreground hover:text-foreground"
+                      ? "bg-[#062a20] border-emerald-800/60 text-foreground shadow-xs"
+                      : "bg-transparent border-border text-muted-foreground hover:bg-[#062a20]/60 hover:text-[#54d0a2]"
                   )}
                 >
                   <div className="flex items-center justify-between font-semibold text-xs text-foreground mb-0.5">
                     <span>Strict Institutional</span>
-                    {sensitivity === "strict" && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
+                    {sensitivity === "strict" && <CheckCircle2 className="h-3.5 w-3.5 text-[#54d0a2]" />}
                   </div>
                   <p className="text-[10px] text-muted-foreground">
                     Zero tolerance for promissory or unhedged claims. Recommended for public offerings.
@@ -286,13 +286,13 @@ export default function SettingsPage() {
                   className={cn(
                     "p-3 rounded-xl border text-left transition-all cursor-pointer",
                     sensitivity === "balanced"
-                      ? "bg-primary/20 border-primary text-foreground"
-                      : "bg-background/50 border-border text-muted-foreground hover:text-foreground"
+                      ? "bg-[#062a20] border-emerald-800/60 text-foreground shadow-xs"
+                      : "bg-transparent border-border text-muted-foreground hover:bg-[#062a20]/60 hover:text-[#54d0a2]"
                   )}
                 >
                   <div className="flex items-center justify-between font-semibold text-xs text-foreground mb-0.5">
                     <span>Balanced Advisory</span>
-                    {sensitivity === "balanced" && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
+                    {sensitivity === "balanced" && <CheckCircle2 className="h-3.5 w-3.5 text-[#54d0a2]" />}
                   </div>
                   <p className="text-[10px] text-muted-foreground">
                     Standard FINRA threshold with contextual performance attribution.
@@ -305,8 +305,8 @@ export default function SettingsPage() {
                   className={cn(
                     "p-3 rounded-xl border text-left transition-all cursor-pointer",
                     sensitivity === "throughput"
-                      ? "bg-primary/20 border-primary text-foreground"
-                      : "bg-background/50 border-border text-muted-foreground hover:text-foreground"
+                      ? "bg-[#062a20] border-emerald-800/60 text-foreground shadow-xs"
+                      : "bg-transparent border-border text-muted-foreground hover:bg-[#062a20]/60 hover:text-[#54d0a2]"
                   )}
                 >
                   <div className="flex items-center justify-between font-semibold text-xs text-foreground mb-0.5">

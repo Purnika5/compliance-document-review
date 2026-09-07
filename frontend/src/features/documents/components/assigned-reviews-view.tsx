@@ -269,8 +269,8 @@ export function AssignedReviewsView() {
                 className={cn(
                   "px-3 py-1.5 rounded-md font-semibold transition-all cursor-pointer",
                   activeTab === tab
-                    ? "bg-primary text-primary-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "bg-[#062a20] text-[#54d0a2] shadow-xs"
+                    : "bg-transparent text-muted-foreground hover:bg-[#062a20] hover:text-[#54d0a2]"
                 )}
               >
                 {tab}
@@ -416,7 +416,7 @@ export function AssignedReviewsView() {
                         <Button
                           size="sm"
                           onClick={() => router.push(`/documents/${doc.id}`)}
-                          className="h-7 px-2.5 text-xs font-semibold bg-primary/20 text-emerald-300 hover:bg-primary/30 border border-primary/40 gap-1 cursor-pointer"
+                          className="h-7 px-2.5 text-xs font-semibold bg-transparent text-[#54d0a2] hover:bg-[#062a20] hover:text-[#54d0a2] border border-emerald-800/60 gap-1 cursor-pointer transition-colors"
                         >
                           <ExternalLink className="h-3 w-3" />
                           Review

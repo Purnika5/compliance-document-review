@@ -143,8 +143,8 @@ export function AIAssistPanel({
                         className={cn(
                           "p-3 rounded-lg border text-left transition-colors cursor-pointer",
                           isSelected
-                            ? "bg-primary/10 border-primary ring-1 ring-primary shadow-2xs"
-                            : "bg-card border-border hover:border-border/80 hover:bg-muted/20"
+                            ? "bg-[#062a20] border-emerald-800/60 ring-1 ring-emerald-600/40 shadow-2xs"
+                            : "bg-transparent border-border hover:border-emerald-800/40 hover:bg-[#062a20]/40"
                         )}
                       >
                         <div className="flex items-center justify-between gap-1 mb-1">

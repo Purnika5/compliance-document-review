@@ -30,10 +30,10 @@ function AppSidebarContent({
   isOpenMobile = false,
   onCloseMobile,
 }: AppSidebarProps) {
-  const pathname    = usePathname();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const router      = useRouter();
-  const session     = useSyncExternalStore<UserSession | null>(
+  const router = useRouter();
+  const session = useSyncExternalStore<UserSession | null>(
     authStore.subscribe,
     authStore.getSession,
     authStore.getServerSnapshot
@@ -187,13 +187,13 @@ function AppSidebarContent({
                     if (onCloseMobile) onCloseMobile();
                     item.action?.();
                   }}
-                  className="w-full flex items-center justify-between px-2.5 py-2 rounded-md text-xs font-semibold text-primary-foreground bg-primary hover:bg-primary/90 transition-all cursor-pointer text-left shadow-xs hover:-translate-y-px"
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium text-muted-foreground bg-transparent hover:bg-[#062a20] hover:text-[#54d0a2] transition-colors cursor-pointer text-left group"
                 >
                   <div className="flex items-center gap-2.5">
-                    <Icon className="h-4 w-4 shrink-0" />
+                    <Icon className="h-4 w-4 shrink-0 transition-colors text-muted-foreground group-hover:text-[#54d0a2]" />
                     <span>{item.label}</span>
                   </div>
-                  <ChevronRight className="h-3 w-3 opacity-70" />
+                  <ChevronRight className="h-3.5 w-3.5 opacity-70 text-[#54d0a2] group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
                 </button>
               );
             }
@@ -204,29 +204,36 @@ function AppSidebarContent({
                 href={item.href || "#"}
                 onClick={onCloseMobile}
                 className={cn(
-                  "flex items-center justify-between px-2.5 py-2 rounded-md text-xs font-medium transition-all",
+                  "group flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-colors duration-150",
                   item.active
-                    ? "bg-primary/15 text-emerald-400 font-semibold border-l-2 border-emerald-400 pl-2 shadow-xs"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                    ? "bg-[#062a20] text-[#54d0a2] font-semibold shadow-xs"
+                    : "text-muted-foreground hover:bg-[#062a20] hover:text-[#54d0a2]"
                 )}
               >
                 <div className="flex items-center gap-2.5">
                   <Icon
                     className={cn(
                       "h-4 w-4 shrink-0 transition-colors",
-                      item.active ? "text-emerald-400" : "text-muted-foreground"
+                      item.active ? "text-[#54d0a2]" : "text-muted-foreground group-hover:text-[#54d0a2]"
                     )}
                   />
-                  <span>{item.label}</span>
+                  <span className="truncate">{item.label}</span>
                 </div>
-                {item.badge && (
-                  <span className="px-1.5 py-0.2 text-[10px] font-mono font-bold rounded bg-amber-950/60 text-amber-300 border border-amber-800/60">
-                    {item.badge}
-                  </span>
-                )}
-                {item.active && (
-                  <ChevronRight className="h-3 w-3 text-emerald-400 opacity-80" />
-                )}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {item.badge && (
+                    <span className="px-1.5 py-0.2 text-[10px] font-mono font-bold rounded bg-amber-950/60 text-amber-300 border border-amber-800/60">
+                      {item.badge}
+                    </span>
+                  )}
+                  <ChevronRight
+                    className={cn(
+                      "h-3.5 w-3.5 transition-all",
+                      item.active
+                        ? "text-[#54d0a2] opacity-100"
+                        : "text-[#54d0a2] opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5"
+                    )}
+                  />
+                </div>
               </Link>
             );
           })}

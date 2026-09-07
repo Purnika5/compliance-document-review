@@ -58,8 +58,8 @@ export function Navbar() {
                 className={cn(
                   "px-3 py-1.5 rounded-md text-xs font-semibold transition-colors",
                   pathname === "/submissions"
-                    ? "bg-muted text-foreground font-bold"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                    ? "bg-[#062a20] text-[#54d0a2] font-bold"
+                    : "text-muted-foreground hover:text-[#54d0a2] hover:bg-[#062a20]"
                 )}
               >
                 My Submissions
@@ -69,8 +69,8 @@ export function Navbar() {
                 className={cn(
                   "px-3 py-1.5 rounded-md text-xs font-semibold transition-colors",
                   pathname === "/queue"
-                    ? "bg-muted text-foreground font-bold"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                    ? "bg-[#062a20] text-[#54d0a2] font-bold"
+                    : "text-muted-foreground hover:text-[#54d0a2] hover:bg-[#062a20]"
                 )}
               >
                 Review Queue
@@ -86,7 +86,7 @@ export function Navbar() {
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-muted border border-border/70 transition-colors cursor-pointer outline-none">
+                  <button className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-[#062a20] hover:text-[#54d0a2] border border-border/70 transition-colors cursor-pointer outline-none">
                     <div className="h-7 w-7 rounded-md bg-secondary text-primary font-bold text-xs flex items-center justify-center border border-border">
                       {getInitials(session.name)}
                     </div>
@@ -106,13 +106,16 @@ export function Navbar() {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator className="bg-border" />
                   <DropdownMenuItem
-                    className="text-xs cursor-pointer gap-2 font-medium text-foreground/90 rounded-md px-2 py-1.5"
+                    className="group text-xs cursor-pointer gap-2 font-medium text-foreground/90 rounded-md px-2 py-1.5 hover:bg-[#062a20] hover:text-[#54d0a2] transition-colors"
                     onClick={() => router.push(session.role === "Advisor" ? "/submissions" : "/queue")}
                   >
-                    <User className="h-3.5 w-3.5 text-muted-foreground" /> Workspace
+                    <User className="h-3.5 w-3.5 text-muted-foreground group-hover:text-[#54d0a2] transition-colors" /> Workspace
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="text-xs cursor-pointer gap-2 font-medium text-foreground/90 rounded-md px-2 py-1.5">
-                    <Settings className="h-3.5 w-3.5 text-muted-foreground" /> Settings
+                  <DropdownMenuItem
+                    className="group text-xs cursor-pointer gap-2 font-medium text-foreground/90 rounded-md px-2 py-1.5 hover:bg-[#062a20] hover:text-[#54d0a2] transition-colors"
+                    onClick={() => router.push("/settings")}
+                  >
+                    <Settings className="h-3.5 w-3.5 text-muted-foreground group-hover:text-[#54d0a2] transition-colors" /> Settings
                   </DropdownMenuItem>
                   <DropdownMenuSeparator className="bg-border" />
                   <DropdownMenuItem

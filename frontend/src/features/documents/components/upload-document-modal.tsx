@@ -71,6 +71,7 @@ export function UploadDocumentModal({
   const [category, setCategory] = useState("Investment Proposal");
   const [notes, setNotes] = useState("");
   const [files, setFiles] = useState<IFileValidationItem[]>([]);
+  const [rawFile, setRawFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isDragOver, setIsDragOver] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -106,7 +107,7 @@ export function UploadDocumentModal({
 
   const handleFinalSubmit = async () => {
     try {
-      await onUpload({ title, category, notes });
+      await onUpload({ title, category, notes, file: rawFile || undefined });
       setStep("success");
       showSuccessToast("Document Uploaded", `"${title}" has been submitted for review.`);
     } catch (err) {
@@ -120,6 +121,7 @@ export function UploadDocumentModal({
     setCategory("Investment Proposal");
     setNotes("");
     setFiles([]);
+    setRawFile(null);
     setStep("details");
     setUploadProgress(0);
     onClose();
@@ -130,6 +132,7 @@ export function UploadDocumentModal({
     setIsDragOver(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const dropped = e.dataTransfer.files[0];
+      setRawFile(dropped);
       const newFile: IFileValidationItem = {
         id: `f-${Date.now()}`,
         name: dropped.name,
@@ -138,7 +141,7 @@ export function UploadDocumentModal({
         status: "valid",
         message: "File integrity and size constraints passed",
       };
-      setFiles((prev) => [newFile, ...prev]);
+      setFiles([newFile]);
       if (!title) setTitle(dropped.name.replace(/\.[^/.]+$/, "").replace(/_/g, " "));
     }
   };
@@ -146,6 +149,7 @@ export function UploadDocumentModal({
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const selected = e.target.files[0];
+      setRawFile(selected);
       const newFile: IFileValidationItem = {
         id: `f-${Date.now()}`,
         name: selected.name,
@@ -154,13 +158,14 @@ export function UploadDocumentModal({
         status: "valid",
         message: "File integrity and size constraints passed",
       };
-      setFiles((prev) => [newFile, ...prev]);
+      setFiles([newFile]);
       if (!title) setTitle(selected.name.replace(/\.[^/.]+$/, "").replace(/_/g, " "));
     }
   };
 
   const removeFile = (id: string) => {
     setFiles((prev) => prev.filter((f) => f.id !== id));
+    setRawFile(null);
   };
 
   return (
@@ -365,7 +370,7 @@ export function UploadDocumentModal({
               </Button>
               <Button
                 type="submit"
-                className="h-8 px-4 text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground rounded-md"
+                className="h-8 px-4 text-xs font-semibold bg-[#90d22d] hover:bg-[#25b159] active:bg-[#1e9a4c] text-white rounded-md transition-all shadow-xs cursor-pointer"
               >
                 Proceed to Verification →
               </Button>
@@ -445,7 +450,7 @@ export function UploadDocumentModal({
                 type="button"
                 disabled={isPending || uploadProgress < 100}
                 onClick={handleFinalSubmit}
-                className="h-8 px-4 text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground rounded-md"
+                className="h-8 px-4 text-xs font-semibold bg-[#90d22d] hover:bg-[#25b159] active:bg-[#1e9a4c] text-white rounded-md transition-all shadow-xs cursor-pointer"
               >
                 {isPending ? "Transmitting..." : "Confirm & Submit Proposal"}
               </Button>
@@ -472,7 +477,7 @@ export function UploadDocumentModal({
             <div className="pt-2">
               <Button
                 onClick={handleCloseAndReset}
-                className="h-8 px-4 text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground rounded-md"
+                className="h-8 px-4 text-xs font-semibold bg-[#90d22d] hover:bg-[#25b159] active:bg-[#1e9a4c] text-white rounded-md transition-all shadow-xs cursor-pointer"
               >
                 Return to Workspace
               </Button>

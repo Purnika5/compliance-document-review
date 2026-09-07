@@ -97,7 +97,7 @@ export function DecisionDialog({
         icon: CheckCircle2,
         iconBg: "bg-primary/15 text-primary border-primary/30",
         confirmBtnText: "Execute Approval",
-        confirmBtnClass: "bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs",
+        confirmBtnClass: "bg-[#90d22d] hover:bg-[#25b159] active:bg-[#1e9a4c] text-white shadow-xs cursor-pointer",
         placeholder: "Optional officer approval remark or regulatory notes...",
       };
     }

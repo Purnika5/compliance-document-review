@@ -20,17 +20,17 @@ const buttonVariants = cva(
         primary:
           "bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 active:bg-primary/80",
         navy:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border",
+          "bg-transparent text-foreground hover:bg-[#062a20] hover:text-[#54d0a2] border border-border transition-colors",
         destructive:
           "bg-destructive text-destructive-foreground shadow-xs hover:bg-destructive/90",
         outline:
-          "border border-border bg-card/60 hover:bg-muted hover:text-foreground text-foreground shadow-2xs",
+          "border border-border bg-transparent hover:bg-[#062a20] hover:text-[#54d0a2] hover:border-emerald-800/60 text-foreground shadow-2xs transition-colors",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border/50",
+          "bg-transparent text-foreground hover:bg-[#062a20] hover:text-[#54d0a2] hover:border-emerald-800/60 border border-border/50 transition-colors",
         ghost:
-          "text-muted-foreground hover:bg-muted hover:text-foreground",
+          "bg-transparent text-muted-foreground hover:bg-[#062a20] hover:text-[#54d0a2] transition-colors",
         link:
-          "text-primary underline-offset-4 hover:underline",
+          "text-[#54d0a2] underline-offset-4 hover:underline hover:text-[#90d22d]",
       },
       size: {
         default: "h-9 px-4 py-2",
@@ -48,7 +48,7 @@ const buttonVariants = cva(
 
 export interface IButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
+  VariantProps<typeof buttonVariants> {
   asChild?: boolean;
   isPending?: boolean;
 }

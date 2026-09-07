@@ -270,8 +270,8 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
           className={cn(
             "flex-1 py-1.5 text-xs font-semibold rounded text-center transition-colors cursor-pointer",
             mobileActiveZone === "document"
-              ? "bg-primary/20 text-primary font-bold shadow-xs"
-              : "text-muted-foreground hover:text-foreground"
+              ? "bg-[#062a20] text-[#54d0a2] font-bold shadow-xs"
+              : "bg-transparent text-muted-foreground hover:bg-[#062a20] hover:text-[#54d0a2]"
           )}
         >
           Document Canvas
@@ -281,8 +281,8 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
           className={cn(
             "flex-1 py-1.5 text-xs font-semibold rounded text-center transition-colors cursor-pointer",
             mobileActiveZone === "ai"
-              ? "bg-accent/20 text-accent-foreground font-bold shadow-xs"
-              : "text-muted-foreground hover:text-foreground"
+              ? "bg-[#062a20] text-[#54d0a2] font-bold shadow-xs"
+              : "bg-transparent text-muted-foreground hover:bg-[#062a20] hover:text-[#54d0a2]"
           )}
         >
           AI Assistance (3)
@@ -292,8 +292,8 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
           className={cn(
             "flex-1 py-1.5 text-xs font-semibold rounded text-center transition-colors cursor-pointer",
             mobileActiveZone === "decision"
-              ? "bg-muted text-foreground font-bold shadow-xs"
-              : "text-muted-foreground hover:text-foreground"
+              ? "bg-[#062a20] text-[#54d0a2] font-bold shadow-xs"
+              : "bg-transparent text-muted-foreground hover:bg-[#062a20] hover:text-[#54d0a2]"
           )}
         >
           Decision & History
@@ -422,7 +422,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                       type="button"
                       disabled={isUpdating}
                       onClick={() => setActiveDecision("Approved")}
-                      className="w-full flex items-center justify-start gap-2 h-9 px-3 rounded-md font-semibold text-xs border border-primary/30 bg-primary/15 text-primary hover:bg-primary/25 cursor-pointer disabled:opacity-50 transition-colors shadow-2xs"
+                      className="w-full flex items-center justify-start gap-2 h-9 px-3 rounded-md font-semibold text-xs border border-emerald-800/60 bg-transparent text-[#54d0a2] hover:bg-[#062a20] hover:text-[#54d0a2] cursor-pointer disabled:opacity-50 transition-colors shadow-2xs"
                     >
                       <CheckCircle2 className="h-4 w-4" />
                       <span>Approve Proposal</span>
@@ -654,7 +654,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => window.print()}
-                  className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded text-xs font-semibold bg-primary/15 hover:bg-primary/25 text-primary border border-primary/30 transition-colors cursor-pointer shadow-2xs"
+                  className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded text-xs font-semibold bg-transparent hover:bg-[#062a20] text-[#54d0a2] border border-emerald-800/60 transition-colors cursor-pointer shadow-2xs"
                 >
                   <Download className="h-3 w-3" />
                   <span>Export PDF</span>

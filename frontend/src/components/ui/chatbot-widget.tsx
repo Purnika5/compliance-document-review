@@ -190,7 +190,7 @@ export function ChatbotWidget() {
               size="icon"
               disabled={!inputValue.trim()}
               onClick={() => handleSend()}
-              className="h-8 w-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-md disabled:opacity-40 shrink-0 cursor-pointer shadow-xs"
+              className="h-8 w-8 bg-[#90d22d] hover:bg-[#25b159] active:bg-[#1e9a4c] text-white rounded-md disabled:opacity-40 shrink-0 cursor-pointer shadow-xs transition-all"
             >
               <Send className="h-3.5 w-3.5" />
             </Button>

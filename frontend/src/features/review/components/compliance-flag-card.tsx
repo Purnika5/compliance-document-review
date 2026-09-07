@@ -38,8 +38,8 @@ export function ComplianceFlagCard({
       className={cn(
         "p-3 rounded-lg border text-left transition-all cursor-pointer bg-card/60",
         isSelected
-          ? "border-primary ring-1 ring-primary bg-primary/10 shadow-xs"
-          : "border-border hover:border-border/80 hover:bg-muted/40"
+          ? "border-emerald-800/60 ring-1 ring-emerald-600/40 bg-[#062a20] shadow-xs"
+          : "border-border bg-transparent hover:border-emerald-800/40 hover:bg-[#062a20]/40"
       )}
     >
       <div className="flex items-center justify-between gap-1 mb-1.5">

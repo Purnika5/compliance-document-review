@@ -113,6 +113,15 @@ export async function uploadDocumentRequest(data: UploadDocumentInput): Promise<
   formData.append("title", data.title);
   if (data.notes) formData.append("description", data.notes);
 
+  if (data.file) {
+    formData.append("file", data.file);
+  } else {
+    // Generate a structured placeholder document if user submitted metadata without raw attachment
+    const content = `SPRINGER CAPITAL COMPLIANCE SUBMISSION\nTitle: ${data.title}\nCategory: ${data.category}\nDate: ${new Date().toISOString()}\nNotes:\n${data.notes || "No additional notes provided."}`;
+    const fallbackBlob = new Blob([content], { type: "text/plain" });
+    formData.append("file", fallbackBlob, `${data.title.toLowerCase().replace(/[^a-z0-9]/g, "_")}.txt`);
+  }
+
   const envelope = await client.request<Envelope<ApiDocument>>("/documents", {
     method: "POST",
     body: formData,

@@ -30,6 +30,10 @@ export const errorHandler = (
   res: Response,
   next: NextFunction
 ): void => {
+  if (req.readable) {
+    req.resume();
+  }
+
   // Clean up any uploaded file on disk if an error occurred during request processing
   if (req.file && req.file.path) {
     try {
@@ -51,8 +55,26 @@ export const errorHandler = (
     });
   }
 
+  const sendFinalError = (statusCode: number, message: string, code: string, details?: any) => {
+    if (!req.complete && req.readable) {
+      let sent = false;
+      const send = () => {
+        if (sent) return;
+        sent = true;
+        sendError(res, statusCode, message, code, details);
+      };
+      req.on('data', () => {});
+      req.once('end', send);
+      req.once('error', send);
+      req.resume();
+      setTimeout(send, 100);
+      return;
+    }
+    sendError(res, statusCode, message, code, details);
+  };
+
   if (err instanceof AppError) {
-    sendError(res, err.statusCode, err.message, err.code, err.details);
+    sendFinalError(err.statusCode, err.message, err.code, err.details);
     return;
   }
 

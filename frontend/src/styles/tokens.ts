@@ -7,10 +7,12 @@
 export const tokens = {
   colors: {
     brand: {
-      primary: "hsl(142, 65%, 42%)",          /* #269a56 - Springer Emerald */
-      primaryHover: "hsl(142, 65%, 36%)",
-      accent: "hsl(84, 65%, 50%)",            /* #7dbb22 - Springer Chartreuse */
-      forest: "hsl(125, 40%, 42%)",           /* #438639 - Deep Brand Forest */
+      primary: "#90d22d",                     /* #90d22d - Springer Lime */
+      primaryHover: "#25b159",                /* #25b159 - Springer Emerald Hover */
+      accent: "#90d22d",
+      forest: "#033e2e",                      /* Deep Emerald */
+      navHoverBg: "#062a20",                  /* Deep Emerald Hover Container */
+      navHoverText: "#54d0a2",                /* Bright Emerald Hover Text & Icon */
       canvasDark: "hsl(240, 10%, 4%)",        /* #090a0f - Deep Obsidian */
       cardDark: "hsl(240, 10%, 7%)",          /* #111218 - Elevated Dark Card */
     },

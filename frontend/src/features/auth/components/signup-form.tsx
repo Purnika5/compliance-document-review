@@ -44,17 +44,17 @@ export function SignupForm() {
   useRedirectIfAuthenticated();
   const { mutate, isPending, error, clearError } = useSignup();
 
-  const [name, setName]                         = useState("");
-  const [email, setEmail]                       = useState("");
-  const [password, setPassword]                 = useState("");
-  const [confirmPassword, setConfirmPassword]   = useState("");
-  const [showPassword, setShowPassword]         = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [role, setRole]                         = useState<"Advisor" | "Officer">("Advisor");
-  const [acceptedTerms, setAcceptedTerms]       = useState(false);
-  const [showTermsModal, setShowTermsModal]     = useState(false);
-  const [hasReadTerms, setHasReadTerms]         = useState(false);
-  const [formErrors, setFormErrors]             = useState<Record<string, string>>({});
+  const [role, setRole] = useState<"Advisor" | "Officer">("Advisor");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [hasReadTerms, setHasReadTerms] = useState(false);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const termsScrollRef = useRef<HTMLDivElement>(null);
 
   const clearFieldError = (field: string) =>
@@ -90,15 +90,15 @@ export function SignupForm() {
   const strengthScore = getPasswordStrength(password);
   const strengthColor =
     strengthScore <= 1 ? "bg-rose-500" :
-    strengthScore === 2 ? "bg-amber-500" :
-    strengthScore === 3 ? "bg-yellow-400" :
-    "bg-emerald-500";
+      strengthScore === 2 ? "bg-amber-500" :
+        strengthScore === 3 ? "bg-yellow-400" :
+          "bg-emerald-500";
   const strengthLabel =
     strengthScore === 0 ? "" :
-    strengthScore <= 1 ? "Weak" :
-    strengthScore === 2 ? "Fair" :
-    strengthScore === 3 ? "Good" :
-    "Strong";
+      strengthScore <= 1 ? "Weak" :
+        strengthScore === 2 ? "Fair" :
+          strengthScore === 3 ? "Good" :
+            "Strong";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -297,9 +297,9 @@ export function SignupForm() {
                     <p className={cn(
                       "text-[10px] font-semibold",
                       strengthScore <= 1 ? "text-rose-400" :
-                      strengthScore === 2 ? "text-amber-400" :
-                      strengthScore === 3 ? "text-yellow-400" :
-                      "text-emerald-400"
+                        strengthScore === 2 ? "text-amber-400" :
+                          strengthScore === 3 ? "text-yellow-400" :
+                            "text-emerald-400"
                     )}>
                       {strengthLabel} password
                     </p>
@@ -353,8 +353,8 @@ export function SignupForm() {
                   acceptedTerms
                     ? "border-emerald-800/60 bg-emerald-950/30"
                     : formErrors.terms
-                    ? "border-rose-900/60 bg-rose-950/30"
-                    : "border-border bg-card hover:border-border/80 hover:bg-muted/40"
+                      ? "border-rose-900/60 bg-rose-950/30"
+                      : "border-border bg-card hover:border-border/80 hover:bg-muted/40"
                 )}
               >
                 {/* Custom checkbox display */}
@@ -364,8 +364,8 @@ export function SignupForm() {
                     acceptedTerms
                       ? "bg-primary border-primary"
                       : formErrors.terms
-                      ? "border-rose-500 bg-background"
-                      : "border-muted-foreground/60 bg-background group-hover:border-primary"
+                        ? "border-rose-500 bg-background"
+                        : "border-muted-foreground/60 bg-background group-hover:border-primary"
                   )}
                 >
                   {acceptedTerms && (
@@ -417,7 +417,7 @@ export function SignupForm() {
             form="signup-form"
             id="signup-submit"
             disabled={isPending}
-            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs h-9 rounded-md transition-all hover:-translate-y-px hover:shadow-md disabled:opacity-60 disabled:translate-y-0"
+            className="w-full bg-[#90d22d] hover:bg-[#25b159] active:bg-[#1e9a4c] text-white font-semibold text-xs h-9 rounded-md transition-all hover:-translate-y-px hover:shadow-md disabled:opacity-60 disabled:translate-y-0 cursor-pointer"
           >
             {isPending ? (
               <span className="flex items-center gap-2">
@@ -431,7 +431,7 @@ export function SignupForm() {
 
           <p className="text-xs text-muted-foreground text-center">
             Already registered?{" "}
-            <Link href="/login" className="text-primary font-semibold hover:underline">
+            <Link href="/login" className="text-[#54d0a2] hover:text-[#90d22d] font-semibold hover:underline">
               Sign In
             </Link>
           </p>
