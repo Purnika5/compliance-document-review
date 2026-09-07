@@ -226,3 +226,4 @@ dist/
 *.log
 backend/uploads/*
 !backend/uploads/.gitkeep
+*.zip

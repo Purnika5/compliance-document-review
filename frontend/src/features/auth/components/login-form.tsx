@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * DOCU: Renders and manages the personnel login form.
- * Last Updated Date: September 3, 2026
+ * DOCU: Renders and manages the personnel login form in dark mode.
+ * Last Updated Date: September 8, 2026
  * @returns The login form view.
  * @author Keith
  */
@@ -23,19 +23,33 @@ import {
   CardContent,
   CardFooter,
 } from "@/components/ui/card";
-import { Mail, Lock } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
 
+/**
+ * DOCU: Renders the login form and processes user authentication submissions.
+ * Last Updated Date: September 8, 2026
+ * @returns The login form component.
+ * @author Keith
+ */
 export function LoginForm() {
   useRedirectIfAuthenticated();
   const { mutate, isPending, error, clearError } = useLogin();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const authenticationMessage = error?.includes("401")
     ? "The email or password is incorrect. Check your credentials and try again."
     : error ?? undefined;
 
+  /**
+   * DOCU: Handles login form submission with schema validation.
+   * Last Updated Date: September 8, 2026
+   * @param e - Form submission event.
+   * @returns Void promise.
+   * @author Keith
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     clearError();
@@ -58,85 +72,117 @@ export function LoginForm() {
 
   return (
     <div className="w-full max-w-md mx-auto">
-      <Card className="neu-surface rounded-xl overflow-hidden">
-        <CardHeader className="text-center space-y-1 pb-4 pt-6">
+      <Card className="rounded-xl overflow-hidden border border-border bg-card shadow-2xl shadow-black/70">
+        {/* Springer Brand Accent Hairline Strip */}
+        <div className="h-[2px] bg-gradient-to-r from-emerald-600 via-[#84c22b] to-emerald-500" />
+
+        <CardHeader className="text-center space-y-2 pb-4 pt-6">
           <CompanyLogo className="justify-center" />
-          <CardTitle className="text-xl font-bold text-slate-900 tracking-tight">
+          <CardTitle className="text-xl font-bold text-foreground tracking-tight">
             Institutional Portal Login
           </CardTitle>
-          <CardDescription className="text-xs text-slate-500">
+          <CardDescription className="text-xs text-muted-foreground">
             Sign in to access compliance review and wealth advisory documents
           </CardDescription>
+
+          {/* Role indicator pills */}
+          <div className="flex items-center justify-center gap-2 pt-1">
+            <span className="chip bg-emerald-950/60 text-emerald-300 border border-emerald-800/60">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse-dot inline-block" />
+              Advisor
+            </span>
+            <span className="chip bg-secondary text-muted-foreground border border-border">
+              <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-pulse-dot inline-block" style={{ animationDelay: "0.6s" }} />
+              Officer
+            </span>
+          </div>
         </CardHeader>
 
         <CardContent className="space-y-4 pt-2">
           {error && (
             <Alert
               variant="destructive"
-              className="border-rose-200 bg-rose-50/80 p-3 text-rose-950 shadow-sm [&>svg]:left-3 [&>svg]:top-3 [&>svg~*]:pl-6"
+              className="p-3 shadow-xs animate-slide-down"
               title="Unable to sign in"
               message={authenticationMessage}
             />
           )}
 
-          <form id="login-form" onSubmit={handleSubmit} className="space-y-3.5">
+          <form id="login-form" onSubmit={handleSubmit} noValidate className="space-y-3.5">
+            {/* Email Field */}
             <div className="space-y-1 text-left">
-              <label className="text-xs font-semibold text-slate-700">Email Address</label>
+              <label className="text-xs font-medium text-foreground/90">Email Address</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                <Mail className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
                 <Input
                   type="email"
-                  placeholder="advisor@springer.capital"
+                  id="login-email"
+                  placeholder="advisor@springercapital.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="neu-inset pl-9 h-9 text-xs rounded-md focus-visible:ring-1 focus-visible:ring-ring"
+                  className="pl-9 h-9 text-xs rounded-md bg-background border-border text-foreground focus-visible:ring-1 focus-visible:ring-primary"
                 />
               </div>
               {formErrors.email && (
-                <p className="text-[11px] text-rose-600 font-medium">{formErrors.email}</p>
+                <p className="text-[11px] text-rose-400 font-medium animate-fade-in">{formErrors.email}</p>
               )}
             </div>
 
+            {/* Password Field */}
             <div className="space-y-1 text-left">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-slate-700">Password</label>
-                <Link href="#" className="text-[11px] text-slate-500 hover:text-slate-900">
+                <label className="text-xs font-medium text-foreground/90">Password</label>
+                {/* <Link href="#" className="text-[11px] text-muted-foreground hover:text-primary transition-colors">
                   Forgot?
-                </Link>
+                </Link> */}
               </div>
               <div className="relative">
-                <Lock className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                <Lock className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
                 <Input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
+                  id="login-password"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="neu-inset pl-9 h-9 text-xs rounded-md focus-visible:ring-1 focus-visible:ring-ring"
+                  className="pl-9 pr-9 h-9 text-xs rounded-md bg-background border-border text-foreground focus-visible:ring-1 focus-visible:ring-primary"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                </button>
               </div>
               {formErrors.password && (
-                <p className="text-[11px] text-rose-600 font-medium">{formErrors.password}</p>
+                <p className="text-[11px] text-rose-400 font-medium animate-fade-in">{formErrors.password}</p>
               )}
             </div>
           </form>
-
-          {/* Role selector quick fill for demo */}
-
         </CardContent>
 
-        <CardFooter className="flex flex-col space-y-3 pt-2 pb-6 border-t border-white/60 bg-background/40">
+        <CardFooter className="flex flex-col space-y-3 pt-2 pb-6 border-t border-border bg-muted/20">
           <Button
             type="submit"
             form="login-form"
+            id="login-submit"
             disabled={isPending}
-            className="w-full bg-primary hover:bg-primary/90 text-white font-semibold text-xs h-9 rounded-md"
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs h-9 rounded-md transition-all hover:-translate-y-px hover:shadow-md disabled:opacity-60 disabled:translate-y-0"
           >
-            {isPending ? "Authenticating..." : "Sign In to Workspace"}
+            {isPending ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Authenticating...
+              </span>
+            ) : (
+              "Sign In to Workspace"
+            )}
           </Button>
 
-          <p className="text-xs text-slate-500 text-center">
+          <p className="text-xs text-muted-foreground text-center">
             New personnel?{" "}
-            <Link href="/signup" className="text-slate-900 font-semibold hover:underline">
+            <Link href="/signup" className="text-primary font-semibold hover:underline">
               Register Credentials
             </Link>
           </p>

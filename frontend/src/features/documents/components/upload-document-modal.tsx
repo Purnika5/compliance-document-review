@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * DOCU: Renders the document upload form and submission workflow.
- * Last Updated Date: September 3, 2026
+ * DOCU: Renders the document upload form and submission workflow adhering to dark mode.
+ * Last Updated Date: September 8, 2026
  * @returns The upload document modal view.
  * @author Keith
  */
@@ -40,6 +40,7 @@ import {
 } from "lucide-react";
 import { uploadDocumentSchema, type UploadDocumentInput } from "@/lib/validation/document";
 import { cn } from "@/lib/utils";
+import { showSuccessToast, showErrorToast } from "@/components/ui/toast";
 
 export interface UploadDocumentModalProps {
   isOpen: boolean;
@@ -65,38 +66,27 @@ export function UploadDocumentModal({
   isPending,
   error,
 }: UploadDocumentModalProps) {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [step, setStep] = useState<"details" | "validation" | "success">("details");
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("Investment Proposal");
   const [notes, setNotes] = useState("");
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [files, setFiles] = useState<IFileValidationItem[]>([]);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleProceedToValidation = (e: React.FormEvent) => {
     e.preventDefault();
     setFormErrors({});
 
-    const fieldErrors: Record<string, string> = {};
-
-    if (!selectedFile && files.length === 0) {
-      fieldErrors.file = "Please choose or drop a document file to upload";
-    }
-
-    const result = uploadDocumentSchema.safeParse({ title, category, notes });
-    if (!result.success) {
-      result.error.issues.forEach((issue) => {
-        if (issue.path[0]) {
-          fieldErrors[issue.path[0] as string] = issue.message;
-        }
+    const validation = uploadDocumentSchema.safeParse({ title, category, notes });
+    if (!validation.success) {
+      const errs: Record<string, string> = {};
+      validation.error.issues.forEach((issue) => {
+        if (issue.path[0]) errs[issue.path[0] as string] = issue.message;
       });
-    }
-
-    if (Object.keys(fieldErrors).length > 0) {
-      setFormErrors(fieldErrors);
+      setFormErrors(errs);
       return;
     }
 
@@ -115,9 +105,13 @@ export function UploadDocumentModal({
   };
 
   const handleFinalSubmit = async () => {
-    const res = await onUpload({ title, category, notes, file: selectedFile || undefined });
-    if (res) {
+    try {
+      await onUpload({ title, category, notes });
       setStep("success");
+      showSuccessToast("Document Uploaded", `"${title}" has been submitted for review.`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Upload failed.";
+      showErrorToast("Upload Failed", message);
     }
   };
 
@@ -125,7 +119,7 @@ export function UploadDocumentModal({
     setTitle("");
     setCategory("Investment Proposal");
     setNotes("");
-    setSelectedFile(null);
+    setFiles([]);
     setStep("details");
     setUploadProgress(0);
     onClose();
@@ -136,7 +130,6 @@ export function UploadDocumentModal({
     setIsDragOver(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const dropped = e.dataTransfer.files[0];
-      setSelectedFile(dropped);
       const newFile: IFileValidationItem = {
         id: `f-${Date.now()}`,
         name: dropped.name,
@@ -145,7 +138,7 @@ export function UploadDocumentModal({
         status: "valid",
         message: "File integrity and size constraints passed",
       };
-      setFiles([newFile]);
+      setFiles((prev) => [newFile, ...prev]);
       if (!title) setTitle(dropped.name.replace(/\.[^/.]+$/, "").replace(/_/g, " "));
     }
   };
@@ -153,7 +146,6 @@ export function UploadDocumentModal({
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const selected = e.target.files[0];
-      setSelectedFile(selected);
       const newFile: IFileValidationItem = {
         id: `f-${Date.now()}`,
         name: selected.name,
@@ -162,33 +154,32 @@ export function UploadDocumentModal({
         status: "valid",
         message: "File integrity and size constraints passed",
       };
-      setFiles([newFile]);
+      setFiles((prev) => [newFile, ...prev]);
       if (!title) setTitle(selected.name.replace(/\.[^/.]+$/, "").replace(/_/g, " "));
     }
   };
 
   const removeFile = (id: string) => {
     setFiles((prev) => prev.filter((f) => f.id !== id));
-    setSelectedFile(null);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleCloseAndReset()}>
-      <DialogContent className="max-w-xl neu-surface p-6">
+      <DialogContent className="max-w-xl p-6 bg-card border border-border text-foreground shadow-2xl shadow-black/80">
         <DialogHeader className="space-y-1 pb-2">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded bg-primary text-white flex items-center justify-center shrink-0">
+            <div className="h-9 w-9 rounded-lg bg-emerald-950/80 border border-emerald-800/60 text-emerald-400 flex items-center justify-center shrink-0">
               <UploadCloud className="h-5 w-5" />
             </div>
             <div>
-              <DialogTitle className="text-base font-bold text-slate-900">
+              <DialogTitle className="text-base font-semibold text-foreground">
                 {step === "details"
                   ? "Submit Compliance Document"
                   : step === "validation"
                   ? "Document Pre-Submission Verification"
                   : "Submission Confirmed"}
               </DialogTitle>
-              <DialogDescription className="text-xs text-slate-500 font-medium">
+              <DialogDescription className="text-xs text-muted-foreground">
                 {step === "details"
                   ? "Upload portfolio proposal, risk analysis, or compliance statement for officer review."
                   : step === "validation"
@@ -199,49 +190,74 @@ export function UploadDocumentModal({
           </div>
         </DialogHeader>
 
+        {/* Step Progress Pill Bar */}
+        <div className="flex items-center gap-1.5 px-1 pb-1">
+          {(["details", "validation", "success"] as const).map((s, idx) => (
+            <React.Fragment key={s}>
+              <div
+                className={cn(
+                  "h-1.5 flex-1 rounded-full transition-all duration-500",
+                  step === s
+                    ? "bg-primary"
+                    : ["details", "validation", "success"].indexOf(step) > idx
+                    ? "bg-primary/40"
+                    : "bg-muted"
+                )}
+              />
+            </React.Fragment>
+          ))}
+        </div>
+
         {error && <Alert variant="error" title="Submission Failed" message={error} />}
 
         {step === "details" && (
-          <form onSubmit={handleProceedToValidation} className="space-y-3.5 pt-1">
+          <form onSubmit={handleProceedToValidation} noValidate className="space-y-3.5 pt-1">
             <div className="space-y-1">
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700">
-                Document Title <span className="text-red-600">*</span>
+              <label className="block text-xs font-medium text-foreground/90">
+                Document Title <span className="text-rose-400">*</span>
               </label>
               <Input
                 placeholder="e.g. Q4 Institutional Asset Allocation Model"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="neu-inset h-9 text-xs rounded-md"
-                required
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  if (formErrors.title) {
+                    setFormErrors((prev) => ({ ...prev, title: "" }));
+                  }
+                }}
+                className={cn(
+                  "h-9 text-xs rounded-md bg-background border-border text-foreground transition-colors",
+                  formErrors.title && "border-rose-500 ring-1 ring-rose-500"
+                )}
               />
               {formErrors.title && (
-                <p className="text-[11px] font-semibold text-red-600">{formErrors.title}</p>
+                <p className="text-[11px] text-rose-400 font-medium animate-fade-in">{formErrors.title}</p>
               )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700">
-                  Classification Category <span className="text-red-600">*</span>
+                <label className="block text-xs font-medium text-foreground/90">
+                  Classification Category <span className="text-rose-400">*</span>
                 </label>
                 <Select value={category} onValueChange={setCategory}>
-                  <SelectTrigger className="neu-inset h-9 text-xs rounded-md">
+                  <SelectTrigger className="h-9 text-xs rounded-md bg-background border-border text-foreground">
                     <SelectValue placeholder="Select Category" />
                   </SelectTrigger>
-                  <SelectContent className="bg-white rounded border-slate-200">
-                    <SelectItem value="Investment Proposal" className="text-xs cursor-pointer py-1.5">
+                  <SelectContent className="bg-card rounded-xl border-border">
+                    <SelectItem value="Investment Proposal" className="text-xs cursor-pointer py-1.5 text-foreground/90">
                       Investment Proposal
                     </SelectItem>
-                    <SelectItem value="Compliance Document" className="text-xs cursor-pointer py-1.5">
+                    <SelectItem value="Compliance Document" className="text-xs cursor-pointer py-1.5 text-foreground/90">
                       Compliance Document
                     </SelectItem>
-                    <SelectItem value="Audit Report" className="text-xs cursor-pointer py-1.5">
+                    <SelectItem value="Audit Report" className="text-xs cursor-pointer py-1.5 text-foreground/90">
                       Audit Report
                     </SelectItem>
-                    <SelectItem value="Tax Strategy" className="text-xs cursor-pointer py-1.5">
+                    <SelectItem value="Tax Strategy" className="text-xs cursor-pointer py-1.5 text-foreground/90">
                       Tax Strategy
                     </SelectItem>
-                    <SelectItem value="Portfolio Brief" className="text-xs cursor-pointer py-1.5">
+                    <SelectItem value="Portfolio Brief" className="text-xs cursor-pointer py-1.5 text-foreground/90">
                       Portfolio Brief
                     </SelectItem>
                   </SelectContent>
@@ -249,25 +265,25 @@ export function UploadDocumentModal({
               </div>
 
               <div className="space-y-1">
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700">
+                <label className="block text-xs font-medium text-foreground/90">
                   Security Classification
                 </label>
-                <div className="neu-inset flex h-9 w-full rounded-md px-3 items-center text-xs font-semibold text-slate-700">
-                  <ShieldCheck className="h-4 w-4 text-primary mr-1.5 shrink-0" />
+                <div className="flex h-9 w-full rounded-md px-3 items-center text-xs font-medium text-foreground bg-secondary/50 border border-border">
+                  <ShieldCheck className="h-4 w-4 text-emerald-400 mr-1.5 shrink-0" />
                   <span>Level 2 Institutional</span>
                 </div>
               </div>
             </div>
 
             <div className="space-y-1">
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700">
+              <label className="block text-xs font-medium text-foreground/90">
                 Advisor Overview Notes (Optional)
               </label>
               <Textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Include client risk tolerance score, portfolio ID, or specific background..."
-                className="neu-inset min-h-[70px] text-xs rounded-md"
+                className="min-h-[70px] text-xs rounded-md bg-background border-border text-foreground"
               />
             </div>
 
@@ -281,10 +297,10 @@ export function UploadDocumentModal({
               onDrop={handleFileDrop}
               onClick={() => fileInputRef.current?.click()}
               className={cn(
-                "border border-dashed rounded p-4 flex flex-col items-center justify-center transition-colors cursor-pointer text-center",
+                "border border-dashed rounded-lg p-4 flex flex-col items-center justify-center transition-all cursor-pointer text-center",
                 isDragOver
-                  ? "border-primary bg-emerald-50/40"
-                  : "border-slate-300 bg-background hover:bg-slate-100/70 hover:border-slate-400"
+                  ? "border-primary bg-primary/10 scale-[1.01]"
+                  : "border-border bg-background/50 hover:bg-muted/40 hover:border-border/80"
               )}
             >
               <input
@@ -294,36 +310,33 @@ export function UploadDocumentModal({
                 accept=".pdf,.docx,.xlsx"
                 onChange={handleFileSelect}
               />
-              <div className="neu-soft h-8 w-8 rounded-md flex items-center justify-center text-slate-600 mb-1.5">
+              <div className="h-8 w-8 rounded-md bg-muted flex items-center justify-center text-muted-foreground mb-1.5">
                 <Paperclip className="h-4 w-4" />
               </div>
-              <p className="text-xs font-bold text-slate-900">
-                Click to browse <span className="font-normal text-slate-500">or drag and drop document</span>
+              <p className="text-xs font-semibold text-foreground">
+                Click to browse <span className="font-normal text-muted-foreground">or drag and drop document</span>
               </p>
-              <p className="text-[10px] text-slate-400 uppercase font-mono mt-0.5">
+              <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
                 Supported: PDF, DOCX, XLSX (Max 25 MB)
               </p>
             </div>
-            {formErrors.file && (
-              <p className="text-[11px] font-semibold text-red-600">{formErrors.file}</p>
-            )}
 
             {/* Attached file summary */}
             {files.length > 0 && (
               <div className="space-y-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block">
                   Attached Payload ({files.length})
                 </span>
                 <div className="space-y-1 max-h-32 overflow-y-auto">
                   {files.map((f) => (
                     <div
                       key={f.id}
-                      className="neu-soft p-2 rounded-md flex items-center justify-between text-xs"
+                      className="p-2 rounded-md flex items-center justify-between text-xs bg-muted/40 border border-border"
                     >
                       <div className="flex items-center gap-2 min-w-0">
-                        <FileText className="h-3.5 w-3.5 text-slate-500 shrink-0" />
-                        <span className="font-semibold text-slate-800 truncate">{f.name}</span>
-                        <span className="text-[10px] font-mono text-slate-400">({f.size})</span>
+                        <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span className="font-medium text-foreground truncate">{f.name}</span>
+                        <span className="text-[10px] font-mono text-muted-foreground">({f.size})</span>
                       </div>
                       <button
                         type="button"
@@ -331,7 +344,7 @@ export function UploadDocumentModal({
                           e.stopPropagation();
                           removeFile(f.id);
                         }}
-                        className="p-1 rounded text-slate-400 hover:text-red-700 hover:bg-slate-100 transition-colors"
+                        className="p-1 rounded text-muted-foreground hover:text-rose-400 hover:bg-muted transition-colors cursor-pointer"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -341,18 +354,18 @@ export function UploadDocumentModal({
               </div>
             )}
 
-            <DialogFooter className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+            <DialogFooter className="flex items-center justify-end gap-2 pt-2 border-t border-border">
               <Button
                 type="button"
                 variant="outline"
                 onClick={handleCloseAndReset}
-                className="h-8 px-3 text-xs rounded border-slate-300"
+                className="h-8 px-3 text-xs rounded-md"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
-                className="h-8 px-4 text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white rounded"
+                className="h-8 px-4 text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground rounded-md"
               >
                 Proceed to Verification →
               </Button>
@@ -364,7 +377,7 @@ export function UploadDocumentModal({
           <div className="space-y-4 pt-1">
             {/* Progress Meter */}
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+              <div className="flex items-center justify-between text-xs font-semibold text-foreground">
                 <span className="flex items-center gap-1.5">
                   <Loader2
                     className={cn(
@@ -376,54 +389,55 @@ export function UploadDocumentModal({
                     ? "Running Pre-Flight Rule & Signature Integrity Verification..."
                     : "Pre-Flight Verification Complete"}
                 </span>
-                <span className="font-mono text-primary font-bold">{uploadProgress}%</span>
+                <span className="font-mono text-emerald-400 font-bold">{uploadProgress}%</span>
               </div>
-              <Progress value={uploadProgress} className="h-1.5 bg-slate-100" />
+              <Progress value={uploadProgress} className="h-1.5 bg-muted" />
             </div>
 
             {/* Validation Checklist Items */}
             <div className="space-y-2 max-h-56 overflow-y-auto">
-              {files.map((file) => (
+              {files.map((file, fileIdx) => (
                 <div
                   key={file.id}
                   className={cn(
-                    "p-2.5 rounded border flex items-center justify-between text-xs",
-                    file.status === "valid" && "bg-emerald-50/40 border-emerald-200",
-                    file.status === "warning" && "bg-amber-50/40 border-amber-200",
-                    file.status === "invalid" && "bg-red-50/40 border-red-200"
+                    "p-2.5 rounded-lg border flex items-center justify-between text-xs animate-slide-up",
+                    file.status === "valid" && "bg-emerald-950/30 border-emerald-800/50",
+                    file.status === "warning" && "bg-amber-950/30 border-amber-800/50",
+                    file.status === "invalid" && "bg-rose-950/30 border-rose-800/50"
                   )}
+                  style={{ animationDelay: `${fileIdx * 50}ms` }}
                 >
                   <div className="flex items-center space-x-2.5 min-w-0">
-                    <div className="h-7 w-7 rounded bg-white border border-slate-200 flex items-center justify-center font-bold text-[10px] text-slate-700 shrink-0">
+                    <div className="h-7 w-7 rounded-md bg-secondary border border-border flex items-center justify-center font-bold text-[10px] text-foreground shrink-0">
                       {file.type}
                     </div>
                     <div className="min-w-0">
-                      <p className="font-bold text-slate-900 truncate">{file.name}</p>
-                      <p className="text-[10px] text-slate-600 mt-0.5">{file.message}</p>
+                      <p className="font-semibold text-foreground truncate">{file.name}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{file.message}</p>
                     </div>
                   </div>
 
                   <div className="shrink-0 pl-2">
                     {file.status === "valid" && (
-                      <CheckCircle2 className="h-4 w-4 text-emerald-800" />
+                      <CheckCircle2 className="h-4 w-4 text-emerald-400" />
                     )}
                     {file.status === "warning" && (
-                      <AlertTriangle className="h-4 w-4 text-amber-800" />
+                      <AlertTriangle className="h-4 w-4 text-amber-400" />
                     )}
                     {file.status === "invalid" && (
-                      <XCircle className="h-4 w-4 text-red-800" />
+                      <XCircle className="h-4 w-4 text-rose-400" />
                     )}
                   </div>
                 </div>
               ))}
             </div>
 
-            <DialogFooter className="flex items-center justify-between pt-2 border-t border-slate-100">
+            <DialogFooter className="flex items-center justify-between pt-2 border-t border-border">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setStep("details")}
-                className="h-8 px-3 text-xs rounded border-slate-300"
+                className="h-8 px-3 text-xs rounded-md"
               >
                 ← Back to Details
               </Button>
@@ -431,7 +445,7 @@ export function UploadDocumentModal({
                 type="button"
                 disabled={isPending || uploadProgress < 100}
                 onClick={handleFinalSubmit}
-                className="h-8 px-4 text-xs font-semibold bg-primary hover:bg-[#153427] text-white rounded"
+                className="h-8 px-4 text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground rounded-md"
               >
                 {isPending ? "Transmitting..." : "Confirm & Submit Proposal"}
               </Button>
@@ -440,22 +454,25 @@ export function UploadDocumentModal({
         )}
 
         {step === "success" && (
-          <div className="py-6 flex flex-col items-center text-center space-y-3">
-            <div className="h-12 w-12 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-200 flex items-center justify-center">
-              <CheckCircle2 className="h-6 w-6" />
+          <div className="py-6 flex flex-col items-center text-center space-y-3 animate-slide-up">
+            <div className="relative h-14 w-14">
+              <div className="absolute inset-0 rounded-full bg-emerald-500/20 border border-emerald-500/40 animate-pulse" />
+              <div className="relative h-14 w-14 rounded-full bg-emerald-950/60 border border-emerald-600/60 flex items-center justify-center">
+                <CheckCircle2 className="h-7 w-7 text-emerald-400 animate-check-pop" />
+              </div>
             </div>
             <div className="space-y-1">
-              <h3 className="text-sm font-bold text-slate-900">
+              <h3 className="text-sm font-bold text-foreground">
                 Document Successfully Submitted
               </h3>
-              <p className="text-xs text-slate-500 max-w-sm">
-                Proposal <span className="font-semibold text-slate-800">{title}</span> has been logged and assigned to the Compliance Evaluation Queue.
+              <p className="text-xs text-muted-foreground max-w-sm">
+                Proposal <span className="font-semibold text-foreground">{title}</span> has been logged and assigned to the Compliance Evaluation Queue.
               </p>
             </div>
             <div className="pt-2">
               <Button
                 onClick={handleCloseAndReset}
-                className="h-8 px-4 text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white rounded"
+                className="h-8 px-4 text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground rounded-md"
               >
                 Return to Workspace
               </Button>

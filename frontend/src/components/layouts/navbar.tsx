@@ -1,8 +1,6 @@
-"use client";
-
 /**
- * DOCU: Renders the shared application navigation bar.
- * Last Updated Date: September 3, 2026
+ * DOCU: Renders the shared application navigation bar adhering to dark mode.
+ * Last Updated Date: September 8, 2026
  * @returns The application navigation view.
  * @author Keith
  */
@@ -46,7 +44,7 @@ export function Navbar() {
   };
 
   return (
-    <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
+    <header className="bg-card/75 border-b border-border sticky top-0 z-30 backdrop-blur-md">
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
         <div className="flex items-center space-x-6">
           <Link href="/" className="flex items-center">
@@ -60,8 +58,8 @@ export function Navbar() {
                 className={cn(
                   "px-3 py-1.5 rounded-md text-xs font-semibold transition-colors",
                   pathname === "/submissions"
-                    ? "bg-slate-100 text-slate-900 font-bold"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                    ? "bg-muted text-foreground font-bold"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
                 )}
               >
                 My Submissions
@@ -71,8 +69,8 @@ export function Navbar() {
                 className={cn(
                   "px-3 py-1.5 rounded-md text-xs font-semibold transition-colors",
                   pathname === "/queue"
-                    ? "bg-slate-100 text-slate-900 font-bold"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                    ? "bg-muted text-foreground font-bold"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
                 )}
               >
                 Review Queue
@@ -88,37 +86,38 @@ export function Navbar() {
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer outline-none">
-                    <div className="h-7 w-7 rounded-md bg-slate-900 text-white font-bold text-xs flex items-center justify-center">
+                  <button className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-muted border border-border/70 transition-colors cursor-pointer outline-none">
+                    <div className="h-7 w-7 rounded-md bg-secondary text-primary font-bold text-xs flex items-center justify-center border border-border">
                       {getInitials(session.name)}
                     </div>
                     <div className="text-left hidden sm:block">
-                      <p className="text-xs font-bold text-slate-900 leading-tight">{session.name}</p>
-                      <span className="text-[10px] text-slate-500 font-medium">
+                      <p className="text-xs font-semibold text-foreground leading-tight">{session.name}</p>
+                      <span className="text-[10px] text-muted-foreground font-medium">
                         {session.role}
                       </span>
                     </div>
-                    <ChevronDown className="h-3 w-3 text-slate-500" />
+                    <ChevronDown className="h-3 w-3 text-muted-foreground" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48 bg-white shadow-md rounded-lg border-slate-200 p-1">
-                  <DropdownMenuLabel className="text-xs font-medium text-slate-500 px-2 py-1">
-                    {session.email}
+                <DropdownMenuContent align="end" className="w-52 bg-card shadow-xl rounded-xl border-border p-1">
+                  <DropdownMenuLabel className="text-xs font-medium text-muted-foreground px-2 py-1">
+                    <div className="font-semibold text-foreground">{session.name}</div>
+                    <div className="text-[10px] text-muted-foreground">{session.email}</div>
                   </DropdownMenuLabel>
-                  <DropdownMenuSeparator className="bg-slate-100" />
+                  <DropdownMenuSeparator className="bg-border" />
                   <DropdownMenuItem
-                    className="text-xs cursor-pointer gap-2 font-medium text-slate-700 hover:text-slate-900 rounded-md px-2 py-1.5"
+                    className="text-xs cursor-pointer gap-2 font-medium text-foreground/90 rounded-md px-2 py-1.5"
                     onClick={() => router.push(session.role === "Advisor" ? "/submissions" : "/queue")}
                   >
-                    <User className="h-3.5 w-3.5 text-slate-500" /> Workspace
+                    <User className="h-3.5 w-3.5 text-muted-foreground" /> Workspace
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="text-xs cursor-pointer gap-2 font-medium text-slate-700 hover:text-slate-900 rounded-md px-2 py-1.5">
-                    <Settings className="h-3.5 w-3.5 text-slate-500" /> Settings
+                  <DropdownMenuItem className="text-xs cursor-pointer gap-2 font-medium text-foreground/90 rounded-md px-2 py-1.5">
+                    <Settings className="h-3.5 w-3.5 text-muted-foreground" /> Settings
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator className="bg-slate-100" />
+                  <DropdownMenuSeparator className="bg-border" />
                   <DropdownMenuItem
                     onClick={handleLogout}
-                    className="text-xs cursor-pointer text-rose-600 focus:text-rose-600 gap-2 font-medium rounded-md px-2 py-1.5 hover:bg-rose-50"
+                    className="text-xs cursor-pointer text-rose-400 focus:text-rose-400 gap-2 font-medium rounded-md px-2 py-1.5 hover:bg-rose-950/40"
                   >
                     <LogOut className="h-3.5 w-3.5" /> Sign Out
                   </DropdownMenuItem>
@@ -129,13 +128,13 @@ export function Navbar() {
             <div className="flex items-center space-x-2">
               <Link
                 href="/login"
-                className="text-xs font-semibold text-slate-700 hover:text-slate-900 px-3 py-1.5 rounded-md hover:bg-slate-100 transition-colors"
+                className="text-xs font-semibold text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-md hover:bg-muted transition-colors"
               >
                 Sign In
               </Link>
               <Button
                 asChild
-                className="font-semibold bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-1.5 rounded-md text-xs"
+                className="font-semibold bg-primary hover:bg-primary/90 text-primary-foreground px-3.5 py-1.5 rounded-md text-xs"
               >
                 <Link href="/signup">Register</Link>
               </Button>
