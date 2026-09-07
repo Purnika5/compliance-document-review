@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * DOCU: Renders navigational breadcrumbs for the current route.
+ * Last Updated Date: September 3, 2026
+ * @returns The breadcrumb navigation view.
+ * @author Keith
+ */
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";

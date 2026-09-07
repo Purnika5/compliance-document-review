@@ -2,6 +2,13 @@ import React from "react";
 import Link from "next/link";
 import { CompanyLogo } from "@/components/ui/brand-logos";
 
+/**
+ * DOCU: Provides shared navigation and layout for authentication screens.
+ * Last Updated Date: September 3, 2026
+ * @param children - Login or signup page content.
+ * @returns The authentication layout.
+ * @author Keith
+ */
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">

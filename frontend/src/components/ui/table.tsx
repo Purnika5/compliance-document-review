@@ -1,3 +1,9 @@
+/**
+ * DOCU: Provides composable accessible table primitives.
+ * Last Updated Date: September 3, 2026
+ * @returns Reusable table structure primitives.
+ * @author Keith
+ */
 import * as React from "react";
 import { cn } from "@/lib/utils";
 

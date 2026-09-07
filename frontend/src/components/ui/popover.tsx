@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * DOCU: Provides accessible popover primitives for contextual content.
+ * Last Updated Date: September 3, 2026
+ * @returns Composable popover primitives.
+ * @author Keith
+ */
 import * as React from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { cn } from "@/lib/utils";

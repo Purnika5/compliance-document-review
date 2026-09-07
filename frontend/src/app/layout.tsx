@@ -6,6 +6,13 @@ export const metadata: Metadata = {
   description: "Enterprise compliance review, document verification, and audit trail platform for Wealth Advisory",
 };
 
+/**
+ * DOCU: Provides the shared HTML shell and metadata for the application.
+ * Last Updated Date: September 3, 2026
+ * @param children - Rendered route content.
+ * @returns The root document layout.
+ * @author Keith
+ */
 export default function RootLayout({
   children,
 }: {

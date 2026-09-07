@@ -1,9 +1,22 @@
 "use client";
 
+/**
+ * DOCU: Provides document upload submission and result state management.
+ * Last Updated Date: September 3, 2026
+ * @returns Upload state and the upload action.
+ * @author Keith
+ */
 import { useState } from "react";
 import { uploadDocumentAction } from "@/lib/actions/document-actions";
 import type { UploadDocumentInput, DocumentItem } from "@/lib/validation/document";
 
+/**
+ * DOCU: Manages document upload modal state and submission lifecycle.
+ * Last Updated Date: September 3, 2026
+ * @param onSuccess - Optional callback invoked with the uploaded document.
+ * @returns Upload state and modal workflow functions.
+ * @author Keith
+ */
 export function useUploadDocument(onSuccess?: (doc: DocumentItem) => void) {
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, setIsPending] = useState(false);

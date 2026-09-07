@@ -1,5 +1,11 @@
 "use client"
 
+/**
+ * DOCU: Provides accessible select menu primitives.
+ * Last Updated Date: September 3, 2026
+ * @returns Composable select menu primitives.
+ * @author Keith
+ */
 import * as React from "react"
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react"
 import { Select as SelectPrimitive } from "radix-ui"

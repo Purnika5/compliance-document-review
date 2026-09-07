@@ -5,6 +5,12 @@ import { useRouter } from "next/navigation";
 import { authStore } from "@/lib/auth/auth-store";
 import { Loader2 } from "lucide-react";
 
+/**
+ * DOCU: Redirects authenticated users to their role-specific workspace.
+ * Last Updated Date: September 3, 2026
+ * @returns A loading state while routing to the appropriate workspace.
+ * @author Keith
+ */
 export default function HomePage() {
   const router = useRouter();
 

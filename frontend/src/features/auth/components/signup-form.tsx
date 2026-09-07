@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * DOCU: Renders and manages the personnel registration form.
+ * Last Updated Date: September 3, 2026
+ * @returns The signup form view.
+ * @author Keith
+ */
 import React, { useState } from "react";
 import Link from "next/link";
 import { useSignup } from "../hooks/use-signup";
@@ -8,6 +14,7 @@ import { signupSchema } from "@/lib/validation/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
+import { CompanyLogo } from "@/components/ui/brand-logos";
 import {
   Card,
   CardHeader,
@@ -61,9 +68,7 @@ export function SignupForm() {
     <div className="w-full max-w-md mx-auto">
       <Card className="neu-surface rounded-xl overflow-hidden">
         <CardHeader className="text-center space-y-1 pb-4 pt-6">
-          <div className="mx-auto h-10 w-10 rounded bg-slate-900 text-white flex items-center justify-center font-bold text-sm">
-            SC
-          </div>
+          <CompanyLogo className="justify-center" />
           <CardTitle className="text-xl font-bold text-slate-900 tracking-tight">
             Create Personnel Account
           </CardTitle>
@@ -105,7 +110,7 @@ export function SignupForm() {
                 <Mail className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
                 <Input
                   type="email"
-                  placeholder="name@springercapital.com"
+                  placeholder="name@springer.capital"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="neu-inset pl-9 h-9 text-xs rounded-md focus-visible:ring-1 focus-visible:ring-ring"

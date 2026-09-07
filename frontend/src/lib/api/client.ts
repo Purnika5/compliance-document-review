@@ -1,3 +1,9 @@
+/**
+ * DOCU: Provides the shared HTTP client with auth headers and API error handling.
+ * Last Updated Date: September 3, 2026
+ * @returns Configured request helpers for frontend API calls.
+ * @author Keith
+ */
 import { authStore } from "@/lib/auth/auth-store";
 
 if (!process.env.NEXT_PUBLIC_API_URL) {

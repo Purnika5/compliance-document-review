@@ -1,3 +1,9 @@
+/**
+ * DOCU: Provides typed radio-group controls for option selection.
+ * Last Updated Date: September 3, 2026
+ * @returns Reusable radio-group controls.
+ * @author Keith
+ */
 import * as React from "react";
 import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
 import { Circle } from "lucide-react";

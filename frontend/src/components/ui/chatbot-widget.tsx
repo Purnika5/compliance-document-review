@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * DOCU: Renders the interactive compliance copilot widget.
+ * Last Updated Date: September 3, 2026
+ * @returns The compliance copilot widget view.
+ * @author Keith
+ */
 import React, { useState, useRef, useEffect } from "react";
 import { User, Send, X, Bot, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";

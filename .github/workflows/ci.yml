@@ -1,0 +1,133 @@
+name: CI Pipeline
+
+on:
+  pull_request:
+    branches: [staging, main]
+  push:
+    branches: [staging, main]
+
+jobs:
+  # ----------------------------------------------------------------------------
+  # 1. Backend CI & Role-Boundary Automated Tests
+  # ----------------------------------------------------------------------------
+  backend-ci:
+    name: Backend Lint, Tests & Role Boundary
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: compliance_doc_review
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (v22)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install Backend Dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Run Database Migrations
+        working-directory: ./backend
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: compliance_doc_review
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+        run: npm run migrate
+
+      - name: Seed Database
+        working-directory: ./backend
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: compliance_doc_review
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+        run: npm run seed
+
+      - name: Run Test Suite & Verify Role Boundaries
+        working-directory: ./backend
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: compliance_doc_review
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+          JWT_SECRET: test-ci-secret-key-12345!
+        run: npm test
+
+      - name: TypeScript Build Check
+        working-directory: ./backend
+        run: npm run build
+
+  # ----------------------------------------------------------------------------
+  # 2. Frontend CI & Production Build Check
+  # ----------------------------------------------------------------------------
+  frontend-ci:
+    name: Frontend Lint & Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (v22)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Frontend Dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Lint Frontend Code
+        working-directory: ./frontend
+        run: npm run lint
+
+      - name: Production Build Check
+        working-directory: ./frontend
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:5000
+        run: npm run build
+
+  # ----------------------------------------------------------------------------
+  # 3. AI & Data Engineering Code Quality
+  # ----------------------------------------------------------------------------
+  ai-and-data-check:
+    name: AI & Data Code Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Python Syntax & Compilation Check
+        run: |
+          python3 -m py_compile ai/app/main.py
+          python3 -m py_compile data/data-engineering/week1/ingestion.py

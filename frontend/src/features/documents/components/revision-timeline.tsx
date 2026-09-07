@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * DOCU: Renders the document revision history timeline.
+ * Last Updated Date: September 3, 2026
+ * @returns The revision timeline view.
+ * @author Keith
+ */
 import React, { useRef, useState } from "react";
 import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,37 +23,6 @@ export interface IRevisionEvent {
   timestamp: string;
 }
 
-export const INITIAL_REVISION_TIMELINE: IRevisionEvent[] = [
-  {
-    id: "rev-1",
-    version: "v1.0",
-    author: "Sarah Jenkins",
-    role: "Advisor",
-    action: "Initial Document Submission",
-    comment: "Submitted Q3 Asset Allocation Proposal with offshore portfolio rebalancing model.",
-    timestamp: "May 20, 2026 · 10:24 AM",
-  },
-  {
-    id: "rev-2",
-    version: "v1.0",
-    author: "Officer Alex Smith",
-    role: "Officer",
-    action: "Requested Revision",
-    statusChange: { from: "Pending", to: "Needs Revision" },
-    comment: "Please provide secondary beneficial ownership disclosures for the 15% private REIT holding under Rule FD-2.1.3.",
-    timestamp: "May 21, 2026 · 2:41 PM",
-  },
-  {
-    id: "rev-3",
-    version: "v1.1",
-    author: "Sarah Jenkins",
-    role: "Advisor",
-    action: "Resubmitted with Revised Affidavit",
-    comment: "Attached secondary disclosure affidavit form D-442 signed by principal managing partner.",
-    timestamp: "May 22, 2026 · 9:15 AM",
-  },
-];
-
 interface RevisionTimelineProps {
   documentId: string;
   events?: IRevisionEvent[];
@@ -56,7 +31,7 @@ interface RevisionTimelineProps {
 
 export function RevisionTimeline({
   documentId,
-  events = INITIAL_REVISION_TIMELINE,
+  events = [],
   onAddComment,
 }: RevisionTimelineProps) {
   const [timeline, setTimeline] = useState<IRevisionEvent[]>(events);

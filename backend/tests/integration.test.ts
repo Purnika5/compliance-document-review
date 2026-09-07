@@ -18,18 +18,28 @@ describe('Week 1 Backend API Integration Tests (Sahil Sonar)', () => {
   const testAdvisor2Email = `advisor2_${Date.now()}@example.com`;
   const testOfficerEmail = `officer_${Date.now()}@example.com`;
 
-  // Create a temporary dummy file for upload testing
+  // Create temporary dummy files for upload testing
   const dummyFilePath = path.join(__dirname, 'test_compliance_document.txt');
+  const dummyExePath = path.join(__dirname, 'test_disallowed.exe');
+  const dummyEmptyPath = path.join(__dirname, 'test_empty.txt');
 
   beforeAll(async () => {
     // Run migrations before tests
     await runMigrations();
     fs.writeFileSync(dummyFilePath, 'This is a sample financial compliance disclosure text for testing.');
+    fs.writeFileSync(dummyExePath, 'MZ fake executable binary content for testing.');
+    fs.writeFileSync(dummyEmptyPath, '');
   });
 
   afterAll(async () => {
     if (fs.existsSync(dummyFilePath)) {
       fs.unlinkSync(dummyFilePath);
+    }
+    if (fs.existsSync(dummyExePath)) {
+      fs.unlinkSync(dummyExePath);
+    }
+    if (fs.existsSync(dummyEmptyPath)) {
+      fs.unlinkSync(dummyEmptyPath);
     }
     // Clean up test data
     try {
@@ -236,6 +246,17 @@ describe('Week 1 Backend API Integration Tests (Sahil Sonar)', () => {
       expect(res.status).toBe(400);
       expect(res.body.error.code).toBe('FILE_REQUIRED');
     });
+
+    it('should reject submission if file is 0 bytes empty (400 Bad Request)', async () => {
+      const res = await request(app)
+        .post('/documents')
+        .set('Authorization', `Bearer ${advisorToken}`)
+        .field('title', 'Empty file doc')
+        .attach('file', dummyEmptyPath);
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('FILE_EMPTY');
+    });
   });
 
   // -------------------------------------------------------------
@@ -387,4 +408,74 @@ describe('Week 1 Backend API Integration Tests (Sahil Sonar)', () => {
       expect(res.body.error.code).toBe('VALIDATION_ERROR');
     });
   });
+
+  // -------------------------------------------------------------
+  // Global Middleware & Security Suite
+  // -------------------------------------------------------------
+  describe('Global Middleware & App Security Layer', () => {
+    it('Helmet should set security headers and suppress X-Powered-By', async () => {
+      const res = await request(app).get('/health');
+
+      expect(res.headers['x-content-type-options']).toBe('nosniff');
+      expect(res.headers['x-frame-options']).toBe('SAMEORIGIN');
+      expect(res.headers['x-powered-by']).toBeUndefined();
+    });
+
+    it('CORS should permit cross-origin requests with access-control headers', async () => {
+      const res = await request(app)
+        .get('/health')
+        .set('Origin', 'http://localhost:3000');
+
+      expect(res.headers['access-control-allow-origin']).toBeDefined();
+    });
+
+    it('404 Handler should intercept unknown routes with standard NOT_FOUND response', async () => {
+      const res = await request(app).get('/api/v1/non-existent-endpoint');
+
+      expect(res.status).toBe(404);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('NOT_FOUND');
+      expect(res.body.error.message).toContain('Resource not found');
+    });
+
+    it('Upload Filter should reject unsupported file extensions (400 Bad Request)', async () => {
+      const res = await request(app)
+        .post('/documents')
+        .set('Authorization', `Bearer ${advisorToken}`)
+        .field('title', 'Malicious Upload Test')
+        .attach('file', dummyExePath);
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('UNSUPPORTED_FILE_TYPE');
+    });
+
+    it('Auth Middleware should reject malformed Bearer tokens with INVALID_TOKEN', async () => {
+      const res = await request(app)
+        .get('/auth/me')
+        .set('Authorization', 'Bearer this.is.a.completely.fake.token');
+
+      expect(res.status).toBe(401);
+      expect(res.body.error.code).toBe('INVALID_TOKEN');
+    });
+
+    it('Auth Middleware should reject non-Bearer authorization headers with UNAUTHORIZED', async () => {
+      const res = await request(app)
+        .get('/auth/me')
+        .set('Authorization', 'Basic dXNlcjpwYXNz');
+
+      expect(res.status).toBe(401);
+      expect(res.body.error.code).toBe('UNAUTHORIZED');
+    });
+
+    it('Error Handler should reject malformed JSON bodies with 400 Bad Request', async () => {
+      const res = await request(app)
+        .post('/auth/login')
+        .set('Content-Type', 'application/json')
+        .send('{"bad_json:');
+
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('BAD_REQUEST');
+    });
+  });
 });
+

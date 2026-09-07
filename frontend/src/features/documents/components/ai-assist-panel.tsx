@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * DOCU: Renders AI-generated compliance flags and document assistance controls.
+ * Last Updated Date: September 3, 2026
+ * @returns The AI assistance panel view.
+ * @author Keith
+ */
 import React, { useRef, useState } from "react";
 import {
   AlertTriangle,

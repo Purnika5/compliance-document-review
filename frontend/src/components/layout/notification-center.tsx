@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * DOCU: Renders the notification center for application alerts.
+ * Last Updated Date: September 3, 2026
+ * @returns The notification center view.
+ * @author Keith
+ */
 import React, { useState } from "react";
 import {
   Popover,
@@ -28,47 +34,8 @@ export interface INotificationItem {
   documentId?: string;
 }
 
-const INITIAL_NOTIFICATIONS: INotificationItem[] = [
-  {
-    id: "notif-1",
-    category: "ai",
-    title: "Compliance Rule Alert",
-    description: "Rule FD-2.1.3 flagged on Q3 Investment Strategy proposal regarding beneficial ownership.",
-    timestamp: "10 mins ago",
-    read: false,
-    documentId: "DOC-2026-001",
-  },
-  {
-    id: "notif-2",
-    category: "revision",
-    title: "Revision Requested",
-    description: "Officer Alex Smith requested additional disclosure on overseas holdings.",
-    timestamp: "1 hour ago",
-    read: false,
-    documentId: "DOC-2026-003",
-  },
-  {
-    id: "notif-3",
-    category: "approval",
-    title: "Document Approved",
-    description: "Risk Assessment Audit has been formally approved and signed.",
-    timestamp: "3 hours ago",
-    read: true,
-    documentId: "DOC-2026-002",
-  },
-  {
-    id: "notif-4",
-    category: "document",
-    title: "New Submission in Queue",
-    description: "Sarah Jenkins submitted Annual Compliance Verification Statement.",
-    timestamp: "Yesterday",
-    read: true,
-    documentId: "DOC-2026-003",
-  },
-];
-
 export function NotificationCenter() {
-  const [notifications, setNotifications] = useState<INotificationItem[]>(INITIAL_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<INotificationItem[]>([]);
   const [activeFilter, setActiveFilter] = useState<"all" | "unread">("all");
 
   const unreadCount = notifications.filter((n) => !n.read).length;

@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * DOCU: Restricts rendered content to users with the required role.
+ * Last Updated Date: September 3, 2026
+ * @returns Guarded content or the appropriate access state.
+ * @author Keith
+ */
 import React, { useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { authStore, type UserSession } from "@/lib/auth/auth-store";
@@ -11,6 +17,14 @@ export interface RoleGuardProps {
   children: React.ReactNode;
 }
 
+/**
+ * DOCU: Renders children only when the current user has the allowed role.
+ * Last Updated Date: September 3, 2026
+ * @param allowedRole - Role required to render the children.
+ * @param children - Protected route content.
+ * @returns Protected content or an access state.
+ * @author Keith
+ */
 export function RoleGuard({ allowedRole, children }: RoleGuardProps) {
   const router = useRouter();
   const session = useSyncExternalStore<UserSession | null>(
@@ -20,7 +34,9 @@ export function RoleGuard({ allowedRole, children }: RoleGuardProps) {
   );
 
   useEffect(() => {
-    if (session && session.role !== allowedRole) {
+    if (!session) {
+      router.replace("/login");
+    } else if (session.role !== allowedRole) {
       router.replace(session.role === "Advisor" ? "/submissions" : "/queue");
     }
   }, [session, allowedRole, router]);

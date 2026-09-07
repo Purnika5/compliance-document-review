@@ -1,5 +1,11 @@
 "use client"
 
+/**
+ * DOCU: Provides accessible dropdown menu primitives.
+ * Last Updated Date: September 3, 2026
+ * @returns Composable dropdown menu primitives.
+ * @author Keith
+ */
 import * as React from "react"
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "lucide-react"
 import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui"

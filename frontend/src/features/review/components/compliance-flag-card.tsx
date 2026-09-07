@@ -1,3 +1,9 @@
+/**
+ * DOCU: Renders one AI compliance flag and its severity details.
+ * Last Updated Date: September 3, 2026
+ * @returns The compliance flag card view.
+ * @author Keith
+ */
 import * as React from "react";
 import type { IAIFlagItem } from "@/features/documents/components/ai-assist-panel";
 import { cn } from "@/lib/utils";
@@ -9,6 +15,13 @@ export interface ComplianceFlagCardProps {
   onSelect: (flag: IAIFlagItem) => void;
 }
 
+/**
+ * DOCU: Renders a compliance flag with severity and selection behavior.
+ * Last Updated Date: September 3, 2026
+ * @param props - Flag data and selection callback.
+ * @returns The compliance flag card view.
+ * @author Keith
+ */
 export function ComplianceFlagCard({
   flag,
   isSelected = false,

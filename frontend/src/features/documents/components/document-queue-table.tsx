@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * DOCU: Renders the officer document queue and review actions.
+ * Last Updated Date: September 3, 2026
+ * @returns The document queue table view.
+ * @author Keith
+ */
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDocuments } from "../hooks/use-documents";
@@ -39,6 +45,7 @@ import {
   ArrowUpDown,
   History,
   AlertTriangle,
+  Percent,
 } from "lucide-react";
 import type { DocumentItem, DocumentStatusType } from "@/lib/validation/document";
 import { updateDocumentStatusAction } from "@/lib/actions/document-actions";
@@ -46,6 +53,12 @@ import { cn } from "@/lib/utils";
 
 type FilterTab = "All" | "Pending" | "Needs Revision" | "Approved" | "Rejected";
 
+/**
+ * DOCU: Renders the officer document queue and review controls.
+ * Last Updated Date: September 3, 2026
+ * @returns The document queue view.
+ * @author Keith
+ */
 export function DocumentQueueTable() {
   const router = useRouter();
   const { documents, isPending, refetch } = useDocuments("queue");
@@ -126,6 +139,9 @@ export function DocumentQueueTable() {
 
   const urgentCount = documents.filter((d) => getPriority(d) === "Urgent").length;
   const highPriorityCount = documents.filter((d) => getPriority(d) === "High").length;
+  const rejectedRate = counts.All ? Math.round((counts.Rejected / counts.All) * 100) : 0;
+  const reviewedCount = counts.Approved + counts.Rejected;
+  const reviewRate = counts.All ? Math.round((reviewedCount / counts.All) * 100) : 0;
 
   const handleSaveEdit = async (updated: Partial<DocumentItem> & { id: string }) => {
     const target = documents.find((d) => d.id === updated.id);
@@ -232,6 +248,18 @@ export function DocumentQueueTable() {
             Approved & Verified
           </p>
           <h3 className="text-3xl font-bold text-slate-900">{counts.Approved}</h3><span className="text-[11px] text-slate-500">Audit compliant</span>
+        </div>
+
+        <div className="neu-soft bg-emerald-50/45 rounded-xl p-4 space-y-2 sm:col-span-1 lg:col-span-4">
+          <div className="flex items-center justify-between"><p className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Review throughput</p><Percent className="h-4 w-4 text-emerald-700" /></div>
+          <h3 className="text-3xl font-bold text-slate-900">{reviewRate}%</h3>
+          <p className="text-[11px] text-slate-500">Approved or rejected records</p>
+        </div>
+
+        <div className="neu-soft bg-rose-50/45 rounded-xl p-4 space-y-2 sm:col-span-1 lg:col-span-3">
+          <div className="flex items-center justify-between"><p className="text-[10px] font-bold text-rose-800 uppercase tracking-wider">Rejection rate</p><XCircle className="h-4 w-4 text-rose-700" /></div>
+          <h3 className="text-3xl font-bold text-slate-900">{rejectedRate}%</h3>
+          <p className="text-[11px] text-slate-500">Records declined in review</p>
         </div>
       </div>
 

@@ -1,3 +1,8 @@
+/**
+ * DOCU: Defines the shared Tailwind entry point and application design tokens.
+ * Last Updated Date: September 3, 2026
+ * @author Keith
+ */
 @import "tailwindcss";
 
 @theme {

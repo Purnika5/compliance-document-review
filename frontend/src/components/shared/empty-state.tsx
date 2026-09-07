@@ -1,3 +1,9 @@
+/**
+ * DOCU: Renders a reusable empty-state message and optional action.
+ * Last Updated Date: September 3, 2026
+ * @returns The empty-state view.
+ * @author Keith
+ */
 import * as React from "react";
 import { Inbox, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";

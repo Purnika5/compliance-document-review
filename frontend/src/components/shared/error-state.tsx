@@ -1,3 +1,9 @@
+/**
+ * DOCU: Renders a reusable error message with an optional retry action.
+ * Last Updated Date: September 3, 2026
+ * @returns The error-state view.
+ * @author Keith
+ */
 import * as React from "react";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";

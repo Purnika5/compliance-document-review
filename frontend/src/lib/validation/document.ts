@@ -1,3 +1,9 @@
+/**
+ * DOCU: Defines Zod schemas and types for document workflows.
+ * Last Updated Date: September 3, 2026
+ * @returns Shared document validation contracts.
+ * @author Keith
+ */
 import { z } from "zod";
 
 export const documentStatusEnum = z.enum(["Pending", "Approved", "Needs Revision", "Rejected"]);
@@ -9,7 +15,9 @@ export const uploadDocumentSchema = z.object({
   notes: z.string().optional(),
 });
 
-export type UploadDocumentInput = z.infer<typeof uploadDocumentSchema>;
+export type UploadDocumentInput = z.infer<typeof uploadDocumentSchema> & {
+  file?: File;
+};
 
 export interface DocumentItem {
   id: string;

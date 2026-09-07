@@ -1,3 +1,9 @@
+/**
+ * DOCU: Renders a consistent badge for document review statuses.
+ * Last Updated Date: September 3, 2026
+ * @returns The status badge view.
+ * @author Keith
+ */
 import * as React from "react";
 import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";

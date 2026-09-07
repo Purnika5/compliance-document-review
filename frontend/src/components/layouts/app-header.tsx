@@ -1,9 +1,16 @@
 "use client";
 
+/**
+ * DOCU: Renders the authenticated application header.
+ * Last Updated Date: September 3, 2026
+ * @returns The application header view.
+ * @author Keith
+ */
 import React, { useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { authStore, type UserSession } from "@/lib/auth/auth-store";
 import { Breadcrumbs } from "./breadcrumbs";
+import { CompanyLogo } from "@/components/ui/brand-logos";
 import { NotificationCenter } from "@/components/layout/notification-center";
 import {
   DropdownMenu,
@@ -52,25 +59,29 @@ export function AppHeader({
   };
 
   return (
-    <header className="sticky top-0 z-30 h-14 bg-blue-50/90 backdrop-blur border-b border-blue-200/80 px-4 sm:px-6 flex items-center justify-between shadow-[0_5px_16px_hsl(228_42%_74%_/_0.3)]">
+    <header className="sticky top-0 z-30 flex min-h-14 items-center justify-between border-b border-slate-200/80 bg-white/95 px-3 py-2 backdrop-blur sm:px-5 lg:px-6">
       {/* Left Area: Mobile Menu Button + Breadcrumbs */}
-      <div className="flex items-center space-x-3 min-w-0">
+      <div className="flex min-w-0 items-center gap-2.5 sm:gap-4">
         <button
           onClick={onToggleSidebarMobile}
-          className="neu-soft p-1.5 rounded-md text-blue-800 lg:hidden cursor-pointer"
+          className="neu-soft rounded-md p-1.5 text-slate-700 transition-colors hover:bg-slate-100 lg:hidden"
           aria-label="Open sidebar navigation"
         >
           <Menu className="h-5 w-5" />
         </button>
 
-        <div className="min-w-0">
+        <div className="hidden shrink-0 items-center border-r border-slate-200 pr-4 sm:flex lg:hidden">
+          <CompanyLogo className="scale-[0.72] origin-left" />
+        </div>
+
+        <div className="min-w-0 flex-1">
           <Breadcrumbs />
         </div>
       </div>
 
       {/* Right Area: Actions, Notifications & Profile */}
-      <div className="flex items-center space-x-2.5 shrink-0">
-        <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/75 border border-blue-200 text-[10px] font-semibold text-blue-900 shadow-sm">
+      <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+        <div className="hidden items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50/70 px-2.5 py-1.5 text-[10px] font-bold text-emerald-900 shadow-sm md:flex">
           {role === "Officer" ? (
             <Shield className="h-3 w-3 text-slate-900" />
           ) : (
@@ -81,17 +92,17 @@ export function AppHeader({
 
         <NotificationCenter />
 
-        <div className="h-5 w-px bg-blue-200" />
+        <div className="h-6 w-px bg-slate-200" />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-2 rounded-lg border border-blue-200/80 bg-white/60 px-1.5 py-1 shadow-sm hover:bg-white transition-colors cursor-pointer outline-none">
-              <div className="h-7 w-7 rounded-md bg-primary text-white font-bold text-xs flex items-center justify-center shadow-sm">
+            <button className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-1.5 py-1.5 shadow-sm outline-none transition-colors hover:bg-white">
+              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-[#3f7838] text-xs font-bold text-white shadow-sm">
                 {getInitials(session?.name)}
               </div>
               <div className="text-left hidden sm:block">
                 <p className="text-xs font-bold text-slate-900 leading-tight">
-                  {session?.name || "Sarah Jenkins"}
+                  {session?.name || "User account"}
                 </p>
                 <span className="text-[10px] text-slate-500 font-medium">
                   {session?.role || "Advisor"}
@@ -101,9 +112,9 @@ export function AppHeader({
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-52 bg-white shadow-lg rounded-md border border-slate-200 p-1">
-            <DropdownMenuLabel className="text-xs font-medium text-slate-500 px-2 py-1.5">
-              <div className="font-semibold text-slate-900">{session?.name || "Sarah Jenkins"}</div>
-              <div className="text-[10px] text-slate-500">{session?.email || "advisor@springercapital.com"}</div>
+            <DropdownMenuLabel className="px-2 py-1.5 text-xs font-medium text-slate-500">
+              <div className="font-semibold text-slate-900">{session?.name || "User account"}</div>
+              <div className="text-[10px] text-slate-500">{session?.email || "Not signed in"}</div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator className="bg-slate-100" />
             <DropdownMenuItem
