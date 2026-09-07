@@ -1,12 +1,12 @@
 "use client";
 
 /**
- * DOCU: Renders the interactive compliance copilot widget adhering to institutional dark mode.
+ * DOCU: Renders the interactive compliance copilot widget with typing animation.
  * Last Updated Date: September 8, 2026
  * @returns The compliance copilot widget view.
  * @author Keith
  */
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { User, Send, X, Bot, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,12 +18,17 @@ import {
   PLATFORM_KNOWLEDGE_BASE,
 } from "@/lib/constants/chatbot";
 
+/** Typing speed in milliseconds per character */
+const TYPING_SPEED_MS = 18;
+
 export function ChatbotWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<IChatMessage[]>(INITIAL_MESSAGES);
   const [inputValue, setInputValue] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageIdRef = useRef(0);
+  const typingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -35,9 +40,57 @@ export function ChatbotWidget() {
     }
   }, [messages, isOpen]);
 
+  /** Clears the typing interval on unmount to prevent memory leaks */
+  useEffect(() => {
+    return () => {
+      if (typingIntervalRef.current) {
+        clearInterval(typingIntervalRef.current);
+      }
+    };
+  }, []);
+
+  /** Simulates character-by-character bot typing animation */
+  const simulateTyping = useCallback((botMsgId: string, fullText: string, timestamp: string) => {
+    setIsTyping(true);
+    let charIndex = 0;
+
+    /* Insert a placeholder bot message with empty text */
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: botMsgId,
+        sender: "bot",
+        text: "",
+        timestamp,
+        isTyping: true,
+      } as IChatMessage,
+    ]);
+
+    typingIntervalRef.current = setInterval(() => {
+      charIndex++;
+      const currentText = fullText.slice(0, charIndex);
+
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === botMsgId
+            ? { ...msg, text: currentText, isTyping: charIndex < fullText.length }
+            : msg
+        )
+      );
+
+      if (charIndex >= fullText.length) {
+        if (typingIntervalRef.current) {
+          clearInterval(typingIntervalRef.current);
+          typingIntervalRef.current = null;
+        }
+        setIsTyping(false);
+      }
+    }, TYPING_SPEED_MS);
+  }, []);
+
   const handleSend = (overrideText?: string) => {
     const text = overrideText || inputValue.trim();
-    if (!text) return;
+    if (!text || isTyping) return;
 
     const userMsgId = `user-${++messageIdRef.current}`;
     const timestamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -56,6 +109,7 @@ export function ChatbotWidget() {
 
     const botMsgId = `bot-${++messageIdRef.current}`;
 
+    /* Add the user message immediately */
     setMessages((prev) => [
       ...prev,
       {
@@ -64,15 +118,14 @@ export function ChatbotWidget() {
         text,
         timestamp,
       },
-      {
-        id: botMsgId,
-        sender: "bot",
-        text: answer,
-        timestamp,
-      },
     ]);
 
     if (!overrideText) setInputValue("");
+
+    /* Small delay before bot starts "typing" for realism */
+    setTimeout(() => {
+      simulateTyping(botMsgId, answer, timestamp);
+    }, 350);
   };
 
   return (
@@ -125,6 +178,7 @@ export function ChatbotWidget() {
           <div className="flex-1 p-3.5 overflow-y-auto space-y-3 bg-card/60">
             {messages.map((message) => {
               const isUser = message.sender === "user";
+              const isCurrentlyTyping = message.isTyping;
               return (
                 <div
                   key={message.id}
@@ -144,13 +198,24 @@ export function ChatbotWidget() {
 
                   <div
                     className={cn(
-                      "p-3 rounded-lg text-xs leading-relaxed break-words whitespace-pre-wrap",
+                      "p-3 rounded-lg text-xs leading-relaxed break-words whitespace-pre-wrap min-h-[30px]",
                       isUser
                         ? "bg-[#24A152] text-white font-medium rounded-br-none shadow-xs"
                         : "bg-muted/70 text-foreground border border-border rounded-bl-none shadow-xs"
                     )}
                   >
-                    {message.text}
+                    {/* Show dots if the message is empty (initial typing state) */}
+                    {!isUser && message.text === "" ? (
+                      <TypingDots />
+                    ) : (
+                      <>
+                        {message.text}
+                        {/* Blinking cursor while typing */}
+                        {!isUser && isCurrentlyTyping && (
+                          <span className="inline-block w-[2px] h-[12px] bg-emerald-400 ml-0.5 align-middle animate-[blink_0.7s_step-end_infinite]" />
+                        )}
+                      </>
+                    )}
                   </div>
                 </div>
               );
@@ -165,7 +230,8 @@ export function ChatbotWidget() {
               <button
                 key={idx}
                 onClick={() => handleSend(q)}
-                className="whitespace-nowrap text-[10px] font-medium text-muted-foreground hover:text-[#54d0a2] bg-transparent hover:bg-[#062A20] border border-border/80 hover:border-emerald-800/60 px-2.5 py-1 rounded-md transition-colors cursor-pointer shrink-0"
+                disabled={isTyping}
+                className="whitespace-nowrap text-[10px] font-medium text-muted-foreground hover:text-[#54d0a2] bg-transparent hover:bg-[#062A20] border border-border/80 hover:border-emerald-800/60 px-2.5 py-1 rounded-md transition-colors cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {q}
               </button>
@@ -183,12 +249,13 @@ export function ChatbotWidget() {
                   handleSend();
                 }
               }}
-              placeholder="Ask about guidelines, classifications..."
-              className="bg-muted/40 border-border text-foreground placeholder:text-muted-foreground/60 h-8 text-xs rounded-md focus-visible:ring-1 focus-visible:ring-primary"
+              disabled={isTyping}
+              placeholder={isTyping ? "Springer Help is typing..." : "Ask about guidelines, classifications..."}
+              className="bg-muted/40 border-border text-foreground placeholder:text-muted-foreground/60 h-8 text-xs rounded-md focus-visible:ring-1 focus-visible:ring-primary disabled:opacity-60"
             />
             <Button
               size="icon"
-              disabled={!inputValue.trim()}
+              disabled={!inputValue.trim() || isTyping}
               onClick={() => handleSend()}
               className="h-8 w-8 bg-[#24A152] hover:bg-[#062A20] hover:text-[#54d0a2] hover:border hover:border-emerald-700/60 active:bg-[#1d8342] text-white rounded-md disabled:opacity-40 shrink-0 cursor-pointer shadow-xs transition-all"
             >
@@ -198,5 +265,16 @@ export function ChatbotWidget() {
         </div>
       )}
     </div>
+  );
+}
+
+/** Animated three-dot typing indicator shown before first character appears */
+function TypingDots() {
+  return (
+    <span className="flex items-center gap-1 py-0.5">
+      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/70 animate-[bounce_1s_ease-in-out_infinite]" style={{ animationDelay: "0ms" }} />
+      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/70 animate-[bounce_1s_ease-in-out_infinite]" style={{ animationDelay: "160ms" }} />
+      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/70 animate-[bounce_1s_ease-in-out_infinite]" style={{ animationDelay: "320ms" }} />
+    </span>
   );
 }

@@ -1,6 +1,6 @@
 /**
  * DOCU: Represents one message displayed in the compliance copilot conversation.
- * Last Updated Date: September 3, 2026
+ * Last Updated Date: September 8, 2026
  * @author Keith
  */
 export interface IChatMessage {
@@ -12,4 +12,7 @@ export interface IChatMessage {
   text: string;
   /** ISO timestamp associated with the message. */
   timestamp: string;
+  /** True while the bot is still streaming characters into this message. */
+  isTyping?: boolean;
 }
+

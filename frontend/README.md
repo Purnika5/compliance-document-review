@@ -2,6 +2,8 @@
 
 This document provides a comprehensive technical overview of the architecture, design patterns, directory structure, data flow, component system, and development workflows for the **Springer Capital Document Compliance & Review Web Platform**.
 
+> **Last Updated:** September 8, 2026 — Chatbot typing animation, UI color system standardization (`#24A152` / `#062A20`), and TypeScript interface updates.
+
 ---
 
 ## 📑 Table of Contents
@@ -17,11 +19,13 @@ This document provides a comprehensive technical overview of the architecture, d
    - [5. Schema Validation & Form Management (shadcn/ui + Zod)](#5-schema-validation--form-management-shadcnui--zod)
    - [6. Component & UI Architecture (shadcn/ui & Tailwind CSS v4)](#6-component--ui-architecture-shadcnui--tailwind-css-v4)
    - [7. Backend API Connection & Integration](#7-backend-api-connection--integration)
-6. [Environment Configuration](#-environment-configuration)
-7. [Development & Build Scripts](#-development--build-scripts)
-8. [Feature Addition Workflow & Best Practices](#-feature-addition-workflow--best-practices)
-9. [Extensions, Plugins & Developer Tooling Ecosystem](#-extensions-plugins--developer-tooling-ecosystem)
-10. [Contributors & Maintainers](#-contributors--maintainers)
+   - [8. AI Compliance Chatbot & Typing Animation](#8-ai-compliance-chatbot--typing-animation)
+6. [UI Design System & Brand Tokens](#-ui-design-system--brand-tokens)
+7. [Environment Configuration](#-environment-configuration)
+8. [Development & Build Scripts](#-development--build-scripts)
+9. [Feature Addition Workflow & Best Practices](#-feature-addition-workflow--best-practices)
+10. [Extensions, Plugins & Developer Tooling Ecosystem](#-extensions-plugins--developer-tooling-ecosystem)
+11. [Contributors & Maintainers](#-contributors--maintainers)
 
 ---
 
@@ -129,7 +133,7 @@ frontend/
 │   │       ├── badge.tsx                 # Status indicator badges
 │   │       ├── button.tsx                # Button variants (default, outline, destructive, ghost)
 │   │       ├── card.tsx                  # Content cards & headers
-│   │       ├── chatbot-widget.tsx        # Floating AI assistant widget
+│   │       ├── chatbot-widget.tsx        # Floating AI assistant widget (with typing animation)
 │   │       ├── data-table.tsx            # Generic tabular data grid
 │   │       ├── dialog.tsx                # Accessible modal dialogs
 │   │       ├── dropdown-menu.tsx         # Action & profile dropdown menus
@@ -185,9 +189,10 @@ frontend/
 │   │   └── utils.ts                      # Class merge utility (cn = clsx + twMerge)
 │   │
 │   ├── styles/                           # Global token definitions & design assets
+│   │   └── tokens.ts                     # Springer brand palette constants (SPRINGER_EMERALD, etc.)
 │   └── types/                            # Global TypeScript contracts
 │       ├── auth.types.ts                 # User, Role, AuthState, Session contracts
-│       └── chatbot.types.ts              # AI Assistant chat message contracts
+│       └── chatbot.types.ts              # AI Assistant chat message contracts (incl. isTyping field)
 │
 ├── .env.example                          # Environment template
 ├── .env.local                            # Local environment variables
@@ -325,13 +330,13 @@ export type UploadDocumentInput = z.infer<typeof uploadDocumentSchema>;
    - Customized using Tailwind CSS v4 design tokens via the `cn(...)` utility (`clsx` + `tailwind-merge`).
 2. **Design Tokens (`src/app/globals.css`)**:
    - Premium corporate palette designed for financial compliance and high legibility:
-     - `--primary`: Deep Navy / Corporate Indigo (`hsl(222, 47%, 20%)`)
-     - `--secondary`: Slate Muted (`hsl(215, 16%, 47%)`)
-     - `--success`: Emerald Green (`hsl(142, 71%, 45%)`)
-     - `--warning`: Amber Orange (`hsl(38, 92%, 50%)`)
-     - `--destructive`: Crimson Red (`hsl(0, 84%, 60%)`)
+     - `--primary`: Springer Emerald (`#24A152`) — all primary buttons and interactive accents
+     - `--primary-hover`: Deep Forest (`#062A20`) — all hover states across the entire UI
+     - `--secondary`: Slate Muted — table filters, outline buttons, ghost controls
+     - `--destructive`: Crimson Red (`hsl(0, 84%, 60%)`) — destructive/delete actions
 3. **Micro-Interactions**:
    - Smooth focus rings, clean modal transitions, interactive badge hover states, and responsive data tables.
+   - **Chatbot typing animation** with character-by-character reveal, blinking cursor, and 3-dot bounce indicator.
 
 ---
 
@@ -350,6 +355,85 @@ The frontend connects directly to the backend REST API configured via `NEXT_PUBL
   - `GET /documents/:id` — Single document detail and review history
   - `POST /documents/:id/decision` — Officer review decision (Approve / Reject / Revise)
   - `GET /documents/:id/audit` — Document audit trail logs
+
+---
+
+### 8. AI Compliance Chatbot & Typing Animation
+
+The floating **Compliance Help** chatbot (`src/components/ui/chatbot-widget.tsx`) provides institutional workflow guidance with a premium typing animation UX.
+
+#### Architecture
+- **`IChatMessage`** (`src/types/chatbot.types.ts`): Defines the chat message contract with an optional `isTyping?: boolean` field to flag in-progress bot responses.
+- **`PLATFORM_KNOWLEDGE_BASE`** (`src/lib/constants/chatbot.ts`): Keyword-matched static response map covering upload flows, review procedures, categories, roles, and defaults.
+- **`SUGGESTED_QUESTIONS`**: Horizontal scrollable quick-action pill buttons for common compliance questions.
+
+#### Typing Animation Flow
+
+```
+User sends message
+      │
+      ▼
+User message appears instantly
+      │
+ 350ms delay  ← simulates bot "thinking"
+      │
+      ▼
+Empty bot bubble appears with 3-dot bounce (⠶)
+      │
+ setInterval (18ms / character)
+      │
+      ▼
+Characters stream into bubble + blinking cursor ▋
+      │
+Last character written
+      │
+      ▼
+isTyping = false → cursor disappears, input re-enabled
+```
+
+#### Key Implementation Details
+
+| Detail | Value |
+| :--- | :--- |
+| **Typing speed** | 18ms per character (`TYPING_SPEED_MS`) |
+| **Pre-typing delay** | 350ms (simulates bot reasoning pause) |
+| **Cursor animation** | CSS `@keyframes blink` in `globals.css` (0.7s step-end) |
+| **Dot indicator** | 3× bouncing emerald dots while `message.text === ""` |
+| **Disabled during typing** | Input field, Send button, and suggested question pills |
+| **Placeholder during typing** | Changes to `"Springer Help is typing..."` |
+| **Memory safety** | `typingIntervalRef` cleared on component unmount via `useEffect` cleanup |
+
+#### CSS Keyframe (`globals.css`)
+```css
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+```
+
+---
+
+## 🎨 UI Design System & Brand Tokens
+
+All interactive elements across the platform follow a strict, uniform color convention:
+
+| Element | Default State | Hover State | Notes |
+| :--- | :--- | :--- | :--- |
+| **Primary Buttons** | `bg-[#24A152]` white text | `bg-[#062A20]` teal text | Apply everywhere: upload, submit, send |
+| **Outline / Ghost Buttons** | `bg-transparent` border | `bg-[#062A20]` `text-[#54d0a2]` | Filter buttons, secondary actions |
+| **Nav & Header Links** | `text-muted-foreground` | `text-[#54d0a2]` `bg-[#062A20]` | App header, sidebar, breadcrumbs |
+| **Dropdown Items** | `text-muted-foreground` | `text-[#54d0a2]` `bg-[#062A20]` | Profile dropdowns, action menus |
+| **Chatbot Pills** | `bg-transparent` border | `bg-[#062A20]` `border-emerald-800/60` | Suggested question pills |
+| **Chatbot Trigger** | `bg-transparent` border | `bg-[#062A20]` `border-emerald-800/60` | Floating help button |
+
+### Brand Color Reference
+
+| Token | Hex | Usage |
+| :--- | :--- | :--- |
+| **Springer Emerald** | `#24A152` | Primary action buttons (fill) |
+| **Deep Forest** | `#062A20` | Hover backgrounds across the entire UI |
+| **Muted Teal** | `#54d0a2` | Hover text / icon tint on dark backgrounds |
+| **Emerald Accent** | `emerald-400` | Online indicators, chatbot labels, typing dots |
 
 ---
 
@@ -505,3 +589,13 @@ For optimal development experience, the following extensions are strongly recomm
 - **Engineering Team**: **SPRINGER CAPITAL INTERN**
 - **Architecture**: Next.js 16 (App Router) + React 19 + Tailwind CSS v4 + shadcn/ui + TypeScript 5
 
+---
+
+## 📋 Recent Changelog
+
+### September 8, 2026
+- ✅ **Chatbot Typing Animation**: Implemented character-by-character streaming in `chatbot-widget.tsx` with 3-dot bounce indicator, blinking cursor (`@keyframes blink`), and input locking during response generation.
+- ✅ **`IChatMessage` Extended**: Added `isTyping?: boolean` to `chatbot.types.ts` for in-flight message flagging.
+- ✅ **UI Color System Standardized**: Applied `#24A152` (primary) / `#062A20` (hover) / `#54d0a2` (hover text) uniformly across 24+ files including buttons, headers, dropdowns, modals, audit components, review workspace, and chatbot.
+- ✅ **TypeScript Safety**: All changes validated with `tsc --noEmit` — 0 type errors.
+- ✅ **`UploadDocumentInput` Schema Fix**: Added `file: z.any().optional()` to support binary `File` objects in the validation layer.
