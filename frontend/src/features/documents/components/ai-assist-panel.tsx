@@ -72,14 +72,14 @@ export function AIAssistPanel({
 
       <div className="flex-1 flex flex-col min-h-0">
         {/* Tab Switcher */}
-        <div className="flex border-b border-border bg-muted/20 p-1 shrink-0">
+        <div className="flex border-b border-border bg-muted/20 p-1 shrink-0 gap-1">
           <button
             onClick={() => setActiveTab("flags")}
             className={cn(
               "flex-1 py-1 text-xs font-semibold rounded text-center transition-colors cursor-pointer",
               activeTab === "flags"
-                ? "bg-card text-foreground border border-border font-bold shadow-xs"
-                : "text-muted-foreground hover:text-foreground"
+                ? "bg-[#062A20] text-[#54d0a2] border border-emerald-800/60 font-bold shadow-xs"
+                : "bg-transparent text-muted-foreground hover:bg-[#062A20] hover:text-[#54d0a2]"
             )}
           >
             Rule Flags ({flags.length})
@@ -89,8 +89,8 @@ export function AIAssistPanel({
             className={cn(
               "flex-1 py-1 text-xs font-semibold rounded text-center transition-colors cursor-pointer",
               activeTab === "copilot"
-                ? "bg-card text-foreground border border-border font-bold shadow-xs"
-                : "text-muted-foreground hover:text-foreground"
+                ? "bg-[#062A20] text-[#54d0a2] border border-emerald-800/60 font-bold shadow-xs"
+                : "bg-transparent text-muted-foreground hover:bg-[#062A20] hover:text-[#54d0a2]"
             )}
           >
             Regulatory Copilot

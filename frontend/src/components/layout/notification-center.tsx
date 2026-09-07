@@ -70,13 +70,13 @@ export function NotificationCenter() {
     <Popover>
       <PopoverTrigger asChild>
         <button
-          className="relative h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/70 flex items-center justify-center transition-colors cursor-pointer border border-border/40 hover:border-border"
+          className="relative h-8 w-8 rounded-lg text-muted-foreground hover:text-[#54d0a2] hover:bg-[#062A20] flex items-center justify-center transition-colors cursor-pointer border border-border/40 hover:border-emerald-800/60 bg-transparent"
           title="Notifications"
           aria-label="Open notifications"
         >
           <Bell className="h-4 w-4" />
           {unreadCount > 0 && (
-            <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-[#24A152] animate-pulse" />
           )}
         </button>
       </PopoverTrigger>
@@ -92,7 +92,7 @@ export function NotificationCenter() {
               Notifications
             </h4>
             {unreadCount > 0 && (
-              <span className="px-1.5 py-0.2 text-[10px] font-semibold rounded bg-emerald-950/60 text-emerald-300 border border-emerald-800/60 font-mono">
+              <span className="px-1.5 py-0.2 text-[10px] font-semibold rounded bg-[#062A20] text-[#54d0a2] border border-emerald-800/60 font-mono">
                 {unreadCount} unread
               </span>
             )}
@@ -100,7 +100,7 @@ export function NotificationCenter() {
           {unreadCount > 0 && (
             <button
               onClick={markAllAsRead}
-              className="text-[11px] font-medium text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer transition-colors"
+              className="text-[11px] font-medium text-muted-foreground hover:text-[#54d0a2] flex items-center gap-1 cursor-pointer transition-colors"
             >
               <CheckCheck className="h-3 w-3" />
               <span>Mark all read</span>
@@ -115,8 +115,8 @@ export function NotificationCenter() {
             className={cn(
               "text-[11px] font-medium px-2 py-0.5 rounded-md transition-colors cursor-pointer",
               activeFilter === "all"
-                ? "bg-secondary text-foreground"
-                : "text-muted-foreground hover:bg-muted"
+                ? "bg-[#062A20] text-[#54d0a2] border border-emerald-800/60"
+                : "bg-transparent text-muted-foreground hover:bg-[#062A20] hover:text-[#54d0a2]"
             )}
           >
             All
@@ -126,8 +126,8 @@ export function NotificationCenter() {
             className={cn(
               "text-[11px] font-medium px-2 py-0.5 rounded-md transition-colors cursor-pointer",
               activeFilter === "unread"
-                ? "bg-secondary text-foreground"
-                : "text-muted-foreground hover:bg-muted"
+                ? "bg-[#062A20] text-[#54d0a2] border border-emerald-800/60"
+                : "bg-transparent text-muted-foreground hover:bg-[#062A20] hover:text-[#54d0a2]"
             )}
           >
             Unread ({unreadCount})
@@ -145,7 +145,7 @@ export function NotificationCenter() {
               <div
                 key={notif.id}
                 className={cn(
-                  "p-3 transition-colors hover:bg-muted/40 text-left relative flex gap-2.5 items-start cursor-pointer",
+                  "p-3 transition-colors hover:bg-[#062A20]/40 text-left relative flex gap-2.5 items-start cursor-pointer",
                   !notif.read ? "bg-muted/20" : "bg-transparent"
                 )}
                 onClick={() => markAsRead(notif.id)}
@@ -167,7 +167,7 @@ export function NotificationCenter() {
                     <div className="pt-1">
                       <Link
                         href={`/documents/${notif.documentId}`}
-                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400 hover:underline"
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#24A152] hover:text-[#54d0a2] hover:underline"
                       >
                         <span>Open {notif.documentId}</span>
                         <ExternalLink className="h-2.5 w-2.5" />

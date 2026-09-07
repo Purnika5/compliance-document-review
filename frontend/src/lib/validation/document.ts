@@ -19,9 +19,12 @@ export const uploadDocumentSchema = z.object({
   title: z.string().min(3, "Document title must be at least 3 characters"),
   category: z.string().min(1, "Please select or enter a category"),
   notes: z.string().optional(),
+  file: z.any().optional(),
 });
 
-export type UploadDocumentInput = z.infer<typeof uploadDocumentSchema>;
+export type UploadDocumentInput = z.infer<typeof uploadDocumentSchema> & {
+  file?: File;
+};
 
 /**
  * DOCU: Standardized document item model rendered in queue and submission tables.

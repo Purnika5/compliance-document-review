@@ -204,7 +204,7 @@ function EditDocumentForm({
             <Button
               type="submit"
               disabled={isSaving || !title.trim()}
-              className="h-8 px-4 rounded-md text-xs font-semibold bg-[#90d22d] hover:bg-[#25b159] active:bg-[#1e9a4c] text-white transition-all shadow-xs cursor-pointer"
+              className="h-8 px-4 rounded-md text-xs font-semibold bg-[#24A152] hover:bg-[#062A20] hover:text-[#54d0a2] hover:border hover:border-emerald-700/60 active:bg-[#1d8342] text-white transition-all shadow-xs cursor-pointer"
             >
               {isSaving ? "Saving..." : "Save Metadata"}
             </Button>

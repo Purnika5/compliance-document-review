@@ -216,16 +216,16 @@ export function AuditHistoryView() {
             variant="outline"
             size="sm"
             onClick={handleVerifyIntegrity}
-            className="text-xs border-emerald-800/40 bg-emerald-950/30 text-emerald-300 hover:bg-emerald-950/60 font-semibold gap-1.5 cursor-pointer"
+            className="text-xs border-emerald-800/60 bg-transparent text-[#54d0a2] hover:bg-[#062A20] hover:text-[#54d0a2] font-semibold gap-1.5 cursor-pointer transition-colors"
           >
-            <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+            <ShieldCheck className="h-3.5 w-3.5 text-[#54d0a2]" />
             Verify Hash Integrity
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={handleExportCsv}
-            className="text-xs border-border bg-muted/30 hover:bg-muted font-semibold gap-1.5 cursor-pointer"
+            className="text-xs border-border bg-transparent hover:bg-[#062A20] hover:text-[#54d0a2] hover:border-emerald-800/60 font-semibold gap-1.5 cursor-pointer text-foreground transition-colors"
           >
             <FileSpreadsheet className="h-3.5 w-3.5 text-muted-foreground" />
             Export CSV
@@ -234,7 +234,7 @@ export function AuditHistoryView() {
             variant="outline"
             size="sm"
             onClick={() => window.print()}
-            className="text-xs border-border bg-muted/30 hover:bg-muted font-semibold gap-1.5 cursor-pointer"
+            className="text-xs border-border bg-transparent hover:bg-[#062A20] hover:text-[#54d0a2] hover:border-emerald-800/60 font-semibold gap-1.5 cursor-pointer text-foreground transition-colors"
           >
             <Printer className="h-3.5 w-3.5 text-muted-foreground" />
             Print Ledger
@@ -437,7 +437,7 @@ export function AuditHistoryView() {
                         size="sm"
                         variant="ghost"
                         onClick={() => router.push(`/documents/${log.documentId}`)}
-                        className="h-7 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground gap-1 cursor-pointer"
+                        className="h-7 px-2 text-[11px] font-medium text-muted-foreground bg-transparent hover:bg-[#062A20] hover:text-[#54d0a2] hover:border hover:border-emerald-800/60 gap-1 cursor-pointer transition-colors"
                       >
                         <ExternalLink className="h-3 w-3" />
                         Doc

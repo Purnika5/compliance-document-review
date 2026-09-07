@@ -64,7 +64,7 @@ export function AppHeader({
       <div className="flex min-w-0 items-center gap-2.5 sm:gap-4">
         <button
           onClick={onToggleSidebarMobile}
-          className="rounded-lg border border-border bg-card p-1.5 text-muted-foreground transition-all hover:bg-muted hover:text-foreground lg:hidden"
+          className="rounded-lg border border-border bg-transparent p-1.5 text-muted-foreground transition-all hover:bg-[#062A20] hover:text-[#54d0a2] hover:border-emerald-800/60 lg:hidden"
           aria-label="Open sidebar navigation"
         >
           <Menu className="h-5 w-5" />
@@ -86,8 +86,8 @@ export function AppHeader({
           className={cn(
             "hidden items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold shadow-xs md:flex transition-all",
             isOfficer
-              ? "bg-muted/70 text-cyan-300 border-cyan-800/40"
-              : "bg-emerald-950/50 text-emerald-300 border-emerald-800/50"
+              ? "bg-transparent text-cyan-300 border-cyan-800/40"
+              : "bg-transparent text-emerald-300 border-emerald-800/50"
           )}
         >
           {isOfficer ? (
@@ -104,8 +104,8 @@ export function AppHeader({
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex cursor-pointer items-center gap-2 rounded-xl border border-border bg-card/80 px-2 py-1.5 shadow-xs outline-none transition-all hover:bg-muted hover:border-border/80">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold text-primary-foreground bg-primary shadow-xs">
+            <button className="flex cursor-pointer items-center gap-2 rounded-xl border border-border bg-transparent px-2 py-1.5 shadow-xs outline-none transition-all hover:bg-[#062A20] hover:text-[#54d0a2] hover:border-emerald-800/60">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold text-white bg-[#24A152] shadow-xs">
                 {getInitials(session?.name)}
               </div>
               <div className="text-left hidden sm:block">
@@ -126,7 +126,7 @@ export function AppHeader({
             </DropdownMenuLabel>
             <DropdownMenuSeparator className="bg-border" />
             <DropdownMenuItem
-              className="group text-xs cursor-pointer gap-2 font-medium text-foreground/90 rounded-md px-2 py-1.5 hover:bg-[#062a20] hover:text-[#54d0a2] transition-colors"
+              className="group text-xs cursor-pointer gap-2 font-medium text-foreground/90 rounded-md px-2 py-1.5 focus:bg-[#062A20] focus:text-[#54d0a2] hover:bg-[#062A20] hover:text-[#54d0a2] transition-colors"
               onClick={() => router.push("/settings")}
             >
               <Settings className="h-3.5 w-3.5 text-muted-foreground group-hover:text-[#54d0a2] transition-colors" /> Account &amp; Preferences
@@ -134,7 +134,7 @@ export function AppHeader({
             <DropdownMenuSeparator className="bg-border" />
             <DropdownMenuItem
               onClick={handleLogout}
-              className="text-xs cursor-pointer text-rose-400 focus:text-rose-400 gap-2 font-medium rounded-md px-2 py-1.5 hover:bg-rose-950/40"
+              className="text-xs cursor-pointer text-rose-400 focus:text-rose-300 focus:bg-rose-950/50 gap-2 font-medium rounded-md px-2 py-1.5 hover:bg-rose-950/50 hover:text-rose-300 transition-colors"
             >
               <LogOut className="h-3.5 w-3.5" /> Sign Out
             </DropdownMenuItem>

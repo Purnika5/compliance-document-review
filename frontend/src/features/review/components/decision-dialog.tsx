@@ -97,7 +97,7 @@ export function DecisionDialog({
         icon: CheckCircle2,
         iconBg: "bg-primary/15 text-primary border-primary/30",
         confirmBtnText: "Execute Approval",
-        confirmBtnClass: "bg-[#90d22d] hover:bg-[#25b159] active:bg-[#1e9a4c] text-white shadow-xs cursor-pointer",
+        confirmBtnClass: "bg-[#24A152] hover:bg-[#062A20] hover:text-[#54d0a2] hover:border hover:border-emerald-700/60 active:bg-[#1d8342] text-white shadow-xs cursor-pointer",
         placeholder: "Optional officer approval remark or regulatory notes...",
       };
     }
@@ -187,7 +187,7 @@ export function DecisionDialog({
             variant="outline"
             onClick={onClose}
             disabled={isSubmitting}
-            className="h-8 px-3 text-xs rounded border-border hover:bg-muted text-foreground"
+            className="h-8 px-3 text-xs rounded border-border bg-transparent hover:bg-[#062A20] hover:text-[#54d0a2] hover:border-emerald-800/60 text-foreground"
           >
             Cancel
           </Button>

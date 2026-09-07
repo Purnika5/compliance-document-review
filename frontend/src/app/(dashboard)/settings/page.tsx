@@ -438,7 +438,7 @@ export default function SettingsPage() {
           <Button
             type="submit"
             size="sm"
-            className="h-9 px-4 text-xs font-semibold gap-1.5 shadow-xs cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90"
+            className="h-9 px-4 text-xs font-semibold gap-1.5 shadow-xs cursor-pointer bg-[#24A152] hover:bg-[#062A20] hover:text-[#54d0a2] hover:border hover:border-emerald-700/60 active:bg-[#1d8342] text-white transition-all"
           >
             <Save className="h-4 w-4" />
             Save Preferences

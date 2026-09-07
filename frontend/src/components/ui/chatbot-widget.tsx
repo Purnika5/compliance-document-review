@@ -81,7 +81,7 @@ export function ChatbotWidget() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="flex items-center gap-2 bg-card hover:bg-muted border border-border text-foreground px-3.5 py-2.5 rounded-lg shadow-xl shadow-black/50 text-xs font-semibold transition-all hover:scale-102 hover:border-primary/50 cursor-pointer"
+          className="flex items-center gap-2 bg-transparent hover:bg-[#062A20] hover:text-[#54d0a2] border border-border hover:border-emerald-800/60 text-foreground px-3.5 py-2.5 rounded-lg shadow-xl shadow-black/50 text-xs font-semibold transition-all hover:scale-102 cursor-pointer"
         >
           <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
           <Bot className="h-4 w-4 text-emerald-400" />
@@ -106,7 +106,7 @@ export function ChatbotWidget() {
 
             <button
               onClick={() => setIsOpen(false)}
-              className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+              className="p-1 rounded-md text-muted-foreground hover:text-[#54d0a2] hover:bg-[#062A20] transition-colors cursor-pointer"
               aria-label="Close help window"
             >
               <X className="h-4 w-4" />
@@ -146,7 +146,7 @@ export function ChatbotWidget() {
                     className={cn(
                       "p-3 rounded-lg text-xs leading-relaxed break-words whitespace-pre-wrap",
                       isUser
-                        ? "bg-primary text-primary-foreground font-medium rounded-br-none shadow-xs"
+                        ? "bg-[#24A152] text-white font-medium rounded-br-none shadow-xs"
                         : "bg-muted/70 text-foreground border border-border rounded-bl-none shadow-xs"
                     )}
                   >
@@ -165,7 +165,7 @@ export function ChatbotWidget() {
               <button
                 key={idx}
                 onClick={() => handleSend(q)}
-                className="whitespace-nowrap text-[10px] font-medium text-muted-foreground hover:text-foreground bg-muted/40 hover:bg-muted border border-border/80 px-2.5 py-1 rounded-md transition-colors cursor-pointer shrink-0"
+                className="whitespace-nowrap text-[10px] font-medium text-muted-foreground hover:text-[#54d0a2] bg-transparent hover:bg-[#062A20] border border-border/80 hover:border-emerald-800/60 px-2.5 py-1 rounded-md transition-colors cursor-pointer shrink-0"
               >
                 {q}
               </button>
@@ -190,7 +190,7 @@ export function ChatbotWidget() {
               size="icon"
               disabled={!inputValue.trim()}
               onClick={() => handleSend()}
-              className="h-8 w-8 bg-[#90d22d] hover:bg-[#25b159] active:bg-[#1e9a4c] text-white rounded-md disabled:opacity-40 shrink-0 cursor-pointer shadow-xs transition-all"
+              className="h-8 w-8 bg-[#24A152] hover:bg-[#062A20] hover:text-[#54d0a2] hover:border hover:border-emerald-700/60 active:bg-[#1d8342] text-white rounded-md disabled:opacity-40 shrink-0 cursor-pointer shadow-xs transition-all"
             >
               <Send className="h-3.5 w-3.5" />
             </Button>

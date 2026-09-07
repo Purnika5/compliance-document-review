@@ -56,7 +56,7 @@ export function Breadcrumbs({ customItems }: BreadcrumbsProps) {
     <nav aria-label="Breadcrumb" className="flex items-center space-x-1 text-xs text-muted-foreground">
       <Link
         href="/"
-        className="flex items-center gap-1 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        className="flex items-center gap-1 rounded-md p-1 text-muted-foreground transition-colors hover:bg-[#062A20] hover:text-[#54d0a2]"
         aria-label="Home"
       >
         <Home className="h-3.5 w-3.5" />
@@ -70,7 +70,7 @@ export function Breadcrumbs({ customItems }: BreadcrumbsProps) {
             {item.href && !isLast ? (
               <Link
                 href={item.href}
-                className="rounded-md px-1.5 py-0.5 text-xs font-medium text-muted-foreground transition-colors truncate max-w-[140px] sm:max-w-[180px] hover:bg-muted hover:text-foreground"
+                className="rounded-md px-1.5 py-0.5 text-xs font-medium text-muted-foreground transition-colors truncate max-w-[140px] sm:max-w-[180px] hover:bg-[#062A20] hover:text-[#54d0a2]"
               >
                 {item.label}
               </Link>

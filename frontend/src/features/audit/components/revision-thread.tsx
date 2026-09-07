@@ -183,7 +183,7 @@ export function RevisionThread({
               type="submit"
               disabled={isSubmitting || !newComment.trim()}
               size="sm"
-              className="h-8 max-w-full px-3 rounded-md text-xs font-semibold bg-[#90d22d] hover:bg-[#25b159] active:bg-[#1e9a4c] text-white gap-1.5 shadow-xs cursor-pointer transition-all"
+              className="h-8 max-w-full px-3 rounded-md text-xs font-semibold bg-[#24A152] hover:bg-[#062A20] hover:text-[#54d0a2] hover:border hover:border-emerald-700/60 active:bg-[#1d8342] text-white gap-1.5 shadow-xs cursor-pointer transition-all"
             >
               <Send className="h-3 w-3" />
               <span>Record Remark</span>

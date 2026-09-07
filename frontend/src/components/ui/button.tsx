@@ -16,21 +16,21 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 active:bg-primary/80",
+          "bg-[#24A152] text-white shadow-xs hover:bg-[#062A20] hover:text-[#54d0a2] hover:border-emerald-700/60 font-semibold transition-all cursor-pointer",
         primary:
-          "bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 active:bg-primary/80",
+          "bg-[#24A152] text-white shadow-xs hover:bg-[#062A20] hover:text-[#54d0a2] hover:border-emerald-700/60 font-semibold transition-all cursor-pointer",
         navy:
-          "bg-transparent text-foreground hover:bg-[#062a20] hover:text-[#54d0a2] border border-border transition-colors",
+          "bg-transparent text-foreground hover:bg-[#062A20] hover:text-[#54d0a2] border border-border transition-colors",
         destructive:
           "bg-destructive text-destructive-foreground shadow-xs hover:bg-destructive/90",
         outline:
-          "border border-border bg-transparent hover:bg-[#062a20] hover:text-[#54d0a2] hover:border-emerald-800/60 text-foreground shadow-2xs transition-colors",
+          "border border-border bg-transparent hover:bg-[#062A20] hover:text-[#54d0a2] hover:border-emerald-800/60 text-foreground shadow-2xs transition-colors",
         secondary:
-          "bg-transparent text-foreground hover:bg-[#062a20] hover:text-[#54d0a2] hover:border-emerald-800/60 border border-border/50 transition-colors",
+          "bg-transparent text-foreground hover:bg-[#062A20] hover:text-[#54d0a2] hover:border-emerald-800/60 border border-border/50 transition-colors",
         ghost:
-          "bg-transparent text-muted-foreground hover:bg-[#062a20] hover:text-[#54d0a2] transition-colors",
+          "bg-transparent text-muted-foreground hover:bg-[#062A20] hover:text-[#54d0a2] transition-colors",
         link:
-          "text-[#54d0a2] underline-offset-4 hover:underline hover:text-[#90d22d]",
+          "text-[#24A152] underline-offset-4 hover:underline hover:text-[#54d0a2]",
       },
       size: {
         default: "h-9 px-4 py-2",

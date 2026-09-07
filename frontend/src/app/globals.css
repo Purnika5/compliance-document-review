@@ -75,8 +75,8 @@
   --popover-foreground: 0 0% 98%;
 
   /* Springer Forest & Emerald Primary */
-  --primary: 142 65% 42%;
-  /* #269a56 institutional emerald */
+  --primary: 142 63% 39%;
+  /* #24A152 institutional emerald */
   --primary-foreground: 0 0% 100%;
 
   --secondary: 240 5% 15%;
@@ -88,9 +88,9 @@
   --muted-foreground: 240 5% 65%;
   /* #a1a1aa readable secondary text */
 
-  /* Springer Chartreuse / Lime Accent */
-  --accent: 84 65% 50%;
-  /* #7dbb22 vibrant brand accent */
+  /* Springer Accent & Ring */
+  --accent: 142 63% 39%;
+  /* #24A152 */
   --accent-foreground: 0 0% 100%;
 
   --destructive: 0 65% 50%;
@@ -99,7 +99,7 @@
   --border: 240 6% 16%;
   /* #27272f subtle 1px divider */
   --input: 240 6% 16%;
-  --ring: 142 65% 42%;
+  --ring: 142 63% 39%;
   --radius: 0.5rem;
 }
 

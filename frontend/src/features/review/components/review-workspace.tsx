@@ -241,7 +241,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => setIsEditModalOpen(true)}
-            className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md border border-border bg-muted/40 text-xs font-semibold text-foreground hover:bg-muted/70 transition-colors cursor-pointer shadow-xs"
+            className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md border border-border bg-transparent text-xs font-semibold text-foreground hover:bg-[#062A20] hover:text-[#54d0a2] hover:border-emerald-800/60 transition-colors cursor-pointer shadow-xs"
           >
             <Edit3 className="h-3.5 w-3.5 text-muted-foreground" />
             <span>Edit Metadata</span>
@@ -313,14 +313,14 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
         >
           <div className="border border-border bg-card text-card-foreground rounded-xl overflow-hidden h-[740px] flex flex-col shadow-xs">
             {/* Left Header Tabs */}
-            <div className="flex border-b border-border bg-muted/20 p-1 shrink-0">
+            <div className="flex border-b border-border bg-muted/20 p-1 shrink-0 gap-1">
               <button
                 onClick={() => setActiveLeftTab("metadata")}
                 className={cn(
                   "flex-1 py-1 text-xs font-semibold rounded text-center transition-colors cursor-pointer",
                   activeLeftTab === "metadata"
-                    ? "bg-card text-foreground border border-border/80 font-bold shadow-xs"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "bg-[#062A20] text-[#54d0a2] border border-emerald-800/60 font-bold shadow-xs"
+                    : "bg-transparent text-muted-foreground hover:bg-[#062A20] hover:text-[#54d0a2]"
                 )}
               >
                 Metadata
@@ -330,23 +330,25 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                 className={cn(
                   "flex-1 py-1 text-xs font-semibold rounded text-center transition-colors cursor-pointer",
                   activeLeftTab === "history"
-                    ? "bg-card text-foreground border border-border/80 font-bold shadow-xs"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "bg-[#062A20] text-[#54d0a2] border border-emerald-800/60 font-bold shadow-xs"
+                    : "bg-transparent text-muted-foreground hover:bg-[#062A20] hover:text-[#54d0a2]"
                 )}
               >
                 Revision
               </button>
-              {isOfficer && <button
-                onClick={() => setActiveLeftTab("audit")}
-                className={cn(
-                  "flex-1 py-1 text-xs font-semibold rounded text-center transition-colors cursor-pointer",
-                  activeLeftTab === "audit"
-                    ? "bg-card text-foreground border border-border/80 font-bold shadow-xs"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                Audit Log
-              </button>}
+              {isOfficer && (
+                <button
+                  onClick={() => setActiveLeftTab("audit")}
+                  className={cn(
+                    "flex-1 py-1 text-xs font-semibold rounded text-center transition-colors cursor-pointer",
+                    activeLeftTab === "audit"
+                      ? "bg-[#062A20] text-[#54d0a2] border border-emerald-800/60 font-bold shadow-xs"
+                      : "bg-transparent text-muted-foreground hover:bg-[#062A20] hover:text-[#54d0a2]"
+                  )}
+                >
+                  Audit Log
+                </button>
+              )}
             </div>
 
             {/* Left Content Area */}
@@ -483,7 +485,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                 <button
                   onClick={() => setZoomLevel((prev) => Math.max(50, prev - 10))}
                   title="Zoom Out"
-                  className="p-1 rounded hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+                  className="p-1 rounded bg-transparent hover:bg-[#062A20] hover:text-[#54d0a2] transition-colors cursor-pointer"
                 >
                   <ZoomOut className="h-3.5 w-3.5" />
                 </button>
@@ -491,7 +493,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                 <button
                   onClick={() => setZoomLevel((prev) => Math.min(150, prev + 10))}
                   title="Zoom In"
-                  className="p-1 rounded hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+                  className="p-1 rounded bg-transparent hover:bg-[#062A20] hover:text-[#54d0a2] transition-colors cursor-pointer"
                 >
                   <ZoomIn className="h-3.5 w-3.5" />
                 </button>
@@ -501,7 +503,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                 <button
                   onClick={() => window.print()}
                   title="Print Document"
-                  className="p-1 rounded hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+                  className="p-1 rounded bg-transparent hover:bg-[#062A20] hover:text-[#54d0a2] transition-colors cursor-pointer"
                 >
                   <Printer className="h-3.5 w-3.5" />
                 </button>

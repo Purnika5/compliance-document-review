@@ -87,7 +87,7 @@ export function Navbar() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-[#062a20] hover:text-[#54d0a2] border border-border/70 transition-colors cursor-pointer outline-none">
-                    <div className="h-7 w-7 rounded-md bg-secondary text-primary font-bold text-xs flex items-center justify-center border border-border">
+                    <div className="h-7 w-7 rounded-md bg-[#24A152] text-white font-bold text-xs flex items-center justify-center shadow-xs">
                       {getInitials(session.name)}
                     </div>
                     <div className="text-left hidden sm:block">
@@ -106,13 +106,13 @@ export function Navbar() {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator className="bg-border" />
                   <DropdownMenuItem
-                    className="group text-xs cursor-pointer gap-2 font-medium text-foreground/90 rounded-md px-2 py-1.5 hover:bg-[#062a20] hover:text-[#54d0a2] transition-colors"
+                    className="group text-xs cursor-pointer gap-2 font-medium text-foreground/90 rounded-md px-2 py-1.5 focus:bg-[#062A20] focus:text-[#54d0a2] hover:bg-[#062A20] hover:text-[#54d0a2] transition-colors"
                     onClick={() => router.push(session.role === "Advisor" ? "/submissions" : "/queue")}
                   >
                     <User className="h-3.5 w-3.5 text-muted-foreground group-hover:text-[#54d0a2] transition-colors" /> Workspace
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    className="group text-xs cursor-pointer gap-2 font-medium text-foreground/90 rounded-md px-2 py-1.5 hover:bg-[#062a20] hover:text-[#54d0a2] transition-colors"
+                    className="group text-xs cursor-pointer gap-2 font-medium text-foreground/90 rounded-md px-2 py-1.5 focus:bg-[#062A20] focus:text-[#54d0a2] hover:bg-[#062A20] hover:text-[#54d0a2] transition-colors"
                     onClick={() => router.push("/settings")}
                   >
                     <Settings className="h-3.5 w-3.5 text-muted-foreground group-hover:text-[#54d0a2] transition-colors" /> Settings
@@ -120,7 +120,7 @@ export function Navbar() {
                   <DropdownMenuSeparator className="bg-border" />
                   <DropdownMenuItem
                     onClick={handleLogout}
-                    className="text-xs cursor-pointer text-rose-400 focus:text-rose-400 gap-2 font-medium rounded-md px-2 py-1.5 hover:bg-rose-950/40"
+                    className="text-xs cursor-pointer text-rose-400 focus:text-rose-300 focus:bg-rose-950/50 gap-2 font-medium rounded-md px-2 py-1.5 hover:bg-rose-950/50 hover:text-rose-300 transition-colors"
                   >
                     <LogOut className="h-3.5 w-3.5" /> Sign Out
                   </DropdownMenuItem>
@@ -137,7 +137,7 @@ export function Navbar() {
               </Link>
               <Button
                 asChild
-                className="font-semibold bg-primary hover:bg-primary/90 text-primary-foreground px-3.5 py-1.5 rounded-md text-xs"
+                className="font-semibold bg-[#24A152] hover:bg-[#062A20] hover:text-[#54d0a2] hover:border hover:border-emerald-700/60 active:bg-[#1d8342] text-white px-3.5 py-1.5 rounded-md text-xs transition-all shadow-xs cursor-pointer"
               >
                 <Link href="/signup">Register</Link>
               </Button>

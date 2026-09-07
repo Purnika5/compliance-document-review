@@ -168,7 +168,7 @@ export function LoginForm() {
             form="login-form"
             id="login-submit"
             disabled={isPending}
-            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs h-9 rounded-md transition-all hover:-translate-y-px hover:shadow-md disabled:opacity-60 disabled:translate-y-0"
+            className="w-full bg-[#24A152] hover:bg-[#062A20] hover:text-[#54d0a2] hover:border hover:border-emerald-700/60 active:bg-[#1d8342] text-white font-semibold text-xs h-9 rounded-md transition-all hover:-translate-y-px hover:shadow-md disabled:opacity-60 disabled:translate-y-0 cursor-pointer"
           >
             {isPending ? (
               <span className="flex items-center gap-2">
@@ -182,8 +182,8 @@ export function LoginForm() {
 
           <p className="text-xs text-muted-foreground text-center">
             New personnel?{" "}
-            <Link href="/signup" className="text-primary font-semibold hover:underline">
-              Register Credentials
+            <Link href="/signup" className="text-[#24A152] hover:text-[#54d0a2] font-semibold hover:underline">
+              Create Account
             </Link>
           </p>
         </CardFooter>

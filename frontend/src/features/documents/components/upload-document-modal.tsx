@@ -370,7 +370,7 @@ export function UploadDocumentModal({
               </Button>
               <Button
                 type="submit"
-                className="h-8 px-4 text-xs font-semibold bg-[#90d22d] hover:bg-[#25b159] active:bg-[#1e9a4c] text-white rounded-md transition-all shadow-xs cursor-pointer"
+                className="h-8 px-4 text-xs font-semibold bg-[#24A152] hover:bg-[#062A20] hover:text-[#54d0a2] hover:border hover:border-emerald-700/60 active:bg-[#1d8342] text-white rounded-md transition-all shadow-xs cursor-pointer"
               >
                 Proceed to Verification →
               </Button>
@@ -450,7 +450,7 @@ export function UploadDocumentModal({
                 type="button"
                 disabled={isPending || uploadProgress < 100}
                 onClick={handleFinalSubmit}
-                className="h-8 px-4 text-xs font-semibold bg-[#90d22d] hover:bg-[#25b159] active:bg-[#1e9a4c] text-white rounded-md transition-all shadow-xs cursor-pointer"
+                className="h-8 px-4 text-xs font-semibold bg-[#24A152] hover:bg-[#062A20] hover:text-[#54d0a2] hover:border hover:border-emerald-700/60 active:bg-[#1d8342] text-white rounded-md transition-all shadow-xs cursor-pointer"
               >
                 {isPending ? "Transmitting..." : "Confirm & Submit Proposal"}
               </Button>
@@ -477,7 +477,7 @@ export function UploadDocumentModal({
             <div className="pt-2">
               <Button
                 onClick={handleCloseAndReset}
-                className="h-8 px-4 text-xs font-semibold bg-[#90d22d] hover:bg-[#25b159] active:bg-[#1e9a4c] text-white rounded-md transition-all shadow-xs cursor-pointer"
+                className="h-8 px-4 text-xs font-semibold bg-[#24A152] hover:bg-[#062A20] hover:text-[#54d0a2] hover:border hover:border-emerald-700/60 active:bg-[#1d8342] text-white rounded-md transition-all shadow-xs cursor-pointer"
               >
                 Return to Workspace
               </Button>

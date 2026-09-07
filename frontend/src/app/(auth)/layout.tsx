@@ -28,13 +28,13 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <div className="flex items-center space-x-2 text-xs font-medium">
           <Link
             href="/login"
-            className="text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-md transition-colors hover:bg-muted/60"
+            className="text-muted-foreground hover:text-[#54d0a2] px-3 py-1.5 rounded-md transition-colors bg-transparent hover:bg-[#062A20]"
           >
             Sign In
           </Link>
           <Link
             href="/signup"
-            className="bg-primary hover:bg-primary/90 text-primary-foreground px-3 py-1.5 rounded-md transition-all shadow-xs hover:-translate-y-px"
+            className="bg-[#24A152] hover:bg-[#062A20] hover:text-[#54d0a2] hover:border hover:border-emerald-700/60 active:bg-[#1d8342] text-white font-semibold px-3 py-1.5 rounded-md transition-all shadow-xs hover:-translate-y-px"
           >
             Register Personnel
           </Link>

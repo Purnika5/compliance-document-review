@@ -147,7 +147,7 @@ export function RevisionTimeline({
             type="submit"
             disabled={isSubmitting || !newComment.trim()}
             size="sm"
-            className="rounded-md font-semibold text-xs bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5 shadow-xs cursor-pointer"
+            className="rounded-md font-semibold text-xs bg-[#24A152] hover:bg-[#062A20] hover:text-[#54d0a2] hover:border hover:border-emerald-700/60 active:bg-[#1d8342] text-white gap-1.5 shadow-xs cursor-pointer transition-all"
           >
             <Send className="h-3 w-3" /> Post Note
           </Button>

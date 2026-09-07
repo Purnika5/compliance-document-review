@@ -170,7 +170,7 @@ export function MyDocumentsTable() {
 
         <Button
           onClick={openModal}
-          className="h-8 px-3 text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground rounded-md gap-1.5 shrink-0 shadow-xs"
+          className="h-8 px-3 text-xs font-semibold bg-[#24A152] hover:bg-[#062A20] hover:text-[#54d0a2] hover:border hover:border-emerald-700/60 active:bg-[#1d8342] text-white rounded-md gap-1.5 shrink-0 shadow-xs transition-all cursor-pointer"
         >
           <Plus className="h-3.5 w-3.5" />
           <span>Submit Proposal Document</span>

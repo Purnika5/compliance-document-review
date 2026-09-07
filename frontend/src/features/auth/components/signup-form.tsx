@@ -417,7 +417,7 @@ export function SignupForm() {
             form="signup-form"
             id="signup-submit"
             disabled={isPending}
-            className="w-full bg-[#90d22d] hover:bg-[#25b159] active:bg-[#1e9a4c] text-white font-semibold text-xs h-9 rounded-md transition-all hover:-translate-y-px hover:shadow-md disabled:opacity-60 disabled:translate-y-0 cursor-pointer"
+            className="w-full bg-[#24A152] hover:bg-[#062A20] hover:text-[#54d0a2] hover:border hover:border-emerald-700/60 active:bg-[#1d8342] text-white font-semibold text-xs h-9 rounded-md transition-all hover:-translate-y-px hover:shadow-md disabled:opacity-60 disabled:translate-y-0 cursor-pointer"
           >
             {isPending ? (
               <span className="flex items-center gap-2">
@@ -431,7 +431,7 @@ export function SignupForm() {
 
           <p className="text-xs text-muted-foreground text-center">
             Already registered?{" "}
-            <Link href="/login" className="text-[#54d0a2] hover:text-[#90d22d] font-semibold hover:underline">
+            <Link href="/login" className="text-[#24A152] hover:text-[#54d0a2] font-semibold hover:underline">
               Sign In
             </Link>
           </p>
@@ -545,7 +545,7 @@ export function SignupForm() {
             <button
               type="button"
               onClick={() => setShowTermsModal(false)}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              className="text-xs text-muted-foreground hover:text-[#54d0a2] hover:bg-[#062A20] px-3 py-1.5 rounded-md transition-colors cursor-pointer"
             >
               Close
             </button>
@@ -556,7 +556,7 @@ export function SignupForm() {
               className={cn(
                 "h-8 px-5 text-xs font-semibold rounded-md transition-all",
                 hasReadTerms
-                  ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs hover:-translate-y-px"
+                  ? "bg-[#24A152] hover:bg-[#062A20] hover:text-[#54d0a2] hover:border hover:border-emerald-700/60 active:bg-[#1d8342] text-white shadow-xs hover:-translate-y-px cursor-pointer"
                   : "bg-secondary text-muted-foreground cursor-not-allowed"
               )}
             >

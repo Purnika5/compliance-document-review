@@ -97,7 +97,7 @@ export function AuditTrailTable({
             size="sm"
             variant="outline"
             onClick={() => window.print()}
-            className="h-8 shrink-0 px-2.5 text-xs font-semibold rounded-md border-border text-foreground hover:bg-muted gap-1 shadow-xs cursor-pointer"
+            className="h-8 shrink-0 px-2.5 text-xs font-semibold rounded-md border-border bg-transparent text-foreground hover:bg-[#062A20] hover:text-[#54d0a2] hover:border-emerald-800/60 gap-1 shadow-xs cursor-pointer transition-colors"
           >
             <Download className="h-3 w-3" />
             <span className="hidden sm:inline">Export Log</span>
