@@ -5,7 +5,7 @@ import { runMigrations } from '../src/db/migrate';
 import path from 'path';
 import fs from 'fs';
 
-describe('Week 2 Backend API Integration Tests (Sahil Sonar - KAN-46 Review Flow)', () => {
+describe('Document Review & Resubmission Integration Tests', () => {
   let advisorToken: string;
   let advisorId: string;
   let advisor2Token: string;
@@ -94,10 +94,7 @@ describe('Week 2 Backend API Integration Tests (Sahil Sonar - KAN-46 Review Flow
     await pool.end();
   });
 
-  // ===========================================================================
-  // 1. Officer Review Queue Endpoint (GET /documents/queue)
-  // ===========================================================================
-  describe('GET /documents/queue (Officer Queue with Status Filtering)', () => {
+  describe('GET /documents/queue (Officer Queue)', () => {
     it('Officer should successfully retrieve the review queue (200 OK)', async () => {
       const res = await request(app)
         .get('/documents/queue')
@@ -161,10 +158,7 @@ describe('Week 2 Backend API Integration Tests (Sahil Sonar - KAN-46 Review Flow
     });
   });
 
-  // ===========================================================================
-  // 2. Needs Revision Flow (PATCH /documents/:id/status)
-  // ===========================================================================
-  describe("PATCH /documents/:id/status (Implementing 'Needs Revision' Flow)", () => {
+  describe('PATCH /documents/:id/status (Needs Revision Flow)', () => {
     it('Advisor cannot change status to Needs Revision (403 Forbidden)', async () => {
       const res = await request(app)
         .patch(`/documents/${v1DocId}/status`)
@@ -205,10 +199,7 @@ describe('Week 2 Backend API Integration Tests (Sahil Sonar - KAN-46 Review Flow
     });
   });
 
-  // ===========================================================================
-  // 3. Resubmission Endpoint (POST /documents/:id/resubmit)
-  // ===========================================================================
-  describe('POST /documents/:id/resubmit (Linking Resubmissions to Original Documents)', () => {
+  describe('POST /documents/:id/resubmit (Document Resubmission)', () => {
     it('Another advisor (Advisor 2) cannot resubmit Advisor 1 document (403 Forbidden)', async () => {
       const res = await request(app)
         .post(`/documents/${v1DocId}/resubmit`)
@@ -310,10 +301,7 @@ describe('Week 2 Backend API Integration Tests (Sahil Sonar - KAN-46 Review Flow
     });
   });
 
-  // ===========================================================================
-  // 4. Version Lineage & Revision Thread (GET /documents/:id/versions)
-  // ===========================================================================
-  describe('GET /documents/:id/versions (Document Lineage & Revision Thread)', () => {
+  describe('GET /documents/:id/versions (Version Lineage)', () => {
     it('Officer can retrieve full version history and conversation entries (200 OK)', async () => {
       const res = await request(app)
         .get(`/documents/${v1DocId}/versions`)

@@ -16,7 +16,7 @@ const router = Router();
 
 router.use(authenticateToken);
 
-// Advisor Document Submission (v1)
+// Submit document
 router.post(
   '/',
   requireAdvisor,
@@ -25,7 +25,7 @@ router.post(
   DocumentController.submit
 );
 
-// Officer Review Queue (filtered by status)
+// Officer review queue
 router.get(
   '/queue',
   requireOfficer,
@@ -33,7 +33,7 @@ router.get(
   DocumentController.getQueue
 );
 
-// Advisor Document Resubmission (creates next version linked to original)
+// Resubmit revised document
 router.post(
   '/:id/resubmit',
   requireAdvisor,
@@ -42,7 +42,7 @@ router.post(
   DocumentController.resubmit
 );
 
-// Officer Document Status Update (Approved, Needs Revision, Rejected)
+// Update review status
 router.patch(
   '/:id/status',
   requireOfficer,
@@ -50,21 +50,21 @@ router.patch(
   DocumentController.updateStatus
 );
 
-// Document Version History and Revision Thread
+// Get document version history
 router.get(
   '/:id/versions',
   validate({ params: documentIdParamSchema }),
   DocumentController.getVersions
 );
 
-// List Documents (Role-scoped: Advisor sees own, Officer sees all)
+// List documents
 router.get(
   '/',
   validate({ query: documentQuerySchema }),
   DocumentController.list
 );
 
-// Single Document Detail
+// Get single document detail
 router.get(
   '/:id',
   validate({ params: documentIdParamSchema }),

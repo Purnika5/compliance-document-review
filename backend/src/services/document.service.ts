@@ -61,7 +61,7 @@ export class DocumentService {
 
     const newDoc = result.rows[0];
 
-    // Initialize the revision thread for this root document
+    // Create root revision thread
     try {
       const threadRes = await query<{ id: string }>(
         `INSERT INTO revision_threads (root_document_id)
@@ -84,7 +84,6 @@ export class DocumentService {
         );
       }
     } catch (err) {
-      // Non-blocking fallback if thread creation encounters an issue
       console.error('[DocumentService] Failed to record revision thread for new submission:', err);
     }
 
@@ -125,7 +124,6 @@ export class DocumentService {
 
     const updatedDoc = result.rows[0];
 
-    // Record decision in revision thread if officer info is provided
     if (officerId) {
       try {
         const rootDocId = existing.rows[0].original_document_id || existing.rows[0].id;
@@ -220,12 +218,10 @@ export class DocumentService {
 
     const currentDoc = existing.rows[0];
 
-    // Ownership check: only original submitting advisor can resubmit
     if (currentDoc.advisor_id !== user.id) {
       throw new AppError('Forbidden: Only the original submitting advisor can resubmit this document', 403, 'FORBIDDEN');
     }
 
-    // Status check: must currently be in 'Needs Revision'
     if (currentDoc.status !== 'Needs Revision') {
       throw new AppError(
         `Cannot resubmit document with status '${currentDoc.status}'. Only documents marked 'Needs Revision' can be resubmitted.`,
@@ -236,7 +232,6 @@ export class DocumentService {
 
     const rootDocumentId = currentDoc.original_document_id || currentDoc.id;
 
-    // Concurrency check: prevent multiple pending resubmissions for the same lineage
     const pendingCheck = await query<{ id: string }>(
       `SELECT id FROM documents 
        WHERE (id = $1 OR original_document_id = $1) AND status = 'Pending'`,
@@ -247,7 +242,6 @@ export class DocumentService {
       throw new AppError('A resubmission for this document is already pending review', 409, 'RESUBMISSION_PENDING');
     }
 
-    // Determine the next version number
     const maxVerRes = await query<{ max_version: number }>(
       `SELECT COALESCE(MAX(version), 1) AS max_version 
        FROM documents 
@@ -260,7 +254,6 @@ export class DocumentService {
     const title = input.title && input.title.trim() ? input.title.trim() : currentDoc.title;
     const description = input.description !== undefined ? (input.description ? input.description.trim() : null) : currentDoc.description;
 
-    // Insert the new document version
     const insertResult = await query<DocumentRecord>(
       `INSERT INTO documents (
         title,
@@ -290,7 +283,6 @@ export class DocumentService {
 
     const newDoc = insertResult.rows[0];
 
-    // Append to revision thread
     try {
       let threadRes = await query<{ id: string }>(
         'SELECT id FROM revision_threads WHERE root_document_id = $1',
