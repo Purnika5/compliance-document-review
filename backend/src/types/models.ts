@@ -29,6 +29,8 @@ export interface DocumentRecord {
   file_size: number;
   mime_type: string;
   status: DocumentStatus;
+  version: number;
+  original_document_id: string | null;
   advisor_id: string;
   created_at: Date;
   updated_at: Date;
@@ -38,3 +40,24 @@ export interface DocumentWithAdvisor extends DocumentRecord {
   advisor_name: string;
   advisor_email: string;
 }
+
+export interface RevisionThread {
+  id: string;
+  root_document_id: string;
+  created_at: Date;
+}
+
+export type RevisionEntryType = 'submission' | 'comment' | 'decision';
+
+export interface RevisionThreadEntry {
+  id: string;
+  thread_id: string;
+  document_id: string;
+  author_id: string;
+  author_name?: string;
+  author_role?: UserRole;
+  entry_type: RevisionEntryType;
+  message: string | null;
+  created_at: Date;
+}
+
