@@ -28,14 +28,54 @@ export class DocumentController {
 
   public static updateStatus = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, comment } = req.body;
 
     const updatedDoc = await DocumentService.updateDocumentStatus(
       id,
-      status as DocumentStatus
+      status as DocumentStatus,
+      comment,
+      req.user!.id
     );
 
     sendSuccess(res, updatedDoc, 200, `Document status updated to '${status}'`);
+  });
+
+  public static getQueue = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const { status } = req.query;
+    const queue = await DocumentService.getQueue({ status: status as string });
+    sendSuccess(res, queue, 200, 'Officer review queue retrieved successfully');
+  });
+
+  public static resubmit = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.file) {
+      throw new AppError('A revised document file is required (PDF, DOCX, XLSX, TXT)', 400, 'FILE_REQUIRED');
+    }
+
+    if (req.file.size === 0) {
+      throw new AppError('The uploaded file cannot be empty', 400, 'FILE_EMPTY');
+    }
+
+    const { id } = req.params;
+    const { title, description, notes } = req.body;
+
+    const document = await DocumentService.resubmitDocument(
+      id,
+      {
+        file: req.file,
+        title: title ? title.trim() : undefined,
+        description: description ? description.trim() : undefined,
+        notes: notes ? notes.trim() : undefined
+      },
+      req.user!
+    );
+
+    sendSuccess(res, document, 201, 'Document resubmitted successfully as a new version');
+  });
+
+  public static getVersions = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const { id } = req.params;
+    const lineage = await DocumentService.getDocumentVersions(id, req.user!);
+    sendSuccess(res, lineage, 200, 'Document version history retrieved successfully');
   });
 
   public static list = asyncHandler(async (req: Request, res: Response): Promise<void> => {
@@ -49,3 +89,4 @@ export class DocumentController {
     sendSuccess(res, document, 200, 'Document retrieved successfully');
   });
 }
+
