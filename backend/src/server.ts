@@ -5,7 +5,12 @@ import { runMigrations } from './db/migrate';
 
 const startServer = async () => {
   try {
-    await runMigrations();
+    try {
+      await runMigrations();
+      console.log('[Server] Database migrations applied successfully.');
+    } catch (migErr) {
+      console.error('[Server] Migration warning:', migErr instanceof Error ? migErr.message : migErr);
+    }
 
     const isDbConnected = await checkDatabaseConnection();
     if (!isDbConnected) {

@@ -16,6 +16,7 @@ export default function HomePage() {
 
   useEffect(() => {
     const session = authStore.getSession();
+
     if (!session) {
       router.replace("/login");
     } else if (session.role === "Advisor") {

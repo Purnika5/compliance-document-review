@@ -1,4 +1,4 @@
-import type { Role } from "@/lib/validation/auth";
+import type { RoleType } from "@/entities/enums/auth.enum";
 
 /**
  * DOCU: Describes the standardized authentication response envelope from the backend.
@@ -21,7 +21,7 @@ export interface AuthEnvelope {
       /** User's email address. */
       email: string;
       /** User role used for authorization. */
-      role: Role;
+      role: RoleType;
       /** User creation timestamp. */
       created_at: string;
       /** Timestamp of the most recent user update. */
@@ -49,7 +49,7 @@ export interface AuthApiResponse {
     /** User's email address. */
     email: string;
     /** User role used by frontend guards. */
-    role: Role;
+    role: RoleType;
   };
   /** Optional message returned by the backend. */
   message?: string;

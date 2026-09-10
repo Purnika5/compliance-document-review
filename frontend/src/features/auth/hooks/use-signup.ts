@@ -2,7 +2,7 @@
 
 /**
  * DOCU: Provides the signup mutation and session update workflow.
- * Last Updated Date: September 3, 2026
+ * Last Updated Date: September 7, 2026
  * @returns Signup state and the signup action.
  * @author Keith
  */
@@ -11,9 +11,10 @@ import { signupAction } from "@/lib/actions/auth-actions";
 import type { SignupInput } from "@/lib/validation/auth";
 import type { UserSession } from "@/lib/auth/auth-store";
 
+
 /**
  * DOCU: Provides signup execution state for the registration form.
- * Last Updated Date: September 3, 2026
+ * Last Updated Date: September 7, 2026
  * @returns Signup state, error state, and execution function.
  * @author Keith
  */
@@ -23,7 +24,7 @@ export function useSignup() {
 
   /**
    * DOCU: Executes signup validation and updates the authenticated session.
-   * Last Updated Date: September 3, 2026
+   * Last Updated Date: September 7, 2026
    * @param data - Signup form values.
    * @returns The authenticated user session, or null on failure.
    * @author Keith

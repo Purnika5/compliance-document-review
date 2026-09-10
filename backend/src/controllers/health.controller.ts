@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
 import { checkDatabaseConnection } from '../db/pool';
 import { sendSuccess, sendError } from '../utils/response';
+import { asyncHandler } from '../utils/asyncHandler';
 
 export class HealthController {
-  public static async check(req: Request, res: Response): Promise<void> {
+  public static check = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const isDbConnected = await checkDatabaseConnection();
 
     const healthInfo = {
@@ -20,5 +21,5 @@ export class HealthController {
     } else {
       sendError(res, 503, 'Database connection is unhealthy', 'SERVICE_UNAVAILABLE', healthInfo);
     }
-  }
+  });
 }

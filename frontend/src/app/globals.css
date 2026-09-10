@@ -1,6 +1,6 @@
 /**
- * DOCU: Defines the shared Tailwind entry point and application design tokens.
- * Last Updated Date: September 3, 2026
+ * DOCU: Defines the Tailwind entry point, shadcn-inspired dark design tokens, and Springer Capital brand palette.
+ * Last Updated Date: September 8, 2026
  * @author Keith
  */
 @import "tailwindcss";
@@ -26,117 +26,466 @@
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
 
-  /* Reference palette: electric blue, cyan, and magenta with semantic states */
-  --color-status-approved-bg: hsl(174 70% 93%);
-  --color-status-approved-text: hsl(183 72% 25%);
-  --color-status-approved-border: hsl(174 52% 78%);
+  /* Springer Capital Brand Tokens */
+  --color-springer-forest: hsl(125 40% 42%);
+  --color-springer-emerald: hsl(142 65% 42%);
+  --color-springer-chartreuse: hsl(84 65% 50%);
+  --color-springer-lime: hsl(85 70% 55%);
 
-  --color-status-pending-bg: hsl(45 90% 96%);
-  --color-status-pending-text: hsl(35 90% 28%);
-  --color-status-pending-border: hsl(40 60% 86%);
+  /* Status semantic dark palette */
+  --color-status-approved-bg: hsl(150 50% 10%);
+  --color-status-approved-text: hsl(142 70% 65%);
+  --color-status-approved-border: hsl(142 50% 25%);
 
-  --color-status-revision-bg: hsl(326 85% 95%);
-  --color-status-revision-text: hsl(326 65% 36%);
-  --color-status-revision-border: hsl(326 55% 84%);
+  --color-status-pending-bg: hsl(42 60% 11%);
+  --color-status-pending-text: hsl(42 90% 68%);
+  --color-status-pending-border: hsl(42 55% 26%);
 
-  --color-status-rejected-bg: hsl(0 50% 97%);
-  --color-status-rejected-text: hsl(0 65% 38%);
-  --color-status-rejected-border: hsl(0 40% 88%);
+  --color-status-revision-bg: hsl(28 65% 12%);
+  --color-status-revision-text: hsl(28 90% 68%);
+  --color-status-revision-border: hsl(28 60% 28%);
+
+  --color-status-rejected-bg: hsl(0 60% 12%);
+  --color-status-rejected-text: hsl(0 85% 72%);
+  --color-status-rejected-border: hsl(0 50% 28%);
 
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 2px);
+
+  /* Animation durations */
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
 }
 
 :root {
-  /* Glass bento palette: luminous blue surface with cyan and pink accents */
-  --background: 222 70% 94%;      /* soft blue-gray */
-  --foreground: 222.2 30% 20%;     /* softened navy text */
-  
-  --card: 210 20% 94%;
-  --card-foreground: 222.2 47% 11.2%;
-  
-  --popover: 210 20% 94%;
-  --popover-foreground: 222.2 47% 11.2%;
+  /* Default Institutional Fintech Dark Theme (shadcn standard + Springer identity) */
+  --background: 240 10% 4%;
+  /* #090a0f deep obsidian */
+  --foreground: 0 0% 98%;
+  /* #fafafa high contrast text */
 
-  /* Disciplined Forest Green Accent for Primary Actions */
-  --primary: 239 72% 52%;          /* royal indigo brand accent */
+  --card: 240 10% 7%;
+  /* #111218 elevated card surface */
+  --card-foreground: 0 0% 98%;
+
+  --popover: 240 10% 7.5%;
+  /* #13141b dropdown/dialog surface */
+  --popover-foreground: 0 0% 98%;
+
+  /* Springer Forest & Emerald Primary */
+  --primary: 142 63% 39%;
+  /* #24A152 institutional emerald */
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 210 16% 90%;
-  --secondary-foreground: 222.2 47% 15%;
+  --secondary: 240 5% 15%;
+  /* #25262c muted button/pill background */
+  --secondary-foreground: 0 0% 98%;
 
-  --muted: 210 16% 90%;
-  --muted-foreground: 215.4 16.3% 42%;
+  --muted: 240 5% 14%;
+  /* #212228 */
+  --muted-foreground: 240 5% 65%;
+  /* #a1a1aa readable secondary text */
 
-  --accent: 190 80% 88%;
-  --accent-foreground: 239 72% 38%;
+  /* Springer Accent & Ring */
+  --accent: 142 63% 39%;
+  /* #24A152 */
+  --accent-foreground: 0 0% 100%;
 
-  --destructive: 0 65% 42%;
+  --destructive: 0 65% 50%;
   --destructive-foreground: 0 0% 100%;
 
-  --border: 214.3 22% 85%;
-  --input: 214.3 22% 85%;
-  --ring: 190 78% 48%;
+  --border: 240 6% 16%;
+  /* #27272f subtle 1px divider */
+  --input: 240 6% 16%;
+  --ring: 142 63% 39%;
   --radius: 0.5rem;
 }
 
+/* ─── Keyframe Animations ──────────────────────────────────────────────── */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes toastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(100%) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes pulseDot {
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.4;
+    transform: scale(0.75);
+  }
+}
+
+@keyframes pulseRing {
+  0% {
+    box-shadow: 0 0 0 0 hsl(142 65% 42% / 0.4);
+  }
+
+  70% {
+    box-shadow: 0 0 0 6px hsl(142 65% 42% / 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 hsl(142 65% 42% / 0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+
+  100% {
+    background-position: 200% center;
+  }
+}
+
+@keyframes checkPop {
+  0% {
+    transform: scale(0) rotate(-15deg);
+    opacity: 0;
+  }
+
+  60% {
+    transform: scale(1.15) rotate(4deg);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+/* ─── Utility Animation Classes ────────────────────────────────────────── */
+
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.2s ease-out both;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .animate-slide-down {
+    animation: slideDown 0.2s ease-out both;
+  }
+
+  .animate-slide-in-right {
+    animation: slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .animate-toast-in {
+    animation: toastSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .animate-pulse-dot {
+    animation: pulseDot 2s ease-in-out infinite;
+  }
+
+  .animate-pulse-ring {
+    animation: pulseRing 2s ease-in-out infinite;
+  }
+
+  .animate-check-pop {
+    animation: checkPop 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* Stagger helpers */
+  .stagger-1 {
+    animation-delay: 30ms;
+  }
+
+  .stagger-2 {
+    animation-delay: 60ms;
+  }
+
+  .stagger-3 {
+    animation-delay: 90ms;
+  }
+
+  .stagger-4 {
+    animation-delay: 120ms;
+  }
+
+  .stagger-5 {
+    animation-delay: 150ms;
+  }
+
+  /* Shimmer text gradient with Springer Capital emerald/chartreuse */
+  .text-shimmer {
+    background: linear-gradient(90deg,
+        hsl(142 65% 55%),
+        hsl(84 75% 60%),
+        hsl(142 65% 55%));
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: shimmer 3s linear infinite;
+  }
+
+  /* Card hover lift for dark surfaces */
+  .hover-lift {
+    transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+      border-color 0.18s ease,
+      box-shadow 0.18s ease;
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    border-color: hsl(240 6% 24%);
+    box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.55);
+  }
+
+  /* Chip / badge pill */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+}
+
+/* ─── Institutional Component Utilities ─────────────────────────────────── */
+
 @layer components {
+
+  /* Precision shadcn dark surface replacement for legacy neu-* classes */
+  .fintech-surface,
   .neu-surface {
-    border: 1px solid hsl(220 42% 91% / 0.92);
+    border: 1px solid hsl(var(--border));
     background: hsl(var(--card));
-    box-shadow: 8px 8px 18px hsl(228 42% 74% / 0.42), -8px -8px 18px hsl(0 0% 100% / 0.9);
+    box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.45);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }
 
+  .fintech-soft,
   .neu-soft {
-    border: 1px solid hsl(220 42% 91% / 0.92);
+    border: 1px solid hsl(var(--border));
     background: hsl(var(--card));
-    box-shadow: 4px 4px 11px hsl(228 42% 74% / 0.36), -4px -4px 11px hsl(0 0% 100% / 0.86);
+    box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.4);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }
 
+  .fintech-inset,
   .neu-inset {
-    border: 1px solid hsl(220 42% 91% / 0.92);
-    background: hsl(var(--background));
-    box-shadow: inset 3px 3px 7px hsl(228 42% 74% / 0.36), inset -3px -3px 7px hsl(0 0% 100% / 0.86);
+    border: 1px solid hsl(var(--border));
+    background: hsl(240 10% 4.8%);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
   }
 
+  /* Springer Emerald & Chartreuse brand glass headers & accents */
   .glass-accent {
-    border: 1px solid hsl(220 72% 62% / 0.48);
-    background: hsl(239 72% 52% / 0.96);
-    box-shadow: 6px 6px 14px hsl(228 42% 74% / 0.36), inset 1px 1px 0 hsl(0 0% 100% / 0.24);
+    border: 1px solid hsl(142 50% 28%);
+    background: linear-gradient(135deg, hsl(142 55% 26%), hsl(142 65% 18%));
+    box-shadow: 0 4px 14px rgba(22, 101, 52, 0.35);
   }
 
   .glass-pink {
-    border: 1px solid hsl(326 75% 82% / 0.8);
-    background: hsl(326 72% 61% / 0.94);
-    box-shadow: 5px 5px 12px hsl(228 42% 74% / 0.3), inset 1px 1px 0 hsl(0 0% 100% / 0.24);
+    border: 1px solid hsl(28 50% 28%);
+    background: linear-gradient(135deg, hsl(28 55% 24%), hsl(28 65% 16%));
+    box-shadow: 0 4px 14px rgba(154, 52, 18, 0.3);
   }
 
   .detail-highlight {
-    border: 1px solid hsl(190 78% 78% / 0.9);
-    background: hsl(190 64% 97% / 0.86);
-    box-shadow: inset 3px 3px 7px hsl(190 45% 78% / 0.24), 2px 2px 7px hsl(228 42% 74% / 0.18);
+    border: 1px solid hsl(142 40% 22%);
+    background: hsl(142 50% 8% / 0.7);
   }
 
   .detail-highlight-pink {
-    border: 1px solid hsl(326 78% 80% / 0.9);
-    background: hsl(326 85% 97% / 0.78);
-    box-shadow: inset 3px 3px 7px hsl(326 45% 80% / 0.2), 2px 2px 7px hsl(228 42% 74% / 0.16);
+    border: 1px solid hsl(28 40% 24%);
+    background: hsl(28 50% 9% / 0.7);
+  }
+
+  /* Springer brand gradient hairline strip */
+  .card-accent-strip::before {
+    content: "";
+    display: block;
+    height: 2px;
+    background: linear-gradient(90deg, hsl(125 45% 42%), hsl(84 75% 55%), hsl(142 65% 42%));
+    border-radius: 8px 8px 0 0;
+  }
+
+  /* Status left accent strips */
+  .alert-strip-success {
+    border-left: 3px solid hsl(142 65% 48%);
+  }
+
+  .alert-strip-error {
+    border-left: 3px solid hsl(0 68% 54%);
+  }
+
+  .alert-strip-warning {
+    border-left: 3px solid hsl(42 90% 55%);
+  }
+
+  .alert-strip-info {
+    border-left: 3px solid hsl(217 85% 60%);
+  }
+
+  .alert-strip-default {
+    border-left: 3px solid hsl(240 5% 40%);
+  }
+
+  /* Decision button variants (Dark Mode Institutional) */
+  .btn-approve {
+    background: linear-gradient(135deg, hsl(142 65% 36%), hsl(142 65% 26%));
+    color: #ffffff;
+    border: 1px solid hsl(142 60% 40%);
+    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.25);
+    transition: all 0.15s ease;
+  }
+
+  .btn-approve:hover:not(:disabled) {
+    background: linear-gradient(135deg, hsl(142 65% 40%), hsl(142 65% 30%));
+    box-shadow: 0 4px 14px rgba(34, 197, 94, 0.35);
+    transform: translateY(-1px);
+  }
+
+  .btn-reject {
+    background: linear-gradient(135deg, hsl(0 65% 42%), hsl(0 65% 30%));
+    color: #ffffff;
+    border: 1px solid hsl(0 60% 48%);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);
+    transition: all 0.15s ease;
+  }
+
+  .btn-reject:hover:not(:disabled) {
+    background: linear-gradient(135deg, hsl(0 65% 46%), hsl(0 65% 34%));
+    box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);
+    transform: translateY(-1px);
+  }
+
+  .btn-revision {
+    background: linear-gradient(135deg, hsl(32 80% 40%), hsl(28 80% 30%));
+    color: #ffffff;
+    border: 1px solid hsl(32 75% 46%);
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.25);
+    transition: all 0.15s ease;
+  }
+
+  .btn-revision:hover:not(:disabled) {
+    background: linear-gradient(135deg, hsl(32 80% 44%), hsl(28 80% 34%));
+    box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+    transform: translateY(-1px);
   }
 }
+
+/* ─── Base Styles ───────────────────────────────────────────────────────── */
 
 @layer base {
   body {
     background-color: hsl(var(--background));
-    background-image: radial-gradient(circle at 8% 4%, hsl(326 82% 70% / 0.07), transparent 24%), radial-gradient(circle at 92% 8%, hsl(190 82% 62% / 0.09), transparent 26%);
     color: hsl(var(--foreground));
     font-feature-settings: "cv02", "cv03", "cv04", "cv11", "tnum";
     font-variant-numeric: tabular-nums;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
   }
 
-  /* Dense institutional finance tables */
-  table {
+  /* Tabular numbers for financial data */
+  table,
+  .tabular-nums {
     font-variant-numeric: tabular-nums;
   }
+
+  /* Custom dark scrollbars */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: hsl(240 10% 6%);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(240 5% 20%);
+    border-radius: 999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(240 5% 30%);
+  }
+
+  /* Smooth focus ring transitions */
+  *:focus-visible {
+    outline: none;
+    transition: box-shadow 0.15s ease;
+  }
+}
+
+/* Chatbot typing cursor blink animation */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }

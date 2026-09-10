@@ -2,7 +2,7 @@
 
 /**
  * DOCU: Provides document upload submission and result state management.
- * Last Updated Date: September 3, 2026
+ * Last Updated Date: September 7, 2026
  * @returns Upload state and the upload action.
  * @author Keith
  */
@@ -12,7 +12,7 @@ import type { UploadDocumentInput, DocumentItem } from "@/lib/validation/documen
 
 /**
  * DOCU: Manages document upload modal state and submission lifecycle.
- * Last Updated Date: September 3, 2026
+ * Last Updated Date: September 7, 2026
  * @param onSuccess - Optional callback invoked with the uploaded document.
  * @returns Upload state and modal workflow functions.
  * @author Keith

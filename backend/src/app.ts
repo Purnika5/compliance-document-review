@@ -25,6 +25,7 @@ export const createApp = (): Application => {
     });
   }
 
+  app.use('/api', routes);
   app.use('/', routes);
 
   app.use((req: Request, res: Response, next: NextFunction) => {

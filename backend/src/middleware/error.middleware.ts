@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
 import { sendError } from '../utils/response';
 import multer from 'multer';
+import fs from 'fs';
 
 export class AppError extends Error {
   public statusCode: number;
@@ -29,6 +30,21 @@ export const errorHandler = (
   res: Response,
   next: NextFunction
 ): void => {
+  if (req.readable) {
+    req.resume();
+  }
+
+  // Clean up any uploaded file on disk if an error occurred during request processing
+  if (req.file && req.file.path) {
+    try {
+      if (fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+    } catch {
+      // ignore cleanup errors
+    }
+  }
+
   if (process.env.NODE_ENV !== 'test') {
     console.error('[Error Occurred]', {
       path: req.path,
@@ -39,8 +55,26 @@ export const errorHandler = (
     });
   }
 
+  const sendFinalError = (statusCode: number, message: string, code: string, details?: any) => {
+    if (!req.complete && req.readable) {
+      let sent = false;
+      const send = () => {
+        if (sent) return;
+        sent = true;
+        sendError(res, statusCode, message, code, details);
+      };
+      req.on('data', () => {});
+      req.once('end', send);
+      req.once('error', send);
+      req.resume();
+      setTimeout(send, 100);
+      return;
+    }
+    sendError(res, statusCode, message, code, details);
+  };
+
   if (err instanceof AppError) {
-    sendError(res, err.statusCode, err.message, err.code, err.details);
+    sendFinalError(err.statusCode, err.message, err.code, err.details);
     return;
   }
 
@@ -61,6 +95,26 @@ export const errorHandler = (
       return;
     }
     sendError(res, 400, err.message, 'FILE_UPLOAD_ERROR');
+    return;
+  }
+
+  if (err instanceof SyntaxError && 'status' in err && (err as any).status === 400) {
+    sendError(res, 400, 'Malformed JSON payload in request body', 'BAD_REQUEST');
+    return;
+  }
+
+  if (err.type === 'entity.too.large' || err.status === 413) {
+    sendError(res, 413, 'Request payload too large (maximum 10MB allowed)', 'PAYLOAD_TOO_LARGE');
+    return;
+  }
+
+  if (err.code === '23505') {
+    sendError(res, 409, 'A record with these details already exists', 'CONFLICT');
+    return;
+  }
+
+  if (err.code === '22P02') {
+    sendError(res, 400, 'Invalid input syntax for parameter', 'INVALID_SYNTAX');
     return;
   }
 

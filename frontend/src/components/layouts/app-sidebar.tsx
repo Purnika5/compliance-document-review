@@ -1,8 +1,6 @@
-"use client";
-
 /**
- * DOCU: Renders role-aware dashboard navigation.
- * Last Updated Date: September 3, 2026
+ * DOCU: Renders role-aware dashboard navigation adhering to dark mode.
+ * Last Updated Date: September 8, 2026
  * @returns The dashboard sidebar view.
  * @author Keith
  */
@@ -20,6 +18,7 @@ import {
   LogOut,
   CheckSquare,
   ChevronRight,
+  Settings,
 } from "lucide-react";
 
 export interface AppSidebarProps {
@@ -27,7 +26,7 @@ export interface AppSidebarProps {
   onCloseMobile?: () => void;
 }
 
-export function AppSidebar({
+function AppSidebarContent({
   isOpenMobile = false,
   onCloseMobile,
 }: AppSidebarProps) {
@@ -68,7 +67,16 @@ export function AppSidebar({
       label: "My Documents",
       href: "/submissions?tab=all",
       icon: Files,
-      active: pathname === "/submissions" && searchParams.get("tab") !== "dashboard" && searchParams.get("tab") !== "revision",
+      active:
+        pathname === "/submissions" &&
+        searchParams.get("tab") !== "dashboard" &&
+        searchParams.get("tab") !== "revision",
+    },
+    {
+      label: "Account & Preferences",
+      href: "/settings",
+      icon: Settings,
+      active: pathname === "/settings",
     },
   ];
 
@@ -77,23 +85,32 @@ export function AppSidebar({
       label: "Review Queue",
       href: "/queue",
       icon: ShieldCheck,
-      active: pathname === "/queue" && !pathname.includes("tab="),
+      active: pathname === "/queue",
     },
     {
       label: "Assigned Reviews",
-      href: "/queue?tab=assigned",
+      href: "/assigned",
       icon: CheckSquare,
-      active: pathname === "/queue" && typeof window !== "undefined" && window.location.search.includes("assigned"),
+      active: pathname === "/assigned",
     },
     {
       label: "Audit History",
-      href: "/queue?tab=audit",
+      href: "/audit",
       icon: History,
-      active: pathname === "/queue" && typeof window !== "undefined" && window.location.search.includes("audit"),
+      active: pathname === "/audit",
+    },
+    {
+      label: "Account & Preferences",
+      href: "/settings",
+      icon: Settings,
+      active: pathname === "/settings",
     },
   ];
 
   const navItems = role === "Officer" ? officerNavItems : advisorNavItems;
+
+  const isOfficer = role === "Officer";
+  const roleDotColor = isOfficer ? "bg-cyan-400 shadow-[0_0_6px_#22d3ee]" : "bg-emerald-400 shadow-[0_0_6px_#34d399]";
 
   return (
     <>
@@ -101,57 +118,61 @@ export function AppSidebar({
       {isOpenMobile && (
         <div
           onClick={onCloseMobile}
-          className="fixed inset-0 bg-slate-900/50 z-40 lg:hidden backdrop-blur-xs"
+          className="fixed inset-0 bg-black/70 z-40 lg:hidden backdrop-blur-xs"
         />
       )}
 
       {/* Sidebar Container */}
       <aside
         className={cn(
-          "fixed top-0 bottom-0 left-0 z-40 w-64 bg-background border-r border-slate-200 flex flex-col shadow-[8px_0_18px_hsl(215_20%_78%_/_0.35)] transition-transform duration-200 ease-in-out lg:translate-x-0",
+          "fixed top-0 bottom-0 left-0 z-40 w-64 bg-card/90 border-r border-border flex flex-col shadow-2xl shadow-black/50 transition-transform duration-200 ease-in-out lg:translate-x-0 backdrop-blur-md",
           isOpenMobile ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        {/* Brand Header */}
-        <div className="h-14 px-3 border-b border-slate-200 flex items-center justify-between gap-1 bg-background">
-          <Link href="/" className="min-w-0 flex-1 overflow-hidden">
-            <CompanyLogo className="origin-left scale-[0.82] whitespace-nowrap" />
-          </Link>
-          <span className="shrink-0 text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-bold">
-            v2.4
-          </span>
+        {/* Brand Header with Springer Capital gradient strip */}
+        <div className="relative overflow-hidden">
+          <div className="h-[2px] bg-gradient-to-r from-emerald-600 via-[#84c22b] to-emerald-500" />
+          <div className="h-14 px-4 border-b border-border flex items-center justify-between gap-1 bg-card/50">
+            <Link href="/" className="min-w-0 flex-1 overflow-hidden">
+              <CompanyLogo className="origin-left scale-[0.85] whitespace-nowrap" />
+            </Link>
+            <span className="shrink-0 text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-secondary text-muted-foreground border border-border font-semibold">
+              v2.4
+            </span>
+          </div>
         </div>
 
-        {/* Role Indicator & Fast Persona Switcher */}
-        <div className="p-3 border-b border-slate-200 bg-background">
+        {/* Role Indicator */}
+        <div className="p-3 border-b border-border bg-card/30">
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Active Persona
             </span>
             <span
               className={cn(
-                "text-[10px] font-bold px-1.5 py-0.2 rounded border uppercase",
-                role === "Officer"
-                  ? "bg-slate-900 text-white border-slate-900"
-                  : "bg-emerald-50 text-emerald-900 border-emerald-200"
+                "chip border",
+                isOfficer
+                  ? "bg-secondary text-cyan-300 border-cyan-800/40"
+                  : "bg-emerald-950/60 text-emerald-300 border-emerald-800/50"
               )}
             >
+              <span className={cn("h-1.5 w-1.5 rounded-full", roleDotColor)} />
               {role}
             </span>
           </div>
 
-          <div className="neu-inset flex items-center justify-between rounded-lg px-3 py-2">
+          <div className="flex items-center justify-between rounded-lg px-3 py-2 bg-secondary/50 border border-border/60">
             <div className="flex items-center gap-2">
-              <span className={cn("h-2 w-2 rounded-full", role === "Officer" ? "bg-cyan-500" : "bg-pink-500")} />
-              <span className="text-xs font-bold text-slate-800">{role} workspace</span>
+              <span className={cn("h-2 w-2 rounded-full", roleDotColor)} />
+              <span className="text-xs font-semibold text-foreground">{role} workspace</span>
             </div>
-            <span className="text-[10px] font-medium text-slate-500">Active</span>
+            <span className="text-[10px] font-medium text-emerald-400">● Active</span>
           </div>
         </div>
 
         {/* Navigation Links */}
-        <div className="flex-1 py-3 px-2 overflow-y-auto space-y-1">
-          <p className="px-2 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+        <div className="flex-1 py-3 px-2 overflow-y-auto space-y-0.5">
+          <p className="px-2 pb-2 pt-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
             {role === "Officer" ? "Compliance Evaluation" : "Advisor Workspace"}
           </p>
 
@@ -166,13 +187,13 @@ export function AppSidebar({
                     if (onCloseMobile) onCloseMobile();
                     item.action?.();
                   }}
-                  className="w-full flex items-center justify-between px-2.5 py-2 rounded-md text-xs font-semibold text-white bg-primary hover:bg-primary/90 transition-colors cursor-pointer text-left shadow-[3px_3px_7px_hsl(215_20%_78%_/_0.7)]"
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium text-muted-foreground bg-transparent hover:bg-[#062a20] hover:text-[#54d0a2] transition-colors cursor-pointer text-left group"
                 >
                   <div className="flex items-center gap-2.5">
-                    <Icon className="h-4 w-4 shrink-0" />
+                    <Icon className="h-4 w-4 shrink-0 transition-colors text-muted-foreground group-hover:text-[#54d0a2]" />
                     <span>{item.label}</span>
                   </div>
-                  <ChevronRight className="h-3 w-3 opacity-70" />
+                  <ChevronRight className="h-3.5 w-3.5 opacity-70 text-[#54d0a2] group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
                 </button>
               );
             }
@@ -183,38 +204,53 @@ export function AppSidebar({
                 href={item.href || "#"}
                 onClick={onCloseMobile}
                 className={cn(
-                  "flex items-center justify-between px-2.5 py-2 rounded text-xs font-semibold transition-colors",
+                  "group flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-colors duration-150",
                   item.active
-                    ? "bg-slate-100 text-slate-900 font-bold border-l-2 border-primary pl-2"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70"
+                    ? "bg-[#062a20] text-[#54d0a2] font-semibold shadow-xs"
+                    : "text-muted-foreground hover:bg-[#062a20] hover:text-[#54d0a2]"
                 )}
               >
                 <div className="flex items-center gap-2.5">
-                  <Icon className="h-4 w-4 shrink-0 text-slate-500" />
-                  <span>{item.label}</span>
+                  <Icon
+                    className={cn(
+                      "h-4 w-4 shrink-0 transition-colors",
+                      item.active ? "text-[#54d0a2]" : "text-muted-foreground group-hover:text-[#54d0a2]"
+                    )}
+                  />
+                  <span className="truncate">{item.label}</span>
                 </div>
-                {item.badge && (
-                  <span className="px-1.5 py-0.2 text-[10px] font-mono font-bold rounded bg-amber-100 text-amber-900 border border-amber-200">
-                    {item.badge}
-                  </span>
-                )}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {item.badge && (
+                    <span className="px-1.5 py-0.2 text-[10px] font-mono font-bold rounded bg-amber-950/60 text-amber-300 border border-amber-800/60">
+                      {item.badge}
+                    </span>
+                  )}
+                  <ChevronRight
+                    className={cn(
+                      "h-3.5 w-3.5 transition-all",
+                      item.active
+                        ? "text-[#54d0a2] opacity-100"
+                        : "text-[#54d0a2] opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5"
+                    )}
+                  />
+                </div>
               </Link>
             );
           })}
         </div>
 
         {/* Footer: User session and sign out */}
-        <div className="p-3 border-t border-slate-200 bg-background">
+        <div className="p-3 border-t border-border bg-card/60">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
-              <div className="h-7 w-7 rounded bg-slate-900 text-white font-bold text-xs flex items-center justify-center shrink-0">
+              <div className="h-7 w-7 rounded-lg text-primary-foreground font-bold text-xs flex items-center justify-center shrink-0 bg-primary shadow-xs">
                 {session?.name ? session.name.charAt(0) : "U"}
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-bold text-slate-900 truncate">
+                <p className="text-xs font-semibold text-foreground truncate">
                   {session?.name || "User account"}
                 </p>
-                <p className="text-[10px] text-slate-500 truncate">
+                <p className="text-[10px] text-muted-foreground truncate">
                   {session?.email || "Not signed in"}
                 </p>
               </div>
@@ -223,14 +259,22 @@ export function AppSidebar({
             <button
               onClick={handleLogout}
               title="Sign Out"
-              className="p-1.5 rounded hover:bg-slate-200/70 text-slate-500 hover:text-red-700 transition-colors cursor-pointer shrink-0"
+              className="p-1.5 rounded-md hover:bg-rose-950/40 text-muted-foreground hover:text-rose-400 transition-all cursor-pointer shrink-0 group"
               aria-label="Sign Out"
             >
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-4 w-4 transition-transform group-hover:scale-110" />
             </button>
           </div>
         </div>
       </aside>
     </>
+  );
+}
+
+export function AppSidebar(props: AppSidebarProps) {
+  return (
+    <React.Suspense fallback={<aside className="hidden lg:flex w-64 flex-col border-r border-border bg-card fixed inset-y-0 left-0 z-30" />}>
+      <AppSidebarContent {...props} />
+    </React.Suspense>
   );
 }

@@ -33,6 +33,7 @@ export const sendError = (
 ): Response => {
   return res.status(statusCode).json({
     success: false,
+    message,
     error: {
       code,
       message,

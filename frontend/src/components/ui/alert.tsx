@@ -1,6 +1,6 @@
 /**
- * DOCU: Provides accessible alert messaging with semantic variants.
- * Last Updated Date: September 3, 2026
+ * DOCU: Provides accessible alert messaging with semantic dark variants.
+ * Last Updated Date: September 8, 2026
  * @returns Alert primitives for status and feedback messages.
  * @author Keith
  */
@@ -10,21 +10,22 @@ import { AlertCircle, AlertTriangle, CheckCircle2, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const alertVariants = cva(
-  "relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-slate-950 shadow-xs text-sm",
+  "relative w-full rounded-lg border p-3.5 sm:p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-3.5 [&>svg]:top-3.5 text-sm overflow-hidden animate-fade-in shadow-xs",
   {
     variants: {
       variant: {
-        default: "bg-white text-slate-950 border-slate-200 [&>svg]:text-slate-950",
+        default:
+          "border-border bg-card text-foreground [&>svg]:text-muted-foreground border-l-3 border-l-muted-foreground/60",
         destructive:
-          "border-red-200 bg-red-50 text-red-900 [&>svg]:text-red-600 dark:border-red-900/50 dark:bg-red-950/50 dark:text-red-200",
+          "border-rose-900/50 bg-rose-950/30 text-rose-200 [&>svg]:text-rose-400 border-l-3 border-l-rose-500",
         error:
-          "border-red-200 bg-red-50 text-red-900 [&>svg]:text-red-600",
+          "border-rose-900/50 bg-rose-950/30 text-rose-200 [&>svg]:text-rose-400 border-l-3 border-l-rose-500",
         warning:
-          "border-amber-200 bg-amber-50 text-amber-900 [&>svg]:text-amber-600",
+          "border-amber-900/50 bg-amber-950/30 text-amber-200 [&>svg]:text-amber-400 border-l-3 border-l-amber-500",
         success:
-          "border-emerald-200 bg-emerald-50 text-emerald-900 [&>svg]:text-emerald-600",
+          "border-emerald-900/50 bg-emerald-950/30 text-emerald-200 [&>svg]:text-emerald-400 border-l-3 border-l-emerald-500",
         info:
-          "border-blue-200 bg-blue-50 text-blue-900 [&>svg]:text-blue-600",
+          "border-sky-900/50 bg-sky-950/30 text-sky-200 [&>svg]:text-sky-400 border-l-3 border-l-sky-500",
       },
     },
     defaultVariants: {
@@ -34,12 +35,12 @@ const alertVariants = cva(
 );
 
 const alertIcons = {
-  default: AlertCircle,
+  default:     AlertCircle,
   destructive: AlertCircle,
-  error: AlertCircle,
-  warning: AlertTriangle,
-  success: CheckCircle2,
-  info: Info,
+  error:       AlertCircle,
+  warning:     AlertTriangle,
+  success:     CheckCircle2,
+  info:        Info,
 };
 
 export interface IAlertProps
@@ -75,7 +76,7 @@ const AlertTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <h5
     ref={ref}
-    className={cn("mb-1 font-semibold leading-none tracking-tight text-slate-900", className)}
+    className={cn("mb-1 font-semibold leading-none tracking-tight text-foreground", className)}
     {...props}
   />
 ));

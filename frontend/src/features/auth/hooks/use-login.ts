@@ -2,7 +2,7 @@
 
 /**
  * DOCU: Provides the login mutation and session update workflow.
- * Last Updated Date: September 3, 2026
+ * Last Updated Date: September 7, 2026
  * @returns Login state and the login action.
  * @author Keith
  */
@@ -11,9 +11,10 @@ import { useRouter } from "next/navigation";
 import { loginAction } from "@/lib/actions/auth-actions";
 import type { LoginInput } from "@/lib/validation/auth";
 
+
 /**
  * DOCU: Provides login execution state for the authentication form.
- * Last Updated Date: September 3, 2026
+ * Last Updated Date: September 7, 2026
  * @returns Login state, error state, and execution function.
  * @author Keith
  */
@@ -24,7 +25,7 @@ export function useLogin() {
 
   /**
    * DOCU: Executes login validation and updates the authenticated session.
-   * Last Updated Date: September 3, 2026
+   * Last Updated Date: September 7, 2026
    * @param data - Login form values.
    * @returns The authenticated user session, or null on failure.
    * @author Keith
@@ -35,6 +36,7 @@ export function useLogin() {
     try {
       const session = await loginAction(data);
       setIsPending(false);
+
 
       // Redirect based on role in token / session
       if (session.role === "Advisor") {

@@ -6,8 +6,12 @@ import { AppError } from './error.middleware';
 
 export const authenticateToken = (req: Request, res: Response, next: NextFunction): void => {
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+  
+  if (!authHeader || typeof authHeader !== 'string' || !authHeader.startsWith('Bearer ')) {
+    return next(new AppError('Authentication token required', 401, 'UNAUTHORIZED'));
+  }
 
+  const token = authHeader.slice(7).trim();
   if (!token) {
     return next(new AppError('Authentication token required', 401, 'UNAUTHORIZED'));
   }
