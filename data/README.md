@@ -1,40 +1,58 @@
-# Data Engineering — Week 1
+# Data Engineering — Week 2 (The Silver Layer)
 
 ## Deliverables
 
-### 1. Schema Design (`schema.sql`)
-Relational schema covering:
-- `users`, `documents` — core tables
-- `audit_trail` — append-only log of every state change (who/what/when), no PII
-- `revision_threads` + `revision_thread_entries` — links a document's original
-  submission to all its resubmissions/comments so the frontend can render one
-  continuous conversation thread
+### 1. Text Extraction (`text_extraction.py`)
+- `extract_text(file_type, file_bytes)` — single entry point that dispatches
+  to the right parser (PDF/DOCX/XLSX) and returns a normalized
+  `ExtractedDocument` (`file_type`, `raw_text`, `page_or_sheet_count`, `tables`)
+- PDF: `pdfplumber` (chosen for reliable table extraction — see research.md)
+- DOCX: `python-docx`
+- XLSX: `openpyxl`
 
-### 2. Ingestion Logic (`ingestion.py`)
-- `ingest_document()` — validates an uploaded file (type: pdf/docx/xlsx, size ≤ 20MB),
-  saves it to storage, and extracts metadata (size, type, advisor ID, filename)
-- Storage-agnostic: currently saves to local disk (`storage/documents/`), but
-  `save_to_storage()` is the single place to swap in S3/Blob later
-- `to_insert_dict()` converts the result into a dict matching the `documents`
-  table columns for insertion
+### 2. Data Pipeline (`pipeline.py`)
+- `run_pipeline(file_type, file_bytes, masking_service)` — chains extraction
+  into masking, returning a `PipelineResult` ready for storage
+- Masking is injected via a `MaskingService` protocol (interface), with a
+  `PassthroughMaskingService` placeholder standing in until **DevOps's PII
+  Masking Engine is ready** (this is a cross-team dependency per the
+  roadmap — see research.md, section 4)
+
+## ⚠️ Important: Masking Status
+`PassthroughMaskingService` does **not** mask anything — it's a placeholder
+so the pipeline wiring could be built and tested without blocking on DevOps.
+**Do not use this in production or with real document data** until DevOps's
+real masking engine is swapped in via the `masking_service` parameter.
 
 ## How to Run
 ```bash
-python ingestion.py
+pip install pdfplumber python-docx openpyxl
+python text_extraction.py   # runs a self-contained extraction test
+python pipeline.py          # runs extraction + (placeholder) masking end-to-end
 ```
-Runs a quick manual test that ingests a fake PDF and prints the resulting
-metadata + DB-ready dict.
 
-To apply the schema to a Postgres database:
-```bash
-psql -U <user> -d <database> -f schema.sql
+## Dependencies
+```
+pdfplumber
+python-docx
+openpyxl
 ```
 
 ## Notes for the Team
-- `documents.original_document_id` is how a resubmission links back to the
-  original — Backend's "Revision Logic" and Frontend's "Revision Threads" both
-  read off this.
-- No raw file content or PII lives in these tables — everything here is
-  structured metadata, consistent with the DevOps PII Masking boundary.
-- Next up (Week 2): text extraction (PDF/DOCX/XLSX → clean text) and wiring
-  this ingestion flow to the DevOps masking service before storage.
+- Once DevOps's masking engine exists, swap it in at the call site:
+  `run_pipeline(file_type, file_bytes, masking_service=RealMaskingService())`
+  — no changes needed inside `pipeline.py` itself.
+- `tables` is kept structured (not flattened into `raw_text`) so Week 3's
+  Absence Detection can check for specific missing fields more reliably.
+- Next up (Week 3): vector store setup (pgvector/Qdrant) and RAG retrieval,
+  which will consume `PipelineResult.masked_text`.
+
+
+### Scanned PDF OCR fallback
+Multi-page PDFs with fewer than 50 characters extracted by `pdfplumber` are
+treated as likely scanned/image-based documents and routed through Tesseract
+OCR via `pytesseract` and `pdf2image`.
+
+Python dependencies are listed in `requirements.txt`. Tesseract itself is an
+external system dependency and must be installed/configured on the machine
+running the pipeline.

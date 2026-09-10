@@ -1,74 +1,78 @@
 # Data Engineering — Research & Decisions Log
 
-## Week 1: Schema Design + Ingestion
+## Week 2: Text Extraction + Masking Pipeline
 
-### 1. Database Choice: PostgreSQL
+### 1. PDF Library Choice: pdfplumber vs PyPDF2
 
 **Options considered:**
-- PostgreSQL — relational, strong support for constraints/foreign keys, native
-  support for vector search via `pgvector` extension (needed later in Week 3)
-- MongoDB — flexible schema, but weaker for enforcing relational integrity
-  between documents, users, and audit trail entries
+- PyPDF2 — simple, widely used, but struggles with complex layouts and does
+  not reliably extract tables
+- pdfplumber — actively maintained, preserves table structure, exposes
+  `extract_tables()` per page
 
-**Decision:** PostgreSQL — chosen because the app's data is inherently
-relational (documents belong to users, audit entries belong to documents,
-revision threads link multiple document versions), and because we'll need
-`pgvector` in Week 3 for the RAG retrieval work, so standardizing on Postgres
-now avoids a migration later.
+**Decision:** pdfplumber. Compliance documents (disclosure forms) frequently
+contain tables (e.g. amounts, dates, checkboxes laid out in a grid). pdfplumber's
+table extraction is meaningfully more reliable than PyPDF2's plain-text-only
+approach, and the roadmap's "Absence Detection" (Week 3) depends on being able
+to tell whether a required field/table was actually present in the document.
 
 ---
 
-### 2. Audit Trail Design: Append-Only Log vs. Versioned Rows
+### 2. DOCX / XLSX Libraries
 
 **Options considered:**
-- Append-only `audit_trail` table (one row per change event)
-- Storing full document snapshots on every change
+- `python-docx` for DOCX — the standard library for this, no real alternative
+  with comparable API maturity
+- `openpyxl` for XLSX — same situation; handles both reading and (if ever
+  needed) writing xlsx files
 
-**Decision:** Append-only log. Each row records `actor_id`, `action`,
-`old_value`, `new_value`, and `occurred_at`. This is far cheaper to store than
-full snapshots, and satisfies the roadmap's requirement that history be
-reconstructible exactly as it happened, since rows are never updated or
-deleted.
+**Decision:** Used both as-is; no meaningful alternative was evaluated since
+these are the de facto standard libraries for their formats in Python.
 
 ---
 
-### 3. Revision Threads: Self-Referencing Column vs. Separate Thread Table
+### 3. Normalizing Three File Types Into One Return Shape
 
 **Options considered:**
-- Just a `original_document_id` self-reference on `documents`, with no
-  separate thread table
-- A dedicated `revision_threads` + `revision_thread_entries` pair of tables
+- Return a different object per file type (PDF result, DOCX result, XLSX result)
+- Return one common `ExtractedDocument` dataclass regardless of source format
 
-**Decision:** Both. `documents.original_document_id` gives a fast, simple way
-to trace a resubmission back to its root. The separate `revision_threads` /
-`revision_thread_entries` tables exist because the roadmap also requires
-displaying *comments* and *decisions* inline in the same thread (not just
-document versions) — a single self-reference on `documents` can't hold
-comment text or decision notes, so a dedicated entries table was necessary.
+**Decision:** One common `ExtractedDocument` shape (`file_type`, `raw_text`,
+`page_or_sheet_count`, `tables`). Downstream consumers (masking, vector store
+in Week 3) shouldn't need to know or care whether a document originally came
+from a PDF, DOCX, or XLSX — they just need clean text and, where available,
+structured tables.
 
 ---
 
-### 4. File Storage: Local Disk vs. Cloud Object Storage
+### 4. Masking Integration: Blocking vs. Interface Now
 
 **Options considered:**
-- Save directly to S3/Azure Blob from day one
-- Save to local disk now, abstract the storage call behind one function
+- Wait for DevOps's PII Masking Engine to be built before writing any
+  pipeline code that touches masking
+- Define the masking interface now (`MaskingService` protocol) with a
+  no-op `PassthroughMaskingService` placeholder, so extraction + wiring can
+  be built, tested, and reviewed today
 
-**Decision:** Local disk for now, via a single `save_to_storage()` function.
-Since the team doesn't have cloud credentials configured yet, hardcoding a
-cloud SDK call now would block local development for everyone. Isolating
-storage behind one function means swapping in S3/Blob later is a one-line
-change, not a rewrite.
+**Decision:** Build the interface now. Per the roadmap's cross-team
+dependency table, DevOps's masking engine blocks this task — but there's no
+reason the extraction logic and pipeline wiring need to wait. `run_pipeline()`
+takes a `masking_service` as a parameter (dependency injection), so swapping
+`PassthroughMaskingService` for DevOps's real implementation later is a
+one-line change at the call site, not a rewrite. The `PassthroughMaskingService`
+docstring explicitly flags that it must not be used with real document data
+in production, to avoid this being mistaken for "masking is done."
 
 ---
 
-### 5. File Validation Rules
+### 5. Why Tables Are Returned Separately From `raw_text`
 
 **Options considered:**
-- No size cap (rely on infra limits)
-- Hard size cap in application code
+- Flatten tables into `raw_text` only
+- Keep `tables` as a separate structured field alongside `raw_text`
 
-**Decision:** 20MB cap enforced in `validate_file()`. Compliance documents
-(PDF/DOCX/XLSX) are rarely larger than a few MB; capping early prevents
-oversized uploads from reaching storage or the (future) masking/extraction
-pipeline, where they'd be more expensive to reject.
+**Decision:** Keep both. `raw_text` is what the AI/RAG pipeline (Week 3) will
+mostly work with for semantic search. `tables` is kept structured (list of
+rows) separately because "Absence Detection" and precedent analysis may need
+to check for the *presence* of specific tabular fields, which is harder to
+detect reliably once flattened into plain prose text.
