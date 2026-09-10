@@ -7,13 +7,16 @@ import {
   submitDocumentSchema,
   updateStatusSchema,
   documentQuerySchema,
-  documentIdParamSchema
+  documentIdParamSchema,
+  queueQuerySchema,
+  resubmitDocumentSchema
 } from '../validations/document.validation';
 
 const router = Router();
 
 router.use(authenticateToken);
 
+// Submit document
 router.post(
   '/',
   requireAdvisor,
@@ -22,6 +25,24 @@ router.post(
   DocumentController.submit
 );
 
+// Officer review queue
+router.get(
+  '/queue',
+  requireOfficer,
+  validate({ query: queueQuerySchema }),
+  DocumentController.getQueue
+);
+
+// Resubmit revised document
+router.post(
+  '/:id/resubmit',
+  requireAdvisor,
+  uploadDocumentFile.single('file'),
+  validate({ params: documentIdParamSchema, body: resubmitDocumentSchema }),
+  DocumentController.resubmit
+);
+
+// Update review status
 router.patch(
   '/:id/status',
   requireOfficer,
@@ -29,12 +50,21 @@ router.patch(
   DocumentController.updateStatus
 );
 
+// Get document version history
+router.get(
+  '/:id/versions',
+  validate({ params: documentIdParamSchema }),
+  DocumentController.getVersions
+);
+
+// List documents
 router.get(
   '/',
   validate({ query: documentQuerySchema }),
   DocumentController.list
 );
 
+// Get single document detail
 router.get(
   '/:id',
   validate({ params: documentIdParamSchema }),
@@ -42,3 +72,4 @@ router.get(
 );
 
 export default router;
+
