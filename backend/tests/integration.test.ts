@@ -477,5 +477,44 @@ describe('Week 1 Backend API Integration Tests (Sahil Sonar)', () => {
       expect(res.body.error.code).toBe('BAD_REQUEST');
     });
   });
+
+  // -------------------------------------------------------------
+  // PII Masking Gateway Tests (DevOps / Week 2 Priority)
+  // -------------------------------------------------------------
+  describe('PII Masking Gateway (POST /pii/mask and POST /api/pii/mask)', () => {
+    it('should correctly strip names, emails and SSNs and return structured contract', async () => {
+      const res = await request(app)
+        .post('/pii/mask')
+        .send({
+          document_id: 'doc-001',
+          version: 1,
+          text: 'Dear John Doe, please contact john.doe@example.com regarding your investment account.'
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.document_id).toBe('doc-001');
+      expect(res.body.data.version).toBe(1);
+      expect(res.body.data.masked_text).toBe(
+        'Dear [NAME_1], please contact [EMAIL_1] regarding your investment account.'
+      );
+    });
+
+    it('should be idempotent and preserve already masked placeholders', async () => {
+      const res = await request(app)
+        .post('/api/pii/mask')
+        .send({
+          document_id: 'doc-002',
+          version: 2,
+          masked_text: 'Dear [NAME_1], please contact [EMAIL_1] regarding your investment account.'
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.masked_text).toBe(
+        'Dear [NAME_1], please contact [EMAIL_1] regarding your investment account.'
+      );
+    });
+  });
 });
+
 

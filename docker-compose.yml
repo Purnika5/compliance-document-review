@@ -73,11 +73,32 @@ services:
         condition: service_healthy
       mock-ai-api:
         condition: service_started
+      pii-masker:
+        condition: service_started
     networks:
       - compliance-network
 
   # ----------------------------------------------------------------------------
-  # 4. Frontend Web App (Next.js 16)
+  # 4. PII Masker Service (Deterministic Anonymization Gateway)
+  # ----------------------------------------------------------------------------
+  pii-masker:
+    build:
+      context: ./devops/pii-masker
+      dockerfile: Dockerfile
+    container_name: compliance-pii-masker
+    restart: unless-stopped
+    ports:
+      - "${PII_MASKER_PORT:-8002}:8002"
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8002/health')\" || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    networks:
+      - compliance-network
+
+  # ----------------------------------------------------------------------------
+  # 5. Frontend Web App (Next.js 16)
   # ----------------------------------------------------------------------------
   frontend:
     build:
@@ -99,7 +120,7 @@ services:
       - compliance-network
 
   # ----------------------------------------------------------------------------
-  # 5. Gemini AI Service (FastAPI)
+  # 6. Gemini AI Service (FastAPI)
   # ----------------------------------------------------------------------------
   ai-service:
     build:
