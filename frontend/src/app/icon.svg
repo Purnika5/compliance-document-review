@@ -1,8 +1,26 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#ffffff"/>
-  <circle cx="32" cy="17" r="13" fill="#4f8f45"/>
-  <circle cx="17" cy="32" r="13" fill="#76a92d"/>
-  <circle cx="47" cy="32" r="13" fill="#76a92d"/>
-  <circle cx="32" cy="47" r="13" fill="#4f8f45"/>
-  <circle cx="32" cy="32" r="9" fill="#ffffff"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <rect width="200" height="200" rx="44" fill="#090a0f"/>
+  <!-- Top Petal - Medium Leaf Green -->
+  <path
+    d="M 100,94 C 84,78 72,64 72,48 C 72,32.5 84.5,20 100,20 C 115.5,20 128,32.5 128,48 C 128,64 116,78 100,94 Z"
+    fill="#438538"
+  />
+  <!-- Right Petal - Deep Dark Forest Green -->
+  <path
+    d="M 100,94 C 84,78 72,64 72,48 C 72,32.5 84.5,20 100,20 C 115.5,20 128,32.5 128,48 C 128,64 116,78 100,94 Z"
+    fill="#266916"
+    transform="rotate(90 100 100)"
+  />
+  <!-- Bottom Petal - Olive Moss Green -->
+  <path
+    d="M 100,94 C 84,78 72,64 72,48 C 72,32.5 84.5,20 100,20 C 115.5,20 128,32.5 128,48 C 128,64 116,78 100,94 Z"
+    fill="#5E9334"
+    transform="rotate(180 100 100)"
+  />
+  <!-- Left Petal - Bright Lime / Chartreuse -->
+  <path
+    d="M 100,94 C 84,78 72,64 72,48 C 72,32.5 84.5,20 100,20 C 115.5,20 128,32.5 128,48 C 128,64 116,78 100,94 Z"
+    fill="#A2D120"
+    transform="rotate(270 100 100)"
+  />
 </svg>

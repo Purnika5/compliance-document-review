@@ -1,6 +1,6 @@
 /**
  * DOCU: Provides branded Springer Capital and AI logo components optimized for institutional dark mode.
- * Last Updated Date: September 8, 2026
+ * Last Updated Date: September 10, 2026
  * @returns Reusable branded logo views.
  * @author Keith
  */
@@ -8,7 +8,12 @@ import React from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * AI Logo: Springer Capital's four-lobed green brand mark with emerald and chartreuse tones.
+ * AI Logo: Springer Capital's four-lobed brand mark with distinct green gradients
+ * matching the official 4-shade green brand palette:
+ * - Top: Medium Leaf Green (#438538)
+ * - Right: Deep Dark Forest Green (#266916)
+ * - Bottom: Olive Moss Green (#5E9334)
+ * - Left: Bright Chartreuse / Lime Green (#A2D120)
  */
 export function AILogo({ className = "h-8 w-8" }: { className?: string }) {
   return (
@@ -18,11 +23,29 @@ export function AILogo({ className = "h-8 w-8" }: { className?: string }) {
       xmlns="http://www.w3.org/2000/svg"
       className={cn("shrink-0 drop-shadow-[0_2px_8px_rgba(79,143,69,0.25)]", className)}
     >
-      <circle cx="100" cy="53" r="31" fill="#4f8f45" />
-      <circle cx="53" cy="100" r="31" fill="#76a92d" />
-      <circle cx="147" cy="100" r="31" fill="#76a92d" />
-      <circle cx="100" cy="147" r="31" fill="#4f8f45" />
-      <circle cx="100" cy="100" r="22" fill="#ffffff" />
+      {/* Top Petal - Medium Leaf Green */}
+      <path
+        d="M 100,94 C 84,78 72,64 72,48 C 72,32.5 84.5,20 100,20 C 115.5,20 128,32.5 128,48 C 128,64 116,78 100,94 Z"
+        fill="#438538"
+      />
+      {/* Right Petal - Deep Dark Forest Green */}
+      <path
+        d="M 100,94 C 84,78 72,64 72,48 C 72,32.5 84.5,20 100,20 C 115.5,20 128,32.5 128,48 C 128,64 116,78 100,94 Z"
+        fill="#266916"
+        transform="rotate(90 100 100)"
+      />
+      {/* Bottom Petal - Olive Moss Green */}
+      <path
+        d="M 100,94 C 84,78 72,64 72,48 C 72,32.5 84.5,20 100,20 C 115.5,20 128,32.5 128,48 C 128,64 116,78 100,94 Z"
+        fill="#5E9334"
+        transform="rotate(180 100 100)"
+      />
+      {/* Left Petal - Bright Lime / Chartreuse */}
+      <path
+        d="M 100,94 C 84,78 72,64 72,48 C 72,32.5 84.5,20 100,20 C 115.5,20 128,32.5 128,48 C 128,64 116,78 100,94 Z"
+        fill="#A2D120"
+        transform="rotate(270 100 100)"
+      />
     </svg>
   );
 }
