@@ -114,6 +114,25 @@ services:
     networks:
       - compliance-network
 
+  # ----------------------------------------------------------------------------
+  # 6. PII Masking Engine (FastAPI)
+  # ----------------------------------------------------------------------------
+  pii-masker:
+    build:
+      context: ./devops/pii-masker
+      dockerfile: Dockerfile
+    container_name: compliance-pii-masker
+    restart: unless-stopped
+    ports:
+      - "${PII_MASKER_PORT:-8002}:8002"
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8002/health')\" || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    networks:
+      - compliance-network
+
 volumes:
   postgres_data:
     driver: local
