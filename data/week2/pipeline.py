@@ -19,7 +19,7 @@ masking implementation is a stand-in.
 from dataclasses import dataclass
 from typing import Protocol
 
-from text_extraction import extract_text, ExtractedDocument, TextExtractionError
+from .text_extraction import extract_text, ExtractedDocument, TextExtractionError
 
 
 class MaskingService(Protocol):
