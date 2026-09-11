@@ -1,6 +1,8 @@
 import { query } from '../db/pool';
 import { AuthTokenPayload, DocumentRecord, DocumentStatus, DocumentWithAdvisor, RevisionThreadEntry } from '../types/models';
 import { AppError } from '../middleware/error.middleware';
+import { AuditService } from './audit.service';
+import { NotificationService } from './notification.service';
 
 export interface CreateDocumentInput {
   title: string;
@@ -87,6 +89,20 @@ export class DocumentService {
       console.error('[DocumentService] Failed to record revision thread for new submission:', err);
     }
 
+    // Record Audit Trail for document submission
+    try {
+      await AuditService.createAuditRecord({
+        documentId: newDoc.id,
+        userId: advisorId,
+        action: 'DOCUMENT_SUBMITTED',
+        newStatus: 'Pending',
+        fileSize: file.size,
+        fileType: file.mimetype
+      });
+    } catch (err) {
+      console.error('[DocumentService] Failed to record audit log for submission:', err);
+    }
+
     return newDoc;
   }
 
@@ -104,6 +120,9 @@ export class DocumentService {
     if (existing.rows.length === 0) {
       throw new AppError('Document not found', 404, 'DOCUMENT_NOT_FOUND');
     }
+
+    const previousStatus = existing.rows[0].status;
+    const advisorId = existing.rows[0].advisor_id;
 
     const validStatuses: DocumentStatus[] = ['Pending', 'Approved', 'Needs Revision', 'Rejected'];
     if (!validStatuses.includes(newStatus)) {
@@ -159,6 +178,53 @@ export class DocumentService {
       } catch (err) {
         console.error('[DocumentService] Failed to record decision in revision thread:', err);
       }
+    }
+
+    // Record Audit Trail entries
+    try {
+      const actorId = officerId || advisorId;
+      await AuditService.createAuditRecord({
+        documentId,
+        userId: actorId,
+        action: 'STATUS_UPDATED',
+        previousStatus,
+        newStatus,
+        reason: comment || null
+      });
+
+      if (comment && comment.trim()) {
+        await AuditService.createAuditRecord({
+          documentId,
+          userId: actorId,
+          action: 'REVISION_COMMENT_ADDED',
+          reason: comment.trim()
+        });
+      }
+    } catch (err) {
+      console.error('[DocumentService] Failed to record audit log for status update:', err);
+    }
+
+    // Automated In-App Notification Triggers for Advisor
+    try {
+      await NotificationService.createNotification({
+        userId: advisorId,
+        documentId,
+        title: `Document Status Updated: ${newStatus}`,
+        message: `Your document status has been updated to '${newStatus}'.` + (comment ? ` Remark: ${comment}` : ''),
+        type: 'STATUS_CHANGE'
+      });
+
+      if (comment && comment.trim()) {
+        await NotificationService.createNotification({
+          userId: advisorId,
+          documentId,
+          title: 'New Revision Comment Added',
+          message: `Officer comment: ${comment.trim()}`,
+          type: 'REVISION_COMMENT'
+        });
+      }
+    } catch (err) {
+      console.error('[DocumentService] Failed to send automated notification:', err);
     }
 
     return updatedDoc;
@@ -314,6 +380,31 @@ export class DocumentService {
       }
     } catch (err) {
       console.error('[DocumentService] Failed to record resubmission in revision thread:', err);
+    }
+
+    // Record Audit Trail entries for resubmission
+    try {
+      await AuditService.createAuditRecord({
+        documentId: newDoc.id,
+        userId: user.id,
+        action: 'DOCUMENT_SUBMITTED',
+        previousStatus: 'Needs Revision',
+        newStatus: 'Pending',
+        reason: input.notes || null,
+        fileSize: input.file.size,
+        fileType: input.file.mimetype
+      });
+
+      if (input.notes && input.notes.trim()) {
+        await AuditService.createAuditRecord({
+          documentId: newDoc.id,
+          userId: user.id,
+          action: 'REVISION_COMMENT_ADDED',
+          reason: input.notes.trim()
+        });
+      }
+    } catch (err) {
+      console.error('[DocumentService] Failed to record audit log for resubmission:', err);
     }
 
     return newDoc;
@@ -481,4 +572,3 @@ export class DocumentService {
     return doc;
   }
 }
-

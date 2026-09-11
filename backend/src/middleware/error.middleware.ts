@@ -30,6 +30,10 @@ export const errorHandler = (
   res: Response,
   next: NextFunction
 ): void => {
+  if (!req.complete) {
+    req.resume();
+  }
+
   // Clean up any uploaded file on disk if an error occurred during request processing
   if (req.file && req.file.path) {
     try {

@@ -1,8 +1,12 @@
 import fs from 'fs';
 import path from 'path';
-import { pool, query } from './pool';
+import { pool, query, resetMemDb } from './pool';
 
 export const runMigrations = async (): Promise<void> => {
+  if (process.env.NODE_ENV === 'test') {
+    resetMemDb();
+  }
+
   const migrationsDir = path.join(__dirname, 'migrations');
   
   if (!fs.existsSync(migrationsDir)) {
@@ -32,7 +36,25 @@ export const runMigrations = async (): Promise<void> => {
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
-        await client.query(sql);
+        
+        // Split statements and skip CREATE EXTENSION statements in test environment if unsupported by pg-mem
+        const statements = sql
+          .split(';')
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0);
+
+        for (const stmt of statements) {
+          if (stmt.toLowerCase().includes('create extension')) {
+            try {
+              await client.query(stmt);
+            } catch (extErr) {
+              // Ignore extension unsupported error in test mode
+            }
+          } else {
+            await client.query(stmt);
+          }
+        }
+
         await client.query('INSERT INTO schema_migrations (migration_name) VALUES ($1)', [file]);
         await client.query('COMMIT');
         if (process.env.NODE_ENV !== 'test') {

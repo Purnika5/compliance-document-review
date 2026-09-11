@@ -31,14 +31,41 @@ const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCa
   if (isExtensionValid && isMimeValid) {
     cb(null, true);
   } else {
-    cb(new AppError(`Unsupported file format '${ext || 'unknown'}'. Allowed formats: PDF, DOCX, XLSX, TXT.`, 400, 'UNSUPPORTED_FILE_TYPE'));
+    req.fileValidationError = new AppError(
+      `Unsupported file format '${ext || 'unknown'}'. Allowed formats: PDF, DOCX, XLSX, TXT.`,
+      400,
+      'UNSUPPORTED_FILE_TYPE'
+    );
+    cb(null, false);
   }
 };
 
-export const uploadDocumentFile = multer({
+import { Request, Response, NextFunction } from 'express';
+
+const multerUpload = multer({
   storage,
   fileFilter,
   limits: {
     fileSize: config.uploads.maxFileSizeMB * 1024 * 1024
   }
 });
+
+export const uploadDocumentFile = {
+  single: (fieldName: string) => {
+    return (req: Request, res: Response, next: NextFunction) => {
+      multerUpload.single(fieldName)(req, res, (err: any) => {
+        if (err) {
+          req.on('data', () => {});
+          if (!req.complete) {
+            req.resume();
+          }
+          return next(err);
+        }
+        if ((req as any).fileValidationError) {
+          return next((req as any).fileValidationError);
+        }
+        next();
+      });
+    };
+  }
+};

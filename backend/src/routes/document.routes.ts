@@ -11,16 +11,25 @@ import {
   queueQuerySchema,
   resubmitDocumentSchema
 } from '../validations/document.validation';
+import { AuditController } from '../controllers/audit.controller';
 
 const router = Router();
 
-router.use(authenticateToken);
+// Audit trail history endpoint (strictly read-only)
+router.get(
+  '/:id/audit-trail',
+  authenticateToken,
+  validate({ params: documentIdParamSchema }),
+  AuditController.getAuditTrail
+);
+router.all('/:id/audit-trail', AuditController.methodNotAllowed);
 
 // Submit document
 router.post(
   '/',
-  requireAdvisor,
   uploadDocumentFile.single('file'),
+  authenticateToken,
+  requireAdvisor,
   validate(submitDocumentSchema),
   DocumentController.submit
 );
@@ -28,6 +37,7 @@ router.post(
 // Officer review queue
 router.get(
   '/queue',
+  authenticateToken,
   requireOfficer,
   validate({ query: queueQuerySchema }),
   DocumentController.getQueue
@@ -36,8 +46,9 @@ router.get(
 // Resubmit revised document
 router.post(
   '/:id/resubmit',
-  requireAdvisor,
   uploadDocumentFile.single('file'),
+  authenticateToken,
+  requireAdvisor,
   validate({ params: documentIdParamSchema, body: resubmitDocumentSchema }),
   DocumentController.resubmit
 );
@@ -45,6 +56,7 @@ router.post(
 // Update review status
 router.patch(
   '/:id/status',
+  authenticateToken,
   requireOfficer,
   validate({ params: documentIdParamSchema, body: updateStatusSchema }),
   DocumentController.updateStatus
@@ -53,6 +65,7 @@ router.patch(
 // Get document version history
 router.get(
   '/:id/versions',
+  authenticateToken,
   validate({ params: documentIdParamSchema }),
   DocumentController.getVersions
 );
@@ -60,6 +73,7 @@ router.get(
 // List documents
 router.get(
   '/',
+  authenticateToken,
   validate({ query: documentQuerySchema }),
   DocumentController.list
 );
@@ -67,6 +81,7 @@ router.get(
 // Get single document detail
 router.get(
   '/:id',
+  authenticateToken,
   validate({ params: documentIdParamSchema }),
   DocumentController.getById
 );
