@@ -88,5 +88,11 @@ export class DocumentController {
     const document = await DocumentService.getDocumentById(id, req.user!);
     sendSuccess(res, document, 200, 'Document retrieved successfully');
   });
+
+  public static getAnalysis = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const { id } = req.params;
+    const analysis = await DocumentService.getDocumentAnalysis(id, req.user!);
+    sendSuccess(res, analysis, 200, 'Document analysis retrieved successfully');
+  });
 }
 
