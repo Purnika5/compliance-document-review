@@ -52,7 +52,13 @@ function mapApiDocumentToItem(doc: ApiDocument): DocumentItem {
     advisorEmail: doc.advisor_email,
     submittedAt: doc.created_at,
     status: doc.status,
-    fileSize: doc.file_size ? `${(doc.file_size / (1024 * 1024)).toFixed(1)} MB` : undefined,
+    fileSize: doc.file_size ? (doc.file_size < 1024 * 1024 ? `${(doc.file_size / 1024).toFixed(1)} KB` : `${(doc.file_size / (1024 * 1024)).toFixed(1)} MB`) : undefined,
+    fileUrl: doc.file_path ? (() => {
+      const p = doc.file_path.replace(/\\/g, '/');
+      const match = p.match(/(?:\/)?(uploads\/.*)/);
+      const suffix = match ? `/${match[1]}` : (p.startsWith('/') ? p : `/${p}`);
+      return `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${suffix}`.replace(/([^:]\/)\/+/g, "$1");
+    })() : undefined,
   };
 }
 

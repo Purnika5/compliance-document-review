@@ -50,4 +50,6 @@ export interface DocumentItem {
   fileSize?: string;
   /** Additional notes or filing remarks. */
   notes?: string;
+  /** URL to access the uploaded file. */
+  fileUrl?: string;
 }

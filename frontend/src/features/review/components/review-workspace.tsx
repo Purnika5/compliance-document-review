@@ -611,7 +611,13 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                       </div>
                       <button
                         type="button"
-                        onClick={() => window.print()}
+                        onClick={() => {
+                          if (currentDocItem.fileUrl) {
+                            window.open(currentDocItem.fileUrl, '_blank');
+                          } else {
+                            showInfoToast("File not available for viewing.");
+                          }
+                        }}
                         className="inline-flex items-center gap-1 h-7 px-2 text-[11px] font-semibold bg-slate-100 hover:bg-slate-200 text-slate-800 rounded border border-slate-200 transition-colors cursor-pointer shrink-0"
                       >
                         <Download className="h-3 w-3" />
