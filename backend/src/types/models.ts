@@ -39,6 +39,9 @@ export interface DocumentRecord {
 export interface DocumentWithAdvisor extends DocumentRecord {
   advisor_name: string;
   advisor_email: string;
+  ai_summary?: string | null;
+  ai_flags?: ComplianceFlag[];
+  masked_text?: string | null;
 }
 
 export interface RevisionThread {
@@ -59,5 +62,22 @@ export interface RevisionThreadEntry {
   entry_type: RevisionEntryType;
   message: string | null;
   created_at: Date;
+}
+
+export interface ComplianceFlag {
+  passage: string;
+  rule: string;
+  explanation: string;
+}
+
+export interface DocumentAnalysis {
+  id: string;
+  document_id: string;
+  version: number;
+  masked_text: string;
+  summary: string | null;
+  flags: ComplianceFlag[];
+  created_at: Date;
+  updated_at: Date;
 }
 
