@@ -67,7 +67,7 @@ def extract_pdf(file_bytes: bytes) -> ExtractedDocument:
 
     # Acceptance criterion: only trigger the scanned-PDF fallback for
     # multi-page PDFs with fewer than 50 extracted characters.
-    if len(raw_text) < 50:
+    if page_count > 1 and len(raw_text) < 50:
         try:
             images = convert_from_bytes(file_bytes)
             ocr_parts = [
