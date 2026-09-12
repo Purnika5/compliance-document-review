@@ -13,15 +13,29 @@ Flow:
 
 import sys
 from pathlib import Path
+import pytest
 
-# Add project root and devops/pii-masker to sys.path
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-if str(PROJECT_ROOT / "data") not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT / "data"))
-if str(PROJECT_ROOT / "devops" / "pii-masker") not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT / "devops" / "pii-masker"))
+# Safely locate project root if running from within repo
+curr = Path(__file__).resolve()
+PROJECT_ROOT = None
+for parent in curr.parents:
+    if (parent / "data").exists() and (parent / "devops").exists():
+        PROJECT_ROOT = parent
+        break
+
+if PROJECT_ROOT:
+    if str(PROJECT_ROOT) not in sys.path:
+        sys.path.insert(0, str(PROJECT_ROOT))
+    if str(PROJECT_ROOT / "data") not in sys.path:
+        sys.path.insert(0, str(PROJECT_ROOT / "data"))
+    if str(PROJECT_ROOT / "data" / "week1") not in sys.path:
+        sys.path.insert(0, str(PROJECT_ROOT / "data" / "week1"))
+    if str(PROJECT_ROOT / "devops" / "pii-masker") not in sys.path:
+        sys.path.insert(0, str(PROJECT_ROOT / "devops" / "pii-masker"))
+else:
+    app_root = curr.parents[1] if len(curr.parents) > 1 else curr.parent
+    if str(app_root) not in sys.path:
+        sys.path.insert(0, str(app_root))
 
 import uuid
 from datetime import datetime
@@ -29,16 +43,25 @@ from pydantic import BaseModel
 from typing import List
 
 # Import Data Engineering ingestion logic
+ingest_document = None
+validate_file = None
+DocumentMetadata = None
+
 try:
     from ingestion import ingest_document, validate_file, DocumentMetadata
 except ImportError:
-    pass
+    try:
+        from week1.ingestion import ingest_document, validate_file, DocumentMetadata
+    except ImportError:
+        pass
 
 # Import DevOps PII Masking Engine
 from pii_masker import PiiMasker, mask_pii, mask_document_payload
 
 
 def test_data_to_devops_pii_integration():
+    if ingest_document is None:
+        pytest.skip("Data Engineering ingestion module not mounted in standalone container environment")
     print("================================================================")
     print("  SPRINGER CAPITAL — DATA ENGINEERING + DEVOPS INTEGRATION TEST  ")
     print("================================================================")
