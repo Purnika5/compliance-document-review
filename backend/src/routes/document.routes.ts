@@ -78,6 +78,14 @@ router.get(
   DocumentController.list
 );
 
+// Get document analysis
+router.get(
+  '/:id/analysis',
+  authenticateToken,
+  validate({ params: documentIdParamSchema }),
+  DocumentController.getAnalysis
+);
+
 // Get single document detail
 router.get(
   '/:id',

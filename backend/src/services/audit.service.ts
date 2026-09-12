@@ -35,7 +35,7 @@ export class AuditService {
         newStatus || null,
         reason || null,
         fileSize || null,
-        fileType || null
+        fileType ? fileType.substring(0, 50) : null
       ]
     );
   }

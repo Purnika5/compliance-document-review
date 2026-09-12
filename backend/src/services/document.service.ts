@@ -1,8 +1,9 @@
 import { query } from '../db/pool';
-import { AuthTokenPayload, DocumentRecord, DocumentStatus, DocumentWithAdvisor, RevisionThreadEntry } from '../types/models';
+import { AuthTokenPayload, DocumentAnalysis, DocumentRecord, DocumentStatus, DocumentWithAdvisor, RevisionThreadEntry } from '../types/models';
 import { AppError } from '../middleware/error.middleware';
 import { AuditService } from './audit.service';
 import { NotificationService } from './notification.service';
+import { PipelineService } from './pipeline.service';
 
 export interface CreateDocumentInput {
   title: string;
@@ -102,6 +103,11 @@ export class DocumentService {
     } catch (err) {
       console.error('[DocumentService] Failed to record audit log for submission:', err);
     }
+
+    // Trigger Text Extraction -> DevOps PII Masker -> AI Analysis pipeline asynchronously
+    PipelineService.processDocument(newDoc.id, newDoc.version, newDoc.file_path, newDoc.mime_type).catch((err) => {
+      console.error('[DocumentService] Failed pipeline processing for submission:', err);
+    });
 
     return newDoc;
   }
@@ -407,6 +413,11 @@ export class DocumentService {
       console.error('[DocumentService] Failed to record audit log for resubmission:', err);
     }
 
+    // Trigger Text Extraction -> DevOps PII Masker -> AI Analysis pipeline for resubmission asynchronously
+    PipelineService.processDocument(newDoc.id, newDoc.version, newDoc.file_path, newDoc.mime_type).catch((err) => {
+      console.error('[DocumentService] Pipeline processing failed for resubmission:', err);
+    });
+
     return newDoc;
   }
 
@@ -551,9 +562,13 @@ export class DocumentService {
         d.created_at,
         d.updated_at,
         u.name AS advisor_name,
-        u.email AS advisor_email
+        u.email AS advisor_email,
+        da.summary AS ai_summary,
+        da.flags AS ai_flags,
+        da.masked_text
       FROM documents d
       JOIN users u ON d.advisor_id = u.id
+      LEFT JOIN document_analyses da ON da.document_id = d.id AND da.version = d.version
       WHERE d.id = $1
     `;
 
@@ -570,5 +585,29 @@ export class DocumentService {
     }
 
     return doc;
+  }
+
+  public static async getDocumentAnalysis(
+    documentId: string,
+    user: AuthTokenPayload
+  ): Promise<DocumentAnalysis> {
+    const doc = await this.getDocumentById(documentId, user);
+
+    const sql = `
+      SELECT * FROM document_analyses
+      WHERE document_id = $1 AND version = $2
+    `;
+    const res = await query<DocumentAnalysis>(sql, [doc.id, doc.version]);
+
+    if (res.rows.length === 0) {
+      // If not yet analyzed, process it on-the-fly and persist
+      const analyzed = await PipelineService.processDocument(doc.id, doc.version, doc.file_path, doc.mime_type);
+      if (!analyzed) {
+        throw new AppError('Document analysis is not available or still in progress', 404, 'ANALYSIS_NOT_FOUND');
+      }
+      return analyzed;
+    }
+
+    return res.rows[0];
   }
 }
