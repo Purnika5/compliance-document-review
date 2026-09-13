@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { Request, Response } from 'express';
 import { DocumentService } from '../services/document.service';
 import { sendSuccess } from '../utils/response';
@@ -93,6 +95,17 @@ export class DocumentController {
     const { id } = req.params;
     const analysis = await DocumentService.getDocumentAnalysis(id, req.user!);
     sendSuccess(res, analysis, 200, 'Document analysis retrieved successfully');
+  });
+
+  public static downloadFile = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const { id } = req.params;
+    const document = await DocumentService.getDocumentById(id, req.user!);
+    if (!fs.existsSync(document.file_path)) {
+      throw new AppError('File not found on storage disk', 404, 'FILE_NOT_FOUND');
+    }
+    res.setHeader('Content-Type', document.mime_type || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(document.file_name)}"`);
+    res.sendFile(path.resolve(document.file_path));
   });
 }
 

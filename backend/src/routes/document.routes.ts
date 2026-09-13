@@ -78,5 +78,12 @@ router.get(
   DocumentController.getById
 );
 
+// Stream document file content (inline view / download)
+router.get(
+  '/:id/file',
+  validate({ params: documentIdParamSchema }),
+  DocumentController.downloadFile
+);
+
 export default router;
 
