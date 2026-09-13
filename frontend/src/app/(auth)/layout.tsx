@@ -11,7 +11,7 @@ import { CompanyLogo } from "@/components/ui/brand-logos";
  */
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen flex flex-col relative overflow-hidden bg-background">
+    <div className="min-h-screen flex flex-col relative overflow-y-auto bg-background">
       {/* Subtle institutional hairline grid overlay (clean fintech precision, no AI slop) */}
       <div
         className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#26262615_1px,transparent_1px),linear-gradient(to_bottom,#26262615_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_40%,#000_70%,transparent_100%)]"
@@ -21,7 +21,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <div className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 h-80 w-[600px] rounded-full bg-emerald-500/10 blur-3xl" />
 
       {/* Glassy Header */}
-      <header className="relative z-10 h-14 border-b border-border/70 bg-card/60 px-4 sm:px-6 flex items-center justify-between backdrop-blur-xl">
+      <header className="relative z-10 h-14 border-b border-border/70 bg-card/60 px-4 sm:px-6 flex items-center justify-between backdrop-blur-xl shrink-0">
         <Link href="/" className="flex items-center">
           <CompanyLogo />
         </Link>
@@ -42,12 +42,12 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       </header>
 
       {/* Centered Auth Card Area */}
-      <div className="relative z-10 flex-1 flex flex-col justify-center items-center py-10 px-4 sm:px-6">
+      <div className="relative z-10 flex-1 flex flex-col justify-center items-center py-6 sm:py-8 px-4 sm:px-6">
         <div className="w-full max-w-md animate-slide-up">{children}</div>
       </div>
 
       {/* Footer */}
-      <footer className="relative z-10 py-3.5 text-center text-[11px] border-t border-border/50 bg-card/40 backdrop-blur-md flex justify-center items-center px-4 shrink-0">
+      <footer className="relative z-10 py-3.5 text-center text-[11px] border-t border-border/50 bg-card/40 backdrop-blur-md flex justify-center items-center px-4 shrink-0 mt-auto">
         <div className="inline-flex flex-wrap items-center justify-center gap-2 px-4 py-1.5 rounded-full bg-emerald-950/50 border border-emerald-500/40 text-emerald-100 font-medium text-[11px] tracking-wide shadow-[0_0_15px_rgba(16,185,129,0.15)]">
           <span className="font-semibold text-emerald-200">Springer Capital Institutional Compliance &amp; Wealth Advisory Platform</span>
           <span className="text-emerald-500/60 hidden sm:inline">•</span>
