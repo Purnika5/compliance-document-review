@@ -69,26 +69,22 @@ export function AppWorkspaceLoader({
 }: AppWorkspaceLoaderProps) {
   const router = useRouter();
   const [progress, setProgress] = useState(0);
-  const [sessionRole, setSessionRole] = useState<string | null>(roleName || null);
+  const getInitialRoleLabel = (): string => {
+    if (roleName) return roleName;
+    const session = authStore.getSession();
+    if (session?.role) {
+      return session.role === "Advisor"
+        ? "ADVISOR PORTAL ACCESS"
+        : session.role === "Officer"
+        ? "COMPLIANCE OFFICER ACCESS"
+        : `${session.role.toUpperCase()} PORTAL ACCESS`;
+    }
+    return "INSTITUTIONAL ACCESS";
+  };
+
+  const [sessionRole] = useState<string>(getInitialRoleLabel);
   const [isCompleted, setIsCompleted] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
-
-  useEffect(() => {
-    if (!roleName) {
-      const session = authStore.getSession();
-      if (session?.role) {
-        setSessionRole(
-          session.role === "Advisor"
-            ? "ADVISOR PORTAL ACCESS"
-            : session.role === "Officer"
-            ? "COMPLIANCE OFFICER ACCESS"
-            : `${session.role.toUpperCase()} PORTAL ACCESS`
-        );
-      } else {
-        setSessionRole("INSTITUTIONAL ACCESS");
-      }
-    }
-  }, [roleName]);
 
   // Continuous fluid real-time progress animation from 0% to 100%
   useEffect(() => {

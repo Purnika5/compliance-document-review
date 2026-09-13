@@ -44,7 +44,7 @@ const createToast = (
   header: string,
   subheader?: string,
   options?: ToastOptions,
-  toastFn: (message: string, options?: any) => string = toast
+  toastFn: (message: string, options?: Record<string, unknown>) => string = toast
 ) => {
   const message = `${header}${subheader ? `|${subheader}` : ""}`;
   return toastFn(message, {
@@ -66,7 +66,7 @@ export const showSuccessToast = (
   header: string,
   subheader?: string,
   options?: ToastOptions
-) => createToast(header, subheader, options, toast.success);
+) => createToast(header, subheader, options, toast.success as (message: string, options?: Record<string, unknown>) => string);
 
 /**
  * DOCU: Triggers a red error notification toast.
@@ -81,7 +81,7 @@ export const showErrorToast = (
   header: string,
   subheader?: string,
   options?: ToastOptions
-) => createToast(header, subheader, options, toast.error);
+) => createToast(header, subheader, options, toast.error as (message: string, options?: Record<string, unknown>) => string);
 
 /**
  * DOCU: Triggers an informational blue notification toast.
@@ -105,15 +105,15 @@ export const showInfoToast = (
  * @returns Parsed ToastData object.
  * @author Keith
  */
-const parseToastMessage = (message: any): ToastData => {
+const parseToastMessage = (message: unknown): ToastData => {
   const message_string =
     typeof message === "string"
       ? message
       : message &&
         typeof message === "object" &&
         "props" in message &&
-        (message as any).props?.children
-      ? String((message as any).props.children)
+        typeof (message as { props?: { children?: unknown } }).props?.children === "string"
+      ? String((message as { props: { children: unknown } }).props.children)
       : "Notification";
 
   const parts = message_string.split("|");

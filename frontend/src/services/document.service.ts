@@ -158,6 +158,37 @@ export class DocumentService {
     );
     return envelope.data;
   }
+
+  /**
+   * DOCU: Fetches automated AI compliance analysis flags for a document.
+   * Last Updated Date: September 13, 2026
+   * @param id - Document unique identifier.
+   * @returns Promise resolving to array of IAIFlagItem flags.
+   * @author Keith
+   */
+  public async getAnalysis(id: string) {
+    try {
+      const envelope = await this.client.get<ApiResponseEnvelope<Record<string, unknown>>>(API_ENDPOINTS.DOCUMENTS.ANALYSIS(id));
+      const rawFlags = Array.isArray(envelope?.data?.flags)
+        ? (envelope.data.flags as Record<string, unknown>[])
+        : Array.isArray(envelope?.data)
+        ? (envelope.data as Record<string, unknown>[])
+        : [];
+
+      return rawFlags.map((item, index) => ({
+        id: String(item.id || `flag-${index + 1}`),
+        ruleCode: String(item.rule || item.ruleCode || item.rule_code || `RULE-${index + 1}`),
+        severity: ((String(item.severity || "MEDIUM")).toUpperCase() as "HIGH" | "MEDIUM" | "LOW"),
+        title: String(item.title || item.rule || "Compliance Rule Flag"),
+        passage: String(item.passage || item.flagged_text || item.text || ""),
+        explanation: String(item.explanation || item.reason || item.description || "Potential regulatory non-compliance detected."),
+        confidenceScore: Number(item.confidenceScore || item.confidence_score || item.confidence || 85),
+        pageNumber: Number(item.pageNumber || item.page_number || item.page || 1),
+      }));
+    } catch {
+      return [];
+    }
+  }
 }
 
 export const documentService = new DocumentService();

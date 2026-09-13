@@ -40,6 +40,7 @@ import { AIAssistPanel, type IAIFlagItem } from "@/features/documents/components
 import { RevisionThread } from "@/features/audit/components/revision-thread";
 import { AuditTrailTable, type IAuditLogEntry } from "@/features/audit/components/audit-trail-table";
 import { auditService } from "@/services/audit.service";
+import { documentService } from "@/services/document.service";
 import { DecisionDialog } from "./decision-dialog";
 import { cn } from "@/lib/utils";
 import { authStore } from "@/lib/auth/auth-store";
@@ -64,6 +65,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
   const [category, setCategory] = useState<string>("");
   const [loadedDoc, setLoadedDoc] = useState<DocumentItem | null>(null);
   const [auditLogs, setAuditLogs] = useState<IAuditLogEntry[]>([]);
+  const [analysisFlags, setAnalysisFlags] = useState<IAIFlagItem[]>([]);
   const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
@@ -72,7 +74,6 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
   const [activeLeftTab, setActiveLeftTab] = useState<"metadata" | "history" | "audit">("metadata");
   const [activeDecision, setActiveDecision] = useState<"Approved" | "Needs Revision" | "Rejected" | null>(null);
   const [mobileActiveZone, setMobileActiveZone] = useState<"document" | "ai" | "decision">("document");
-  const [isAiDrawerOpenTablet, setIsAiDrawerOpenTablet] = useState(false);
   const [isLoadingDocument, setIsLoadingDocument] = useState(true);
   const [documentError, setDocumentError] = useState<string | null>(null);
 
@@ -93,6 +94,16 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
       })
       .finally(() => {
         if (isActive) setIsLoadingDocument(false);
+      });
+
+    documentService
+      .getAnalysis(documentId)
+      .then((flags) => {
+        if (!isActive) return;
+        setAnalysisFlags(flags);
+      })
+      .catch(() => {
+        if (isActive) setAnalysisFlags([]);
       });
 
     auditService
@@ -677,6 +688,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
           {isOfficer ? (
             <AIAssistPanel
               documentId={documentId}
+              flags={analysisFlags}
               selectedFlagId={selectedFlag?.id || null}
               onSelectFlag={handleSelectFlag}
             />

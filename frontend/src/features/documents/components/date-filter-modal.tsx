@@ -91,14 +91,16 @@ export function DateFilterModal({
   const [showVisualCalendar, setShowVisualCalendar] = useState<boolean>(false);
   const [pickerMonthOffset, setPickerMonthOffset] = useState<number>(0);
 
+  const prevOpenRef = useRef(isOpen);
   useEffect(() => {
-    setSelectedPreset(currentPreset);
-    setStartDate(currentStartDate);
-    setEndDate(currentEndDate);
-    if (currentPreset === "Custom" || currentStartDate || currentEndDate) {
-      setShowVisualCalendar(true);
+    if (isOpen && !prevOpenRef.current) {
+      setSelectedPreset(currentPreset);
+      setStartDate(currentStartDate);
+      setEndDate(currentEndDate);
+      setShowVisualCalendar(currentPreset === "Custom" || Boolean(currentStartDate) || Boolean(currentEndDate));
     }
-  }, [currentPreset, currentStartDate, currentEndDate, isOpen]);
+    prevOpenRef.current = isOpen;
+  }, [isOpen, currentPreset, currentStartDate, currentEndDate]);
 
   const handleApply = () => {
     onApply(selectedPreset, startDate, endDate);
