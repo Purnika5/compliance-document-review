@@ -117,7 +117,7 @@ export function LoginForm() {
                 <Input
                   type="email"
                   id="login-email"
-                  placeholder="advisor@springercapital.com"
+                  placeholder="advisor@springer.capital"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-9 h-9 text-xs rounded-md bg-background border-border text-foreground focus-visible:ring-1 focus-visible:ring-primary"

@@ -280,7 +280,7 @@ export function SignupForm() {
     await mutate({ name, email, password, confirmPassword, role });
   };
 
-  const isEmailDomainValid = email.toLowerCase().endsWith("@springercapital.com");
+  const isEmailDomainValid = email.toLowerCase().endsWith("@springer.capital");
 
   return (
     <div className="w-full max-w-md mx-auto">
@@ -350,7 +350,7 @@ export function SignupForm() {
                 <Input
                   type="email"
                   id="signup-email"
-                  placeholder="name@springercapital.com"
+                  placeholder="name@springer.capital"
                   value={email}
                   onChange={(e) => handleEmailChange(e.target.value)}
                   onBlur={() => handleBlur("email")}
@@ -361,10 +361,10 @@ export function SignupForm() {
                   )}
                 />
                 {touched.email && validFields?.email && (
-                  <Check className="absolute right-3 top-2 h-3.5 w-3.5 text-emerald-400 pointer-events-none animate-fade-in" />
+                  <Check className="absolute right-3 top-2.5 h-3.5 w-3.5 text-emerald-400 pointer-events-none animate-fade-in" />
                 )}
                 {touched.email && formErrors?.email && (
-                  <AlertCircle className="absolute right-3 top-2 h-3.5 w-3.5 text-rose-400 pointer-events-none animate-fade-in" />
+                  <AlertCircle className="absolute right-3 top-2.5 h-3.5 w-3.5 text-rose-400 pointer-events-none animate-fade-in" />
                 )}
               </div>
 
@@ -372,7 +372,7 @@ export function SignupForm() {
               {isEmailDomainValid && (
                 <div className="pt-0.5 flex items-center gap-1.5 animate-fade-in">
                   <span className="text-[10px] px-2 py-0.5 rounded-full border font-mono font-medium bg-emerald-950/60 text-emerald-300 border-emerald-800/60">
-                    @springercapital.com
+                    @springer.capital
                   </span>
                   <span className="text-[10px] text-emerald-400 font-medium">Domain match</span>
                 </div>
@@ -753,7 +753,7 @@ export function SignupForm() {
 
             <div className="space-y-1">
               <h3 className="text-[11px] font-semibold uppercase tracking-wider text-foreground">10. Contact &amp; Amendments</h3>
-              <p>Springer Capital Group reserves the right to modify these Terms at any time. Continued use of the Platform after any modification constitutes your acceptance of the revised Terms. For questions regarding these Terms, please contact the Legal &amp; Compliance department at <span className="text-primary font-semibold">legal@springercapital.com</span>. Effective Date: September 7, 2026.</p>
+              <p>Springer Capital Group reserves the right to modify these Terms at any time. Continued use of the Platform after any modification constitutes your acceptance of the revised Terms. For questions regarding these Terms, please contact the Legal &amp; Compliance department at <span className="text-primary font-semibold">legal@springer.capital</span>. Effective Date: September 7, 2026.</p>
             </div>
 
             <div className="pt-2 text-center text-[10px] text-muted-foreground/60 border-t border-border">

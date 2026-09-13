@@ -176,7 +176,7 @@ export default function SettingsPage() {
                   "h-8 text-xs bg-background/60",
                   validationErrors.email && "border-rose-500 focus-visible:ring-rose-500"
                 )}
-                placeholder="name@springercapital.com"
+                placeholder="name@springer.capital"
               />
               {validationErrors.email && (
                 <div className="flex items-center gap-1 text-[11px] text-rose-400 mt-1">
