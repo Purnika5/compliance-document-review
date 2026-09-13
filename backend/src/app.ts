@@ -8,7 +8,10 @@ import { errorHandler, AppError } from './middleware/error.middleware';
 export const createApp = (): Application => {
   const app: Application = express();
 
-  app.use(helmet());
+  app.use(helmet({
+    crossOriginResourcePolicy: false,
+    contentSecurityPolicy: false
+  }));
   app.use(cors({
     origin: config.cors.origin,
     credentials: true
@@ -16,6 +19,7 @@ export const createApp = (): Application => {
 
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+  app.use('/uploads/documents', express.static(config.uploads.dir));
   app.use('/uploads', express.static(config.uploads.dir));
 
   if (config.env === 'development') {
