@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import List
 
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, Field, ValidationError
 from dotenv import load_dotenv
 from google import genai
 
@@ -77,6 +77,33 @@ analysis_cache = {}
 
 
 # --------------------------------------------------
+# Retrieved Rule format
+# Matches final backend -> AI contract
+# --------------------------------------------------
+
+class RetrievedRule(BaseModel):
+    id: str
+    rule_code: str
+    title: str
+    description: str
+    similarity_score: float
+
+
+# --------------------------------------------------
+# Precedent Search result format
+# Matches final backend -> AI contract
+# --------------------------------------------------
+
+class Precedent(BaseModel):
+    id: str
+    document_id: str
+    passage: str
+    outcome: str
+    explanation: str
+    similarity_score: float
+
+
+# --------------------------------------------------
 # Request format from backend
 # --------------------------------------------------
 
@@ -84,6 +111,14 @@ class AnalyzeRequest(BaseModel):
     document_id: str
     version: int
     masked_text: str
+
+    retrieved_rules: List[RetrievedRule] = Field(
+        default_factory=list
+    )
+
+    precedents: List[Precedent] = Field(
+        default_factory=list
+    )
 
 
 # --------------------------------------------------
@@ -107,7 +142,10 @@ def analyze_document(request: AnalyzeRequest):
     # Create cache key
     # --------------------------------------------------
 
-    cache_key = (request.document_id, request.version)
+    cache_key = (
+        request.document_id,
+        request.version
+    )
 
 
     # --------------------------------------------------
@@ -133,7 +171,7 @@ def analyze_document(request: AnalyzeRequest):
 
 
     # --------------------------------------------------
-    # Insert masked document text into prompts
+    # Insert masked document text into summary prompt
     # --------------------------------------------------
 
     summary_prompt = SUMMARY_PROMPT.replace(
@@ -141,9 +179,50 @@ def analyze_document(request: AnalyzeRequest):
         request.masked_text
     )
 
+
+    # --------------------------------------------------
+    # Convert retrieved rules to JSON text
+    # --------------------------------------------------
+
+    retrieved_rules_text = json.dumps(
+        [
+            rule.model_dump()
+            for rule in request.retrieved_rules
+        ],
+        indent=2
+    )
+
+
+    # --------------------------------------------------
+    # Convert precedents to JSON text
+    # --------------------------------------------------
+
+    precedents_text = json.dumps(
+        [
+            precedent.model_dump()
+            for precedent in request.precedents
+        ],
+        indent=2
+    )
+
+
+    # --------------------------------------------------
+    # Insert Week 3 data into issue prompt
+    # --------------------------------------------------
+
     issue_prompt = ISSUE_FLAGGING_PROMPT.replace(
         "{DOCUMENT_TEXT}",
         request.masked_text
+    )
+
+    issue_prompt = issue_prompt.replace(
+        "{RETRIEVED_RULES}",
+        retrieved_rules_text
+    )
+
+    issue_prompt = issue_prompt.replace(
+        "{PRECEDENTS}",
+        precedents_text
     )
 
 
@@ -178,10 +257,17 @@ def analyze_document(request: AnalyzeRequest):
         # Convert Gemini JSON response
         # --------------------------------------------------
 
-        issues = json.loads(issue_response.text)
+        issues = json.loads(
+            issue_response.text
+        )
 
+
+        # --------------------------------------------------
+        # Ensure Gemini returned an array
+        # --------------------------------------------------
 
         if not isinstance(issues, list):
+
             raise ValueError(
                 "Gemini issue response must be a JSON array."
             )
@@ -193,14 +279,39 @@ def analyze_document(request: AnalyzeRequest):
 
         validated_flags: List[Flag] = []
 
+
+        # Get only the rule IDs supplied by retrieval
+        retrieved_rule_ids = {
+            rule.id
+            for rule in request.retrieved_rules
+        }
+
+
         for issue in issues:
 
             if not isinstance(issue, dict):
+
                 raise ValueError(
                     "Each flag must be a JSON object."
                 )
 
+
+            # Validate flag structure
             flag = Flag.model_validate(issue)
+
+
+            # --------------------------------------------------
+            # Strict rule grounding validation
+            # Gemini can only use retrieved rule IDs
+            # --------------------------------------------------
+
+            if flag.rule not in retrieved_rule_ids:
+
+                raise ValueError(
+                    f"Gemini returned rule '{flag.rule}', "
+                    "but that rule was not provided by Rule Retrieval."
+                )
+
 
             validated_flags.append(flag)
 
@@ -227,6 +338,10 @@ def analyze_document(request: AnalyzeRequest):
         return result
 
 
+    # --------------------------------------------------
+    # Handle invalid Gemini JSON
+    # --------------------------------------------------
+
     except json.JSONDecodeError:
 
         raise HTTPException(
@@ -237,6 +352,10 @@ def analyze_document(request: AnalyzeRequest):
             )
         )
 
+
+    # --------------------------------------------------
+    # Handle invalid flag structure
+    # --------------------------------------------------
 
     except ValidationError:
 
@@ -250,6 +369,10 @@ def analyze_document(request: AnalyzeRequest):
         )
 
 
+    # --------------------------------------------------
+    # Handle other validation errors
+    # --------------------------------------------------
+
     except ValueError as e:
 
         raise HTTPException(
@@ -257,6 +380,10 @@ def analyze_document(request: AnalyzeRequest):
             detail=str(e)
         )
 
+
+    # --------------------------------------------------
+    # Handle Gemini/API errors
+    # --------------------------------------------------
 
     except Exception as e:
 
