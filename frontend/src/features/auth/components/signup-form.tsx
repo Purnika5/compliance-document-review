@@ -298,9 +298,9 @@ export function SignupForm() {
         {/* Springer Brand Accent Hairline */}
         <div className="h-[2px] bg-gradient-to-r from-emerald-600 via-[#84c22b] to-emerald-500" />
 
-        <CardHeader className="text-center space-y-1 pb-4 pt-6">
+        <CardHeader className="text-center space-y-1 pb-2 pt-4">
           <CompanyLogo className="justify-center" />
-          <CardTitle className="text-xl font-bold text-foreground tracking-tight">
+          <CardTitle className="text-lg font-bold text-foreground tracking-tight">
             Create Personnel Account
           </CardTitle>
           <CardDescription className="text-xs text-muted-foreground">
@@ -308,17 +308,17 @@ export function SignupForm() {
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="space-y-4 pt-2">
+        <CardContent className="space-y-3 pt-1">
           {error && (
             <Alert
               variant="destructive"
               title="Registration Error"
               message={error}
-              className="p-3 shadow-xs animate-slide-down"
+              className="p-2.5 shadow-xs animate-slide-down text-xs"
             />
           )}
 
-          <form id="signup-form" onSubmit={handleSubmit} noValidate className="space-y-3.5">
+          <form id="signup-form" onSubmit={handleSubmit} noValidate className="space-y-2.5">
             {/* Full Name Field with Real-Time Validation */}
             <div className="space-y-1 text-left">
               <div className="flex items-center justify-between">
@@ -700,7 +700,7 @@ export function SignupForm() {
           </form>
         </CardContent>
 
-        <CardFooter className="flex flex-col space-y-3 pt-2 pb-6 border-t border-border bg-muted/20">
+        <CardFooter className="flex flex-col space-y-2 pt-2 pb-4 border-t border-border bg-muted/20">
           <Button
             type="submit"
             form="signup-form"
