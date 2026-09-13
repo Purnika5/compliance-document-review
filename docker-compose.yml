@@ -73,6 +73,10 @@ services:
         condition: service_healthy
       mock-ai-api:
         condition: service_started
+      pii-masker:
+        condition: service_healthy
+      ai-service:
+        condition: service_started
     networks:
       - compliance-network
 

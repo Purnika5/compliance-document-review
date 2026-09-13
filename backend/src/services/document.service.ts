@@ -508,8 +508,8 @@ export class DocumentService {
     `;
     const res = await query<DocumentAnalysis>(sql, [doc.id, doc.version]);
 
-    if (res.rows.length === 0) {
-      // If not yet analyzed, process it on-the-fly and persist
+    if (res.rows.length === 0 || res.rows[0].summary === 'AI analysis could not be completed for this document.') {
+      // If not yet analyzed or previous attempt failed, process it on-the-fly and persist
       const analyzed = await PipelineService.processDocument(doc.id, doc.version, doc.file_path, doc.mime_type);
       if (!analyzed) {
         throw new AppError('Document analysis is not available or still in progress', 404, 'ANALYSIS_NOT_FOUND');
