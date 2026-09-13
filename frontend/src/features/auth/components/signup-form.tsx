@@ -392,29 +392,18 @@ export function SignupForm() {
                 )}
               </div>
 
-              {/* Real-time Domain Hint Pill */}
-              {email.length > 0 && (
+              {/* Real-time Domain Verified Pill */}
+              {isEmailDomainValid && (
                 <div className="pt-0.5 flex items-center gap-1.5 animate-fade-in">
-                  <span
-                    className={cn(
-                      "text-[10px] px-2 py-0.5 rounded-full border font-mono font-medium transition-all",
-                      isEmailDomainValid
-                        ? "bg-emerald-950/60 text-emerald-300 border-emerald-800/60"
-                        : "bg-muted/80 text-muted-foreground border-border"
-                    )}
-                  >
+                  <span className="text-[10px] px-2 py-0.5 rounded-full border font-mono font-medium bg-emerald-950/60 text-emerald-300 border-emerald-800/60">
                     @springercapital.com
                   </span>
-                  {isEmailDomainValid ? (
-                    <span className="text-[10px] text-emerald-400 font-medium">Domain match</span>
-                  ) : (
-                    <span className="text-[10px] text-amber-400/90 font-medium">Must end with corporate domain</span>
-                  )}
+                  <span className="text-[10px] text-emerald-400 font-medium">Domain match</span>
                 </div>
               )}
 
               {touched.email && formErrors?.email && (
-                <p className="text-[11px] text-rose-400 font-medium animate-fade-in flex items-center gap-1">
+                <p className="text-[11px] text-rose-400 font-medium animate-fade-in flex items-center gap-1 pt-0.5">
                   <span className="inline-block h-1 w-1 rounded-full bg-rose-500" />
                   {formErrors.email}
                 </p>

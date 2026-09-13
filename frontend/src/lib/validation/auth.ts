@@ -22,9 +22,9 @@ export const nameSchema = z.string().min(2, "Name must be at least 2 characters 
  */
 export const emailSchema = z
   .string()
-  .email("Please enter a valid email address")
+  .min(1, "Email must end with @springercapital.com")
   .refine(
-    (email) => email.toLowerCase().endsWith("@springercapital.com"),
+    (email) => email.trim().length > 0 && email.toLowerCase().endsWith("@springercapital.com"),
     "Email must end with @springercapital.com"
   );
 
