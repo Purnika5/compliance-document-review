@@ -1,6 +1,6 @@
 /**
- * DOCU: Provides the shared styled text input primitive.
- * Last Updated Date: September 3, 2026
+ * DOCU: Provides the shared styled text input primitive adhering to shadcn dark mode.
+ * Last Updated Date: September 8, 2026
  * @returns A reusable styled text input.
  * @author Keith
  */
@@ -22,7 +22,7 @@ const Input = React.forwardRef<HTMLInputElement, IInputProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className="block text-sm font-medium text-slate-700 leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            className="block text-xs font-medium text-foreground/90 leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
           >
             {label}
           </label>
@@ -32,14 +32,14 @@ const Input = React.forwardRef<HTMLInputElement, IInputProps>(
           type={type}
           ref={ref}
           className={cn(
-            "flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-2xs transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-ring disabled:cursor-not-allowed disabled:opacity-50",
-            error && "border-destructive focus-visible:ring-destructive",
+            "flex h-9 w-full rounded-md border border-input bg-card/60 px-3 py-1 text-sm text-foreground shadow-2xs transition-[border-color,box-shadow] file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+            error && "border-destructive focus-visible:border-destructive focus-visible:ring-destructive",
             className
           )}
           {...props}
         />
-        {error && <p className="text-xs font-medium text-red-600 mt-1">{error}</p>}
-        {!error && helperText && <p className="text-xs text-slate-500 mt-1">{helperText}</p>}
+        {error && <p className="text-xs font-medium text-destructive mt-1">{error}</p>}
+        {!error && helperText && <p className="text-xs text-muted-foreground mt-1">{helperText}</p>}
       </div>
     );
   }
