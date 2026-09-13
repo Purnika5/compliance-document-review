@@ -1,6 +1,6 @@
 /**
- * DOCU: Renders a consistent badge for document review statuses.
- * Last Updated Date: September 3, 2026
+ * DOCU: Renders a consistent badge for document review statuses adhering to institutional dark mode.
+ * Last Updated Date: September 8, 2026
  * @returns The status badge view.
  * @author Keith
  */
@@ -25,26 +25,26 @@ export type ExtendedStatusType =
   | "In Review";
 
 const statusBadgeVariants = cva(
-  "inline-flex items-center gap-1.5 rounded-[4px] border px-2 py-0.5 text-[11px] font-semibold tracking-tight select-none transition-colors",
+  "inline-flex items-center gap-1.5 rounded-[5px] border px-2 py-0.5 text-[11px] font-semibold tracking-tight select-none transition-all animate-fade-in",
   {
     variants: {
       status: {
         Approved:
-          "bg-cyan-50 text-cyan-800 border-cyan-200",
+          "bg-emerald-950/60 text-emerald-300 border-emerald-800/60 shadow-[0_0_8px_rgba(34,197,94,0.12)]",
         Pending:
-          "bg-[hsl(45_90%_96%)] text-[hsl(35_90%_28%)] border-[hsl(40_60%_84%)]",
+          "bg-amber-950/60 text-amber-300 border-amber-800/60 shadow-[0_0_8px_rgba(245,158,11,0.12)]",
         "Under Review":
-          "bg-[hsl(45_90%_96%)] text-[hsl(35_90%_28%)] border-[hsl(40_60%_84%)]",
+          "bg-amber-950/60 text-amber-300 border-amber-800/60",
         "In Review":
-          "bg-[hsl(45_90%_96%)] text-[hsl(35_90%_28%)] border-[hsl(40_60%_84%)]",
+          "bg-amber-950/60 text-amber-300 border-amber-800/60",
         Submitted:
-          "bg-slate-100 text-slate-800 border-slate-300",
+          "bg-zinc-800/60 text-zinc-300 border-zinc-700/60",
         "Needs Revision":
-          "bg-pink-50 text-pink-800 border-pink-200",
+          "bg-orange-950/60 text-orange-300 border-orange-800/60 shadow-[0_0_8px_rgba(249,115,22,0.12)]",
         Rejected:
-          "bg-[hsl(0_50%_97%)] text-[hsl(0_65%_38%)] border-[hsl(0_40%_86%)]",
+          "bg-rose-950/60 text-rose-300 border-rose-800/60 shadow-[0_0_8px_rgba(244,63,94,0.12)]",
         Draft:
-          "bg-slate-100 text-slate-700 border-slate-200",
+          "bg-zinc-850/60 text-zinc-400 border-zinc-700/60",
       },
     },
     defaultVariants: {
@@ -57,14 +57,29 @@ const statusIcons: Record<
   string,
   React.ComponentType<{ className?: string }>
 > = {
-  Approved: CheckCircle2,
-  Pending: Clock3,
-  "Under Review": Clock3,
-  "In Review": Clock3,
-  Submitted: FileCheck2,
+  Approved:        CheckCircle2,
+  Pending:         Clock3,
+  "Under Review":  Clock3,
+  "In Review":     Clock3,
+  Submitted:       FileCheck2,
   "Needs Revision": AlertCircle,
-  Rejected: XCircle,
-  Draft: FileEdit,
+  Rejected:        XCircle,
+  Draft:           FileEdit,
+};
+
+/** Statuses that get a pulsing dot indicator */
+const PULSING_STATUSES = new Set(["Pending", "Under Review", "In Review", "Needs Revision"]);
+
+/** Dot colors per status in dark mode */
+const statusDotColor: Record<string, string> = {
+  Pending:          "bg-amber-400 shadow-[0_0_6px_#f59e0b]",
+  "Under Review":   "bg-amber-400 shadow-[0_0_6px_#f59e0b]",
+  "In Review":      "bg-amber-400 shadow-[0_0_6px_#f59e0b]",
+  "Needs Revision": "bg-orange-400 shadow-[0_0_6px_#f97316]",
+  Approved:         "bg-emerald-400 shadow-[0_0_6px_#22c55e]",
+  Rejected:         "bg-rose-400 shadow-[0_0_6px_#f43f5e]",
+  Draft:            "bg-zinc-500",
+  Submitted:        "bg-zinc-400",
 };
 
 export interface StatusBadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
@@ -79,20 +94,38 @@ export function StatusBadge({
   children,
   ...props
 }: StatusBadgeProps) {
-  const normalizedStatus = (status || "Pending") as keyof typeof statusIcons;
-  const IconComponent = statusIcons[normalizedStatus] || Clock3;
+  const normalizedStatus   = (status || "Pending") as keyof typeof statusIcons;
+  const IconComponent      = statusIcons[normalizedStatus] || Clock3;
+  const isPulsing          = PULSING_STATUSES.has(normalizedStatus);
+  const dotColor           = statusDotColor[normalizedStatus] || "bg-zinc-500";
 
   return (
     <span
       className={cn(
         statusBadgeVariants({
-          status: (normalizedStatus in statusIcons ? normalizedStatus : "Pending") as "Approved" | "Pending" | "Under Review" | "In Review" | "Submitted" | "Needs Revision" | "Rejected" | "Draft",
+          status: (normalizedStatus in statusIcons ? normalizedStatus : "Pending") as
+            | "Approved"
+            | "Pending"
+            | "Under Review"
+            | "In Review"
+            | "Submitted"
+            | "Needs Revision"
+            | "Rejected"
+            | "Draft",
         }),
         className
       )}
       {...props}
     >
-      {showIcon && <IconComponent className="h-3 w-3 shrink-0" aria-hidden="true" />}
+      {/* Pulsing live dot for active regulatory states */}
+      {isPulsing ? (
+        <span
+          className={cn("h-1.5 w-1.5 rounded-full shrink-0 animate-pulse-dot", dotColor)}
+          aria-hidden="true"
+        />
+      ) : (
+        showIcon && <IconComponent className="h-3 w-3 shrink-0" aria-hidden="true" />
+      )}
       <span>{children || status}</span>
     </span>
   );

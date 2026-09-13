@@ -1,6 +1,6 @@
 /**
- * DOCU: Provides reusable status and label badge components.
- * Last Updated Date: September 3, 2026
+ * DOCU: Provides reusable status and label badge components adhering to shadcn dark mode.
+ * Last Updated Date: September 8, 2026
  * @returns Badge primitives for compact labels and statuses.
  * @author Keith
  */
@@ -10,14 +10,16 @@ import { cn } from "@/lib/utils";
 import { StatusBadge, type ExtendedStatusType } from "@/components/shared/status-badge";
 
 const badgeVariants = cva(
-  "inline-flex items-center gap-1.5 rounded-[4px] border px-2 py-0.5 text-[11px] font-semibold transition-colors select-none",
+  "inline-flex items-center gap-1.5 rounded-[4px] border px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold transition-colors select-none",
   {
     variants: {
       variant: {
-        default: "border-slate-300 bg-slate-900 text-white",
-        secondary: "border-slate-200 bg-slate-100 text-slate-800",
-        destructive: "border-red-200 bg-red-50 text-red-800",
-        outline: "border-blue-200 bg-blue-50 text-blue-800",
+        default: "border-border bg-secondary text-foreground",
+        secondary: "border-border bg-card text-muted-foreground",
+        destructive: "border-destructive/40 bg-destructive/15 text-rose-300",
+        outline: "border-border bg-transparent text-muted-foreground",
+        emerald: "border-emerald-700/50 bg-emerald-950/50 text-emerald-300",
+        chartreuse: "border-[#84c22b]/50 bg-[#84c22b]/15 text-[#a3e635]",
       },
     },
     defaultVariants: {

@@ -1,8 +1,6 @@
-"use client";
-
 /**
- * DOCU: Renders navigational breadcrumbs for the current route.
- * Last Updated Date: September 3, 2026
+ * DOCU: Renders navigational breadcrumbs for the current route adhering to dark mode.
+ * Last Updated Date: September 8, 2026
  * @returns The breadcrumb navigation view.
  * @author Keith
  */
@@ -55,29 +53,29 @@ export function Breadcrumbs({ customItems }: BreadcrumbsProps) {
   const breadcrumbs = getBreadcrumbs();
 
   return (
-    <nav aria-label="Breadcrumb" className="flex items-center space-x-1.5 text-xs text-blue-900">
+    <nav aria-label="Breadcrumb" className="flex items-center space-x-1 text-xs text-muted-foreground">
       <Link
         href="/"
-        className="flex items-center gap-1 rounded-md p-1 text-blue-500 transition-colors hover:bg-white/70 hover:text-blue-900"
+        className="flex items-center gap-1 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         aria-label="Home"
       >
-        <Home className="h-3.5 w-3.5 text-slate-400" />
+        <Home className="h-3.5 w-3.5" />
       </Link>
 
       {breadcrumbs.slice(1).map((item, index) => {
         const isLast = index === breadcrumbs.length - 2;
         return (
           <React.Fragment key={index}>
-            <ChevronRight className="h-3 w-3 text-blue-300 shrink-0" aria-hidden="true" />
+            <ChevronRight className="h-3 w-3 text-muted-foreground/40 shrink-0" aria-hidden="true" />
             {item.href && !isLast ? (
               <Link
                 href={item.href}
-                className="rounded-md px-2 py-1 font-medium text-blue-700 transition-colors truncate max-w-[150px] sm:max-w-[200px] hover:bg-white/70 hover:text-blue-950"
+                className="rounded-md px-1.5 py-0.5 text-xs font-medium text-muted-foreground transition-colors truncate max-w-[140px] sm:max-w-[180px] hover:bg-muted hover:text-foreground"
               >
                 {item.label}
               </Link>
             ) : (
-              <span className="rounded-md border border-blue-200 bg-white/80 px-2.5 py-1 font-bold text-blue-950 shadow-sm truncate max-w-[180px] sm:max-w-[260px]">
+              <span className="rounded-md border border-border bg-card/70 px-2 py-0.5 text-xs font-medium text-foreground truncate max-w-[180px] sm:max-w-[260px]">
                 {item.label}
               </span>
             )}

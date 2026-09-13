@@ -1,6 +1,6 @@
 /**
- * DOCU: Renders a reusable empty-state message and optional action.
- * Last Updated Date: September 3, 2026
+ * DOCU: Renders a reusable empty-state message and optional action adhering to dark mode.
+ * Last Updated Date: September 8, 2026
  * @returns The empty-state view.
  * @author Keith
  */
@@ -31,15 +31,15 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center p-8 text-center rounded-md border border-dashed border-slate-200 bg-white min-h-[220px]",
+        "flex flex-col items-center justify-center p-8 text-center rounded-xl border border-dashed border-border bg-card/40 min-h-[220px]",
         className
       )}
     >
-      <div className="h-10 w-10 rounded bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500 mb-3 shrink-0">
+      <div className="h-10 w-10 rounded-lg bg-muted border border-border flex items-center justify-center text-muted-foreground mb-3 shrink-0">
         <Icon className="h-5 w-5" aria-hidden="true" />
       </div>
-      <h3 className="text-xs font-bold text-slate-900 tracking-tight">{title}</h3>
-      <p className="text-[11px] text-slate-500 max-w-sm mt-1 leading-normal">
+      <h3 className="text-xs font-semibold text-foreground tracking-tight">{title}</h3>
+      <p className="text-[11px] text-muted-foreground max-w-sm mt-1 leading-normal">
         {description}
       </p>
 
@@ -48,7 +48,7 @@ export function EmptyState({
           <Button
             size="sm"
             onClick={onAction}
-            className="h-8 px-3 rounded text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white"
+            className="h-8 px-3 rounded text-xs font-semibold"
           >
             {actionLabel}
           </Button>
