@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Edit3 } from "lucide-react";
+import { Edit3, Loader2 } from "lucide-react";
 import type { DocumentItem, DocumentStatusType } from "@/lib/validation/document";
 import { showSuccessToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
@@ -206,7 +206,14 @@ function EditDocumentForm({
               disabled={isSaving || !title.trim()}
               className="h-8 px-4 rounded-md text-xs font-semibold bg-[#24A152] hover:bg-[#062A20] hover:text-[#54d0a2] hover:border hover:border-emerald-700/60 active:bg-[#1d8342] text-white transition-all shadow-xs cursor-pointer"
             >
-              {isSaving ? "Saving..." : "Save Metadata"}
+              {isSaving ? (
+                <span className="flex items-center gap-1.5">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Saving Changes...
+                </span>
+              ) : (
+                "Save Metadata"
+              )}
             </Button>
           </DialogFooter>
         </form>

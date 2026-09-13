@@ -452,7 +452,14 @@ export function UploadDocumentModal({
                 onClick={handleFinalSubmit}
                 className="h-8 px-4 text-xs font-semibold bg-[#24A152] hover:bg-[#062A20] hover:text-[#54d0a2] hover:border hover:border-emerald-700/60 active:bg-[#1d8342] text-white rounded-md transition-all shadow-xs cursor-pointer"
               >
-                {isPending ? "Transmitting..." : "Confirm & Submit Proposal"}
+                {isPending ? (
+                  <span className="flex items-center gap-1.5">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Transmitting Payload...
+                  </span>
+                ) : (
+                  "Confirm & Submit Proposal"
+                )}
               </Button>
             </DialogFooter>
           </div>
