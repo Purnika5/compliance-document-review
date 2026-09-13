@@ -39,5 +39,10 @@ export const config = {
 
   cors: {
     origin: process.env.CORS_ORIGIN || '*'
+  },
+
+  services: {
+    piiMaskerUrl: process.env.PII_MASKER_URL || (process.env.NODE_ENV === 'production' ? 'http://pii-masker:8002' : 'http://localhost:8002'),
+    aiServiceUrl: process.env.AI_SERVICE_URL || (process.env.NODE_ENV === 'production' ? 'http://ai-service:8000' : 'http://localhost:8000'),
   }
 };
