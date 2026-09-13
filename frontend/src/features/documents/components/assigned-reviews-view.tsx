@@ -166,13 +166,12 @@ export function AssignedReviewsView() {
   const revisionCount = assignedItems.filter((d) => d.status === "Needs Revision").length;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-10">
+    <div className="space-y-4 max-w-[1600px] mx-auto pb-16">
       {/* Header Banner */}
       <div className="border border-border bg-card/80 backdrop-blur-md rounded-2xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="chip bg-primary/20 text-emerald-400 border-primary/30 text-[10px] font-bold uppercase tracking-wider">
-              <ShieldCheck className="h-3 w-3 inline mr-1" />
               Officer Portfolio
             </span>
             <span className="text-xs text-muted-foreground font-mono">
@@ -218,48 +217,84 @@ export function AssignedReviewsView() {
       )}
 
       {/* Metrics Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="border border-border bg-card p-4 rounded-xl shadow-xs">
-          <div className="flex items-center justify-between text-muted-foreground mb-1">
-            <span className="text-xs font-medium">Assigned to You</span>
-            <CheckSquare className="h-4 w-4 text-primary" />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 min-h-[88px]">
+        <div className="border border-border bg-card p-4 rounded-xl shadow-xs relative overflow-hidden group flex flex-col h-[88px]">
+          <div className="relative z-10">
+            <div className="flex items-center justify-between text-muted-foreground mb-1">
+              <span className="text-xs font-medium">Assigned to You</span>
+              <CheckSquare className="h-4 w-4 text-primary" />
+            </div>
+            <div className="text-2xl font-bold text-foreground font-mono">{totalAssigned}</div>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Active portfolio allocations</p>
           </div>
-          <div className="text-2xl font-bold text-foreground font-mono">{totalAssigned}</div>
-          <p className="text-[11px] text-muted-foreground mt-0.5">Active portfolio allocations</p>
+          {/* Decorative Sparkline */}
+          <div className="absolute bottom-0 left-0 w-full h-12 pointer-events-none">
+            <svg viewBox="0 0 100 30" preserveAspectRatio="none" className="w-full h-full text-primary">
+              <path d="M0,30 L0,20 C10,15 20,25 30,18 C40,11 50,22 60,10 C70,-2 80,12 90,5 L100,8 L100,30 Z" fill="currentColor" fillOpacity="0.1" />
+              <path d="M0,20 C10,15 20,25 30,18 C40,11 50,22 60,10 C70,-2 80,12 90,5 L100,8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
         </div>
 
-        <div className="border border-border bg-card p-4 rounded-xl shadow-xs">
-          <div className="flex items-center justify-between text-muted-foreground mb-1">
-            <span className="text-xs font-medium">Action Required</span>
-            <Zap className="h-4 w-4 text-amber-400" />
+        <div className="border border-border bg-card p-4 rounded-xl shadow-xs relative overflow-hidden group flex flex-col h-[88px]">
+          <div className="relative z-10">
+            <div className="flex items-center justify-between text-muted-foreground mb-1">
+              <span className="text-xs font-medium">Action Required</span>
+              <Zap className="h-4 w-4 text-amber-400" />
+            </div>
+            <div className="text-2xl font-bold text-amber-400 font-mono">{pendingCount}</div>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Awaiting officer determination</p>
           </div>
-          <div className="text-2xl font-bold text-amber-400 font-mono">{pendingCount}</div>
-          <p className="text-[11px] text-muted-foreground mt-0.5">Awaiting officer determination</p>
+          {/* Decorative Sparkline */}
+          <div className="absolute bottom-0 left-0 w-full h-12 pointer-events-none">
+            <svg viewBox="0 0 100 30" preserveAspectRatio="none" className="w-full h-full text-amber-500">
+              <path d="M0,30 L0,22 C12,18 25,26 38,15 C50,4 65,20 75,12 C85,4 92,16 100,10 L100,30 Z" fill="currentColor" fillOpacity="0.1" />
+              <path d="M0,22 C12,18 25,26 38,15 C50,4 65,20 75,12 C85,4 92,16 100,10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
         </div>
 
-        <div className="border border-border bg-card p-4 rounded-xl shadow-xs">
-          <div className="flex items-center justify-between text-muted-foreground mb-1">
-            <span className="text-xs font-medium">SLA Risk (&lt; 24h)</span>
-            <Clock3 className="h-4 w-4 text-rose-400" />
+        <div className="border border-border bg-card p-4 rounded-xl shadow-xs relative overflow-hidden group flex flex-col h-[88px]">
+          <div className="relative z-10">
+            <div className="flex items-center justify-between text-muted-foreground mb-1">
+              <span className="text-xs font-medium">SLA Risk (&lt; 24h)</span>
+              <Clock3 className="h-4 w-4 text-rose-400" />
+            </div>
+            <div className="text-2xl font-bold text-rose-400 font-mono">{urgentSlaCount}</div>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Near regulatory turnaround cap</p>
           </div>
-          <div className="text-2xl font-bold text-rose-400 font-mono">{urgentSlaCount}</div>
-          <p className="text-[11px] text-muted-foreground mt-0.5">Near regulatory turnaround cap</p>
+          {/* Decorative Sparkline */}
+          <div className="absolute bottom-0 left-0 w-full h-12 pointer-events-none">
+            <svg viewBox="0 0 100 30" preserveAspectRatio="none" className="w-full h-full text-rose-500">
+              <path d="M0,30 L0,25 C15,10 30,30 45,15 C60,5 75,25 90,10 L100,20 L100,30 Z" fill="currentColor" fillOpacity="0.1" />
+              <path d="M0,25 C15,10 30,30 45,15 C60,5 75,25 90,10 L100,20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
         </div>
 
-        <div className="border border-border bg-card p-4 rounded-xl shadow-xs">
-          <div className="flex items-center justify-between text-muted-foreground mb-1">
-            <span className="text-xs font-medium">In Revision</span>
-            <AlertTriangle className="h-4 w-4 text-orange-400" />
+        <div className="border border-border bg-card p-4 rounded-xl shadow-xs relative overflow-hidden group flex flex-col h-[88px]">
+          <div className="relative z-10">
+            <div className="flex items-center justify-between text-muted-foreground mb-1">
+              <span className="text-xs font-medium">In Revision</span>
+              <AlertTriangle className="h-4 w-4 text-orange-400" />
+            </div>
+            <div className="text-2xl font-bold text-orange-400 font-mono">{revisionCount}</div>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Dispatched back to advisors</p>
           </div>
-          <div className="text-2xl font-bold text-orange-400 font-mono">{revisionCount}</div>
-          <p className="text-[11px] text-muted-foreground mt-0.5">Dispatched back to advisors</p>
+          {/* Decorative Sparkline */}
+          <div className="absolute bottom-0 left-0 w-full h-12 pointer-events-none">
+            <svg viewBox="0 0 100 30" preserveAspectRatio="none" className="w-full h-full text-orange-500">
+              <path d="M0,30 L0,15 C15,5 25,25 40,18 C55,11 70,22 85,8 C90,3 95,12 100,6 L100,30 Z" fill="currentColor" fillOpacity="0.1" />
+              <path d="M0,15 C15,5 25,25 40,18 C55,11 70,22 85,8 C90,3 95,12 100,6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
         </div>
       </div>
 
       {/* Table Card Container */}
       <div className="border border-border bg-card rounded-xl overflow-hidden shadow-xs">
         {/* Filter Toolbar */}
-        <div className="p-4 border-b border-border bg-muted/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+        <div className="p-3 border-b border-border bg-muted/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
           {/* Tabs */}
           <div className="flex items-center gap-1.5 p-1 bg-background/80 border border-border rounded-lg text-xs">
             {(["All", "Action Required", "Needs Revision", "Approved"] as const).map((tab) => (
@@ -273,7 +308,15 @@ export function AssignedReviewsView() {
                     : "bg-transparent text-muted-foreground hover:bg-[#062a20] hover:text-[#54d0a2]"
                 )}
               >
-                {tab}
+                {tab} ({
+                  tab === "All"
+                    ? totalAssigned
+                    : tab === "Action Required"
+                    ? pendingCount
+                    : tab === "Needs Revision"
+                    ? revisionCount
+                    : assignedItems.filter((d) => d.status === "Approved").length
+                })
               </button>
             ))}
           </div>
@@ -350,7 +393,7 @@ export function AssignedReviewsView() {
                     className="border-b border-border/70 hover:bg-muted/20 transition-colors"
                   >
                     {/* Document Title & Category */}
-                    <TableCell className="pl-4 py-3">
+                    <TableCell className="pl-4 py-2">
                       <div className="flex items-start gap-2.5">
                         <div className="mt-0.5">
                           <span className="font-mono text-[10px] font-bold text-muted-foreground block">
@@ -377,7 +420,7 @@ export function AssignedReviewsView() {
                     </TableCell>
 
                     {/* Advisor */}
-                    <TableCell className="py-3">
+                    <TableCell className="py-2">
                       <div className="text-xs font-semibold text-foreground">
                         {doc.submittedBy}
                       </div>
@@ -389,7 +432,7 @@ export function AssignedReviewsView() {
                     </TableCell>
 
                     {/* SLA Clock */}
-                    <TableCell className="py-3">
+                    <TableCell className="py-2">
                       <div className="flex items-center gap-1.5">
                         <span
                           className={cn(
@@ -406,12 +449,12 @@ export function AssignedReviewsView() {
                     </TableCell>
 
                     {/* State */}
-                    <TableCell className="py-3">
+                    <TableCell className="py-2">
                       <StatusBadge status={doc.status} />
                     </TableCell>
 
                     {/* Actions */}
-                    <TableCell className="text-right pr-4 py-3">
+                    <TableCell className="text-right pr-4 py-2">
                       <div className="flex items-center justify-end gap-1.5">
                         <Button
                           size="sm"

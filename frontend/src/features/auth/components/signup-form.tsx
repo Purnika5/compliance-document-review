@@ -2,7 +2,8 @@
 
 /**
  * DOCU: Renders and manages the personnel registration form in institutional dark mode.
- * Last Updated Date: September 8, 2026
+ * Features real-time field validation for Full Name, Work Email, Passwords, and Terms.
+ * Last Updated Date: September 13, 2026
  * @returns The signup form view.
  * @author Keith
  */
@@ -10,7 +11,13 @@ import React, { useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useSignup } from "../hooks/use-signup";
 import { useRedirectIfAuthenticated } from "../hooks/use-auth-guard";
-import { signupSchema } from "@/lib/validation/auth";
+import {
+  signupSchema,
+  validateName,
+  validateEmail,
+  validatePassword,
+  validateConfirmPassword,
+} from "@/lib/validation/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
@@ -31,12 +38,23 @@ import {
   CardContent,
   CardFooter,
 } from "@/components/ui/card";
-import { User, Mail, Lock, ShieldCheck, Briefcase, Eye, EyeOff, Loader2 } from "lucide-react";
+import {
+  User,
+  Mail,
+  Lock,
+  ShieldCheck,
+  Briefcase,
+  Eye,
+  EyeOff,
+  Loader2,
+  Check,
+  AlertCircle,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
- * DOCU: Renders the signup form and processes personnel registration.
- * Last Updated Date: September 8, 2026
+ * DOCU: Renders the signup form and processes personnel registration with real-time validation.
+ * Last Updated Date: September 13, 2026
  * @returns The signup form component.
  * @author Keith
  */
@@ -55,10 +73,132 @@ export function SignupForm() {
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [hasReadTerms, setHasReadTerms] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [validFields, setValidFields] = useState<Record<string, boolean>>({});
   const termsScrollRef = useRef<HTMLDivElement>(null);
 
   const clearFieldError = (field: string) =>
-    setFormErrors((prev) => { const n = { ...prev }; delete n[field]; return n; });
+    setFormErrors((prev) => {
+      const n = { ...prev };
+      delete n[field];
+      return n;
+    });
+
+  // Real-time validation handlers
+  const handleNameChange = (val: string) => {
+    setName(val);
+    const isTouched = touched.name || val.length > 0;
+    if (!touched.name && val.length > 0) {
+      setTouched((prev) => ({ ...prev, name: true }));
+    }
+
+    if (isTouched) {
+      const result = validateName(val);
+      if (!result.success && result.error) {
+        setFormErrors((prev) => ({ ...prev, name: result.error! }));
+        setValidFields((prev) => ({ ...prev, name: false }));
+      } else {
+        setFormErrors((prev) => {
+          const next = { ...prev };
+          delete next.name;
+          return next;
+        });
+        setValidFields((prev) => ({ ...prev, name: true }));
+      }
+    }
+  };
+
+  const handleEmailChange = (val: string) => {
+    setEmail(val);
+    const isTouched = touched.email || val.length > 0;
+    if (!touched.email && val.length > 0) {
+      setTouched((prev) => ({ ...prev, email: true }));
+    }
+
+    if (isTouched) {
+      const result = validateEmail(val);
+      if (!result.success && result.error) {
+        setFormErrors((prev) => ({ ...prev, email: result.error! }));
+        setValidFields((prev) => ({ ...prev, email: false }));
+      } else {
+        setFormErrors((prev) => {
+          const next = { ...prev };
+          delete next.email;
+          return next;
+        });
+        setValidFields((prev) => ({ ...prev, email: true }));
+      }
+    }
+  };
+
+  const handlePasswordChange = (val: string) => {
+    setPassword(val);
+    const isTouched = touched.password || val.length > 0;
+    if (!touched.password && val.length > 0) {
+      setTouched((prev) => ({ ...prev, password: true }));
+    }
+
+    if (isTouched) {
+      const result = validatePassword(val);
+      if (!result.success && result.error) {
+        setFormErrors((prev) => ({ ...prev, password: result.error! }));
+        setValidFields((prev) => ({ ...prev, password: false }));
+      } else {
+        setFormErrors((prev) => {
+          const next = { ...prev };
+          delete next.password;
+          return next;
+        });
+        setValidFields((prev) => ({ ...prev, password: true }));
+      }
+    }
+
+    if (confirmPassword && (touched.confirmPassword || confirmPassword.length > 0)) {
+      const confirmResult = validateConfirmPassword(val, confirmPassword);
+      if (!confirmResult.success && confirmResult.error) {
+        setFormErrors((prev) => ({ ...prev, confirmPassword: confirmResult.error! }));
+        setValidFields((prev) => ({ ...prev, confirmPassword: false }));
+      } else {
+        setFormErrors((prev) => {
+          const next = { ...prev };
+          delete next.confirmPassword;
+          return next;
+        });
+        setValidFields((prev) => ({ ...prev, confirmPassword: true }));
+      }
+    }
+  };
+
+  const handleConfirmPasswordChange = (val: string) => {
+    setConfirmPassword(val);
+    const isTouched = touched.confirmPassword || val.length > 0;
+    if (!touched.confirmPassword && val.length > 0) {
+      setTouched((prev) => ({ ...prev, confirmPassword: true }));
+    }
+
+    if (isTouched) {
+      const result = validateConfirmPassword(password, val);
+      if (!result.success && result.error) {
+        setFormErrors((prev) => ({ ...prev, confirmPassword: result.error! }));
+        setValidFields((prev) => ({ ...prev, confirmPassword: false }));
+      } else {
+        setFormErrors((prev) => {
+          const next = { ...prev };
+          delete next.confirmPassword;
+          return next;
+        });
+        setValidFields((prev) => ({ ...prev, confirmPassword: true }));
+      }
+    }
+  };
+
+  const handleBlur = (field: string) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    if (field === "name") handleNameChange(name);
+    if (field === "email") handleEmailChange(email);
+    if (field === "password") handlePasswordChange(password);
+    if (field === "confirmPassword") handleConfirmPasswordChange(confirmPassword);
+  };
 
   const handleTermsScroll = useCallback(() => {
     const el = termsScrollRef.current;
@@ -89,21 +229,31 @@ export function SignupForm() {
 
   const strengthScore = getPasswordStrength(password);
   const strengthColor =
-    strengthScore <= 1 ? "bg-rose-500" :
-      strengthScore === 2 ? "bg-amber-500" :
-        strengthScore === 3 ? "bg-yellow-400" :
-          "bg-emerald-500";
+    strengthScore <= 1
+      ? "bg-rose-500"
+      : strengthScore === 2
+      ? "bg-amber-500"
+      : strengthScore === 3
+      ? "bg-yellow-400"
+      : "bg-emerald-500";
   const strengthLabel =
-    strengthScore === 0 ? "" :
-      strengthScore <= 1 ? "Weak" :
-        strengthScore === 2 ? "Fair" :
-          strengthScore === 3 ? "Good" :
-            "Strong";
+    strengthScore === 0
+      ? ""
+      : strengthScore <= 1
+      ? "Weak"
+      : strengthScore === 2
+      ? "Fair"
+      : strengthScore === 3
+      ? "Good"
+      : "Strong";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     clearError();
     setFormErrors({});
+
+    // Touch all fields on submit attempt
+    setTouched({ name: true, email: true, password: true, confirmPassword: true });
 
     const extraErrors: Record<string, string> = {};
     if (!acceptedTerms) {
@@ -140,6 +290,8 @@ export function SignupForm() {
     await mutate({ name, email, password, confirmPassword, role });
   };
 
+  const isEmailDomainValid = email.toLowerCase().endsWith("@springercapital.com");
+
   return (
     <div className="w-full max-w-md mx-auto">
       <Card className="rounded-xl overflow-hidden border border-border bg-card shadow-2xl shadow-black/70">
@@ -167,9 +319,16 @@ export function SignupForm() {
           )}
 
           <form id="signup-form" onSubmit={handleSubmit} noValidate className="space-y-3.5">
-            {/* Full Name */}
+            {/* Full Name Field with Real-Time Validation */}
             <div className="space-y-1 text-left">
-              <label className="text-xs font-medium text-foreground/90">Full Name</label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-foreground/90">Full Name</label>
+                {touched.name && validFields.name && (
+                  <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1 animate-fade-in">
+                    <Check className="h-3 w-3" /> Valid
+                  </span>
+                )}
+              </div>
               <div className="relative">
                 <User className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
                 <Input
@@ -177,21 +336,39 @@ export function SignupForm() {
                   id="signup-name"
                   placeholder="Enter your full name"
                   value={name}
-                  onChange={(e) => { setName(e.target.value); clearFieldError("name"); }}
+                  onChange={(e) => handleNameChange(e.target.value)}
+                  onBlur={() => handleBlur("name")}
                   className={cn(
-                    "pl-9 h-9 text-xs rounded-md bg-background border-border text-foreground focus-visible:ring-1 focus-visible:ring-primary",
-                    formErrors?.name && "border-rose-500 ring-1 ring-rose-500"
+                    "pl-9 pr-9 h-9 text-xs rounded-md bg-background border-border text-foreground transition-all focus-visible:ring-1 focus-visible:ring-primary",
+                    touched.name && formErrors?.name && "border-rose-500 ring-1 ring-rose-500/80",
+                    touched.name && validFields?.name && "border-emerald-500/60 ring-1 ring-emerald-500/30"
                   )}
                 />
+                {touched.name && validFields?.name && (
+                  <Check className="absolute right-3 top-2.5 h-3.5 w-3.5 text-emerald-400 pointer-events-none animate-fade-in" />
+                )}
+                {touched.name && formErrors?.name && (
+                  <AlertCircle className="absolute right-3 top-2.5 h-3.5 w-3.5 text-rose-400 pointer-events-none animate-fade-in" />
+                )}
               </div>
-              {formErrors?.name && (
-                <p className="text-[11px] text-rose-400 font-medium animate-fade-in">{formErrors.name}</p>
+              {touched.name && formErrors?.name && (
+                <p className="text-[11px] text-rose-400 font-medium animate-fade-in flex items-center gap-1">
+                  <span className="inline-block h-1 w-1 rounded-full bg-rose-500" />
+                  {formErrors.name}
+                </p>
               )}
             </div>
 
-            {/* Work Email */}
+            {/* Work Email Field with Real-Time Validation & Domain Badge */}
             <div className="space-y-1 text-left">
-              <label className="text-xs font-medium text-foreground/90">Work Email</label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-foreground/90">Work Email</label>
+                {touched.email && validFields.email && (
+                  <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1 animate-fade-in">
+                    <Check className="h-3 w-3" /> Corporate Verified
+                  </span>
+                )}
+              </div>
               <div className="relative">
                 <Mail className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
                 <Input
@@ -199,15 +376,48 @@ export function SignupForm() {
                   id="signup-email"
                   placeholder="name@springercapital.com"
                   value={email}
-                  onChange={(e) => { setEmail(e.target.value); clearFieldError("email"); }}
+                  onChange={(e) => handleEmailChange(e.target.value)}
+                  onBlur={() => handleBlur("email")}
                   className={cn(
-                    "pl-9 h-9 text-xs rounded-md bg-background border-border text-foreground focus-visible:ring-1 focus-visible:ring-primary",
-                    formErrors?.email && "border-rose-500 ring-1 ring-rose-500"
+                    "pl-9 pr-9 h-9 text-xs rounded-md bg-background border-border text-foreground transition-all focus-visible:ring-1 focus-visible:ring-primary",
+                    touched.email && formErrors?.email && "border-rose-500 ring-1 ring-rose-500/80",
+                    touched.email && validFields?.email && "border-emerald-500/60 ring-1 ring-emerald-500/30"
                   )}
                 />
+                {touched.email && validFields?.email && (
+                  <Check className="absolute right-3 top-2.5 h-3.5 w-3.5 text-emerald-400 pointer-events-none animate-fade-in" />
+                )}
+                {touched.email && formErrors?.email && (
+                  <AlertCircle className="absolute right-3 top-2.5 h-3.5 w-3.5 text-rose-400 pointer-events-none animate-fade-in" />
+                )}
               </div>
-              {formErrors?.email && (
-                <p className="text-[11px] text-rose-400 font-medium animate-fade-in">{formErrors.email}</p>
+
+              {/* Real-time Domain Hint Pill */}
+              {email.length > 0 && (
+                <div className="pt-0.5 flex items-center gap-1.5 animate-fade-in">
+                  <span
+                    className={cn(
+                      "text-[10px] px-2 py-0.5 rounded-full border font-mono font-medium transition-all",
+                      isEmailDomainValid
+                        ? "bg-emerald-950/60 text-emerald-300 border-emerald-800/60"
+                        : "bg-muted/80 text-muted-foreground border-border"
+                    )}
+                  >
+                    @springercapital.com
+                  </span>
+                  {isEmailDomainValid ? (
+                    <span className="text-[10px] text-emerald-400 font-medium">Domain match</span>
+                  ) : (
+                    <span className="text-[10px] text-amber-400/90 font-medium">Must end with corporate domain</span>
+                  )}
+                </div>
+              )}
+
+              {touched.email && formErrors?.email && (
+                <p className="text-[11px] text-rose-400 font-medium animate-fade-in flex items-center gap-1">
+                  <span className="inline-block h-1 w-1 rounded-full bg-rose-500" />
+                  {formErrors.email}
+                </p>
               )}
             </div>
 
@@ -218,7 +428,10 @@ export function SignupForm() {
                 <button
                   type="button"
                   id="role-advisor"
-                  onClick={() => { setRole("Advisor"); clearFieldError("role"); }}
+                  onClick={() => {
+                    setRole("Advisor");
+                    clearFieldError("role");
+                  }}
                   className={cn(
                     "p-2.5 rounded-lg border text-left flex items-start space-x-2 transition-all cursor-pointer",
                     role === "Advisor"
@@ -226,9 +439,21 @@ export function SignupForm() {
                       : "border-border bg-card/60 hover:bg-muted text-muted-foreground"
                   )}
                 >
-                  <Briefcase className={cn("h-4 w-4 shrink-0 mt-0.5", role === "Advisor" ? "text-emerald-400" : "text-muted-foreground")} />
+                  <Briefcase
+                    className={cn(
+                      "h-4 w-4 shrink-0 mt-0.5",
+                      role === "Advisor" ? "text-emerald-400" : "text-muted-foreground"
+                    )}
+                  />
                   <div>
-                    <p className={cn("text-xs font-semibold leading-tight", role === "Advisor" ? "text-emerald-300" : "text-foreground")}>Advisor</p>
+                    <p
+                      className={cn(
+                        "text-xs font-semibold leading-tight",
+                        role === "Advisor" ? "text-emerald-300" : "text-foreground"
+                      )}
+                    >
+                      Advisor
+                    </p>
                     <p className="text-[10px] text-muted-foreground font-normal">Submits documents</p>
                   </div>
                 </button>
@@ -236,7 +461,10 @@ export function SignupForm() {
                 <button
                   type="button"
                   id="role-officer"
-                  onClick={() => { setRole("Officer"); clearFieldError("role"); }}
+                  onClick={() => {
+                    setRole("Officer");
+                    clearFieldError("role");
+                  }}
                   className={cn(
                     "p-2.5 rounded-lg border text-left flex items-start space-x-2 transition-all cursor-pointer",
                     role === "Officer"
@@ -244,9 +472,21 @@ export function SignupForm() {
                       : "border-border bg-card/60 hover:bg-muted text-muted-foreground"
                   )}
                 >
-                  <ShieldCheck className={cn("h-4 w-4 shrink-0 mt-0.5", role === "Officer" ? "text-cyan-400" : "text-muted-foreground")} />
+                  <ShieldCheck
+                    className={cn(
+                      "h-4 w-4 shrink-0 mt-0.5",
+                      role === "Officer" ? "text-cyan-400" : "text-muted-foreground"
+                    )}
+                  />
                   <div>
-                    <p className={cn("text-xs font-semibold leading-tight", role === "Officer" ? "text-cyan-300" : "text-foreground")}>Officer</p>
+                    <p
+                      className={cn(
+                        "text-xs font-semibold leading-tight",
+                        role === "Officer" ? "text-cyan-300" : "text-foreground"
+                      )}
+                    >
+                      Officer
+                    </p>
                     <p className="text-[10px] text-muted-foreground font-normal">Reviews &amp; approves</p>
                   </div>
                 </button>
@@ -263,10 +503,12 @@ export function SignupForm() {
                   id="signup-password"
                   placeholder="Min. 8 characters"
                   value={password}
-                  onChange={(e) => { setPassword(e.target.value); clearFieldError("password"); }}
+                  onChange={(e) => handlePasswordChange(e.target.value)}
+                  onBlur={() => handleBlur("password")}
                   className={cn(
-                    "pl-9 pr-9 h-9 text-xs rounded-md bg-background border-border text-foreground focus-visible:ring-1 focus-visible:ring-primary",
-                    formErrors?.password && "border-rose-500 ring-1 ring-rose-500"
+                    "pl-9 pr-9 h-9 text-xs rounded-md bg-background border-border text-foreground transition-all focus-visible:ring-1 focus-visible:ring-primary",
+                    touched.password && formErrors?.password && "border-rose-500 ring-1 ring-rose-500/80",
+                    touched.password && validFields?.password && "border-emerald-500/60 ring-1 ring-emerald-500/30"
                   )}
                 />
                 <button
@@ -294,27 +536,48 @@ export function SignupForm() {
                     ))}
                   </div>
                   {strengthLabel && (
-                    <p className={cn(
-                      "text-[10px] font-semibold",
-                      strengthScore <= 1 ? "text-rose-400" :
-                        strengthScore === 2 ? "text-amber-400" :
-                          strengthScore === 3 ? "text-yellow-400" :
-                            "text-emerald-400"
-                    )}>
+                    <p
+                      className={cn(
+                        "text-[10px] font-semibold",
+                        strengthScore <= 1
+                          ? "text-rose-400"
+                          : strengthScore === 2
+                          ? "text-amber-400"
+                          : strengthScore === 3
+                          ? "text-yellow-400"
+                          : "text-emerald-400"
+                      )}
+                    >
                       {strengthLabel} password
                     </p>
                   )}
                 </div>
               )}
 
-              {formErrors?.password && (
-                <p className="text-[11px] text-rose-400 font-medium animate-fade-in">{formErrors.password}</p>
+              {touched.password && formErrors?.password && (
+                <p className="text-[11px] text-rose-400 font-medium animate-fade-in flex items-center gap-1">
+                  <span className="inline-block h-1 w-1 rounded-full bg-rose-500" />
+                  {formErrors.password}
+                </p>
               )}
             </div>
 
             {/* Confirm Password */}
             <div className="space-y-1 text-left">
-              <label className="text-xs font-medium text-foreground/90">Confirm Password</label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-foreground/90">Confirm Password</label>
+                {touched.confirmPassword && confirmPassword.length > 0 && (
+                  validFields.confirmPassword ? (
+                    <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1 animate-fade-in">
+                      <Check className="h-3 w-3" /> Match
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-rose-400 font-semibold flex items-center gap-1 animate-fade-in">
+                      <AlertCircle className="h-3 w-3" /> Mismatch
+                    </span>
+                  )
+                )}
+              </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
                 <Input
@@ -322,23 +585,41 @@ export function SignupForm() {
                   id="signup-confirm-password"
                   placeholder="Re-enter password"
                   value={confirmPassword}
-                  onChange={(e) => { setConfirmPassword(e.target.value); clearFieldError("confirmPassword"); }}
+                  onChange={(e) => handleConfirmPasswordChange(e.target.value)}
+                  onBlur={() => handleBlur("confirmPassword")}
                   className={cn(
-                    "pl-9 pr-9 h-9 text-xs rounded-md bg-background border-border text-foreground focus-visible:ring-1 focus-visible:ring-primary",
-                    formErrors?.confirmPassword && "border-rose-500 ring-1 ring-rose-500"
+                    "pl-9 pr-16 h-9 text-xs rounded-md bg-background border-border text-foreground transition-all focus-visible:ring-1 focus-visible:ring-primary",
+                    touched.confirmPassword && formErrors?.confirmPassword && "border-rose-500 ring-1 ring-rose-500/80 bg-rose-950/20 text-rose-100",
+                    touched.confirmPassword && validFields?.confirmPassword && "border-emerald-500/60 ring-1 ring-emerald-500/30"
                   )}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword((prev) => !prev)}
-                  className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                  aria-label={showConfirmPassword ? "Hide password" : "Show password"}
-                >
-                  {showConfirmPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                </button>
+                <div className="absolute right-3 top-2.5 flex items-center gap-1.5">
+                  {touched.confirmPassword && formErrors?.confirmPassword && (
+                    <AlertCircle className="h-3.5 w-3.5 text-rose-400 animate-fade-in" />
+                  )}
+                  {touched.confirmPassword && validFields?.confirmPassword && (
+                    <Check className="h-3.5 w-3.5 text-emerald-400 animate-fade-in" />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword((prev) => !prev)}
+                    className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                    aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  </button>
+                </div>
               </div>
-              {formErrors?.confirmPassword && (
-                <p className="text-[11px] text-rose-400 font-medium animate-fade-in">{formErrors.confirmPassword}</p>
+              {touched.confirmPassword && formErrors?.confirmPassword && (
+                <p className="text-[11px] text-rose-400 font-semibold animate-fade-in flex items-center gap-1.5 pt-0.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-rose-500 inline-block shrink-0 animate-pulse" />
+                  {formErrors.confirmPassword}
+                </p>
+              )}
+              {touched.confirmPassword && validFields?.confirmPassword && (
+                <p className="text-[11px] text-emerald-400 font-medium animate-fade-in flex items-center gap-1 pt-0.5">
+                  <Check className="h-3 w-3" /> Passwords match
+                </p>
               )}
             </div>
 
@@ -353,8 +634,8 @@ export function SignupForm() {
                   acceptedTerms
                     ? "border-emerald-800/60 bg-emerald-950/30"
                     : formErrors.terms
-                      ? "border-rose-900/60 bg-rose-950/30"
-                      : "border-border bg-card hover:border-border/80 hover:bg-muted/40"
+                    ? "border-rose-900/60 bg-rose-950/30"
+                    : "border-border bg-card hover:border-border/80 hover:bg-muted/40"
                 )}
               >
                 {/* Custom checkbox display */}
@@ -364,13 +645,19 @@ export function SignupForm() {
                     acceptedTerms
                       ? "bg-primary border-primary"
                       : formErrors.terms
-                        ? "border-rose-500 bg-background"
-                        : "border-muted-foreground/60 bg-background group-hover:border-primary"
+                      ? "border-rose-500 bg-background"
+                      : "border-muted-foreground/60 bg-background group-hover:border-primary"
                   )}
                 >
                   {acceptedTerms && (
                     <svg className="h-2.5 w-2.5 text-primary-foreground" viewBox="0 0 10 8" fill="none">
-                      <path d="M1 4l3 3 5-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                      <path
+                        d="M1 4l3 3 5-6"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
                     </svg>
                   )}
                 </div>
@@ -392,7 +679,12 @@ export function SignupForm() {
                 </div>
 
                 {!acceptedTerms && (
-                  <svg className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg
+                    className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors shrink-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                 )}
@@ -405,9 +697,6 @@ export function SignupForm() {
                 </p>
               )}
             </div>
-
-
-
           </form>
         </CardContent>
 

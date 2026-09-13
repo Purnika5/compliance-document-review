@@ -1,7 +1,7 @@
 /**
  * DOCU: Document Management and Compliance Review Service consuming APIClient.
  * Provides methods for submission listing, officer queue filtering, uploads, and review decisions.
- * Last Updated Date: September 7, 2026
+ * Last Updated Date: September 13, 2026
  * @author Keith
  */
 import { apiClient, APIClient } from "@/utils/apiClient";
@@ -14,6 +14,7 @@ import { ReviewDecisionPayload, ReviewDecisionResult } from "@/entities/interfac
 import { ApiResponseEnvelope } from "@/entities/types/api.type";
 import { UploadDocumentInput, EditDocumentInput } from "@/schema/document.schema";
 import { formatFileSize } from "@/utils/helpers";
+import { API_ENDPOINTS } from "@/constants/api-endpoints";
 
 export class DocumentService {
   private client: APIClient;
@@ -54,13 +55,15 @@ export class DocumentService {
    * @author Keith
    */
   public async getMySubmissions(): Promise<DocumentItem[]> {
-    const envelope = await this.client.get<ApiResponseEnvelope<ApiDocument[]>>("/documents");
-    return envelope.data.map(this.mapToDocumentItem.bind(this));
+    const envelope = await this.client.get<ApiResponseEnvelope<ApiDocument[]>>(API_ENDPOINTS.DOCUMENTS.BASE);
+    const data = Array.isArray(envelope.data) ? envelope.data : [];
+    return data.map(this.mapToDocumentItem.bind(this));
   }
 
   /**
    * DOCU: Fetches the review queue for compliance officers with optional status/advisor filtering.
-   * Last Updated Date: September 7, 2026
+   * Queries /documents/queue with fallback to /documents.
+   * Last Updated Date: September 13, 2026
    * @param filters - Optional query filters for document status or advisor ID.
    * @returns Array of DocumentItem objects matching the specified filter criteria.
    * @author Keith
@@ -74,10 +77,19 @@ export class DocumentService {
       params.advisor_id = filters.advisorId;
     }
 
-    const envelope = await this.client.get<ApiResponseEnvelope<ApiDocument[]>>("/documents", {
-      params,
-    });
-    return envelope.data.map(this.mapToDocumentItem.bind(this));
+    try {
+      const envelope = await this.client.get<ApiResponseEnvelope<ApiDocument[]>>(API_ENDPOINTS.DOCUMENTS.QUEUE, {
+        params,
+      });
+      const data = Array.isArray(envelope?.data) ? envelope.data : [];
+      return data.map(this.mapToDocumentItem.bind(this));
+    } catch {
+      const envelope = await this.client.get<ApiResponseEnvelope<ApiDocument[]>>(API_ENDPOINTS.DOCUMENTS.BASE, {
+        params,
+      });
+      const data = Array.isArray(envelope?.data) ? envelope.data : [];
+      return data.map(this.mapToDocumentItem.bind(this));
+    }
   }
 
   /**
@@ -111,16 +123,21 @@ export class DocumentService {
   }
 
   /**
-   * DOCU: Updates an existing document's title, category, or description.
-   * Last Updated Date: September 7, 2026
+   * DOCU: Updates an existing document's title, category, or description with fallback to status endpoint.
+   * Last Updated Date: September 13, 2026
    * @param id - Document identifier to update.
    * @param data - Updated metadata fields.
    * @returns Updated DocumentItem model.
    * @author Keith
    */
   public async updateDocument(id: string, data: EditDocumentInput): Promise<DocumentItem> {
-    const envelope = await this.client.patch<ApiResponseEnvelope<ApiDocument>>(`/documents/${id}`, data);
-    return this.mapToDocumentItem(envelope.data);
+    try {
+      const envelope = await this.client.patch<ApiResponseEnvelope<ApiDocument>>(`/documents/${id}`, data);
+      return this.mapToDocumentItem(envelope.data);
+    } catch {
+      const envelope = await this.client.patch<ApiResponseEnvelope<ApiDocument>>(`/documents/${id}/status`, data);
+      return this.mapToDocumentItem(envelope.data);
+    }
   }
 
   /**
@@ -136,7 +153,7 @@ export class DocumentService {
     decision: ReviewDecisionPayload
   ): Promise<ReviewDecisionResult> {
     const envelope = await this.client.patch<ApiResponseEnvelope<ReviewDecisionResult>>(
-      `/documents/${id}/status`,
+      API_ENDPOINTS.DOCUMENTS.STATUS(id),
       decision
     );
     return envelope.data;

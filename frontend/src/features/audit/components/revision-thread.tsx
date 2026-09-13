@@ -6,7 +6,7 @@
  * @returns The revision thread view.
  * @author Keith
  */
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Send, User, Shield, Clock, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -49,7 +49,25 @@ export function RevisionThread({
   onAddComment,
   readOnly = false,
 }: RevisionThreadProps) {
-  const [timeline, setTimeline] = useState<IRevisionEvent[]>(events);
+  const [timeline, setTimeline] = useState<IRevisionEvent[]>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(`revisions_${documentId}`);
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (e) {
+          console.error("Failed to parse revisions from localStorage", e);
+        }
+      }
+    }
+    return events;
+  });
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(`revisions_${documentId}`, JSON.stringify(timeline));
+    }
+  }, [timeline, documentId]);
   const [newComment, setNewComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const revCountRef = useRef(timeline.length);

@@ -160,25 +160,17 @@ export function DocumentQueueTable() {
 
   return (
     <div className="space-y-4 max-w-[1600px] mx-auto pb-16">
-      {/* Officer Triage Context Banner */}
-      <div className="relative overflow-hidden p-4 rounded-xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-card border border-border before:absolute before:left-0 before:top-0 before:h-full before:w-1 before:bg-cyan-500 shadow-xs">
-        <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-lg bg-cyan-950/80 border border-cyan-800/60 text-cyan-400 flex items-center justify-center shrink-0">
-            <ShieldCheck className="h-5 w-5" />
+      {/* Header Banner */}
+      <div className="border border-border bg-card/80 backdrop-blur-md rounded-2xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="chip bg-primary/20 text-emerald-400 border-primary/30 text-[10px] font-bold uppercase tracking-wider">
+              Regulatory Triage
+            </span>
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-base font-semibold text-foreground tracking-tight">
-                Officer Review Queue
-              </h1>
-              <span className="text-[10px] font-mono font-semibold uppercase px-1.5 py-0.5 rounded bg-cyan-950/60 text-cyan-300 border border-cyan-800/60">
-                Regulatory Triage
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Audit advisor document submissions against FINRA Rule 2111, SEC 17a-4, and firm compliance rules.
-            </p>
-          </div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+            Officer Review Queue
+          </h1>
         </div>
 
         <div className="flex items-center gap-2">
@@ -186,7 +178,7 @@ export function DocumentQueueTable() {
             variant="outline"
             size="sm"
             onClick={() => refetch()}
-            className="h-8 px-2.5 text-xs font-semibold rounded-md border-border"
+            className="text-xs border-border bg-muted/30 hover:bg-muted font-semibold gap-1.5 cursor-pointer"
           >
             Refresh Queue
           </Button>
@@ -200,80 +192,116 @@ export function DocumentQueueTable() {
       {/* Structured Institutional Back-Office Metric Cards */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12">
         {/* Total in Queue */}
-        <div className="rounded-xl p-5 space-y-2 sm:col-span-2 lg:col-span-5 lg:row-span-2 border border-border bg-card shadow-xs">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-            Review Queue Volume
-          </p>
-          <div className="flex items-end justify-between gap-3">
-            <div>
-              <h3 className="text-5xl font-bold tracking-tight text-foreground">{counts.All}</h3>
-              <p className="mt-1 text-xs text-muted-foreground">Total submissions across portfolios</p>
+        <div className="rounded-xl p-5 sm:col-span-2 lg:col-span-4 border border-border bg-card shadow-xs flex flex-col justify-center relative overflow-hidden group">
+          <div className="relative z-10 space-y-2">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+              Review Queue Volume
+            </p>
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <h3 className="text-5xl font-bold tracking-tight text-foreground">{counts.All}</h3>
+                <p className="mt-1 text-xs text-muted-foreground">Total submissions across portfolios</p>
+              </div>
             </div>
-            <ShieldCheck className="mb-1 h-7 w-7 text-cyan-400" />
+            <div className="mt-7 border-t border-border/60 pt-3 text-[11px] text-muted-foreground text-right">
+              <span className="font-semibold text-amber-400">{counts.Pending} pending</span>
+              <span className="mx-1.5 text-muted-foreground/40">/</span>
+              <span>{counts.Approved} verified</span>
+            </div>
           </div>
-          <div className="mt-7 border-t border-border/60 pt-3 text-[11px] text-muted-foreground">
-            <span className="font-semibold text-amber-400">{counts.Pending} pending</span>
-            <span className="mx-1.5 text-muted-foreground/40">/</span>
-            <span>{counts.Approved} verified</span>
+          {/* Decorative Sparkline */}
+          <div className="absolute bottom-0 left-0 w-full h-16 pointer-events-none">
+            <svg viewBox="0 0 100 30" preserveAspectRatio="none" className="w-full h-full text-cyan-500">
+              <path d="M0,30 L0,18 C15,10 25,25 40,20 C55,15 70,26 85,14 C90,10 95,18 100,12 L100,30 Z" fill="currentColor" fillOpacity="0.1" />
+              <path d="M0,18 C15,10 25,25 40,20 C55,15 70,26 85,14 C90,10 95,18 100,12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
           </div>
         </div>
 
         {/* Pending Review */}
-        <div className="rounded-xl p-4 space-y-2 sm:col-span-1 lg:col-span-3 border border-border bg-card shadow-xs">
-          <div className="flex items-center justify-between">
-            <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider">
-              Pending Evaluation
-            </p>
-            {counts.Pending > 0 && (
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
-            )}
+        <div className="rounded-xl p-4 space-y-2 sm:col-span-1 lg:col-span-2 border border-border bg-card shadow-xs relative overflow-hidden flex flex-col justify-between group">
+          <div className="relative z-10">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider">
+                Pending Evaluation
+              </p>
+              {counts.Pending > 0 && (
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+              )}
+            </div>
+            <h3 className="text-3xl font-bold text-foreground mt-2">{counts.Pending}</h3>
+            <span className="text-[11px] text-muted-foreground">Needs action</span>
           </div>
-          <h3 className="text-3xl font-bold text-foreground">{counts.Pending}</h3>
-          <span className="text-[11px] text-muted-foreground">Needs action</span>
+          {/* Decorative Sparkline */}
+          <div className="absolute bottom-0 left-0 w-full h-12 pointer-events-none">
+            <svg viewBox="0 0 100 30" preserveAspectRatio="none" className="w-full h-full text-amber-500">
+              <path d="M0,30 L0,22 C12,18 25,26 38,15 C50,4 65,20 75,12 C85,4 92,16 100,10 L100,30 Z" fill="currentColor" fillOpacity="0.1" />
+              <path d="M0,22 C12,18 25,26 38,15 C50,4 65,20 75,12 C85,4 92,16 100,10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
         </div>
 
         {/* Needs Revision / High Priority */}
-        <div className="rounded-xl p-4 space-y-2 sm:col-span-1 lg:col-span-4 border border-border bg-card shadow-xs">
-          <div className="flex items-center justify-between">
-            <p className="text-[10px] font-semibold text-orange-400 uppercase tracking-wider">
-              Action Required (Revisions)
-            </p>
-            {counts["Needs Revision"] > 0 && (
-              <span className="h-1.5 w-1.5 rounded-full bg-orange-400 animate-pulse" />
-            )}
+        <div className="rounded-xl p-4 space-y-2 sm:col-span-1 lg:col-span-2 border border-border bg-card shadow-xs relative overflow-hidden flex flex-col justify-between group">
+          <div className="relative z-10">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-semibold text-orange-400 uppercase tracking-wider">
+                Action Required (Revisions)
+              </p>
+              {counts["Needs Revision"] > 0 && (
+                <span className="h-1.5 w-1.5 rounded-full bg-orange-400 animate-pulse" />
+              )}
+            </div>
+            <h3 className="text-3xl font-bold text-foreground mt-2">{counts["Needs Revision"]}</h3>
+            <span className="text-[11px] text-muted-foreground">Awaiting advisor</span>
           </div>
-          <h3 className="text-3xl font-bold text-foreground">{counts["Needs Revision"]}</h3>
-          <span className="text-[11px] text-muted-foreground">Awaiting advisor</span>
+          {/* Decorative Sparkline */}
+          <div className="absolute bottom-0 left-0 w-full h-12 pointer-events-none">
+            <svg viewBox="0 0 100 30" preserveAspectRatio="none" className="w-full h-full text-orange-500">
+              <path d="M0,30 L0,15 C15,5 25,25 40,18 C55,11 70,22 85,8 C90,3 95,12 100,6 L100,30 Z" fill="currentColor" fillOpacity="0.1" />
+              <path d="M0,15 C15,5 25,25 40,18 C55,11 70,22 85,8 C90,3 95,12 100,6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
         </div>
 
         {/* Approved Records */}
-        <div className="rounded-xl p-4 space-y-2 sm:col-span-1 lg:col-span-3 border border-border bg-card shadow-xs">
-          <p className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider">
-            Approved &amp; Verified
-          </p>
-          <h3 className="text-3xl font-bold text-foreground">{counts.Approved}</h3>
-          <span className="text-[11px] text-muted-foreground">Audit compliant</span>
+        <div className="rounded-xl p-4 space-y-2 sm:col-span-1 lg:col-span-2 border border-border bg-card shadow-xs relative overflow-hidden flex flex-col justify-between group">
+          <div className="relative z-10">
+            <p className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider">
+              Approved &amp; Verified
+            </p>
+            <h3 className="text-3xl font-bold text-foreground mt-2">{counts.Approved}</h3>
+            <span className="text-[11px] text-muted-foreground">Audit compliant</span>
+          </div>
+          {/* Decorative Sparkline */}
+          <div className="absolute bottom-0 left-0 w-full h-12 pointer-events-none">
+            <svg viewBox="0 0 100 30" preserveAspectRatio="none" className="w-full h-full text-emerald-500">
+              <path d="M0,30 L0,25 C20,20 30,10 50,15 C70,20 80,5 100,2 L100,30 Z" fill="currentColor" fillOpacity="0.1" />
+              <path d="M0,25 C20,20 30,10 50,15 C70,20 80,5 100,2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
         </div>
 
         {/* Review Throughput */}
-        <div className="rounded-xl p-4 space-y-2 sm:col-span-1 lg:col-span-4 border border-border bg-card shadow-xs">
-          <div className="flex items-center justify-between">
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Review throughput</p>
-            <Percent className="h-4 w-4 text-emerald-400" />
+        <div className="rounded-xl p-4 space-y-2 sm:col-span-1 lg:col-span-2 border border-border bg-card shadow-xs relative overflow-hidden flex flex-col justify-between group">
+          <div className="relative z-10">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Review throughput</p>
+              <Percent className="h-4 w-4 text-emerald-400" />
+            </div>
+            <h3 className="text-3xl font-bold text-foreground mt-2">{reviewRate}%</h3>
+            <p className="text-[11px] text-muted-foreground">Approved or rejected records</p>
           </div>
-          <h3 className="text-3xl font-bold text-foreground">{reviewRate}%</h3>
-          <p className="text-[11px] text-muted-foreground">Approved or rejected records</p>
+          {/* Decorative Sparkline */}
+          <div className="absolute bottom-0 left-0 w-full h-12 pointer-events-none">
+            <svg viewBox="0 0 100 30" preserveAspectRatio="none" className="w-full h-full text-emerald-500">
+              <path d="M0,30 L0,20 C10,15 20,25 30,18 C40,11 50,22 60,10 C70,-2 80,12 90,5 L100,8 L100,30 Z" fill="currentColor" fillOpacity="0.1" />
+              <path d="M0,20 C10,15 20,25 30,18 C40,11 50,22 60,10 C70,-2 80,12 90,5 L100,8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
         </div>
 
-        {/* Rejection Rate */}
-        <div className="rounded-xl p-4 space-y-2 sm:col-span-1 lg:col-span-3 border border-border bg-card shadow-xs">
-          <div className="flex items-center justify-between">
-            <p className="text-[10px] font-semibold text-rose-400 uppercase tracking-wider">Rejection rate</p>
-            <XCircle className="h-4 w-4 text-rose-400" />
-          </div>
-          <h3 className="text-3xl font-bold text-foreground">{rejectedRate}%</h3>
-          <p className="text-[11px] text-muted-foreground">Records declined in review</p>
-        </div>
+
       </div>
 
       {/* Queue Toolbar: Search, Status Tabs, and Priority Filters */}

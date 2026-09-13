@@ -156,7 +156,6 @@ function AppSidebarContent({
                   : "bg-emerald-950/60 text-emerald-300 border-emerald-800/50"
               )}
             >
-              <span className={cn("h-1.5 w-1.5 rounded-full", roleDotColor)} />
               {role}
             </span>
           </div>

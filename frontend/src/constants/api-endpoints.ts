@@ -1,6 +1,6 @@
 /**
  * DOCU: Backend REST API route endpoints registry for authentication, document management, and audit trailing.
- * Last Updated Date: September 7, 2026
+ * Last Updated Date: September 13, 2026
  * @author Keith
  */
 export const API_ENDPOINTS = {
@@ -13,8 +13,11 @@ export const API_ENDPOINTS = {
   },
   DOCUMENTS: {
     BASE: "/documents",
+    QUEUE: "/documents/queue",
     DETAIL: (id: string) => `/documents/${id}`,
     STATUS: (id: string) => `/documents/${id}/status`,
-    AUDIT: (id: string) => `/documents/${id}/audit`,
+    VERSIONS: (id: string) => `/documents/${id}/versions`,
+    AUDIT: (id: string) => `/documents/${id}/versions`,
+    ANALYSIS: (id: string) => `/documents/${id}/analysis`,
   },
 } as const;

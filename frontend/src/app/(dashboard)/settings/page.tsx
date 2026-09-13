@@ -92,21 +92,14 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-14">
+    <div className="space-y-4 max-w-[1600px] mx-auto pb-16">
       {/* Header Banner */}
       <div className="border border-border bg-card/80 backdrop-blur-md rounded-2xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span
-              className={cn(
-                "chip border text-[10px] font-bold uppercase tracking-wider",
-                isOfficer
-                  ? "bg-cyan-950/60 text-cyan-300 border-cyan-800/50"
-                  : "bg-emerald-950/60 text-emerald-300 border-emerald-800/50"
-              )}
-            >
+            <span className="chip bg-primary/20 text-emerald-400 border-primary/30 text-[10px] font-bold uppercase tracking-wider">
               <ShieldCheck className="h-3 w-3 inline mr-1" />
-              {role} Workspace
+              Officer Workspace
             </span>
           </div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
@@ -127,9 +120,9 @@ export default function SettingsPage() {
       )}
 
       {/* Main Settings Form */}
-      <form onSubmit={handleSavePreferences} noValidate className="space-y-6">
+      <form onSubmit={handleSavePreferences} noValidate className="space-y-4">
         {/* Profile & Credentials Section */}
-        <div className="border border-border bg-card rounded-2xl p-5 shadow-xs space-y-4">
+        <div className="border border-border bg-card rounded-xl p-4 shadow-xs space-y-3">
           <div className="flex items-center gap-2 pb-2 border-b border-border">
             <User className="h-4 w-4 text-primary" />
             <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">
@@ -137,7 +130,7 @@ export default function SettingsPage() {
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {/* Full Name */}
             <div className="space-y-1">
               <label className="text-xs font-semibold text-foreground">
@@ -152,7 +145,7 @@ export default function SettingsPage() {
                   }
                 }}
                 className={cn(
-                  "h-9 text-xs bg-background/60",
+                  "h-8 text-xs bg-background/60",
                   validationErrors.fullName && "border-rose-500 focus-visible:ring-rose-500"
                 )}
                 placeholder="e.g. Alex Smith"
@@ -180,7 +173,7 @@ export default function SettingsPage() {
                   }
                 }}
                 className={cn(
-                  "h-9 text-xs bg-background/60",
+                  "h-8 text-xs bg-background/60",
                   validationErrors.email && "border-rose-500 focus-visible:ring-rose-500"
                 )}
                 placeholder="name@springercapital.com"
@@ -199,7 +192,7 @@ export default function SettingsPage() {
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="h-9 text-xs bg-background/60"
+                className="h-8 text-xs bg-background/60"
               />
             </div>
 
@@ -209,13 +202,13 @@ export default function SettingsPage() {
               <Input
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="h-9 text-xs bg-background/60"
+                className="h-8 text-xs bg-background/60"
               />
             </div>
           </div>
 
           {/* Institutional Badges Card */}
-          <div className="p-3 bg-muted/30 border border-border/70 rounded-xl grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          <div className="p-3 bg-muted/30 border border-border/70 rounded-lg grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
             <div>
               <span className="text-[10px] uppercase font-bold text-muted-foreground block">
                 Session Role
@@ -243,105 +236,8 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Compliance & AI Evaluation Engine Preferences */}
-        <div className="border border-border bg-card rounded-2xl p-5 shadow-xs space-y-4">
-          <div className="flex items-center gap-2 pb-2 border-b border-border">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">
-              AI Compliance Engine &amp; Rule Preferences
-            </h2>
-          </div>
-
-          <div className="space-y-3">
-            <div>
-              <label className="text-xs font-semibold text-foreground block mb-1">
-                Automated Rule Sensitivity Threshold
-              </label>
-              <p className="text-[11px] text-muted-foreground mb-2">
-                Controls the rigor of AI promissory statement and disclosure scanning against FINRA Rule 2210 &amp; SEC Rule 206(4)-1.
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setSensitivity("strict")}
-                  className={cn(
-                    "p-3 rounded-xl border text-left transition-all cursor-pointer",
-                    sensitivity === "strict"
-                      ? "bg-[#062a20] border-emerald-800/60 text-foreground shadow-xs"
-                      : "bg-transparent border-border text-muted-foreground hover:bg-[#062a20]/60 hover:text-[#54d0a2]"
-                  )}
-                >
-                  <div className="flex items-center justify-between font-semibold text-xs text-foreground mb-0.5">
-                    <span>Strict Institutional</span>
-                    {sensitivity === "strict" && <CheckCircle2 className="h-3.5 w-3.5 text-[#54d0a2]" />}
-                  </div>
-                  <p className="text-[10px] text-muted-foreground">
-                    Zero tolerance for promissory or unhedged claims. Recommended for public offerings.
-                  </p>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSensitivity("balanced")}
-                  className={cn(
-                    "p-3 rounded-xl border text-left transition-all cursor-pointer",
-                    sensitivity === "balanced"
-                      ? "bg-[#062a20] border-emerald-800/60 text-foreground shadow-xs"
-                      : "bg-transparent border-border text-muted-foreground hover:bg-[#062a20]/60 hover:text-[#54d0a2]"
-                  )}
-                >
-                  <div className="flex items-center justify-between font-semibold text-xs text-foreground mb-0.5">
-                    <span>Balanced Advisory</span>
-                    {sensitivity === "balanced" && <CheckCircle2 className="h-3.5 w-3.5 text-[#54d0a2]" />}
-                  </div>
-                  <p className="text-[10px] text-muted-foreground">
-                    Standard FINRA threshold with contextual performance attribution.
-                  </p>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSensitivity("throughput")}
-                  className={cn(
-                    "p-3 rounded-xl border text-left transition-all cursor-pointer",
-                    sensitivity === "throughput"
-                      ? "bg-[#062a20] border-emerald-800/60 text-foreground shadow-xs"
-                      : "bg-transparent border-border text-muted-foreground hover:bg-[#062a20]/60 hover:text-[#54d0a2]"
-                  )}
-                >
-                  <div className="flex items-center justify-between font-semibold text-xs text-foreground mb-0.5">
-                    <span>Internal Review Only</span>
-                    {sensitivity === "throughput" && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
-                  </div>
-                  <p className="text-[10px] text-muted-foreground">
-                    Flags high-severity violations only. For internal brainstorming drafts.
-                  </p>
-                </button>
-              </div>
-            </div>
-
-            {/* Mandatory Disclaimers toggle */}
-            <div className="flex items-center justify-between pt-3 border-t border-border">
-              <div>
-                <p className="text-xs font-semibold text-foreground">
-                  Mandatory Disclaimer Auto-Attachment
-                </p>
-                <p className="text-[11px] text-muted-foreground">
-                  Automatically attaches Springer Capital standard SEC/FINRA footnotes to approved decks.
-                </p>
-              </div>
-              <input
-                type="checkbox"
-                checked={autoEnforceDisclaimers}
-                onChange={(e) => setAutoEnforceDisclaimers(e.target.checked)}
-                className="h-4 w-4 rounded accent-primary border-border bg-background cursor-pointer"
-              />
-            </div>
-          </div>
-        </div>
-
         {/* Session Security & Authentication Section */}
-        <div className="border border-border bg-card rounded-2xl p-5 shadow-xs space-y-4">
+        <div className="border border-border bg-card rounded-xl p-4 shadow-xs space-y-3">
           <div className="flex items-center gap-2 pb-2 border-b border-border">
             <Lock className="h-4 w-4 text-primary" />
             <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">
@@ -349,7 +245,7 @@ export default function SettingsPage() {
             </h2>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-semibold text-foreground">Bearer Token Authentication</p>
@@ -377,7 +273,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Notification Preferences */}
-        <div className="border border-border bg-card rounded-2xl p-5 shadow-xs space-y-4">
+        <div className="border border-border bg-card rounded-xl p-4 shadow-xs space-y-3">
           <div className="flex items-center gap-2 pb-2 border-b border-border">
             <Bell className="h-4 w-4 text-primary" />
             <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">
@@ -385,7 +281,7 @@ export default function SettingsPage() {
             </h2>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-semibold text-foreground">Urgent Compliance SLA Alerts</p>
@@ -434,13 +330,13 @@ export default function SettingsPage() {
         </div>
 
         {/* Action Save Bar */}
-        <div className="flex items-center justify-end gap-3 pt-2">
+        <div className="flex items-center justify-end gap-3 pt-1">
           <Button
             type="submit"
             size="sm"
-            className="h-9 px-4 text-xs font-semibold gap-1.5 shadow-xs cursor-pointer bg-[#24A152] hover:bg-[#062A20] hover:text-[#54d0a2] hover:border hover:border-emerald-700/60 active:bg-[#1d8342] text-white transition-all"
+            className="h-8 px-4 text-xs font-semibold gap-1.5 shadow-xs cursor-pointer bg-[#24A152] hover:bg-[#062A20] hover:text-[#54d0a2] hover:border hover:border-emerald-700/60 active:bg-[#1d8342] text-white transition-all"
           >
-            <Save className="h-4 w-4" />
+            <Save className="h-3.5 w-3.5" />
             Save Preferences
           </Button>
         </div>

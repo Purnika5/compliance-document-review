@@ -218,6 +218,51 @@
   }
 }
 
+@keyframes spinReverse {
+  0% {
+    transform: rotate(360deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes radarWave {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+@keyframes progressMove {
+  0% {
+    background-position: 1rem 0;
+  }
+  100% {
+    background-position: 0 0;
+  }
+}
+
+@keyframes popupTransition {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  40% {
+    transform: scale(1.05);
+    opacity: 0.95;
+    filter: drop-shadow(0 0 30px rgba(34, 197, 94, 0.7));
+  }
+  100% {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+}
+
 /* ─── Utility Animation Classes ────────────────────────────────────────── */
 
 @layer utilities {
@@ -251,6 +296,48 @@
 
   .animate-check-pop {
     animation: checkPop 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .animate-spin-slow {
+    animation: spin 8s linear infinite;
+  }
+
+  .animate-spin-reverse {
+    animation: spinReverse 6s linear infinite;
+  }
+
+  .animate-radar {
+    animation: radarWave 2.8s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+  }
+
+  .animate-popup-out {
+    animation: popupTransition 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .bg-grid-pattern {
+    background-size: 32px 32px;
+    background-image: 
+      linear-gradient(to right, rgba(34, 197, 94, 0.04) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(34, 197, 94, 0.04) 1px, transparent 1px);
+  }
+
+  .progress-bar-stripes {
+    background-image: linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.15) 25%,
+      transparent 25%,
+      transparent 50%,
+      rgba(255, 255, 255, 0.15) 50%,
+      rgba(255, 255, 255, 0.15) 75%,
+      transparent 75%,
+      transparent
+    );
+    background-size: 1rem 1rem;
+    animation: progressMove 1.5s linear infinite;
+  }
+
+  .glow-glow {
+    box-shadow: 0 0 40px -10px rgba(34, 197, 94, 0.35);
   }
 
   /* Stagger helpers */

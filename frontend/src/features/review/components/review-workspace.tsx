@@ -417,7 +417,6 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                       <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                         Officer Decision Suite
                       </p>
-                      <span className="text-[10px] font-semibold text-muted-foreground/70">Human Sign-off</span>
                     </div>
 
                     <button
@@ -545,7 +544,6 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                     <span className="inline-block px-2 py-0.5 text-[10px] font-semibold uppercase rounded bg-slate-100 text-slate-800 border border-slate-200">
                       {currentDocItem.category || "General Document"}
                     </span>
-                    <StatusBadge status={status} />
                   </div>
 
                   <div>
@@ -626,24 +624,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                     </div>
                   </div>
 
-                  {/* Regulatory Review Summary */}
-                  <div className="border border-slate-200/90 rounded-lg p-3 bg-slate-50/80 space-y-1.5">
-                    <p className="font-semibold text-slate-900 text-[11px]">Compliance Review Status:</p>
-                    <p className="text-slate-600 text-[11px] leading-relaxed">
-                      {status === "Approved"
-                        ? "This submission has been officially approved by an authorized compliance officer."
-                        : status === "Needs Revision"
-                        ? "Revisions have been requested. Please inspect reviewer notes in the history tab."
-                        : status === "Rejected"
-                        ? "This filing has been formally rejected by institutional review."
-                        : "This document is pending compliance officer inspection and determination."}
-                    </p>
-                    {auditLogs.length > 0 && (
-                      <p className="text-[10px] font-mono text-slate-500 pt-1 border-t border-slate-200">
-                        Latest Audit Entry: {auditLogs[0].action} by {auditLogs[0].user} ({auditLogs[0].relativeTime})
-                      </p>
-                    )}
-                  </div>
+
                 </div>
 
                 {/* Footer */}
@@ -661,7 +642,19 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
               </span>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => window.print()}
+                  onClick={() => {
+                    if (currentDocItem.fileUrl) {
+                      const link = document.createElement('a');
+                      link.href = currentDocItem.fileUrl;
+                      link.download = `${currentDocItem.title || 'document'}.pdf`;
+                      link.target = '_blank';
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    } else {
+                      showInfoToast("PDF not available for export.");
+                    }
+                  }}
                   className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded text-xs font-semibold bg-transparent hover:bg-[#062a20] text-[#54d0a2] border border-emerald-800/60 transition-colors cursor-pointer shadow-2xs"
                 >
                   <Download className="h-3 w-3" />

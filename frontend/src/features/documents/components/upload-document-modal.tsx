@@ -136,7 +136,7 @@ export function UploadDocumentModal({
       const newFile: IFileValidationItem = {
         id: `f-${Date.now()}`,
         name: dropped.name,
-        size: `${(dropped.size / (1024 * 1024)).toFixed(1)} MB`,
+        size: dropped.size < 1024 * 1024 ? `${(dropped.size / 1024).toFixed(1)} KB` : `${(dropped.size / (1024 * 1024)).toFixed(2)} MB`,
         type: dropped.name.split(".").pop()?.toUpperCase() || "DOC",
         status: "valid",
         message: "File integrity and size constraints passed",
@@ -153,7 +153,7 @@ export function UploadDocumentModal({
       const newFile: IFileValidationItem = {
         id: `f-${Date.now()}`,
         name: selected.name,
-        size: `${(selected.size / (1024 * 1024)).toFixed(1)} MB`,
+        size: selected.size < 1024 * 1024 ? `${(selected.size / 1024).toFixed(1)} KB` : `${(selected.size / (1024 * 1024)).toFixed(2)} MB`,
         type: selected.name.split(".").pop()?.toUpperCase() || "DOC",
         status: "valid",
         message: "File integrity and size constraints passed",
