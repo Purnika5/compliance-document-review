@@ -31,11 +31,10 @@ export class DocumentService {
    * @author Keith
    */
   public mapToDocumentItem(doc: ApiDocument): DocumentItem {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
     const diskFileName = doc.file_path ? doc.file_path.split("/").pop()?.split("\\").pop() : doc.file_name;
     const fileUrl = diskFileName
-      ? `${baseUrl}/uploads/documents/${diskFileName}`
-      : (doc.id ? `${baseUrl}/documents/${doc.id}/file` : undefined);
+      ? `/api/raw-file/documents/${diskFileName}`
+      : (doc.id ? `/documents/${doc.id}/file` : undefined);
 
     return {
       id: doc.id,

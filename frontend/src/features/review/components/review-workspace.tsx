@@ -50,6 +50,48 @@ export interface ReviewWorkspaceProps {
   documentId: string;
 }
 
+function renderHighlightedText(text: string, passage?: string) {
+  if (!passage || !passage.trim()) {
+    return text;
+  }
+  const cleanPassage = passage.trim().replace(/^["']|["']$/g, "");
+  const words = cleanPassage.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return text;
+
+  const escapedWords = words.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const regex = new RegExp(escapedWords.join("\\s+"), "i");
+  let match = text.match(regex);
+
+  if (!match || match.index === undefined) {
+    const fallbackWords = escapedWords.slice(0, 3);
+    const fallbackRegex = new RegExp(fallbackWords.join("\\s+"), "i");
+    match = text.match(fallbackRegex);
+  }
+
+  if (!match || match.index === undefined) {
+    return text;
+  }
+
+  const idx = match.index;
+  const matchLength = match[0].length;
+  const before = text.slice(0, idx);
+  const matchedText = text.slice(idx, idx + matchLength);
+  const after = text.slice(idx + matchLength);
+
+  return (
+    <>
+      {before}
+      <mark
+        id="flagged-passage-highlight"
+        className="bg-amber-400/35 text-amber-100 border-2 border-amber-500 rounded px-1.5 py-0.5 font-bold ring-2 ring-amber-500/60 shadow-lg shadow-amber-950/70 inline"
+      >
+        {matchedText}
+      </mark>
+      {after}
+    </>
+  );
+}
+
 /**
  * DOCU: Renders the complete document review workspace and decision flow.
  * Last Updated Date: September 7, 2026
@@ -174,7 +216,20 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
    */
   const handleSelectFlag = (flag: IAIFlagItem) => {
     setSelectedFlag(flag);
+    setViewMode("text");
   };
+
+  useEffect(() => {
+    if (selectedFlag && viewMode === "text") {
+      const timer = setTimeout(() => {
+        const el = document.getElementById("flagged-passage-highlight");
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedFlag, viewMode]);
 
   /**
    * DOCU: Executes officer status update and updates audit state.
@@ -580,6 +635,38 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
               </div>
             </div>
 
+            {/* Active Flag Inspection Banner */}
+            {selectedFlag && (
+              <div className="border-b border-amber-800/60 bg-amber-950/80 text-amber-200 px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 shrink-0 text-xs animate-fade-in">
+                <div className="flex items-center gap-2 truncate">
+                  <span className="font-mono text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-900 border border-amber-600/70 text-amber-300 shrink-0">
+                    {selectedFlag.severity || "MEDIUM"} • Rule {selectedFlag.ruleCode}
+                  </span>
+                  <span className="truncate text-[11px] text-amber-200/90 font-serif italic max-w-[320px] sm:max-w-[480px]">
+                    "{selectedFlag.passage}"
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {viewMode !== "text" && (
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("text")}
+                      className="px-2 py-0.5 text-[10px] font-semibold rounded bg-amber-900/80 hover:bg-amber-800 text-amber-200 border border-amber-700/60 transition-colors cursor-pointer"
+                    >
+                      Focus Text Highlight
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedFlag(null)}
+                    className="px-2 py-0.5 text-[10px] font-semibold rounded bg-muted hover:bg-muted/80 text-foreground border border-border transition-colors cursor-pointer"
+                  >
+                    Dismiss Flag
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Document Canvas Display */}
             <div className="bg-background/80 p-3 sm:p-4 flex-1 overflow-auto flex justify-center items-start">
               {viewMode === "iframe" ? (
@@ -588,7 +675,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                     <iframe
                       src={
                         currentDocItem.fileUrl ||
-                        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"}/uploads/documents/${currentDocItem.fileName}`
+                        `/api/raw-file/documents/${currentDocItem.fileName}`
                       }
                       className="w-full h-[650px] border border-border/80 rounded-lg bg-white shadow-md"
                       title={currentDocItem.title || "Uploaded Document"}
@@ -639,7 +726,10 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
 
                   <div className="bg-background/90 p-4 rounded-lg border border-border/80 font-mono text-[11px] leading-relaxed text-foreground/90 whitespace-pre-wrap max-h-[520px] overflow-y-auto">
                     {currentDocItem.maskedText || currentDocItem.originalText ? (
-                      currentDocItem.maskedText || currentDocItem.originalText
+                      renderHighlightedText(
+                        currentDocItem.maskedText || currentDocItem.originalText || "",
+                        selectedFlag?.passage
+                      )
                     ) : (
                       <div className="text-muted-foreground italic space-y-2 font-sans">
                         <p className="font-semibold text-foreground not-italic">Extracted Content Preview:</p>

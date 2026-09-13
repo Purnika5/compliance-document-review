@@ -103,6 +103,9 @@ export class DocumentController {
     if (!fs.existsSync(document.file_path)) {
       throw new AppError('File not found on storage disk', 404, 'FILE_NOT_FOUND');
     }
+    res.removeHeader('X-Frame-Options');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.setHeader('Content-Security-Policy', "frame-ancestors *");
     res.setHeader('Content-Type', document.mime_type || 'application/octet-stream');
     res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(document.file_name)}"`);
     res.sendFile(path.resolve(document.file_path));

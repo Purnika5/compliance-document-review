@@ -95,6 +95,7 @@ services:
       PORT: 3000
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000}
+      INTERNAL_BACKEND_URL: http://compliance-backend:5000
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     depends_on:
