@@ -76,6 +76,23 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
   const [mobileActiveZone, setMobileActiveZone] = useState<"document" | "ai" | "decision">("document");
   const [isLoadingDocument, setIsLoadingDocument] = useState(true);
   const [documentError, setDocumentError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"iframe" | "paper" | "text">("iframe");
+  const [isLoadingAnalysis, setIsLoadingAnalysis] = useState<boolean>(true);
+
+  const handleRefreshAnalysis = () => {
+    setIsLoadingAnalysis(true);
+    documentService
+      .getAnalysis(documentId)
+      .then((flags) => {
+        setAnalysisFlags(flags);
+      })
+      .catch(() => {
+        setAnalysisFlags([]);
+      })
+      .finally(() => {
+        setIsLoadingAnalysis(false);
+      });
+  };
 
   useEffect(() => {
     let isActive = true;
@@ -103,7 +120,10 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
         setAnalysisFlags(flags);
       })
       .catch(() => {
-        if (isActive) setAnalysisFlags([]);
+        if (!isActive) setAnalysisFlags([]);
+      })
+      .finally(() => {
+        if (isActive) setIsLoadingAnalysis(false);
       });
 
     auditService
@@ -482,13 +502,53 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
           )}
         >
           <div className="border border-border bg-card text-card-foreground rounded-xl overflow-hidden flex flex-col h-[740px] shadow-xs">
-            {/* Viewer Top Toolbar */}
-            <div className="border-b border-border bg-muted/40 text-foreground px-3 py-2 flex items-center justify-between shrink-0 text-xs">
-              <div className="flex items-center space-x-2">
+            {/* Viewer Top Toolbar with View Mode Switcher */}
+            <div className="border-b border-border bg-muted/40 text-foreground px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 shrink-0 text-xs">
+              <div className="flex items-center space-x-1.5">
                 <FileText className="h-3.5 w-3.5 text-primary" />
-                <span className="font-mono text-foreground/90 font-medium truncate max-w-[140px] sm:max-w-[200px]">
-                  {documentId}_Proposal.pdf
+                <span className="font-mono text-foreground/90 font-medium truncate max-w-[120px] sm:max-w-[180px]">
+                  {currentDocItem.fileName || `${documentId}_Document`}
                 </span>
+              </div>
+
+              {/* View Mode Switcher Tabs */}
+              <div className="flex items-center gap-1 bg-background/80 p-0.5 rounded-lg border border-border">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("iframe")}
+                  className={cn(
+                    "px-2 py-0.5 text-[11px] font-semibold rounded transition-colors cursor-pointer",
+                    viewMode === "iframe"
+                      ? "bg-[#062A20] text-[#54d0a2] border border-emerald-800/60 shadow-2xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  File Embed (PDF)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("text")}
+                  className={cn(
+                    "px-2 py-0.5 text-[11px] font-semibold rounded transition-colors cursor-pointer",
+                    viewMode === "text"
+                      ? "bg-[#062A20] text-[#54d0a2] border border-emerald-800/60 shadow-2xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Extracted Text
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("paper")}
+                  className={cn(
+                    "px-2 py-0.5 text-[11px] font-semibold rounded transition-colors cursor-pointer",
+                    viewMode === "paper"
+                      ? "bg-[#062A20] text-[#54d0a2] border border-emerald-800/60 shadow-2xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Overview
+                </button>
               </div>
 
               <div className="flex items-center space-x-1 text-muted-foreground">
@@ -521,129 +581,214 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
             </div>
 
             {/* Document Canvas Display */}
-            <div className="bg-background/80 p-3 sm:p-5 flex-1 overflow-auto flex justify-center items-start">
-              <div
-                style={{
-                  transform: `scale(${zoomLevel / 100})`,
-                  transformOrigin: "top center",
-                }}
-                className="w-full max-w-[560px] bg-[#fbfbfa] text-slate-900 rounded-lg border border-border/80 p-6 sm:p-8 space-y-5 transition-transform duration-150 text-xs shadow-md"
-              >
-                {/* Paper Header */}
-                <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-                  <div>
-                    <h4 className="font-bold text-slate-900 text-sm tracking-tight">
-                      SPRINGER CAPITAL
-                    </h4>
-                    <p className="text-[9px] text-slate-500 uppercase tracking-wider">
-                      Regulatory Compliance Document
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <span className="font-mono text-[9px] font-bold text-slate-500 uppercase block">
-                      OFFICIAL FILING
-                    </span>
-                    <p className="text-[11px] font-mono text-slate-700 font-semibold">
-                      {documentId}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Main Document Content */}
-                <div className="space-y-4 text-left">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="inline-block px-2 py-0.5 text-[10px] font-semibold uppercase rounded bg-slate-100 text-slate-800 border border-slate-200">
-                      {currentDocItem.category || "General Document"}
-                    </span>
-                  </div>
-
-                  <div>
-                    <h2 className="text-base font-bold text-slate-900 leading-tight">
-                      {currentDocItem.title || "Compliance Document"}
-                    </h2>
-                    <p className="text-slate-500 mt-1 text-[11px]">
-                      Submitted by <strong className="text-slate-700">{currentDocItem.submittedBy}</strong>
-                      {currentDocItem.advisorEmail && ` (${currentDocItem.advisorEmail})`}
-                    </p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">
-                      Filing Date: {currentDocItem.submittedAt
-                        ? new Date(currentDocItem.submittedAt).toLocaleDateString(undefined, {
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })
-                        : "Recently Submitted"}
-                    </p>
-                  </div>
-
-                  {/* Document Filing Notes / Description */}
-                  {currentDocItem.notes ? (
-                    <div className="bg-slate-100/80 border border-slate-200 rounded-lg p-3 space-y-1">
-                      <p className="font-semibold text-slate-900 text-[11px]">Filing Remarks &amp; Scope:</p>
-                      <p className="text-slate-600 leading-relaxed text-[11px] whitespace-pre-wrap">
-                        {currentDocItem.notes}
-                      </p>
-                    </div>
+            <div className="bg-background/80 p-3 sm:p-4 flex-1 overflow-auto flex justify-center items-start">
+              {viewMode === "iframe" ? (
+                <div className="w-full h-full min-h-[640px] flex flex-col items-center justify-center">
+                  {currentDocItem.fileUrl || currentDocItem.fileName ? (
+                    <iframe
+                      src={
+                        currentDocItem.fileUrl ||
+                        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"}/uploads/documents/${currentDocItem.fileName}`
+                      }
+                      className="w-full h-[650px] border border-border/80 rounded-lg bg-white shadow-md"
+                      title={currentDocItem.title || "Uploaded Document"}
+                    />
                   ) : (
-                    <div className="bg-slate-100/50 border border-slate-200/80 rounded-lg p-3 text-[11px] text-slate-500 italic">
-                      No additional filing remarks accompanied this document submission.
+                    <div className="text-center p-8 bg-card border border-border rounded-xl space-y-3 max-w-md">
+                      <FileText className="h-10 w-10 text-emerald-400 mx-auto" />
+                      <p className="font-semibold text-sm text-foreground">File Attachment Render</p>
+                      <p className="text-xs text-muted-foreground">
+                        Document stream identifier: <code className="font-mono text-emerald-300">{currentDocItem.id}</code>
+                      </p>
+                      <div className="pt-2 flex justify-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setViewMode("text")}
+                          className="px-3 py-1.5 text-xs font-semibold rounded bg-[#062A20] text-[#54d0a2] border border-emerald-800/60 hover:bg-emerald-900"
+                        >
+                          View Extracted Text
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setViewMode("paper")}
+                          className="px-3 py-1.5 text-xs font-semibold rounded bg-muted text-foreground border border-border hover:bg-muted/80"
+                        >
+                          View Overview
+                        </button>
+                      </div>
                     </div>
                   )}
-
-                  {/* Attached File Summary Card */}
-                  <div className="border border-slate-200 rounded-lg p-3 bg-white space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                        Attached Submission File
-                      </span>
-                      {currentDocItem.fileSize && (
-                        <span className="text-[10px] font-mono font-medium text-slate-600">
-                          {currentDocItem.fileSize}
-                        </span>
-                      )}
+                </div>
+              ) : viewMode === "text" ? (
+                <div
+                  style={{
+                    transform: `scale(${zoomLevel / 100})`,
+                    transformOrigin: "top center",
+                  }}
+                  className="w-full max-w-[640px] bg-card text-foreground rounded-lg border border-border p-6 space-y-4 transition-transform duration-150 text-xs shadow-md"
+                >
+                  <div className="flex items-center justify-between border-b border-border pb-3">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-emerald-400" />
+                      <span className="font-semibold text-xs text-foreground">Extracted Document Text (Masked)</span>
                     </div>
-                    <div className="flex items-center justify-between gap-3 pt-1">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="h-8 w-8 rounded bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 shrink-0">
-                          <FileText className="h-4 w-4" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-medium text-slate-900 truncate text-[11px]">
-                            {currentDocItem.title}.{currentDocItem.category === "PDF" ? "pdf" : "docx"}
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/60">
+                      Regulatory Text Layer
+                    </span>
+                  </div>
+
+                  <div className="bg-background/90 p-4 rounded-lg border border-border/80 font-mono text-[11px] leading-relaxed text-foreground/90 whitespace-pre-wrap max-h-[520px] overflow-y-auto">
+                    {currentDocItem.maskedText || currentDocItem.originalText ? (
+                      currentDocItem.maskedText || currentDocItem.originalText
+                    ) : (
+                      <div className="text-muted-foreground italic space-y-2 font-sans">
+                        <p className="font-semibold text-foreground not-italic">Extracted Content Preview:</p>
+                        <p>
+                          Title: {currentDocItem.title}
+                        </p>
+                        <p>
+                          Category: {currentDocItem.category}
+                        </p>
+                        <p>
+                          Submitting Advisor: {currentDocItem.submittedBy}
+                        </p>
+                        {currentDocItem.notes && (
+                          <p>
+                            Remarks: {currentDocItem.notes}
                           </p>
-                          <p className="text-[10px] text-slate-400">
-                            Verified regulatory upload payload
-                          </p>
-                        </div>
+                        )}
+                        <p className="pt-2 text-[10px] text-emerald-400">
+                          Automated OCR/Text Extraction layer loaded for regulatory inspection.
+                        </p>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (currentDocItem.fileUrl) {
-                            window.open(currentDocItem.fileUrl, '_blank');
-                          } else {
-                            showInfoToast("File not available for viewing.");
-                          }
-                        }}
-                        className="inline-flex items-center gap-1 h-7 px-2 text-[11px] font-semibold bg-slate-100 hover:bg-slate-200 text-slate-800 rounded border border-slate-200 transition-colors cursor-pointer shrink-0"
-                      >
-                        <Download className="h-3 w-3" />
-                        <span>View / Print</span>
-                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    transform: `scale(${zoomLevel / 100})`,
+                    transformOrigin: "top center",
+                  }}
+                  className="w-full max-w-[560px] bg-[#fbfbfa] text-slate-900 rounded-lg border border-border/80 p-6 sm:p-8 space-y-5 transition-transform duration-150 text-xs shadow-md"
+                >
+                  {/* Paper Header */}
+                  <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-sm tracking-tight">
+                        SPRINGER CAPITAL
+                      </h4>
+                      <p className="text-[9px] text-slate-500 uppercase tracking-wider">
+                        Regulatory Compliance Document
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-mono text-[9px] font-bold text-slate-500 uppercase block">
+                        OFFICIAL FILING
+                      </span>
+                      <p className="text-[11px] font-mono text-slate-700 font-semibold">
+                        {documentId}
+                      </p>
                     </div>
                   </div>
 
+                  {/* Main Document Content */}
+                  <div className="space-y-4 text-left">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="inline-block px-2 py-0.5 text-[10px] font-semibold uppercase rounded bg-slate-100 text-slate-800 border border-slate-200">
+                        {currentDocItem.category || "General Document"}
+                      </span>
+                    </div>
 
-                </div>
+                    <div>
+                      <h2 className="text-base font-bold text-slate-900 leading-tight">
+                        {currentDocItem.title || "Compliance Document"}
+                      </h2>
+                      <p className="text-slate-500 mt-1 text-[11px]">
+                        Submitted by <strong className="text-slate-700">{currentDocItem.submittedBy}</strong>
+                        {currentDocItem.advisorEmail && ` (${currentDocItem.advisorEmail})`}
+                      </p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">
+                        Filing Date: {currentDocItem.submittedAt
+                          ? new Date(currentDocItem.submittedAt).toLocaleDateString(undefined, {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : "Recently Submitted"}
+                      </p>
+                    </div>
 
-                {/* Footer */}
-                <div className="border-t border-slate-200 pt-3 flex items-center justify-between text-[10px] text-slate-400 font-mono">
-                  <span>Springer Capital Compliance Copy</span>
-                  <span>Document Record</span>
+                    {/* Document Filing Notes / Description */}
+                    {currentDocItem.notes ? (
+                      <div className="bg-slate-100/80 border border-slate-200 rounded-lg p-3 space-y-1">
+                        <p className="font-semibold text-slate-900 text-[11px]">Filing Remarks &amp; Scope:</p>
+                        <p className="text-slate-600 leading-relaxed text-[11px] whitespace-pre-wrap">
+                          {currentDocItem.notes}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="bg-slate-100/50 border border-slate-200/80 rounded-lg p-3 text-[11px] text-slate-500 italic">
+                        No additional filing remarks accompanied this document submission.
+                      </div>
+                    )}
+
+                    {/* Attached File Summary Card */}
+                    <div className="border border-slate-200 rounded-lg p-3 bg-white space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                          Attached Submission File
+                        </span>
+                        {currentDocItem.fileSize && (
+                          <span className="text-[10px] font-mono font-medium text-slate-600">
+                            {currentDocItem.fileSize}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between gap-3 pt-1">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="h-8 w-8 rounded bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 shrink-0">
+                            <FileText className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-medium text-slate-900 truncate text-[11px]">
+                              {currentDocItem.fileName || `${currentDocItem.title}.pdf`}
+                            </p>
+                            <p className="text-[10px] text-slate-400">
+                              Verified regulatory upload payload
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const url =
+                              currentDocItem.fileUrl ||
+                              `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"}/uploads/documents/${currentDocItem.fileName}`;
+                            if (url) {
+                              window.open(url, "_blank");
+                            } else {
+                              showInfoToast("File not available for viewing.");
+                            }
+                          }}
+                          className="inline-flex items-center gap-1 h-7 px-2 text-[11px] font-semibold bg-slate-100 hover:bg-slate-200 text-slate-800 rounded border border-slate-200 transition-colors cursor-pointer shrink-0"
+                        >
+                          <Download className="h-3 w-3" />
+                          <span>View / Print</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Footer */}
+                  <div className="border-t border-slate-200 pt-3 flex items-center justify-between text-[10px] text-slate-400 font-mono">
+                    <span>Springer Capital Compliance Copy</span>
+                    <span>Document Record</span>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Viewer Bottom Controls */}
@@ -691,6 +836,8 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
               flags={analysisFlags}
               selectedFlagId={selectedFlag?.id || null}
               onSelectFlag={handleSelectFlag}
+              isLoading={isLoadingAnalysis}
+              onRefresh={handleRefreshAnalysis}
             />
           ) : (
             <div className="border border-border bg-card text-card-foreground rounded-xl h-full p-5 text-sm shadow-xs">

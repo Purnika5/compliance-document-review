@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckCircle2, AlertCircle, XCircle, ShieldCheck } from "lucide-react";
+import { CheckCircle2, AlertCircle, XCircle, ShieldCheck, Loader2 } from "lucide-react";
 import type { DocumentStatusType } from "@/lib/validation/document";
 import { cn } from "@/lib/utils";
 
@@ -197,7 +197,14 @@ export function DecisionDialog({
             disabled={isSubmitting}
             className={`h-8 px-4 text-xs font-semibold rounded ${config.confirmBtnClass}`}
           >
-            {isSubmitting ? "Recording Decision..." : config.confirmBtnText}
+            {isSubmitting ? (
+              <span className="flex items-center gap-1.5">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Recording Decision...
+              </span>
+            ) : (
+              config.confirmBtnText
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -12,6 +12,8 @@ import {
   Bot,
   ShieldAlert,
   FileCheck,
+  RefreshCw,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +33,8 @@ export interface AIAssistPanelProps {
   flags?: IAIFlagItem[];
   selectedFlagId?: string | null;
   onSelectFlag?: (flag: IAIFlagItem) => void;
+  isLoading?: boolean;
+  onRefresh?: () => void;
 }
 
 export function AIAssistPanel({
@@ -38,6 +42,8 @@ export function AIAssistPanel({
   flags = [],
   selectedFlagId = null,
   onSelectFlag,
+  isLoading = false,
+  onRefresh,
 }: AIAssistPanelProps) {
   const [activeTab, setActiveTab] = useState<"flags" | "copilot">("flags");
 
@@ -60,6 +66,18 @@ export function AIAssistPanel({
             </h3>
           </div>
         </div>
+
+        {onRefresh && (
+          <button
+            type="button"
+            disabled={isLoading}
+            onClick={onRefresh}
+            title="Refresh AI Analysis"
+            className="p-1.5 rounded-md text-muted-foreground hover:text-[#54d0a2] hover:bg-[#062A20] transition-colors cursor-pointer border border-transparent hover:border-emerald-800/60 disabled:opacity-50"
+          >
+            <RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin text-emerald-400")} />
+          </button>
+        )}
       </div>
 
       {/* Institutional Framing Notice (Never AI Decision Maker) */}
@@ -74,6 +92,7 @@ export function AIAssistPanel({
         {/* Tab Switcher */}
         <div className="flex border-b border-border bg-muted/20 p-1 shrink-0 gap-1">
           <button
+            type="button"
             onClick={() => setActiveTab("flags")}
             className={cn(
               "flex-1 py-1 text-xs font-semibold rounded text-center transition-colors cursor-pointer",
@@ -82,9 +101,10 @@ export function AIAssistPanel({
                 : "bg-transparent text-muted-foreground hover:bg-[#062A20] hover:text-[#54d0a2]"
             )}
           >
-            Rule Flags ({flags.length})
+            Compliance Flags ({flags.length})
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab("copilot")}
             className={cn(
               "flex-1 py-1 text-xs font-semibold rounded text-center transition-colors cursor-pointer",
@@ -99,7 +119,24 @@ export function AIAssistPanel({
 
         {activeTab === "flags" ? (
           <div className="flex-1 overflow-y-auto p-3 space-y-3">
-            {flags.length === 0 ? (
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center h-full text-center p-6 space-y-3 animate-fade-in">
+                <div className="h-10 w-10 rounded-full bg-emerald-950/70 border border-emerald-800/60 text-emerald-400 flex items-center justify-center shrink-0">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                </div>
+                <div className="space-y-1 max-w-xs">
+                  <h4 className="text-xs font-bold text-foreground">Evaluating Compliance Rules</h4>
+                  <p className="text-[11px] text-muted-foreground leading-normal">
+                    AI engine is scanning document text for regulatory rules, disclosures, and suitability guidelines...
+                  </p>
+                </div>
+                <div className="w-full space-y-2 pt-2">
+                  <div className="h-16 rounded-lg bg-muted/30 border border-border/40 animate-pulse" />
+                  <div className="h-16 rounded-lg bg-muted/30 border border-border/40 animate-pulse" />
+                  <div className="h-16 rounded-lg bg-muted/30 border border-border/40 animate-pulse" />
+                </div>
+              </div>
+            ) : flags.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center p-6 space-y-3">
                 <div className="h-10 w-10 rounded-full bg-primary/10 border border-primary/25 text-primary flex items-center justify-center">
                   <FileCheck className="h-5 w-5" />

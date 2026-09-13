@@ -31,6 +31,10 @@ export class DocumentService {
    * @author Keith
    */
   public mapToDocumentItem(doc: ApiDocument): DocumentItem {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+    const fileName = doc.file_name;
+    const fileUrl = fileName ? `${baseUrl}/uploads/documents/${fileName}` : undefined;
+
     return {
       id: doc.id,
       title: doc.title,
@@ -45,6 +49,12 @@ export class DocumentService {
       status: doc.status,
       fileSize: doc.file_size ? formatFileSize(doc.file_size) : undefined,
       notes: doc.description,
+      fileName: doc.file_name,
+      filePath: doc.file_path,
+      mimeType: doc.mime_type,
+      maskedText: doc.masked_text,
+      originalText: doc.original_text,
+      fileUrl,
     };
   }
 
@@ -188,6 +198,31 @@ export class DocumentService {
     } catch {
       return [];
     }
+  }
+
+  /**
+   * DOCU: Resubmits a new document version for a submission flagged as Needs Revision.
+   * Sends multipart form-data payload to POST /documents/:id/resubmit.
+   * Last Updated Date: September 13, 2026
+   * @param id - Unique document identifier.
+   * @param file - Revised binary file attachment.
+   * @param notes - Revision comments or explanation.
+   * @returns Updated DocumentItem created by backend.
+   * @author Keith
+   */
+  public async resubmitDocument(id: string, file: File, notes?: string): Promise<DocumentItem> {
+    const formData = new FormData();
+    formData.append("file", file);
+    if (notes) {
+      formData.append("notes", notes);
+      formData.append("description", notes);
+    }
+
+    const envelope = await this.client.post<ApiResponseEnvelope<ApiDocument>>(
+      API_ENDPOINTS.DOCUMENTS.RESUBMIT(id),
+      formData
+    );
+    return this.mapToDocumentItem(envelope.data);
   }
 }
 

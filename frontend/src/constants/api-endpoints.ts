@@ -19,5 +19,6 @@ export const API_ENDPOINTS = {
     VERSIONS: (id: string) => `/documents/${id}/versions`,
     AUDIT: (id: string) => `/documents/${id}/versions`,
     ANALYSIS: (id: string) => `/documents/${id}/analysis`,
+    RESUBMIT: (id: string) => `/documents/${id}/resubmit`,
   },
 } as const;
