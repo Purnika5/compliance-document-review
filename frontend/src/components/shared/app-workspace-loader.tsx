@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { authStore } from "@/lib/auth/auth-store";
 import { Loader2, Check, ShieldCheck } from "lucide-react";
+import { AILogo, CompanyLogo } from "@/components/ui/brand-logos";
 import { cn } from "@/lib/utils";
 
 interface AppWorkspaceLoaderProps {
@@ -156,18 +157,7 @@ export function AppWorkspaceLoader({
 
       {/* Header */}
       <header className="relative z-10 w-full px-6 pt-7 pb-4 flex items-center justify-between border-b border-white/5">
-        <div className="flex items-center space-x-2.5">
-          {/* Clover / Springer Logo Mark */}
-          <div className="w-7 h-7 relative flex items-center justify-center">
-            <svg viewBox="0 0 24 24" className="w-6 h-6 fill-[#22c55e]">
-              <path d="M12 4.5a3.5 3.5 0 1 0-3.5 3.5c.2 0 .4-.02.6-.05A3.5 3.5 0 1 0 7.05 12a3.5 3.5 0 1 0 3.5 3.5c0-.2-.02-.4-.05-.6A3.5 3.5 0 1 0 12 19.5a3.5 3.5 0 1 0 3.5-3.5c-.2 0-.4.02-.6.05a3.5 3.5 0 1 0 2.05-4.05 3.5 3.5 0 1 0-3.5-3.5c0 .2.02.4.05.6A3.5 3.5 0 1 0 12 4.5z" />
-            </svg>
-          </div>
-          <div className="flex items-baseline space-x-1.5">
-            <span className="font-black tracking-wider text-sm text-white">SPRINGER</span>
-            <span className="text-xs font-semibold tracking-wider text-[#4ade80]">CAPITAL</span>
-          </div>
-        </div>
+        <CompanyLogo />
 
         {/* Security Badge */}
         <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-white/[0.04] border border-emerald-500/20 text-[10px] text-emerald-400 font-medium">
@@ -236,9 +226,7 @@ export function AppWorkspaceLoader({
               {isCompleted ? (
                 <ShieldCheck className="w-9 h-9 text-[#4ade80] animate-check-pop" />
               ) : (
-                <svg viewBox="0 0 24 24" className="w-8 h-8 fill-[#22c55e] animate-pulse">
-                  <path d="M12 4.5a3.5 3.5 0 1 0-3.5 3.5c.2 0 .4-.02.6-.05A3.5 3.5 0 1 0 7.05 12a3.5 3.5 0 1 0 3.5 3.5c0-.2-.02-.4-.05-.6A3.5 3.5 0 1 0 12 19.5a3.5 3.5 0 1 0 3.5-3.5c-.2 0-.4.02-.6.05a3.5 3.5 0 1 0 2.05-4.05 3.5 3.5 0 1 0-3.5-3.5c0 .2.02.4.05.6A3.5 3.5 0 1 0 12 4.5z" />
-                </svg>
+                <AILogo className="w-8 h-8 animate-pulse" />
               )}
             </div>
           </div>

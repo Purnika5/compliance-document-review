@@ -92,6 +92,7 @@ export function AIAssistPanel({
         {/* Tab Switcher */}
         <div className="flex border-b border-border bg-muted/20 p-1 shrink-0 gap-1">
           <button
+            type="button"
             onClick={() => setActiveTab("flags")}
             className={cn(
               "flex-1 py-1 text-xs font-semibold rounded text-center transition-colors cursor-pointer",
@@ -100,9 +101,10 @@ export function AIAssistPanel({
                 : "bg-transparent text-muted-foreground hover:bg-[#062A20] hover:text-[#54d0a2]"
             )}
           >
-            Rule Flags ({flags.length})
+            Compliance Flags ({flags.length})
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab("copilot")}
             className={cn(
               "flex-1 py-1 text-xs font-semibold rounded text-center transition-colors cursor-pointer",
