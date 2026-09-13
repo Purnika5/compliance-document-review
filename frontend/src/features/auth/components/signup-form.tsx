@@ -236,16 +236,6 @@ export function SignupForm() {
       : strengthScore === 3
       ? "bg-yellow-400"
       : "bg-emerald-500";
-  const strengthLabel =
-    strengthScore === 0
-      ? ""
-      : strengthScore <= 1
-      ? "Weak"
-      : strengthScore === 2
-      ? "Fair"
-      : strengthScore === 3
-      ? "Good"
-      : "Strong";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -510,7 +500,7 @@ export function SignupForm() {
                 </button>
               </div>
 
-              {/* Password strength bar */}
+              {/* Password strength visual bar indicator */}
               {password.length > 0 && (
                 <div className="space-y-0.5 animate-fade-in pt-0.5">
                   <div className="flex gap-1">
@@ -524,22 +514,6 @@ export function SignupForm() {
                       />
                     ))}
                   </div>
-                  {strengthLabel && (
-                    <p
-                      className={cn(
-                        "text-[10px] font-semibold",
-                        strengthScore <= 1
-                          ? "text-rose-400"
-                          : strengthScore === 2
-                          ? "text-amber-400"
-                          : strengthScore === 3
-                          ? "text-yellow-400"
-                          : "text-emerald-400"
-                      )}
-                    >
-                      {strengthLabel} password
-                    </p>
-                  )}
                 </div>
               )}
 
