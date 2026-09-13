@@ -47,8 +47,15 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       </div>
 
       {/* Footer */}
-      <footer className="relative z-10 py-4 text-center text-[11px] text-muted-foreground/60 border-t border-border/50 bg-card/30 backdrop-blur-sm">
-        Springer Capital Institutional Compliance &amp; Wealth Advisory Platform • Strictly Confidential
+      <footer className="relative z-10 py-3.5 text-center text-[11px] border-t border-border/50 bg-card/40 backdrop-blur-md flex justify-center items-center px-4 shrink-0">
+        <div className="inline-flex flex-wrap items-center justify-center gap-2 px-4 py-1.5 rounded-full bg-emerald-950/50 border border-emerald-500/40 text-emerald-100 font-medium text-[11px] tracking-wide shadow-[0_0_15px_rgba(16,185,129,0.15)]">
+          <span className="font-semibold text-emerald-200">Springer Capital Institutional Compliance &amp; Wealth Advisory Platform</span>
+          <span className="text-emerald-500/60 hidden sm:inline">•</span>
+          <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/50 text-[10px] uppercase tracking-wider shadow-[0_0_10px_rgba(245,158,11,0.3)] flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+            Strictly Confidential
+          </span>
+        </div>
       </footer>
     </div>
   );

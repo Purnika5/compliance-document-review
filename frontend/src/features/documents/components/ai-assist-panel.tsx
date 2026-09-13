@@ -26,6 +26,29 @@ export interface IAIFlagItem {
   pageNumber: number;
 }
 
+export const MOCK_AI_FLAGS: IAIFlagItem[] = [
+  {
+    id: "flag-1",
+    ruleCode: "FD-2.1.3",
+    severity: "HIGH",
+    title: "Promotional Language Violation",
+    passage: "Guaranteed annual yield returns exceeding market standards by 15%",
+    explanation: "FINRA Rule 2210 prohibits promissory or misleading performance claims in customer communications.",
+    confidenceScore: 96,
+    pageNumber: 1,
+  },
+  {
+    id: "flag-2",
+    ruleCode: "SEC-17A",
+    severity: "MEDIUM",
+    title: "Omission of Risk Disclosure",
+    passage: "Global Equities Index target 45.0% yield +9.4%",
+    explanation: "SEC Rule 17a-4 mandates complete disclosures of investment risk and market downside warnings.",
+    confidenceScore: 88,
+    pageNumber: 1,
+  },
+];
+
 export interface AIAssistPanelProps {
   documentId: string;
   flags?: IAIFlagItem[];

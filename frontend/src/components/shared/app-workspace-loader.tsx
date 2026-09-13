@@ -397,10 +397,15 @@ export function AppWorkspaceLoader({
       </main>
 
       {/* Footer Info */}
-      <footer className="relative z-10 w-full px-6 py-4 border-t border-white/5 text-center">
-        <p className="text-[11px] text-slate-500 tracking-wide font-normal">
-          Springer Capital Institutional Compliance &amp; Wealth Advisory Platform &bull; Strictly Confidential
-        </p>
+      <footer className="relative z-10 w-full px-6 py-3.5 border-t border-white/5 text-center flex justify-center items-center">
+        <div className="inline-flex flex-wrap items-center justify-center gap-2 px-4 py-1.5 rounded-full bg-emerald-950/60 border border-emerald-500/40 text-emerald-100 font-medium text-[11px] tracking-wide shadow-[0_0_15px_rgba(16,185,129,0.15)]">
+          <span className="font-semibold text-emerald-200">Springer Capital Institutional Compliance &amp; Wealth Advisory Platform</span>
+          <span className="text-emerald-500/60 hidden sm:inline">•</span>
+          <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/50 text-[10px] uppercase tracking-wider shadow-[0_0_10px_rgba(245,158,11,0.3)] flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+            Strictly Confidential
+          </span>
+        </div>
       </footer>
     </div>
   );
