@@ -311,14 +311,7 @@ export function SignupForm() {
           <form id="signup-form" onSubmit={handleSubmit} noValidate className="space-y-2">
             {/* Full Name Field with Real-Time Validation */}
             <div className="space-y-0.5 text-left">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-foreground/90">Full Name</label>
-                {touched.name && validFields.name && (
-                  <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1 animate-fade-in">
-                    <Check className="h-3 w-3" /> Valid
-                  </span>
-                )}
-              </div>
+              <label className="text-xs font-medium text-foreground/90">Full Name</label>
               <div className="relative">
                 <User className="absolute left-3 top-2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
                 <Input
@@ -351,14 +344,7 @@ export function SignupForm() {
 
             {/* Work Email Field with Real-Time Validation & Domain Badge */}
             <div className="space-y-0.5 text-left">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-foreground/90">Work Email</label>
-                {touched.email && validFields.email && (
-                  <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1 animate-fade-in">
-                    <Check className="h-3 w-3" /> Corporate Verified
-                  </span>
-                )}
-              </div>
+              <label className="text-xs font-medium text-foreground/90">Work Email</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
                 <Input
@@ -527,20 +513,7 @@ export function SignupForm() {
 
             {/* Confirm Password */}
             <div className="space-y-0.5 text-left">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-foreground/90">Confirm Password</label>
-                {touched.confirmPassword && confirmPassword.length > 0 && (
-                  validFields.confirmPassword ? (
-                    <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1 animate-fade-in">
-                      <Check className="h-3 w-3" /> Match
-                    </span>
-                  ) : (
-                    <span className="text-[10px] text-rose-400 font-semibold flex items-center gap-1 animate-fade-in">
-                      <AlertCircle className="h-3 w-3" /> Mismatch
-                    </span>
-                  )
-                )}
-              </div>
+              <label className="text-xs font-medium text-foreground/90">Confirm Password</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
                 <Input
@@ -577,11 +550,6 @@ export function SignupForm() {
                 <p className="text-[11px] text-rose-400 font-semibold animate-fade-in flex items-center gap-1.5 pt-0.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-rose-500 inline-block shrink-0 animate-pulse" />
                   {formErrors.confirmPassword}
-                </p>
-              )}
-              {touched.confirmPassword && validFields?.confirmPassword && (
-                <p className="text-[11px] text-emerald-400 font-medium animate-fade-in flex items-center gap-1 pt-0.5">
-                  <Check className="h-3 w-3" /> Passwords match
                 </p>
               )}
             </div>
