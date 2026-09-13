@@ -50,6 +50,16 @@ export interface DocumentItem {
   fileSize?: string;
   /** Additional notes or filing remarks. */
   notes?: string;
+  /** Stored file name on server. */
+  fileName?: string;
+  /** Server file storage path. */
+  filePath?: string;
+  /** MIME content type. */
+  mimeType?: string;
+  /** Extracted masked text content. */
+  maskedText?: string;
+  /** Original extracted text content. */
+  originalText?: string;
   /** URL to access the uploaded file. */
   fileUrl?: string;
 }

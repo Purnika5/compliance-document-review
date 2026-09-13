@@ -12,6 +12,7 @@ import { useDocuments } from "../hooks/use-documents";
 import { useUploadDocument } from "../hooks/use-upload-document";
 import { UploadDocumentModal } from "./upload-document-modal";
 import { EditDocumentModal } from "./edit-document-modal";
+import { ResubmitRevisionModal } from "./resubmit-revision-modal";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { LoadingState } from "@/components/shared/loading-state";
@@ -52,6 +53,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Filter,
+  RefreshCw,
 } from "lucide-react";
 import type { DocumentItem } from "@/lib/validation/document";
 import { cn } from "@/lib/utils";
@@ -86,6 +88,7 @@ export function MyDocumentsTable() {
   const [dateFilter, setDateFilter] = useState<string>("All");
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [editingDoc, setEditingDoc] = useState<DocumentItem | null>(null);
+  const [resubmitDoc, setResubmitDoc] = useState<DocumentItem | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
@@ -756,6 +759,17 @@ export function MyDocumentsTable() {
 
                         <TableCell className="py-2 text-right pr-4" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-end gap-1.5">
+                            {doc.status === "Needs Revision" && (
+                              <Button
+                                size="sm"
+                                onClick={() => setResubmitDoc(doc)}
+                                className="h-7 px-2.5 rounded text-xs font-semibold text-amber-300 bg-amber-950/80 hover:bg-amber-900 border border-amber-700/60 transition-colors gap-1 shadow-2xs"
+                              >
+                                <RefreshCw className="h-3 w-3" />
+                                <span>Resubmit</span>
+                              </Button>
+                            )}
+
                             <Button
                               size="sm"
                               variant="outline"
@@ -773,6 +787,14 @@ export function MyDocumentsTable() {
                                 </button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="w-44 bg-card shadow-xl rounded-xl border-border p-1">
+                                {doc.status === "Needs Revision" && (
+                                  <DropdownMenuItem
+                                    className="text-xs cursor-pointer gap-2 font-semibold rounded-md px-2 py-1.5 text-amber-300 hover:bg-amber-950/50 transition-colors"
+                                    onClick={() => setResubmitDoc(doc)}
+                                  >
+                                    <RefreshCw className="h-3.5 w-3.5 text-amber-400" /> Resubmit Revision
+                                  </DropdownMenuItem>
+                                )}
                                 <DropdownMenuItem
                                   className="text-xs cursor-pointer gap-2 font-medium rounded-md px-2 py-1.5 text-foreground/90 hover:bg-[#062a20] hover:text-[#54d0a2] transition-colors"
                                   onClick={() => router.push(`/documents/${doc.id}`)}
@@ -886,6 +908,13 @@ export function MyDocumentsTable() {
         isOpen={!!editingDoc}
         onClose={() => setEditingDoc(null)}
         onSave={handleSaveEdit}
+      />
+
+      <ResubmitRevisionModal
+        documentItem={resubmitDoc}
+        isOpen={!!resubmitDoc}
+        onClose={() => setResubmitDoc(null)}
+        onSuccess={() => refetch()}
       />
 
       <DateFilterModal

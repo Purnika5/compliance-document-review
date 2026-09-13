@@ -32,6 +32,10 @@ export interface ApiDocument {
   created_at: string;
   /** ISO timestamp when last modified. */
   updated_at: string;
+  /** Optional PII masked extracted document text. */
+  masked_text?: string;
+  /** Optional raw extracted document text. */
+  original_text?: string;
 }
 
 /**
@@ -58,6 +62,18 @@ export interface DocumentItem {
   fileSize?: string;
   /** Additional notes or description. */
   notes?: string;
+  /** Stored file name on server. */
+  fileName?: string;
+  /** Server file storage path. */
+  filePath?: string;
+  /** MIME content type. */
+  mimeType?: string;
+  /** Extracted masked text content. */
+  maskedText?: string;
+  /** Original extracted text content. */
+  originalText?: string;
+  /** Full URL to access uploaded file. */
+  fileUrl?: string;
 }
 
 /**
