@@ -3,8 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { authStore } from "@/lib/auth/auth-store";
-import { ArrowLeft, Loader2, Check, ShieldCheck } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Loader2, Check, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface AppWorkspaceLoaderProps {
@@ -147,13 +146,6 @@ export function AppWorkspaceLoader({
   const isIdentityDone = progress >= 28;
   const isPortfolioDone = progress >= 58;
   const isAuditingDone = progress >= 88;
-
-  const handleCancel = () => {
-    authStore.clearSession();
-    if (!preventRedirect) {
-      router.push("/login");
-    }
-  };
 
   return (
     <div className="bg-[#080c0a] text-slate-100 min-h-screen flex flex-col justify-between font-sans selection:bg-brand-emerald selection:text-black overflow-hidden relative w-full">
@@ -378,17 +370,6 @@ export function AppWorkspaceLoader({
               </span>
             </div>
           </div>
-
-          {/* Cancel / Return Action */}
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={handleCancel}
-            className="mt-6 text-xs text-slate-500 hover:text-slate-300 hover:bg-white/5 transition-colors duration-200 flex items-center gap-1.5 focus:outline-none"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Cancel Sign In</span>
-          </Button>
         </div>
       </main>
 
