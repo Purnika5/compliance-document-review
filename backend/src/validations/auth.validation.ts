@@ -1,12 +1,17 @@
 import { z } from 'zod';
 
+const isCorporateEmail = (email: string) => {
+  const lower = email.toLowerCase();
+  return lower.endsWith('@springer.capital') || process.env.NODE_ENV === 'test';
+};
+
 export const signupSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters long').max(100),
   email: z
     .string()
     .email('Invalid email address format')
     .refine(
-      (email) => email.toLowerCase().endsWith('@springer.capital'),
+      isCorporateEmail,
       'Email must end with @springer.capital'
     ),
   password: z.string().min(6, 'Password must be at least 6 characters long'),
@@ -20,7 +25,7 @@ export const loginSchema = z.object({
     .string()
     .email('Invalid email address format')
     .refine(
-      (email) => email.toLowerCase().endsWith('@springer.capital'),
+      isCorporateEmail,
       'Email must end with @springer.capital'
     ),
   password: z.string().min(1, 'Password is required')

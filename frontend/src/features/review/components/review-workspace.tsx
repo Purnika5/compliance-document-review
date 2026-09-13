@@ -643,7 +643,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                     {selectedFlag.severity || "MEDIUM"} • Rule {selectedFlag.ruleCode}
                   </span>
                   <span className="truncate text-[11px] text-amber-200/90 font-serif italic max-w-[320px] sm:max-w-[480px]">
-                    "{selectedFlag.passage}"
+                    &quot;{selectedFlag.passage}&quot;
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">

@@ -11,7 +11,6 @@ export const createApp = (): Application => {
   app.use(helmet({
     crossOriginResourcePolicy: false,
     contentSecurityPolicy: false,
-    frameguard: false,
     crossOriginOpenerPolicy: false
   }));
   app.use(cors({
