@@ -70,6 +70,14 @@ router.get(
   DocumentController.getVersions
 );
 
+// List advisor submissions alias
+router.get(
+  '/my-submissions',
+  authenticateToken,
+  validate({ query: documentQuerySchema }),
+  DocumentController.list
+);
+
 // List documents
 router.get(
   '/',

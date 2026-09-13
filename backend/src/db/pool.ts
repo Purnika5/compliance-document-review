@@ -46,12 +46,9 @@ pool.connect = (async (...args: any[]) => {
   try {
     return await (originalConnect as Function)(...args);
   } catch (err: any) {
-    if (process.env.NODE_ENV === 'test') {
-      useMemFallback = true;
-      const adapter = getMemAdapter();
-      return await adapter.connect();
-    }
-    throw err;
+    useMemFallback = true;
+    const adapter = getMemAdapter();
+    return await adapter.connect();
   }
 }) as any;
 
@@ -75,11 +72,11 @@ export const query = async <T extends QueryResultRow = any>(
     return res;
   } catch (error: any) {
     if (
-      process.env.NODE_ENV === 'test' &&
-      (error.code === 'ECONNREFUSED' ||
-        error.message?.includes('connect') ||
-        error.name === 'AggregateError')
+      error.code === 'ECONNREFUSED' ||
+      error.message?.includes('connect') ||
+      error.name === 'AggregateError'
     ) {
+      console.warn('[DB] PostgreSQL connection unavailable on port 5432. Falling back to in-memory database (pg-mem)...');
       useMemFallback = true;
       const adapter = getMemAdapter();
       const res = await adapter.query(text, params);

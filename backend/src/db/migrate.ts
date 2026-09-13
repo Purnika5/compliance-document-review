@@ -7,7 +7,10 @@ export const runMigrations = async (): Promise<void> => {
     resetMemDb();
   }
 
-  const migrationsDir = path.join(__dirname, 'migrations');
+  let migrationsDir = path.join(__dirname, 'migrations');
+  if (!fs.existsSync(migrationsDir)) {
+    migrationsDir = path.join(process.cwd(), 'src', 'db', 'migrations');
+  }
   
   if (!fs.existsSync(migrationsDir)) {
     console.error('[Migration] Directory not found:', migrationsDir);
