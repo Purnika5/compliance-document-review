@@ -298,29 +298,29 @@ export function SignupForm() {
         {/* Springer Brand Accent Hairline */}
         <div className="h-[2px] bg-gradient-to-r from-emerald-600 via-[#84c22b] to-emerald-500" />
 
-        <CardHeader className="text-center space-y-1 pb-2 pt-4">
-          <CompanyLogo className="justify-center" />
-          <CardTitle className="text-lg font-bold text-foreground tracking-tight">
+        <CardHeader className="text-center space-y-0.5 pb-1.5 pt-3">
+          <CompanyLogo className="justify-center scale-95" />
+          <CardTitle className="text-base font-bold text-foreground tracking-tight">
             Create Personnel Account
           </CardTitle>
-          <CardDescription className="text-xs text-muted-foreground">
+          <CardDescription className="text-[11px] text-muted-foreground">
             Register compliance reviewer or financial advisor credentials
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="space-y-3 pt-1">
+        <CardContent className="space-y-2 pt-0.5">
           {error && (
             <Alert
               variant="destructive"
               title="Registration Error"
               message={error}
-              className="p-2.5 shadow-xs animate-slide-down text-xs"
+              className="p-2 shadow-xs animate-slide-down text-xs"
             />
           )}
 
-          <form id="signup-form" onSubmit={handleSubmit} noValidate className="space-y-2.5">
+          <form id="signup-form" onSubmit={handleSubmit} noValidate className="space-y-2">
             {/* Full Name Field with Real-Time Validation */}
-            <div className="space-y-1 text-left">
+            <div className="space-y-0.5 text-left">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-medium text-foreground/90">Full Name</label>
                 {touched.name && validFields.name && (
@@ -330,7 +330,7 @@ export function SignupForm() {
                 )}
               </div>
               <div className="relative">
-                <User className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                <User className="absolute left-3 top-2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
                 <Input
                   type="text"
                   id="signup-name"
@@ -339,7 +339,7 @@ export function SignupForm() {
                   onChange={(e) => handleNameChange(e.target.value)}
                   onBlur={() => handleBlur("name")}
                   className={cn(
-                    "pl-9 pr-9 h-9 text-xs rounded-md bg-background border-border text-foreground transition-all focus-visible:ring-1 focus-visible:ring-primary",
+                    "pl-9 pr-9 h-8 text-xs rounded-md bg-background border-border text-foreground transition-all focus-visible:ring-1 focus-visible:ring-primary",
                     touched.name && formErrors?.name && "border-rose-500 ring-1 ring-rose-500/80",
                     touched.name && validFields?.name && "border-emerald-500/60 ring-1 ring-emerald-500/30"
                   )}
@@ -360,7 +360,7 @@ export function SignupForm() {
             </div>
 
             {/* Work Email Field with Real-Time Validation & Domain Badge */}
-            <div className="space-y-1 text-left">
+            <div className="space-y-0.5 text-left">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-medium text-foreground/90">Work Email</label>
                 {touched.email && validFields.email && (
@@ -370,7 +370,7 @@ export function SignupForm() {
                 )}
               </div>
               <div className="relative">
-                <Mail className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                <Mail className="absolute left-3 top-2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
                 <Input
                   type="email"
                   id="signup-email"
@@ -379,16 +379,16 @@ export function SignupForm() {
                   onChange={(e) => handleEmailChange(e.target.value)}
                   onBlur={() => handleBlur("email")}
                   className={cn(
-                    "pl-9 pr-9 h-9 text-xs rounded-md bg-background border-border text-foreground transition-all focus-visible:ring-1 focus-visible:ring-primary",
+                    "pl-9 pr-9 h-8 text-xs rounded-md bg-background border-border text-foreground transition-all focus-visible:ring-1 focus-visible:ring-primary",
                     touched.email && formErrors?.email && "border-rose-500 ring-1 ring-rose-500/80",
                     touched.email && validFields?.email && "border-emerald-500/60 ring-1 ring-emerald-500/30"
                   )}
                 />
                 {touched.email && validFields?.email && (
-                  <Check className="absolute right-3 top-2.5 h-3.5 w-3.5 text-emerald-400 pointer-events-none animate-fade-in" />
+                  <Check className="absolute right-3 top-2 h-3.5 w-3.5 text-emerald-400 pointer-events-none animate-fade-in" />
                 )}
                 {touched.email && formErrors?.email && (
-                  <AlertCircle className="absolute right-3 top-2.5 h-3.5 w-3.5 text-rose-400 pointer-events-none animate-fade-in" />
+                  <AlertCircle className="absolute right-3 top-2 h-3.5 w-3.5 text-rose-400 pointer-events-none animate-fade-in" />
                 )}
               </div>
 
@@ -422,7 +422,7 @@ export function SignupForm() {
             </div>
 
             {/* Access Role */}
-            <div className="space-y-1 text-left">
+            <div className="space-y-0.5 text-left">
               <label className="text-xs font-medium text-foreground/90">Access Role</label>
               <div className="grid grid-cols-2 gap-2">
                 <button
@@ -433,7 +433,7 @@ export function SignupForm() {
                     clearFieldError("role");
                   }}
                   className={cn(
-                    "p-2.5 rounded-lg border text-left flex items-start space-x-2 transition-all cursor-pointer",
+                    "p-2 rounded-lg border text-left flex items-start space-x-2 transition-all cursor-pointer",
                     role === "Advisor"
                       ? "border-primary bg-emerald-950/40 border-l-[3px] border-l-primary"
                       : "border-border bg-card/60 hover:bg-muted text-muted-foreground"
@@ -441,7 +441,7 @@ export function SignupForm() {
                 >
                   <Briefcase
                     className={cn(
-                      "h-4 w-4 shrink-0 mt-0.5",
+                      "h-3.5 w-3.5 shrink-0 mt-0.5",
                       role === "Advisor" ? "text-emerald-400" : "text-muted-foreground"
                     )}
                   />
@@ -466,7 +466,7 @@ export function SignupForm() {
                     clearFieldError("role");
                   }}
                   className={cn(
-                    "p-2.5 rounded-lg border text-left flex items-start space-x-2 transition-all cursor-pointer",
+                    "p-2 rounded-lg border text-left flex items-start space-x-2 transition-all cursor-pointer",
                     role === "Officer"
                       ? "border-cyan-700 bg-cyan-950/40 border-l-[3px] border-l-cyan-400"
                       : "border-border bg-card/60 hover:bg-muted text-muted-foreground"
@@ -474,7 +474,7 @@ export function SignupForm() {
                 >
                   <ShieldCheck
                     className={cn(
-                      "h-4 w-4 shrink-0 mt-0.5",
+                      "h-3.5 w-3.5 shrink-0 mt-0.5",
                       role === "Officer" ? "text-cyan-400" : "text-muted-foreground"
                     )}
                   />
@@ -494,10 +494,10 @@ export function SignupForm() {
             </div>
 
             {/* Create Password */}
-            <div className="space-y-1 text-left">
+            <div className="space-y-0.5 text-left">
               <label className="text-xs font-medium text-foreground/90">Create Password</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                <Lock className="absolute left-3 top-2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
                 <Input
                   type={showPassword ? "text" : "password"}
                   id="signup-password"
@@ -506,7 +506,7 @@ export function SignupForm() {
                   onChange={(e) => handlePasswordChange(e.target.value)}
                   onBlur={() => handleBlur("password")}
                   className={cn(
-                    "pl-9 pr-9 h-9 text-xs rounded-md bg-background border-border text-foreground transition-all focus-visible:ring-1 focus-visible:ring-primary",
+                    "pl-9 pr-9 h-8 text-xs rounded-md bg-background border-border text-foreground transition-all focus-visible:ring-1 focus-visible:ring-primary",
                     touched.password && formErrors?.password && "border-rose-500 ring-1 ring-rose-500/80",
                     touched.password && validFields?.password && "border-emerald-500/60 ring-1 ring-emerald-500/30"
                   )}
@@ -514,7 +514,7 @@ export function SignupForm() {
                 <button
                   type="button"
                   onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  className="absolute right-3 top-2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
@@ -523,7 +523,7 @@ export function SignupForm() {
 
               {/* Password strength bar */}
               {password.length > 0 && (
-                <div className="space-y-1 animate-fade-in pt-0.5">
+                <div className="space-y-0.5 animate-fade-in pt-0.5">
                   <div className="flex gap-1">
                     {[1, 2, 3, 4].map((segment) => (
                       <div
@@ -563,7 +563,7 @@ export function SignupForm() {
             </div>
 
             {/* Confirm Password */}
-            <div className="space-y-1 text-left">
+            <div className="space-y-0.5 text-left">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-medium text-foreground/90">Confirm Password</label>
                 {touched.confirmPassword && confirmPassword.length > 0 && (
@@ -579,7 +579,7 @@ export function SignupForm() {
                 )}
               </div>
               <div className="relative">
-                <Lock className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                <Lock className="absolute left-3 top-2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
                 <Input
                   type={showConfirmPassword ? "text" : "password"}
                   id="signup-confirm-password"
@@ -588,12 +588,12 @@ export function SignupForm() {
                   onChange={(e) => handleConfirmPasswordChange(e.target.value)}
                   onBlur={() => handleBlur("confirmPassword")}
                   className={cn(
-                    "pl-9 pr-16 h-9 text-xs rounded-md bg-background border-border text-foreground transition-all focus-visible:ring-1 focus-visible:ring-primary",
+                    "pl-9 pr-16 h-8 text-xs rounded-md bg-background border-border text-foreground transition-all focus-visible:ring-1 focus-visible:ring-primary",
                     touched.confirmPassword && formErrors?.confirmPassword && "border-rose-500 ring-1 ring-rose-500/80 bg-rose-950/20 text-rose-100",
                     touched.confirmPassword && validFields?.confirmPassword && "border-emerald-500/60 ring-1 ring-emerald-500/30"
                   )}
                 />
-                <div className="absolute right-3 top-2.5 flex items-center gap-1.5">
+                <div className="absolute right-3 top-2 flex items-center gap-1.5">
                   {touched.confirmPassword && formErrors?.confirmPassword && (
                     <AlertCircle className="h-3.5 w-3.5 text-rose-400 animate-fade-in" />
                   )}
@@ -624,13 +624,13 @@ export function SignupForm() {
             </div>
 
             {/* ── Terms & Conditions ───────────────────────── */}
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               <button
                 type="button"
                 id="signup-terms-trigger"
                 onClick={() => setShowTermsModal(true)}
                 className={cn(
-                  "w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-all cursor-pointer group",
+                  "w-full flex items-center gap-2.5 p-2 rounded-lg border text-left transition-all cursor-pointer group",
                   acceptedTerms
                     ? "border-emerald-800/60 bg-emerald-950/30"
                     : formErrors.terms
