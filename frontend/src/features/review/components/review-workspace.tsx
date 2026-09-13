@@ -77,6 +77,22 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
   const [isLoadingDocument, setIsLoadingDocument] = useState(true);
   const [documentError, setDocumentError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"iframe" | "paper" | "text">("iframe");
+  const [isLoadingAnalysis, setIsLoadingAnalysis] = useState<boolean>(true);
+
+  const handleRefreshAnalysis = () => {
+    setIsLoadingAnalysis(true);
+    documentService
+      .getAnalysis(documentId)
+      .then((flags) => {
+        setAnalysisFlags(flags);
+      })
+      .catch(() => {
+        setAnalysisFlags([]);
+      })
+      .finally(() => {
+        setIsLoadingAnalysis(false);
+      });
+  };
 
   useEffect(() => {
     let isActive = true;
@@ -104,7 +120,10 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
         setAnalysisFlags(flags);
       })
       .catch(() => {
-        if (isActive) setAnalysisFlags([]);
+        if (!isActive) setAnalysisFlags([]);
+      })
+      .finally(() => {
+        if (isActive) setIsLoadingAnalysis(false);
       });
 
     auditService
@@ -817,6 +836,8 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
               flags={analysisFlags}
               selectedFlagId={selectedFlag?.id || null}
               onSelectFlag={handleSelectFlag}
+              isLoading={isLoadingAnalysis}
+              onRefresh={handleRefreshAnalysis}
             />
           ) : (
             <div className="border border-border bg-card text-card-foreground rounded-xl h-full p-5 text-sm shadow-xs">
