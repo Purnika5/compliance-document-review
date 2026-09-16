@@ -27,7 +27,7 @@ CREATE INDEX IF NOT EXISTS idx_rules_embedding
 -- the deploy order, otherwise `CREATE TABLE` will fail on a fresh database.
 CREATE TABLE IF NOT EXISTS precedent_decisions (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    document_id     UUID NOT NULL,  -- REFERENCES documents(id) -- uncomment once Backend's table exists
+    document_id     UUID NOT NULL REFERENCES documents(id),
     passage         TEXT NOT NULL,
     outcome         VARCHAR(20) NOT NULL CHECK (outcome IN ('flagged', 'cleared')),
     explanation     TEXT NOT NULL,
@@ -45,7 +45,7 @@ CREATE INDEX IF NOT EXISTS idx_precedent_decisions_document
 -- (used for Absence Detection - checking which required disclosures are missing)
 CREATE TABLE IF NOT EXISTS document_passages (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    document_id     UUID NOT NULL,  -- REFERENCES documents(id) -- uncomment once Backend's table exists
+    document_id     UUID NOT NULL REFERENCES documents(id),
     version         INT NOT NULL,
     passage         TEXT NOT NULL,          -- masked/sanitized text only
     embedding       VECTOR(128) NOT NULL,
