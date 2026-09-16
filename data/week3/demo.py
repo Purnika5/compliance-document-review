@@ -13,6 +13,7 @@ with Backend/AI (masked_text + retrieved_rules + precedents).
 """
 
 import json
+from pathlib import Path
 
 from src.absence_detection import detect_missing_disclosures
 from src.precedent_search import index_precedent, search_precedents
@@ -21,13 +22,15 @@ from src.vector_store import get_vector_store
 
 
 def seed_corpus(vector_store):
-    with open("data/rules_sample.json") as f:
+    base_dir = Path(__file__).resolve().parent
+
+    with open(base_dir / "data" / "rules_sample.json") as f:
         rules = json.load(f)
     for r in rules:
         index_rule(r["id"], r["rule_code"], r["title"], r["description"], vector_store)
 
-    with open("data/precedents_sample.json") as f:
-        precedents = json.load(f)
+    with open(base_dir / "data" / "precedents_sample.json") as f:
+    precedents = json.load(f)
     for p in precedents:
         index_precedent(
             p["id"], p["document_id"], p["passage"], p["outcome"], p["explanation"], vector_store
