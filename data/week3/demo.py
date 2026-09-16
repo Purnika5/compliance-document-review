@@ -30,7 +30,7 @@ def seed_corpus(vector_store):
         index_rule(r["id"], r["rule_code"], r["title"], r["description"], vector_store)
 
     with open(base_dir / "data" / "precedents_sample.json") as f:
-    precedents = json.load(f)
+        precedents = json.load(f)
     for p in precedents:
         index_precedent(
             p["id"], p["document_id"], p["passage"], p["outcome"], p["explanation"], vector_store
