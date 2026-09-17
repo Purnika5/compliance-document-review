@@ -1,6 +1,5 @@
 import { Pool, QueryResult, QueryResultRow } from 'pg';
 import { config } from '../config';
-import { newDb, DataType } from 'pg-mem';
 import crypto from 'crypto';
 
 export const pool = new Pool(config.db);
@@ -14,6 +13,8 @@ export const resetMemDb = (): void => {
 
 const getMemAdapter = () => {
   if (!memAdapterPool) {
+    // Dynamic import so pg-mem is not required in production runner
+    const { newDb, DataType } = require('pg-mem');
     const db = newDb();
 
     // Register gen_random_uuid function for UUID generation
