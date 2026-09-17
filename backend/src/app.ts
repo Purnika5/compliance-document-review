@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import { config } from './config';
 import routes from './routes';
 import { errorHandler, AppError } from './middleware/error.middleware';
+import { systemAuditMiddleware } from './middleware/systemAudit.middleware';
 
 export const createApp = (): Application => {
   const app: Application = express();
@@ -20,6 +21,9 @@ export const createApp = (): Application => {
 
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+  // DevOps System Audit Logging: Records every state change (who, what, when) without PII
+  app.use(systemAuditMiddleware);
 
   const staticUploadHeaders = (_req: Request, res: Response, next: NextFunction) => {
     res.removeHeader('X-Frame-Options');

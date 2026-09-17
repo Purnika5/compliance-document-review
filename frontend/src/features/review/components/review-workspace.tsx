@@ -120,6 +120,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
   const [documentError, setDocumentError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"iframe" | "paper" | "text">("iframe");
   const [isLoadingAnalysis, setIsLoadingAnalysis] = useState<boolean>(true);
+  const [isAiDegraded, setIsAiDegraded] = useState<boolean>(false);
 
   const handleRefreshAnalysis = () => {
     setIsLoadingAnalysis(true);
@@ -127,9 +128,11 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
       .getAnalysis(documentId)
       .then((flags) => {
         setAnalysisFlags(flags);
+        setIsAiDegraded(Boolean((flags as any)?.isDegraded));
       })
       .catch(() => {
         setAnalysisFlags([]);
+        setIsAiDegraded(true);
       })
       .finally(() => {
         setIsLoadingAnalysis(false);
@@ -160,9 +163,12 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
       .then((flags) => {
         if (!isActive) return;
         setAnalysisFlags(flags);
+        setIsAiDegraded(Boolean((flags as any)?.isDegraded));
       })
       .catch(() => {
-        if (!isActive) setAnalysisFlags([]);
+        if (!isActive) return;
+        setAnalysisFlags([]);
+        setIsAiDegraded(true);
       })
       .finally(() => {
         if (isActive) setIsLoadingAnalysis(false);
@@ -927,6 +933,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
               selectedFlagId={selectedFlag?.id || null}
               onSelectFlag={handleSelectFlag}
               isLoading={isLoadingAnalysis}
+              isDegraded={isAiDegraded}
               onRefresh={handleRefreshAnalysis}
             />
           ) : (
