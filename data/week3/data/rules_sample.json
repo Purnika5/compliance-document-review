@@ -1,0 +1,32 @@
+[
+  {
+    "rule_code": "FINRA-2210",
+    "title": "Communications with the Public",
+    "description": "Prohibits false, exaggerated, unwarranted, or misleading statements in communications with the public, including implying guaranteed investment returns.",
+    "id": "2469c4cc-b396-4dd8-b675-2a42592b6527"
+  },
+  {
+    "rule_code": "SEC-206",
+    "title": "Fiduciary Duty Disclosure",
+    "description": "Requires advisors to disclose all material conflicts of interest, including compensation received for recommending specific products.",
+    "id": "11a9dbe6-cd19-404c-90f9-270af4394bc8"
+  },
+  {
+    "rule_code": "FINRA-2111",
+    "title": "Suitability Obligation",
+    "description": "Requires a reasonable basis to believe a recommended transaction or investment strategy is suitable for the customer based on their profile.",
+    "id": "4d8c6873-5453-478e-a102-fadd6a98edcf"
+  },
+  {
+    "rule_code": "SEC-RiskDisclosure",
+    "title": "Risk Factor Disclosure",
+    "description": "Requires clear disclosure of principal risks of loss associated with an investment, including that past performance does not guarantee future results.",
+    "id": "872e0907-2dfa-4790-9ad0-227c25f6fe2d"
+  },
+  {
+    "rule_code": "FINRA-2214",
+    "title": "Fee and Expense Disclosure",
+    "description": "Requires clear and prominent disclosure of all fees, expenses, and charges associated with a recommended product.",
+    "id": "d3a750a2-f653-4744-bad2-acd25f97ee35"
+  }
+]

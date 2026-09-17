@@ -1,0 +1,30 @@
+[
+  {
+    "document_id": "d2653c14-3c69-490d-bb3e-32a36f3dbe39",
+    "passage": "Historical returns guarantee future fund performance.",
+    "outcome": "flagged",
+    "explanation": "Guaranteed performance statement violates FINRA 2210.",
+    "id": "9607ba1d-2d3f-4e7b-b8f9-a0c88393e648"
+  },
+  {
+    "document_id": "14d11e95-53f4-4acf-bbb1-c241f71248ae",
+    "passage": "This fund has consistently outperformed the market every single year without exception.",
+    "outcome": "flagged",
+    "explanation": "Exaggerated, unverifiable performance claim; misleading under FINRA 2210.",
+    "id": "307f605a-4a79-4983-acc2-ed37530fc31a"
+  },
+  {
+    "document_id": "65e800e9-79a0-4192-be92-a88a761d117e",
+    "passage": "The advisor did not disclose the commission earned from recommending this annuity product.",
+    "outcome": "flagged",
+    "explanation": "Undisclosed conflict of interest violates SEC 206 fiduciary duty rules.",
+    "id": "a41cae56-7694-40c3-adb1-d79847518be8"
+  },
+  {
+    "document_id": "f90e9d5c-c8aa-4c54-96d4-f350e9bfb03b",
+    "passage": "Past performance is not indicative of future results, and all investments carry risk of loss.",
+    "outcome": "cleared",
+    "explanation": "Proper risk disclosure present; satisfies SEC risk disclosure requirement.",
+    "id": "629275f6-86fe-4774-868c-13f2b9b1c6ea"
+  }
+]
