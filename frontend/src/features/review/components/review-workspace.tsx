@@ -126,9 +126,9 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
     setIsLoadingAnalysis(true);
     documentService
       .getAnalysis(documentId)
-      .then((flags) => {
-        setAnalysisFlags(flags);
-        setIsAiDegraded(Boolean((flags as any)?.isDegraded));
+      .then((res) => {
+        setAnalysisFlags(res.flags);
+        setIsAiDegraded(res.isDegraded);
       })
       .catch(() => {
         setAnalysisFlags([]);
@@ -160,10 +160,10 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
 
     documentService
       .getAnalysis(documentId)
-      .then((flags) => {
+      .then((res) => {
         if (!isActive) return;
-        setAnalysisFlags(flags);
-        setIsAiDegraded(Boolean((flags as any)?.isDegraded));
+        setAnalysisFlags(res.flags);
+        setIsAiDegraded(res.isDegraded);
       })
       .catch(() => {
         if (!isActive) return;
