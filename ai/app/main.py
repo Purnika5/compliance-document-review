@@ -181,7 +181,7 @@ def analyze_document(request: AnalyzeRequest):
 
 
     # --------------------------------------------------
-    # Convert retrieved rules to JSON text
+    # Convert retrieved rules and precedents to JSON text
     # --------------------------------------------------
 
     retrieved_rules_text = json.dumps(
@@ -191,11 +191,6 @@ def analyze_document(request: AnalyzeRequest):
         ],
         indent=2
     )
-
-
-    # --------------------------------------------------
-    # Convert precedents to JSON text
-    # --------------------------------------------------
 
     precedents_text = json.dumps(
         [
@@ -241,6 +236,23 @@ def analyze_document(request: AnalyzeRequest):
 
 
         # --------------------------------------------------
+        # Zero Retrieved Rules Handling (Short-Circuit)
+        # If no compliance rules were retrieved, no flags can be raised.
+        # This saves latency, token costs, and guarantees 0 false positives.
+        # --------------------------------------------------
+
+        if not request.retrieved_rules:
+            result = {
+                "document_id": request.document_id,
+                "version": request.version,
+                "summary": summary,
+                "flags": []
+            }
+            analysis_cache[cache_key] = result
+            return result
+
+
+        # --------------------------------------------------
         # Generate potential compliance issues
         # --------------------------------------------------
 
@@ -274,18 +286,19 @@ def analyze_document(request: AnalyzeRequest):
 
 
         # --------------------------------------------------
-        # Validate each flag
+        # Validate each flag against retrieved rules
         # --------------------------------------------------
 
         validated_flags: List[Flag] = []
 
-
-        # Get only the rule IDs supplied by retrieval
-        retrieved_rule_ids = {
+        # Allow matching against either rule UUID or rule_code (e.g. FINRA-2210)
+        valid_rule_identifiers = {
             rule.id
             for rule in request.retrieved_rules
+        } | {
+            rule.rule_code
+            for rule in request.retrieved_rules
         }
-
 
         for issue in issues:
 
@@ -295,23 +308,15 @@ def analyze_document(request: AnalyzeRequest):
                     "Each flag must be a JSON object."
                 )
 
-
-            # Validate flag structure
             flag = Flag.model_validate(issue)
 
-
-            # --------------------------------------------------
             # Strict rule grounding validation
-            # Gemini can only use retrieved rule IDs
-            # --------------------------------------------------
-
-            if flag.rule not in retrieved_rule_ids:
+            if flag.rule not in valid_rule_identifiers:
 
                 raise ValueError(
                     f"Gemini returned rule '{flag.rule}', "
                     "but that rule was not provided by Rule Retrieval."
                 )
-
 
             validated_flags.append(flag)
 
