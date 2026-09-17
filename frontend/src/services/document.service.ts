@@ -186,7 +186,13 @@ export class DocumentService {
         ? (envelope.data as Record<string, unknown>[])
         : [];
 
-      return rawFlags.map((item, index) => ({
+      const isDegraded = Boolean(
+        envelope?.data?.is_degraded ||
+        envelope?.data?.status === "unavailable" ||
+        (envelope?.data?.summary && String(envelope.data.summary).includes("unavailable"))
+      );
+
+      const flags = rawFlags.map((item, index) => ({
         id: String(item.id || `flag-${index + 1}`),
         ruleCode: String(item.rule || item.ruleCode || item.rule_code || `RULE-${index + 1}`),
         severity: ((String(item.severity || "MEDIUM")).toUpperCase() as "HIGH" | "MEDIUM" | "LOW"),
@@ -196,8 +202,16 @@ export class DocumentService {
         confidenceScore: Number(item.confidenceScore || item.confidence_score || item.confidence || 85),
         pageNumber: Number(item.pageNumber || item.page_number || item.page || 1),
       }));
+
+      (flags as any).isDegraded = isDegraded;
+      (flags as any).status = (envelope?.data?.status as string) || (isDegraded ? "unavailable" : "available");
+
+      return flags;
     } catch {
-      return [];
+      const fallbackFlags: any = [];
+      fallbackFlags.isDegraded = true;
+      fallbackFlags.status = "unavailable";
+      return fallbackFlags;
     }
   }
 

@@ -5,6 +5,7 @@ import { AppError } from '../middleware/error.middleware';
 import { AuditService } from './audit.service';
 import { NotificationService } from './notification.service';
 import { PipelineService } from './pipeline.service';
+import { aiCircuitBreaker } from '../utils/circuitBreaker';
 
 export interface CreateDocumentInput {
   title: string;
@@ -631,10 +632,22 @@ export class DocumentService {
     const res = await query<DocumentAnalysis>(sql, [doc.id, doc.version]);
 
     if (res.rows.length === 0 || res.rows[0].summary === 'AI analysis could not be completed for this document.') {
-      // If not yet analyzed or previous attempt failed, process it on-the-fly and persist
+      // If not yet analyzed or previous attempt failed, process it on-the-fly
       const analyzed = await PipelineService.processDocument(doc.id, doc.version, doc.file_path, doc.mime_type);
       if (!analyzed) {
-        throw new AppError('Document analysis is not available or still in progress', 404, 'ANALYSIS_NOT_FOUND');
+        return {
+          id: `degraded-${doc.id}-${doc.version}`,
+          document_id: doc.id,
+          version: doc.version,
+          status: 'unavailable',
+          is_degraded: true,
+          circuit_breaker: aiCircuitBreaker.getState(),
+          summary: 'AI compliance analysis is temporarily unavailable. Graceful degradation active.',
+          flags: [],
+          message: 'AI service is currently offline or unreachable. Manual compliance review is active.',
+          created_at: new Date(),
+          updated_at: new Date(),
+        } as any;
       }
       return analyzed;
     }

@@ -14,6 +14,7 @@ import {
   FileCheck,
   RefreshCw,
   Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -34,6 +35,7 @@ export interface AIAssistPanelProps {
   selectedFlagId?: string | null;
   onSelectFlag?: (flag: IAIFlagItem) => void;
   isLoading?: boolean;
+  isDegraded?: boolean;
   onRefresh?: () => void;
 }
 
@@ -43,6 +45,7 @@ export function AIAssistPanel({
   selectedFlagId = null,
   onSelectFlag,
   isLoading = false,
+  isDegraded = false,
   onRefresh,
 }: AIAssistPanelProps) {
   const [activeTab, setActiveTab] = useState<"flags" | "copilot">("flags");
@@ -134,6 +137,21 @@ export function AIAssistPanel({
                   <div className="h-16 rounded-lg bg-muted/30 border border-border/40 animate-pulse" />
                   <div className="h-16 rounded-lg bg-muted/30 border border-border/40 animate-pulse" />
                   <div className="h-16 rounded-lg bg-muted/30 border border-border/40 animate-pulse" />
+                </div>
+              </div>
+            ) : isDegraded ? (
+              <div className="flex flex-col items-center justify-center h-full text-center p-6 space-y-3 animate-fade-in">
+                <div className="h-10 w-10 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center">
+                  <AlertTriangle className="h-5 w-5" />
+                </div>
+                <div className="space-y-1.5 max-w-xs">
+                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[10px] font-mono uppercase tracking-wider font-semibold">
+                    Graceful Degradation Active
+                  </div>
+                  <h4 className="text-xs font-bold text-foreground">AI Review Engine Offline</h4>
+                  <p className="text-[11px] text-muted-foreground leading-normal">
+                    Automated rule scanning is temporarily paused due to upstream resilience fail-safe. Document review, decision logging, and audit trails remain fully functional.
+                  </p>
                 </div>
               </div>
             ) : flags.length === 0 ? (
