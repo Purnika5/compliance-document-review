@@ -12,8 +12,13 @@ And prints the final `/analyze` request payload in the exact shape agreed
 with Backend/AI (masked_text + retrieved_rules + precedents).
 """
 
+import sys
 import json
 from pathlib import Path
+
+base_dir = Path(__file__).resolve().parent
+if str(base_dir) not in sys.path:
+    sys.path.insert(0, str(base_dir))
 
 from src.absence_detection import detect_missing_disclosures
 from src.precedent_search import index_precedent, search_precedents
