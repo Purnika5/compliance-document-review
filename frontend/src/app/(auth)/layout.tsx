@@ -1,47 +1,35 @@
 import React from "react";
-import Link from "next/link";
-import { CompanyLogo } from "@/components/ui/brand-logos";
+import { AuthBrandSide } from "@/features/auth/components/auth-brand-side";
 
 /**
- * DOCU: Provides shared navigation and layout for authentication screens.
- * Last Updated Date: September 3, 2026
+ * DOCU: Provides split-screen layout for authentication screens (Login and Registration).
+ * Matches the institutional Springer Capital design with left showcase panel and clean right form.
+ * Last Updated Date: September 15, 2026
  * @param children - Login or signup page content.
- * @returns The authentication layout.
+ * @returns The split-screen authentication layout.
  * @author Keith
  */
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50">
-      {/* Top Header */}
-      <header className="h-14 border-b border-slate-200 bg-white px-4 sm:px-6 flex items-center justify-between">
-        <Link href="/" className="flex items-center">
-          <CompanyLogo />
-        </Link>
-        <div className="flex items-center space-x-3 text-xs font-semibold">
-          <Link
-            href="/login"
-            className="text-slate-600 hover:text-slate-900 px-2.5 py-1 rounded transition-colors"
-          >
-            Sign In
-          </Link>
-          <Link
-            href="/signup"
-            className="bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded transition-colors"
-          >
-            Register Personnel
-          </Link>
-        </div>
-      </header>
-
-      {/* Centered Auth Card Area */}
-      <div className="flex-1 flex flex-col justify-center items-center py-10 px-4 sm:px-6">
-        <div className="w-full max-w-md">{children}</div>
+    <div className="min-h-screen w-full flex flex-col lg:flex-row bg-[#0e271c]">
+      {/* Left Brand Showcase Panel */}
+      <div className="w-full lg:w-[48%] xl:w-[46%] min-h-[500px] lg:min-h-screen lg:sticky lg:top-0 shrink-0">
+        <AuthBrandSide />
       </div>
 
-      {/* Footer */}
-      <footer className="py-4 text-center text-[11px] text-slate-400 border-t border-slate-200 bg-white">
-        Springer Capital Institutional Compliance & Wealth Advisory Platform • Strictly Confidential
-      </footer>
+      {/* Right Content Panel */}
+      <div className="flex-1 min-h-screen bg-white text-slate-900 flex flex-col justify-between p-6 sm:p-10 lg:p-12 xl:p-14 relative overflow-y-auto">
+        {/* Center Form Container */}
+        <div className="w-full max-w-[480px] mx-auto my-auto py-6">
+          {children}
+        </div>
+
+        {/* Footer */}
+        <div className="w-full text-center text-[11px] text-slate-400 select-none pt-4">
+          Springer Capital • North America &amp; Asia • Version 2.4.0
+        </div>
+      </div>
     </div>
   );
 }
+

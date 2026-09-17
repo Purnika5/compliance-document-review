@@ -30,6 +30,8 @@ interface ApiDocument {
   advisor_email?: string;
   created_at: string;
   updated_at: string;
+  masked_text?: string;
+  original_text?: string;
 }
 
 /**
@@ -52,7 +54,19 @@ function mapApiDocumentToItem(doc: ApiDocument): DocumentItem {
     advisorEmail: doc.advisor_email,
     submittedAt: doc.created_at,
     status: doc.status,
-    fileSize: doc.file_size ? `${(doc.file_size / (1024 * 1024)).toFixed(1)} MB` : undefined,
+    fileSize: doc.file_size ? (doc.file_size < 1024 * 1024 ? `${(doc.file_size / 1024).toFixed(1)} KB` : `${(doc.file_size / (1024 * 1024)).toFixed(1)} MB`) : undefined,
+    notes: doc.description,
+    fileName: doc.file_name,
+    filePath: doc.file_path,
+    mimeType: doc.mime_type,
+    maskedText: doc.masked_text,
+    originalText: doc.original_text,
+    fileUrl: doc.file_path ? (() => {
+      const p = doc.file_path.replace(/\\/g, '/');
+      const match = p.match(/(?:\/)?uploads\/(.*)/);
+      const suffix = match ? match[1] : p.split('/').pop();
+      return suffix ? `/api/raw-file/${suffix}` : undefined;
+    })() : (doc.file_name ? `/api/raw-file/documents/${doc.file_name}` : undefined),
   };
 }
 
@@ -116,8 +130,10 @@ export async function uploadDocumentRequest(data: UploadDocumentInput): Promise<
   if (data.file) {
     formData.append("file", data.file);
   } else {
-    const dummyBlob = new Blob(["Compliance review document: " + data.title], { type: "text/plain" });
-    formData.append("file", dummyBlob, `${data.title.replace(/[^a-zA-Z0-9_-]/g, "_")}.txt`);
+    // Generate a structured placeholder document if user submitted metadata without raw attachment
+    const content = `SPRINGER CAPITAL COMPLIANCE SUBMISSION\nTitle: ${data.title}\nCategory: ${data.category}\nDate: ${new Date().toISOString()}\nNotes:\n${data.notes || "No additional notes provided."}`;
+    const fallbackBlob = new Blob([content], { type: "text/plain" });
+    formData.append("file", fallbackBlob, `${data.title.toLowerCase().replace(/[^a-z0-9]/g, "_")}.txt`);
   }
 
   const envelope = await client.request<Envelope<ApiDocument>>("/documents", {

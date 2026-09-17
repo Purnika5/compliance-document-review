@@ -3,12 +3,11 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { authStore } from "@/lib/auth/auth-store";
-import { Loader2 } from "lucide-react";
 
 /**
- * DOCU: Redirects authenticated users to their role-specific workspace.
- * Last Updated Date: September 3, 2026
- * @returns A loading state while routing to the appropriate workspace.
+ * DOCU: Automatically redirects the user to their appropriate landing route without showing a loading screen.
+ * Last Updated Date: September 15, 2026
+ * @returns Null (immediate redirect).
  * @author Keith
  */
 export default function HomePage() {
@@ -25,12 +24,5 @@ export default function HomePage() {
     }
   }, [router]);
 
-  return (
-    <div className="flex items-center justify-center min-h-[50vh]">
-      <div className="text-center space-y-2">
-        <Loader2 className="animate-spin h-5 w-5 text-primary mx-auto" />
-        <p className="text-xs text-slate-500 font-medium">Redirecting to workspace portal...</p>
-      </div>
-    </div>
-  );
+  return null;
 }

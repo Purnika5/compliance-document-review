@@ -1,5 +1,13 @@
 import type { Metadata } from "next";
+import { Outfit } from "next/font/google";
 import "@/app/globals.css";
+import { ToastProvider } from "@/components/ui/toast";
+
+const outfit = Outfit({
+  subsets: ["latin"],
+  variable: "--font-outfit",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Springer Capital | Institutional Compliance Document Review",
@@ -7,8 +15,8 @@ export const metadata: Metadata = {
 };
 
 /**
- * DOCU: Provides the shared HTML shell and metadata for the application.
- * Last Updated Date: September 3, 2026
+ * DOCU: Provides the shared HTML shell, Outfit typography, and metadata for the application.
+ * Last Updated Date: September 15, 2026
  * @param children - Rendered route content.
  * @returns The root document layout.
  * @author Keith
@@ -19,9 +27,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className="min-h-screen bg-background antialiased" suppressHydrationWarning>
+    <html lang="en" className={`dark ${outfit.variable}`} suppressHydrationWarning>
+      <body
+        className={`${outfit.className} min-h-screen bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary font-sans`}
+        suppressHydrationWarning
+      >
         {children}
+        <ToastProvider />
       </body>
     </html>
   );

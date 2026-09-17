@@ -206,41 +206,56 @@ npm test
 ### 3. Document Management & Review Flow
 | Method | Endpoint | Required Role | Description |
 |---|---|---|---|
-| `POST` | `/documents` | **Advisor** | Upload and submit a document (`multipart/form-data`) |
-| `PATCH` | `/documents/:id/status` | **Officer** | Update document review status |
+| `POST` | `/documents` | **Advisor** | Upload and submit initial document v1 (`multipart/form-data`) |
+| `GET` | `/documents/queue` | **Officer** | Officer review queue with status filtering (`All`, `Pending`, etc.) |
+| `POST` | `/documents/:id/resubmit` | **Advisor** | Resubmit revised document as a new version (`v2, v3...`) |
+| `PATCH` | `/documents/:id/status` | **Officer** | Update document review status with optional audit comment |
+| `GET` | `/documents/:id/versions` | Any (Scoped) | Get full document version lineage and revision thread entries |
 | `GET` | `/documents` | Any (Scoped) | List documents (Advisor sees own; Officer sees all) |
 | `GET` | `/documents/:id` | Any (Scoped) | Get single document detail (Ownership checked) |
 
-#### `POST /documents` (Advisor Only)
+#### `GET /documents/queue` (Officer Only)
 **Headers:**
-`Authorization: Bearer <token>`
+`Authorization: Bearer <Officer_token>`
+
+**Query Parameters:**
+- `status`: Optional filter (`All`, `Pending`, `Needs Revision`, `Approved`, `Rejected`)
+
+**Success Response (`200 OK`):**
+```json
+{
+  "success": true,
+  "message": "Officer review queue retrieved successfully",
+  "data": [
+    {
+      "id": "e93fac3a-8d64-40b8-904b-20d1f98cf2ea",
+      "title": "Institutional Equity Pitch Deck",
+      "status": "Pending",
+      "version": 1,
+      "original_document_id": null,
+      "advisor_name": "Advisor One",
+      "advisor_email": "advisor@example.com",
+      "created_at": "2026-09-02T09:30:00.000Z"
+    }
+  ]
+}
+```
+
+#### `POST /documents/:id/resubmit` (Advisor Only)
+**Headers:**
+`Authorization: Bearer <Advisor_token>`
 `Content-Type: multipart/form-data`
 
 **Form Data:**
 - `file`: File upload (`.pdf`, `.docx`, `.xlsx`, `.txt`)
-- `title`: String (required)
+- `title`: String (optional, defaults to original document title)
 - `description`: String (optional)
+- `notes`: String (optional audit note explaining revisions made)
 
-**Success Response (`201 Created`):**
-```json
-{
-  "success": true,
-  "message": "Document submitted successfully",
-  "data": {
-    "id": "e93fac3a-8d64-40b8-904b-20d1f98cf2ea",
-    "title": "Annual Compliance Audit 2026",
-    "description": "Comprehensive risk overview for Q1 review.",
-    "file_name": "annual_report.pdf",
-    "file_path": "/path/to/uploads/documents/...",
-    "file_size": 2048576,
-    "mime_type": "application/pdf",
-    "status": "Pending",
-    "advisor_id": "c62bf6a9-8581-4ba2-9214-4a4cb6a8d6e3",
-    "created_at": "2026-09-02T09:30:00.000Z",
-    "updated_at": "2026-09-02T09:30:00.000Z"
-  }
-}
-```
+**Requirements:**
+- Document `:id` must currently have status `'Needs Revision'`.
+- Only the original submitting advisor can resubmit.
+- Creates an incremented version (e.g. `version: 2`) with status reset to `'Pending'` and links `original_document_id` to the root document.
 
 #### `PATCH /documents/:id/status` (Officer Only)
 **Headers:**
@@ -249,24 +264,18 @@ npm test
 **Request Body:**
 ```json
 {
-  "status": "Approved"
+  "status": "Needs Revision",
+  "comment": "Please add required FINRA Rule 2111 risk disclosure on slide 8."
 }
 ```
 *Allowed statuses: `"Approved"`, `"Needs Revision"`, `"Rejected"`.*
 
+#### `GET /documents/:id/versions`
+**Headers:**
+`Authorization: Bearer <token>`
+
 **Success Response (`200 OK`):**
-```json
-{
-  "success": true,
-  "message": "Document status updated to 'Approved'",
-  "data": {
-    "id": "e93fac3a-8d64-40b8-904b-20d1f98cf2ea",
-    "status": "Approved",
-    "updated_at": "2026-09-02T09:35:00.000Z"
-  }
-}
-```
-*(If called by an Advisor, returns `403 Forbidden` with code `FORBIDDEN`)*.
+Returns `{ versions: [...], thread_entries: [...] }` containing all historical versions of the document lineage and the full revision conversation thread.
 
 #### `GET /documents`
 **Headers:**
@@ -287,3 +296,4 @@ npm test
 **Behavior:**
 - **Advisor**: Permitted only if `document.advisor_id === req.user.id`. Otherwise returns `403 Forbidden`.
 - **Officer**: Permitted to view any document detail.
+

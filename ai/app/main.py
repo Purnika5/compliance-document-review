@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import List
 
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from dotenv import load_dotenv
 from google import genai
 
@@ -69,6 +69,14 @@ app = FastAPI(title="Compliance AI Service")
 
 
 # --------------------------------------------------
+# In-memory cache
+# Cache key = document_id + version
+# --------------------------------------------------
+
+analysis_cache = {}
+
+
+# --------------------------------------------------
 # Request format from backend
 # --------------------------------------------------
 
@@ -95,17 +103,49 @@ class Flag(BaseModel):
 @app.post("/analyze")
 def analyze_document(request: AnalyzeRequest):
 
-    # Insert masked document text into the summary prompt
+    # --------------------------------------------------
+    # Create cache key
+    # --------------------------------------------------
+
+    cache_key = (request.document_id, request.version)
+
+
+    # --------------------------------------------------
+    # Check cache
+    # --------------------------------------------------
+
+    if cache_key in analysis_cache:
+
+        print(
+            f"Cache hit: document_id={request.document_id}, "
+            f"version={request.version}",
+            flush=True
+        )
+
+        return analysis_cache[cache_key]
+
+
+    print(
+        f"Cache miss: document_id={request.document_id}, "
+        f"version={request.version}",
+        flush=True
+    )
+
+
+    # --------------------------------------------------
+    # Insert masked document text into prompts
+    # --------------------------------------------------
+
     summary_prompt = SUMMARY_PROMPT.replace(
         "{DOCUMENT_TEXT}",
         request.masked_text
     )
 
-    # Insert masked document text into the issue flagging prompt
     issue_prompt = ISSUE_FLAGGING_PROMPT.replace(
         "{DOCUMENT_TEXT}",
         request.masked_text
     )
+
 
     try:
 
@@ -133,8 +173,18 @@ def analyze_document(request: AnalyzeRequest):
             }
         )
 
-        # Convert Gemini JSON response from string to Python list
+
+        # --------------------------------------------------
+        # Convert Gemini JSON response
+        # --------------------------------------------------
+
         issues = json.loads(issue_response.text)
+
+
+        if not isinstance(issues, list):
+            raise ValueError(
+                "Gemini issue response must be a JSON array."
+            )
 
 
         # --------------------------------------------------
@@ -144,20 +194,22 @@ def analyze_document(request: AnalyzeRequest):
         validated_flags: List[Flag] = []
 
         for issue in issues:
-            validated_flags.append(
-                Flag(
-                    passage=issue.get("passage", ""),
-                    rule=issue.get("rule", ""),
-                    explanation=issue.get("explanation", "")
+
+            if not isinstance(issue, dict):
+                raise ValueError(
+                    "Each flag must be a JSON object."
                 )
-            )
+
+            flag = Flag.model_validate(issue)
+
+            validated_flags.append(flag)
 
 
         # --------------------------------------------------
-        # Return response to backend
+        # Create final result
         # --------------------------------------------------
 
-        return {
+        result = {
             "document_id": request.document_id,
             "version": request.version,
             "summary": summary,
@@ -165,13 +217,49 @@ def analyze_document(request: AnalyzeRequest):
         }
 
 
+        # --------------------------------------------------
+        # Store result in cache
+        # --------------------------------------------------
+
+        analysis_cache[cache_key] = result
+
+
+        return result
+
+
     except json.JSONDecodeError:
+
         raise HTTPException(
             status_code=500,
-            detail="Gemini returned an invalid JSON response for issue flagging."
+            detail=(
+                "Gemini returned an invalid JSON response "
+                "for issue flagging."
+            )
         )
 
+
+    except ValidationError:
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Gemini returned an invalid flag structure. "
+                "Each flag must contain passage, rule, "
+                "and explanation."
+            )
+        )
+
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+
+
     except Exception as e:
+
         raise HTTPException(
             status_code=500,
             detail=f"Gemini API error: {str(e)}"
@@ -184,6 +272,7 @@ def analyze_document(request: AnalyzeRequest):
 
 @app.get("/")
 def root():
+
     return {
         "message": "Compliance AI Service is running"
     }

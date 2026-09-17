@@ -8,7 +8,11 @@ import { errorHandler, AppError } from './middleware/error.middleware';
 export const createApp = (): Application => {
   const app: Application = express();
 
-  app.use(helmet());
+  app.use(helmet({
+    crossOriginResourcePolicy: false,
+    contentSecurityPolicy: false,
+    crossOriginOpenerPolicy: false
+  }));
   app.use(cors({
     origin: config.cors.origin,
     credentials: true
@@ -16,7 +20,17 @@ export const createApp = (): Application => {
 
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-  app.use('/uploads', express.static(config.uploads.dir));
+
+  const staticUploadHeaders = (_req: Request, res: Response, next: NextFunction) => {
+    res.removeHeader('X-Frame-Options');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Content-Security-Policy', "frame-ancestors *");
+    next();
+  };
+
+  app.use('/uploads/documents', staticUploadHeaders, express.static(config.uploads.dir));
+  app.use('/uploads', staticUploadHeaders, express.static(config.uploads.dir));
 
   if (config.env === 'development') {
     app.use((req: Request, res: Response, next: NextFunction) => {

@@ -1,0 +1,7 @@
+pdfplumber
+python-docx
+openpyxl
+pytesseract
+pdf2image
+pytest
+reportlab

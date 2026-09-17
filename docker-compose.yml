@@ -73,6 +73,10 @@ services:
         condition: service_healthy
       mock-ai-api:
         condition: service_started
+      pii-masker:
+        condition: service_healthy
+      ai-service:
+        condition: service_started
     networks:
       - compliance-network
 
@@ -91,6 +95,7 @@ services:
       PORT: 3000
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000}
+      INTERNAL_BACKEND_URL: http://compliance-backend:5000
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     depends_on:
@@ -111,6 +116,25 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     ports:
       - "${AI_PORT:-8000}:8000"
+    networks:
+      - compliance-network
+
+  # ----------------------------------------------------------------------------
+  # 6. PII Masking Engine (FastAPI)
+  # ----------------------------------------------------------------------------
+  pii-masker:
+    build:
+      context: ./devops/pii-masker
+      dockerfile: Dockerfile
+    container_name: compliance-pii-masker
+    restart: unless-stopped
+    ports:
+      - "${PII_MASKER_PORT:-8002}:8002"
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8002/health')\" || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
     networks:
       - compliance-network
 
