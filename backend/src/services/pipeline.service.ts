@@ -125,10 +125,33 @@ export class PipelineService {
     }
   }
 
+  private static inFlightJobs = new Map<string, Promise<DocumentAnalysis | null>>();
+
   /**
-   * Executes the full pipeline: Extract -> Mask -> AI Analyze -> Save in Database.
+   * Executes the full pipeline with in-flight deduplication: Extract -> Mask -> AI Analyze -> Save in Database.
    */
   public static async processDocument(
+    documentId: string,
+    version: number,
+    filePath: string,
+    mimeType: string
+  ): Promise<DocumentAnalysis | null> {
+    const jobKey = `${documentId}:${version}`;
+    const existing = this.inFlightJobs.get(jobKey);
+    if (existing) {
+      return existing;
+    }
+
+    const jobPromise = this.executeProcessDocument(documentId, version, filePath, mimeType)
+      .finally(() => {
+        this.inFlightJobs.delete(jobKey);
+      });
+
+    this.inFlightJobs.set(jobKey, jobPromise);
+    return jobPromise;
+  }
+
+  private static async executeProcessDocument(
     documentId: string,
     version: number,
     filePath: string,
@@ -176,6 +199,15 @@ export class PipelineService {
 
     // 3. Gemini AI Analysis
     const { summary, flags } = await this.analyzeWithAi(documentId, version, maskedText);
+
+    // If AI analysis could not be completed, skip persistence to allow retry
+    if (
+      summary === 'AI analysis could not be completed for this document.' ||
+      summary === 'AI service currently offline or unreachable.'
+    ) {
+      console.warn(`[PipelineService] Document ${documentId} (v${version}) analysis could not be completed, skipping database persistence to allow retry.`);
+      return null;
+    }
 
     // 4. Store in PostgreSQL
     const sql = `
