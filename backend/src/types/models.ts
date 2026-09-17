@@ -81,3 +81,20 @@ export interface DocumentAnalysis {
   updated_at: Date;
 }
 
+export interface RetrievedRule {
+  id: string;
+  rule_code: string;
+  title: string;
+  description: string;
+  similarity_score: number;
+}
+
+export interface PrecedentItem {
+  id: string;
+  document_id: string;
+  passage: string;
+  outcome: string;
+  explanation: string;
+  similarity_score: number;
+}
+

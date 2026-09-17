@@ -3,7 +3,7 @@ import path from 'path';
 import pdfParse from 'pdf-parse';
 import { query } from '../db/pool';
 import { config } from '../config';
-import { ComplianceFlag, DocumentAnalysis } from '../types/models';
+import { ComplianceFlag, DocumentAnalysis, RetrievedRule, PrecedentItem } from '../types/models';
 
 export class PipelineService {
   /**
@@ -75,12 +75,59 @@ export class PipelineService {
   }
 
   /**
-   * Dispatch masked text to the AI analysis service.
+   * Week 3 Data Engineering: Retrieve grounded compliance rules and precedents.
+   */
+  public static async retrieveRulesAndPrecedents(
+    maskedText: string
+  ): Promise<{ retrieved_rules: RetrievedRule[]; precedents: PrecedentItem[] }> {
+    if (!maskedText || !maskedText.trim()) {
+      return { retrieved_rules: [], precedents: [] };
+    }
+
+    const endpoint = `${config.retrieval.serviceUrl}/retrieve`;
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          masked_text: maskedText,
+          rule_threshold: config.retrieval.ruleThreshold,
+          rule_top_k: config.retrieval.ruleTopK,
+          precedent_threshold: config.retrieval.precedentThreshold,
+          precedent_top_k: config.retrieval.precedentTopK,
+        }),
+        signal: AbortSignal.timeout(10000),
+      });
+
+      if (!response.ok) {
+        console.warn(`[PipelineService] Retrieval Service returned status ${response.status}`);
+        return { retrieved_rules: [], precedents: [] };
+      }
+
+      const data = (await response.json()) as {
+        retrieved_rules?: RetrievedRule[];
+        precedents?: PrecedentItem[];
+      };
+
+      return {
+        retrieved_rules: Array.isArray(data.retrieved_rules) ? data.retrieved_rules : [],
+        precedents: Array.isArray(data.precedents) ? data.precedents : [],
+      };
+    } catch (err) {
+      console.warn(`[PipelineService] Retrieval Service unreachable at ${endpoint}:`, err);
+      return { retrieved_rules: [], precedents: [] };
+    }
+  }
+
+  /**
+   * Dispatch masked text and retrieved rules to the AI analysis service.
    */
   public static async analyzeWithAi(
     documentId: string,
     version: number,
-    maskedText: string
+    maskedText: string,
+    retrievedRules: RetrievedRule[] = [],
+    precedents: PrecedentItem[] = []
   ): Promise<{ summary: string; flags: ComplianceFlag[] }> {
     if (!maskedText || !maskedText.trim()) {
       return {
@@ -98,6 +145,8 @@ export class PipelineService {
           document_id: documentId,
           version,
           masked_text: maskedText,
+          retrieved_rules: retrievedRules,
+          precedents: precedents,
         }),
         signal: AbortSignal.timeout(45000),
       });
@@ -197,8 +246,17 @@ export class PipelineService {
     // 2. DevOps PII Masking
     const maskedText = await this.maskPii(documentId, version, rawText || 'Empty document');
 
-    // 3. Gemini AI Analysis
-    const { summary, flags } = await this.analyzeWithAi(documentId, version, maskedText);
+    // 3. Week 3 Data Engineering: Rule Retrieval and Precedent Search
+    const { retrieved_rules, precedents } = await this.retrieveRulesAndPrecedents(maskedText);
+
+    // 4. Gemini AI Analysis with Rule Grounding
+    const { summary, flags } = await this.analyzeWithAi(
+      documentId,
+      version,
+      maskedText,
+      retrieved_rules,
+      precedents
+    );
 
     // If AI analysis could not be completed, skip persistence to allow retry
     if (
