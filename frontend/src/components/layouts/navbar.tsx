@@ -106,21 +106,22 @@ export function Navbar() {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator className="bg-border" />
                   <DropdownMenuItem
-                    className="group text-xs cursor-pointer gap-2 font-medium text-foreground/90 rounded-md px-2 py-1.5 focus:bg-[#062A20] focus:text-[#54d0a2] hover:bg-[#062A20] hover:text-[#54d0a2] transition-colors"
-                    onClick={() => router.push(session.role === "Advisor" ? "/submissions" : "/queue")}
+                    className="group text-xs cursor-pointer gap-2 font-medium text-[#183028] rounded-md px-2 py-1.5 focus:bg-[#C5E86C] focus:text-[#183028] hover:bg-[#C5E86C] hover:text-[#183028] transition-colors"
+                    onClick={() => router.push(session.role === "Advisor" ? "/dashboard" : "/queue")}
                   >
-                    <User className="h-3.5 w-3.5 text-muted-foreground group-hover:text-[#54d0a2] transition-colors" /> Workspace
+                    <User className="h-3.5 w-3.5 text-[#183028]/70 group-hover:text-[#183028] transition-colors" /> Workspace
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    className="group text-xs cursor-pointer gap-2 font-medium text-foreground/90 rounded-md px-2 py-1.5 focus:bg-[#062A20] focus:text-[#54d0a2] hover:bg-[#062A20] hover:text-[#54d0a2] transition-colors"
+                    className="group text-xs cursor-pointer gap-2 font-medium text-[#183028] rounded-md px-2 py-1.5 focus:bg-[#C5E86C] focus:text-[#183028] hover:bg-[#C5E86C] hover:text-[#183028] transition-colors"
                     onClick={() => router.push("/settings")}
                   >
-                    <Settings className="h-3.5 w-3.5 text-muted-foreground group-hover:text-[#54d0a2] transition-colors" /> Settings
+                    <Settings className="h-3.5 w-3.5 text-[#183028]/70 group-hover:text-[#183028] transition-colors" /> Settings
                   </DropdownMenuItem>
                   <DropdownMenuSeparator className="bg-border" />
                   <DropdownMenuItem
+                    variant="destructive"
                     onClick={handleLogout}
-                    className="text-xs cursor-pointer text-rose-400 focus:text-rose-300 focus:bg-rose-950/50 gap-2 font-medium rounded-md px-2 py-1.5 hover:bg-rose-950/50 hover:text-rose-300 transition-colors"
+                    className="text-xs cursor-pointer text-rose-600 focus:text-rose-700 focus:bg-rose-50 gap-2 font-medium rounded-md px-2 py-1.5 hover:bg-rose-50 hover:text-rose-700 transition-colors"
                   >
                     <LogOut className="h-3.5 w-3.5" /> Sign Out
                   </DropdownMenuItem>

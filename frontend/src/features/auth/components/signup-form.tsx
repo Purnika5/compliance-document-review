@@ -464,7 +464,7 @@ export function SignupForm() {
                   setAcceptedTerms(false);
                 }
               }}
-              className="h-4 w-4 rounded-sm border-slate-300 text-[#0e271c] focus:ring-emerald-700 cursor-pointer accent-[#0e271c]"
+              className="h-4 w-4 rounded-sm border-slate-300 text-[#183028] focus:ring-[#183028] cursor-pointer accent-[#183028]"
             />
             <span className="text-xs text-slate-600 leading-snug">
               I agree to the{" "}
@@ -503,7 +503,7 @@ export function SignupForm() {
             form="signup-form"
             id="signup-submit"
             disabled={isPending}
-            className="w-full bg-[#132c20] hover:bg-[#183a2b] active:bg-[#0c2217] text-white font-medium text-sm h-11 rounded-lg flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-950/10 hover:shadow-lg disabled:opacity-60 cursor-pointer"
+            className="w-full bg-[#183028] hover:bg-[#23453a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] active:bg-[#10221c] text-white font-medium text-sm h-11 rounded-lg flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-950/10 hover:shadow-lg disabled:opacity-60 cursor-pointer"
           >
             {isPending ? (
               <span className="flex items-center gap-2 text-white">
@@ -552,7 +552,7 @@ export function SignupForm() {
           >
             <p className="font-semibold text-slate-800">1. Acceptance of Terms</p>
             <p>
-              By registering for and using the Springer Capital Institutional Compliance &amp; Wealth Advisory Platform, you agree to be bound by these Terms and Conditions.
+              By registering for and using the Springer Capital Institutional Compliance &amp; Document Review Platform, you agree to be bound by these Terms and Conditions.
             </p>
             <p className="font-semibold text-slate-800">2. Authorized Personnel Only</p>
             <p>

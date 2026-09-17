@@ -6,26 +6,26 @@
  */
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { AlertCircle, AlertTriangle, CheckCircle2, Info } from "lucide-react";
+import { AlertCircle, AlertTriangle, CheckCircle2, Info, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const alertVariants = cva(
-  "relative w-full rounded-lg border p-3.5 sm:p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-3.5 [&>svg]:top-3.5 text-sm overflow-hidden animate-fade-in shadow-xs",
+  "relative w-full rounded-xl border p-3.5 sm:p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-3.5 [&>svg]:top-3.5 text-sm overflow-hidden animate-fade-in shadow-2xs",
   {
     variants: {
       variant: {
         default:
-          "border-border bg-card text-foreground [&>svg]:text-muted-foreground border-l-3 border-l-muted-foreground/60",
+          "border-[#E6E8E7] bg-[#FFFFFF] text-[#183028] [&>svg]:text-[#183028] border-l-4 border-l-[#183028]",
         destructive:
-          "border-rose-900/50 bg-rose-950/30 text-rose-200 [&>svg]:text-rose-400 border-l-3 border-l-rose-500",
+          "border-rose-200 bg-rose-50 text-rose-950 [&>svg]:text-rose-600 border-l-4 border-l-rose-600",
         error:
-          "border-rose-900/50 bg-rose-950/30 text-rose-200 [&>svg]:text-rose-400 border-l-3 border-l-rose-500",
+          "border-rose-200 bg-rose-50 text-rose-950 [&>svg]:text-rose-600 border-l-4 border-l-rose-600",
         warning:
-          "border-amber-900/50 bg-amber-950/30 text-amber-200 [&>svg]:text-amber-400 border-l-3 border-l-amber-500",
+          "border-amber-200 bg-amber-50 text-amber-950 [&>svg]:text-amber-600 border-l-4 border-l-amber-600",
         success:
-          "border-emerald-900/50 bg-emerald-950/30 text-emerald-200 [&>svg]:text-emerald-400 border-l-3 border-l-emerald-500",
+          "border-[#C5E86C] bg-[#C5E86C]/20 text-[#183028] [&>svg]:text-[#183028] border-l-4 border-l-[#183028]",
         info:
-          "border-sky-900/50 bg-sky-950/30 text-sky-200 [&>svg]:text-sky-400 border-l-3 border-l-sky-500",
+          "border-sky-200 bg-sky-50 text-sky-950 [&>svg]:text-sky-600 border-l-4 border-l-sky-600",
       },
     },
     defaultVariants: {
@@ -48,10 +48,11 @@ export interface IAlertProps
     VariantProps<typeof alertVariants> {
   title?: string;
   message?: string;
+  onClose?: () => void;
 }
 
 const Alert = React.forwardRef<HTMLDivElement, IAlertProps>(
-  ({ className, variant = "error", title, message, children, ...props }, ref) => {
+  ({ className, variant = "error", title, message, onClose, children, ...props }, ref) => {
     const IconComponent = alertIcons[variant || "default"] || AlertCircle;
 
     return (
@@ -64,6 +65,16 @@ const Alert = React.forwardRef<HTMLDivElement, IAlertProps>(
         <IconComponent className="h-4 w-4" />
         {title && <AlertTitle>{title}</AlertTitle>}
         <AlertDescription>{message || children}</AlertDescription>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute right-2.5 top-2.5 p-1 rounded-md text-[#183028]/40 hover:text-[#183028] hover:bg-black/5 transition-colors cursor-pointer"
+            aria-label="Dismiss alert"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
     );
   }
@@ -76,7 +87,7 @@ const AlertTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <h5
     ref={ref}
-    className={cn("mb-1 font-semibold leading-none tracking-tight text-foreground", className)}
+    className={cn("mb-1 font-bold leading-none tracking-tight", className)}
     {...props}
   />
 ));
@@ -88,7 +99,7 @@ const AlertDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("text-xs leading-relaxed opacity-90", className)}
+    className={cn("text-xs leading-relaxed opacity-95 font-medium", className)}
     {...props}
   />
 ));

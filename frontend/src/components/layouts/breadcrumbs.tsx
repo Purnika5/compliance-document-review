@@ -28,15 +28,17 @@ export function Breadcrumbs({ customItems }: BreadcrumbsProps) {
       return items;
     }
 
-    if (segments[0] === "submissions") {
-      items.push({ label: "Advisor Workspace", href: "/submissions" });
+    if (segments[0] === "dashboard") {
+      items.push({ label: "Advisor Workspace", href: "/dashboard" });
+      items.push({ label: "Dashboard" });
+    } else if (segments[0] === "submissions") {
+      items.push({ label: "Advisor Workspace", href: "/dashboard" });
+      items.push({ label: "My Documents" });
     } else if (segments[0] === "queue") {
       items.push({ label: "Compliance Review Queue", href: "/queue" });
     } else if (segments[0] === "documents") {
-      items.push({ label: "Documents", href: "/queue" });
-      if (segments[1]) {
-        items.push({ label: segments[1] });
-      }
+      items.push({ label: "Advisor Workspace", href: "/dashboard" });
+      items.push({ label: "Documents" });
     } else {
       segments.forEach((seg, index) => {
         const url = `/${segments.slice(0, index + 1).join("/")}`;
@@ -53,29 +55,29 @@ export function Breadcrumbs({ customItems }: BreadcrumbsProps) {
   const breadcrumbs = getBreadcrumbs();
 
   return (
-    <nav aria-label="Breadcrumb" className="flex items-center space-x-1 text-xs text-muted-foreground">
+    <nav aria-label="Breadcrumb" className="flex items-center space-x-2 text-xs">
       <Link
         href="/"
-        className="flex items-center gap-1 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        className="flex items-center text-slate-400 transition-colors hover:text-slate-800"
         aria-label="Home"
       >
-        <Home className="h-3.5 w-3.5" />
+        <Home className="h-4 w-4" />
       </Link>
 
       {breadcrumbs.slice(1).map((item, index) => {
         const isLast = index === breadcrumbs.length - 2;
         return (
           <React.Fragment key={index}>
-            <ChevronRight className="h-3 w-3 text-muted-foreground/40 shrink-0" aria-hidden="true" />
+            <span className="text-slate-300 select-none text-xs">/</span>
             {item.href && !isLast ? (
               <Link
                 href={item.href}
-                className="rounded-md px-1.5 py-0.5 text-xs font-medium text-muted-foreground transition-colors truncate max-w-[140px] sm:max-w-[180px] hover:bg-muted hover:text-foreground"
+                className="text-xs font-medium text-slate-600 transition-colors hover:text-slate-900 truncate max-w-[160px]"
               >
                 {item.label}
               </Link>
             ) : (
-              <span className="rounded-md border border-border bg-card/70 px-2 py-0.5 text-xs font-medium text-foreground truncate max-w-[180px] sm:max-w-[260px]">
+              <span className="text-xs font-bold text-slate-900 truncate max-w-[200px]">
                 {item.label}
               </span>
             )}

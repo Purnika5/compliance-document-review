@@ -24,8 +24,6 @@ import {
   User,
   Settings,
   LogOut,
-  Shield,
-  Briefcase,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -44,7 +42,6 @@ export function AppHeader({
   );
 
   const role = session?.role || "Advisor";
-  const isOfficer = role === "Officer";
 
   const handleLogout = () => {
     authStore.clearSession();
@@ -52,89 +49,63 @@ export function AppHeader({
   };
 
   const getInitials = (name?: string) => {
-    if (!name) return "SC";
+    if (!name) return "QE";
     const parts = name.trim().split(/\s+/);
     if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   };
 
   return (
-    <header className="sticky top-0 z-30 flex min-h-14 items-center justify-between border-b border-border bg-card/60 px-3 py-2 backdrop-blur-xl sm:px-5 lg:px-6 shadow-xs">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-[#E6E8E7] bg-[#FFFFFF]/95 px-4 sm:px-6 lg:px-8 backdrop-blur-md shadow-2xs">
       {/* Left Area: Mobile Menu Button + Breadcrumbs */}
-      <div className="flex min-w-0 items-center gap-2.5 sm:gap-4">
+      <div className="flex min-w-0 items-center gap-3">
         <button
           onClick={onToggleSidebarMobile}
-          className="rounded-lg border border-border bg-transparent p-1.5 text-muted-foreground transition-all hover:bg-[#062A20] hover:text-[#54d0a2] hover:border-emerald-800/60 lg:hidden"
+          className="rounded-lg border border-[#E6E8E7] bg-[#FFFFFF] p-1.5 text-[#183028] transition-all hover:bg-[#C5E86C]/20 lg:hidden cursor-pointer"
           aria-label="Open sidebar navigation"
         >
           <Menu className="h-5 w-5" />
         </button>
 
-        <div className="hidden shrink-0 items-center border-r border-border pr-4 sm:flex lg:hidden">
-          <CompanyLogo className="scale-[0.72] origin-left" />
-        </div>
-
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0">
           <Breadcrumbs />
         </div>
       </div>
 
+
       {/* Right Area: Status / Actions / User Menu */}
-      <div className="flex items-center gap-2 sm:gap-3">
-        {/* Role chip with Springer styling */}
-        <div
-          className={cn(
-            "hidden items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold shadow-xs md:flex transition-all",
-            isOfficer
-              ? "bg-transparent text-cyan-300 border-cyan-800/40"
-              : "bg-transparent text-emerald-300 border-emerald-800/50"
-          )}
-        >
-          {isOfficer ? (
-            <Shield className="h-3 w-3 text-cyan-400" />
-          ) : (
-            <Briefcase className="h-3 w-3 text-emerald-400" />
-          )}
-          <span>{role} Portal</span>
-        </div>
-
+      <div className="flex items-center gap-3">
         <NotificationCenter />
-
-        <div className="h-5 w-px bg-border" />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex cursor-pointer items-center gap-2 rounded-xl border border-border bg-transparent px-2 py-1.5 shadow-xs outline-none transition-all hover:bg-[#062A20] hover:text-[#54d0a2] hover:border-emerald-800/60">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold text-white bg-[#24A152] shadow-xs">
+            <button className="flex cursor-pointer items-center gap-2 rounded-full border border-[#E6E8E7] bg-[#FFFFFF] pl-1.5 pr-2.5 py-1 shadow-2xs outline-none transition-all hover:bg-[#C5E86C]/20">
+              <div className="flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold text-[#C5E86C] bg-[#183028]">
                 {getInitials(session?.name)}
               </div>
-              <div className="text-left hidden sm:block">
-                <p className="text-xs font-semibold text-foreground leading-tight">
-                  {session?.name || "User account"}
-                </p>
-                <span className="text-[10px] text-muted-foreground font-medium">
-                  {session?.role || "Advisor"}
-                </span>
-              </div>
-              <ChevronDown className="h-3 w-3 text-muted-foreground" />
+              <span className="text-xs font-semibold text-[#183028] hidden sm:inline">
+                {session?.role || "Advisor"}
+              </span>
+              <ChevronDown className="h-3.5 w-3.5 text-[#183028]/60" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-52 bg-card shadow-2xl rounded-xl border border-border p-1 animate-slide-down">
-            <DropdownMenuLabel className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
-              <div className="font-semibold text-foreground">{session?.name || "User account"}</div>
-              <div className="text-[10px] text-muted-foreground">{session?.email || "Not signed in"}</div>
+          <DropdownMenuContent align="end" className="w-52 bg-[#FFFFFF] shadow-xl rounded-xl border border-[#E6E8E7] p-1 animate-slide-down">
+            <DropdownMenuLabel className="px-3 py-2 text-xs font-medium text-[#183028]/60">
+              <div className="font-bold text-[#183028]">{session?.name || "Quintin Evans"}</div>
+              <div className="text-[10px] text-[#183028]/60 font-mono">{session?.email || "ryzyw@springercapital.com"}</div>
             </DropdownMenuLabel>
-            <DropdownMenuSeparator className="bg-border" />
+            <DropdownMenuSeparator className="bg-[#E6E8E7]" />
             <DropdownMenuItem
-              className="group text-xs cursor-pointer gap-2 font-medium text-foreground/90 rounded-md px-2 py-1.5 focus:bg-[#062A20] focus:text-[#54d0a2] hover:bg-[#062A20] hover:text-[#54d0a2] transition-colors"
+              className="text-xs cursor-pointer gap-2 font-medium text-[#183028] rounded-lg px-3 py-2 transition-colors"
               onClick={() => router.push("/settings")}
             >
-              <Settings className="h-3.5 w-3.5 text-muted-foreground group-hover:text-[#54d0a2] transition-colors" /> Account &amp; Preferences
+              <Settings className="h-3.5 w-3.5" /> Account &amp; Preferences
             </DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-border" />
+            <DropdownMenuSeparator className="bg-[#E6E8E7]" />
             <DropdownMenuItem
+              variant="destructive"
               onClick={handleLogout}
-              className="text-xs cursor-pointer text-rose-400 focus:text-rose-300 focus:bg-rose-950/50 gap-2 font-medium rounded-md px-2 py-1.5 hover:bg-rose-950/50 hover:text-rose-300 transition-colors"
+              className="text-xs cursor-pointer text-rose-600 focus:bg-rose-50 focus:text-rose-700 hover:bg-rose-50 hover:text-rose-700 gap-2 font-medium rounded-lg px-3 py-2 transition-colors"
             >
               <LogOut className="h-3.5 w-3.5" /> Sign Out
             </DropdownMenuItem>

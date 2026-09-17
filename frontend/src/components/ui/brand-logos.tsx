@@ -50,22 +50,35 @@ export function AILogo({ className = "h-8 w-8" }: { className?: string }) {
   );
 }
 
-/**
- * Company Brand Logo: "Springer Capital" wordmark and brand icon for dark fintech UI.
- */
 export function CompanyLogo({
   className,
   showIcon = true,
+  inverted = false,
 }: {
   className?: string;
   showIcon?: boolean;
+  inverted?: boolean;
 }) {
   return (
     <div className={cn("flex items-center gap-2.5 select-none", className)}>
       {showIcon && <AILogo className="h-7 w-7 sm:h-8 sm:w-8" />}
       <div className="flex items-baseline text-lg sm:text-xl tracking-tight uppercase">
-        <span className="font-extrabold text-foreground tracking-wide font-sans">Springer</span>
-        <span className="font-semibold text-[#84c22b] ml-1.5 font-sans tracking-wider text-[0.88em]">Capital</span>
+        <span
+          className={cn(
+            "font-extrabold tracking-wide font-sans transition-colors",
+            inverted ? "text-white" : "text-[#183028]"
+          )}
+        >
+          Springer
+        </span>
+        <span
+          className={cn(
+            "font-semibold ml-1.5 font-sans tracking-wider text-[0.88em] transition-colors",
+            inverted ? "text-[#C5E86C]" : "text-[#183028]"
+          )}
+        >
+          Capital
+        </span>
       </div>
     </div>
   );

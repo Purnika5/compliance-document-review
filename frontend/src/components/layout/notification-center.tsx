@@ -70,29 +70,29 @@ export function NotificationCenter() {
     <Popover>
       <PopoverTrigger asChild>
         <button
-          className="relative h-8 w-8 rounded-lg text-muted-foreground hover:text-[#54d0a2] hover:bg-[#062A20] flex items-center justify-center transition-colors cursor-pointer border border-border/40 hover:border-emerald-800/60 bg-transparent"
+          className="relative h-8 w-8 rounded-full border border-[#E6E8E7] bg-[#FFFFFF] text-[#183028] hover:bg-[#C5E86C] hover:text-[#183028] hover:border-[#C5E86C] flex items-center justify-center transition-all cursor-pointer shadow-2xs outline-none"
           title="Notifications"
           aria-label="Open notifications"
         >
           <Bell className="h-4 w-4" />
           {unreadCount > 0 && (
-            <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-[#24A152] animate-pulse" />
+            <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-[#183028] ring-2 ring-white animate-pulse" />
           )}
         </button>
       </PopoverTrigger>
 
       <PopoverContent
         align="end"
-        className="w-80 sm:w-96 p-0 rounded-xl shadow-2xl border border-border bg-card overflow-hidden text-xs"
+        className="w-80 sm:w-96 p-0 rounded-2xl shadow-xl border border-[#E6E8E7] bg-[#FFFFFF] overflow-hidden text-xs"
       >
         {/* Header */}
-        <div className="px-3.5 py-2.5 border-b border-border flex items-center justify-between bg-muted/40">
+        <div className="px-3.5 py-2.5 border-b border-[#E6E8E7] flex items-center justify-between bg-[#FAFBFB]">
           <div className="flex items-center gap-2">
-            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider">
+            <h4 className="text-xs font-bold text-[#183028] uppercase tracking-wider">
               Notifications
             </h4>
             {unreadCount > 0 && (
-              <span className="px-1.5 py-0.2 text-[10px] font-semibold rounded bg-[#062A20] text-[#54d0a2] border border-emerald-800/60 font-mono">
+              <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-[#C5E86C]/35 text-[#183028] border border-[#C5E86C] font-mono">
                 {unreadCount} unread
               </span>
             )}
@@ -100,7 +100,7 @@ export function NotificationCenter() {
           {unreadCount > 0 && (
             <button
               onClick={markAllAsRead}
-              className="text-[11px] font-medium text-muted-foreground hover:text-[#54d0a2] flex items-center gap-1 cursor-pointer transition-colors"
+              className="text-[11px] font-semibold text-[#183028]/70 hover:text-[#183028] flex items-center gap-1 cursor-pointer transition-colors"
             >
               <CheckCheck className="h-3 w-3" />
               <span>Mark all read</span>
@@ -109,14 +109,14 @@ export function NotificationCenter() {
         </div>
 
         {/* Filter Chips */}
-        <div className="flex gap-1.5 px-3 py-1.5 border-b border-border bg-card/60">
+        <div className="flex gap-1.5 px-3 py-1.5 border-b border-[#E6E8E7] bg-[#FAFBFB]/50">
           <button
             onClick={() => setActiveFilter("all")}
             className={cn(
-              "text-[11px] font-medium px-2 py-0.5 rounded-md transition-colors cursor-pointer",
+              "text-[11px] font-semibold px-2.5 py-0.5 rounded-lg transition-colors cursor-pointer",
               activeFilter === "all"
-                ? "bg-[#062A20] text-[#54d0a2] border border-emerald-800/60"
-                : "bg-transparent text-muted-foreground hover:bg-[#062A20] hover:text-[#54d0a2]"
+                ? "bg-[#C5E86C] text-[#183028] font-bold"
+                : "bg-transparent text-[#183028]/70 hover:bg-[#C5E86C]/20 hover:text-[#183028]"
             )}
           >
             All
@@ -124,10 +124,10 @@ export function NotificationCenter() {
           <button
             onClick={() => setActiveFilter("unread")}
             className={cn(
-              "text-[11px] font-medium px-2 py-0.5 rounded-md transition-colors cursor-pointer",
+              "text-[11px] font-semibold px-2.5 py-0.5 rounded-lg transition-colors cursor-pointer",
               activeFilter === "unread"
-                ? "bg-[#062A20] text-[#54d0a2] border border-emerald-800/60"
-                : "bg-transparent text-muted-foreground hover:bg-[#062A20] hover:text-[#54d0a2]"
+                ? "bg-[#C5E86C] text-[#183028] font-bold"
+                : "bg-transparent text-[#183028]/70 hover:bg-[#C5E86C]/20 hover:text-[#183028]"
             )}
           >
             Unread ({unreadCount})
@@ -135,9 +135,9 @@ export function NotificationCenter() {
         </div>
 
         {/* List */}
-        <div className="max-h-80 overflow-y-auto divide-y divide-border/40">
+        <div className="max-h-80 overflow-y-auto divide-y divide-[#E6E8E7]">
           {filteredNotifications.length === 0 ? (
-            <div className="p-6 text-center text-xs text-muted-foreground">
+            <div className="p-6 text-center text-xs text-[#183028]/60">
               No notifications matching current filter.
             </div>
           ) : (
@@ -145,29 +145,29 @@ export function NotificationCenter() {
               <div
                 key={notif.id}
                 className={cn(
-                  "p-3 transition-colors hover:bg-[#062A20]/40 text-left relative flex gap-2.5 items-start cursor-pointer",
-                  !notif.read ? "bg-muted/20" : "bg-transparent"
+                  "p-3 transition-colors hover:bg-[#C5E86C]/15 text-left relative flex gap-2.5 items-start cursor-pointer",
+                  !notif.read ? "bg-[#FAFBFB]" : "bg-transparent"
                 )}
                 onClick={() => markAsRead(notif.id)}
               >
                 <div className="mt-0.5 shrink-0">{getCategoryIcon(notif.category)}</div>
                 <div className="flex-1 min-w-0 space-y-0.5">
                   <div className="flex items-center justify-between gap-1">
-                    <p className="text-xs font-semibold text-foreground truncate">
+                    <p className="text-xs font-semibold text-[#183028] truncate">
                       {notif.title}
                     </p>
-                    <span className="text-[10px] text-muted-foreground shrink-0 font-mono">
+                    <span className="text-[10px] text-[#183028]/50 shrink-0 font-mono">
                       {notif.timestamp}
                     </span>
                   </div>
-                  <p className="text-[11px] text-muted-foreground leading-normal line-clamp-2">
+                  <p className="text-[11px] text-[#183028]/70 leading-normal line-clamp-2">
                     {notif.description}
                   </p>
                   {notif.documentId && (
                     <div className="pt-1">
                       <Link
                         href={`/documents/${notif.documentId}`}
-                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#24A152] hover:text-[#54d0a2] hover:underline"
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#183028] hover:underline"
                       >
                         <span>Open {notif.documentId}</span>
                         <ExternalLink className="h-2.5 w-2.5" />

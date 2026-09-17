@@ -34,7 +34,6 @@ import {
   XCircle,
   Loader2,
   Trash2,
-  ShieldCheck,
   FileText,
   Paperclip,
 } from "lucide-react";
@@ -68,7 +67,7 @@ export function UploadDocumentModal({
 }: UploadDocumentModalProps) {
   const [step, setStep] = useState<"details" | "validation" | "success">("details");
   const [title, setTitle] = useState("");
-  const [category, setCategory] = useState("Investment Proposal");
+  const [category, setCategory] = useState("Compliance Document");
   const [notes, setNotes] = useState("");
   const [files, setFiles] = useState<IFileValidationItem[]>([]);
   const [rawFile, setRawFile] = useState<File | null>(null);
@@ -170,23 +169,23 @@ export function UploadDocumentModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleCloseAndReset()}>
-      <DialogContent className="max-w-xl p-6 bg-card border border-border text-foreground shadow-2xl shadow-black/80">
+      <DialogContent className="max-w-xl p-6 sm:p-7 bg-white border border-slate-200/90 text-slate-900 shadow-2xl rounded-2xl">
         <DialogHeader className="space-y-1 pb-2">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-emerald-950/80 border border-emerald-800/60 text-emerald-400 flex items-center justify-center shrink-0">
+            <div className="h-9 w-9 rounded-xl bg-emerald-50 border border-emerald-200/70 text-emerald-800 flex items-center justify-center shrink-0">
               <UploadCloud className="h-5 w-5" />
             </div>
             <div>
-              <DialogTitle className="text-base font-semibold text-foreground">
+              <DialogTitle className="text-base font-bold text-slate-900">
                 {step === "details"
                   ? "Submit Compliance Document"
                   : step === "validation"
                   ? "Document Pre-Submission Verification"
                   : "Submission Confirmed"}
               </DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground">
+              <DialogDescription className="text-xs text-slate-500">
                 {step === "details"
-                  ? "Upload portfolio proposal, risk analysis, or compliance statement for officer review."
+                  ? "Upload compliance documentation, audit reports, or regulatory filings for officer review."
                   : step === "validation"
                   ? "Automatic regulatory pre-flight checks and file integrity verification."
                   : "Document successfully placed in the Officer Evaluation Queue."}
@@ -203,10 +202,10 @@ export function UploadDocumentModal({
                 className={cn(
                   "h-1.5 flex-1 rounded-full transition-all duration-500",
                   step === s
-                    ? "bg-primary"
+                    ? "bg-[#183028]"
                     : ["details", "validation", "success"].indexOf(step) > idx
-                    ? "bg-primary/40"
-                    : "bg-muted"
+                    ? "bg-[#183028]/80"
+                    : "bg-[#E6E8E7]"
                 )}
               />
             </React.Fragment>
@@ -217,12 +216,12 @@ export function UploadDocumentModal({
 
         {step === "details" && (
           <form onSubmit={handleProceedToValidation} noValidate className="space-y-3.5 pt-1">
-            <div className="space-y-1">
-              <label className="block text-xs font-medium text-foreground/90">
-                Document Title <span className="text-rose-400">*</span>
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-[#183028]">
+                Document Title <span className="text-rose-500">*</span>
               </label>
               <Input
-                placeholder="e.g. Q4 Institutional Asset Allocation Model"
+                placeholder="e.g. Q4 Institutional Compliance Review & Audit"
                 value={title}
                 onChange={(e) => {
                   setTitle(e.target.value);
@@ -231,64 +230,52 @@ export function UploadDocumentModal({
                   }
                 }}
                 className={cn(
-                  "h-9 text-xs rounded-md bg-background border-border text-foreground transition-colors",
+                  "h-9 text-xs rounded-xl bg-[#FFFFFF] border-[#E6E8E7] text-[#183028] focus:border-[#183028] focus:ring-1 focus:ring-[#183028] transition-colors shadow-2xs",
                   formErrors.title && "border-rose-500 ring-1 ring-rose-500"
                 )}
               />
               {formErrors.title && (
-                <p className="text-[11px] text-rose-400 font-medium animate-fade-in">{formErrors.title}</p>
+                <p className="text-[11px] text-rose-600 font-medium animate-fade-in">{formErrors.title}</p>
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="block text-xs font-medium text-foreground/90">
-                  Classification Category <span className="text-rose-400">*</span>
-                </label>
-                <Select value={category} onValueChange={setCategory}>
-                  <SelectTrigger className="h-9 text-xs rounded-md bg-background border-border text-foreground">
-                    <SelectValue placeholder="Select Category" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-card rounded-xl border-border">
-                    <SelectItem value="Investment Proposal" className="text-xs cursor-pointer py-1.5 text-foreground/90">
-                      Investment Proposal
-                    </SelectItem>
-                    <SelectItem value="Compliance Document" className="text-xs cursor-pointer py-1.5 text-foreground/90">
-                      Compliance Document
-                    </SelectItem>
-                    <SelectItem value="Audit Report" className="text-xs cursor-pointer py-1.5 text-foreground/90">
-                      Audit Report
-                    </SelectItem>
-                    <SelectItem value="Tax Strategy" className="text-xs cursor-pointer py-1.5 text-foreground/90">
-                      Tax Strategy
-                    </SelectItem>
-                    <SelectItem value="Portfolio Brief" className="text-xs cursor-pointer py-1.5 text-foreground/90">
-                      Portfolio Brief
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="block text-xs font-medium text-foreground/90">
-                  Security Classification
-                </label>
-                <div className="flex h-9 w-full rounded-md px-3 items-center text-xs font-medium text-foreground bg-secondary/50 border border-border">
-                  <ShieldCheck className="h-4 w-4 text-emerald-400 mr-1.5 shrink-0" />
-                  <span>Level 2 Institutional</span>
-                </div>
-              </div>
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-[#183028]">
+                Classification Category <span className="text-rose-500">*</span>
+              </label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger className="h-9 w-full text-xs rounded-xl bg-white border border-[#E6E8E7] text-[#183028] focus:border-[#183028] focus:ring-1 focus:ring-[#183028] shadow-2xs cursor-pointer">
+                  <SelectValue placeholder="Select Category" />
+                </SelectTrigger>
+                <SelectContent className="bg-white rounded-xl border border-[#E6E8E7] shadow-xl text-[#183028]">
+                  <SelectItem value="Compliance Document" className="text-xs cursor-pointer py-1.5 text-[#183028] hover:bg-[#C5E86C]/20">
+                    Compliance Document
+                  </SelectItem>
+                  <SelectItem value="Audit Report" className="text-xs cursor-pointer py-1.5 text-[#183028] hover:bg-[#C5E86C]/20">
+                    Audit Report
+                  </SelectItem>
+                  <SelectItem value="Regulatory Filing" className="text-xs cursor-pointer py-1.5 text-[#183028] hover:bg-[#C5E86C]/20">
+                    Regulatory Filing
+                  </SelectItem>
+                  <SelectItem value="Policy Agreement" className="text-xs cursor-pointer py-1.5 text-[#183028] hover:bg-[#C5E86C]/20">
+                    Policy Agreement
+                  </SelectItem>
+                  <SelectItem value="Identity & KYC Verification" className="text-xs cursor-pointer py-1.5 text-[#183028] hover:bg-[#C5E86C]/20">
+                    Identity &amp; KYC Verification
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            <div className="space-y-1">
-              <label className="block text-xs font-medium text-foreground/90">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-[#183028]">
                 Advisor Overview Notes (Optional)
               </label>
               <Textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Include client risk tolerance score, portfolio ID, or specific background..."
-                className="min-h-[70px] text-xs rounded-md bg-background border-border text-foreground"
+                placeholder="Include document scope, filing reference, or specific notes for the compliance officer..."
+                className="min-h-[70px] w-full text-xs rounded-xl bg-white border border-[#E6E8E7] text-[#183028] placeholder:text-[#183028]/45 focus:border-[#183028] focus:ring-1 focus:ring-[#183028] shadow-2xs resize-none"
               />
             </div>
 
@@ -302,10 +289,10 @@ export function UploadDocumentModal({
               onDrop={handleFileDrop}
               onClick={() => fileInputRef.current?.click()}
               className={cn(
-                "border border-dashed rounded-lg p-4 flex flex-col items-center justify-center transition-all cursor-pointer text-center",
+                "border border-dashed rounded-xl p-5 flex flex-col items-center justify-center transition-all cursor-pointer text-center shadow-2xs",
                 isDragOver
-                  ? "border-primary bg-primary/10 scale-[1.01]"
-                  : "border-border bg-background/50 hover:bg-muted/40 hover:border-border/80"
+                  ? "border-[#183028] bg-[#C5E86C]/10 scale-[1.01]"
+                  : "border-[#E6E8E7] bg-[#FFFFFF] hover:bg-[#C5E86C]/10 hover:border-[#183028]"
               )}
             >
               <input
@@ -315,13 +302,13 @@ export function UploadDocumentModal({
                 accept=".pdf,.docx,.xlsx"
                 onChange={handleFileSelect}
               />
-              <div className="h-8 w-8 rounded-md bg-muted flex items-center justify-center text-muted-foreground mb-1.5">
+              <div className="h-8 w-8 rounded-lg bg-[#FFFFFF] border border-[#E6E8E7] flex items-center justify-center text-[#183028] mb-1.5 shadow-2xs">
                 <Paperclip className="h-4 w-4" />
               </div>
-              <p className="text-xs font-semibold text-foreground">
-                Click to browse <span className="font-normal text-muted-foreground">or drag and drop document</span>
+              <p className="text-xs font-semibold text-[#183028]">
+                Click to browse <span className="font-normal text-[#183028]/60">or drag and drop document</span>
               </p>
-              <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
+              <p className="text-[10px] text-[#183028]/50 font-mono mt-0.5">
                 Supported: PDF, DOCX, XLSX (Max 25 MB)
               </p>
             </div>
@@ -329,19 +316,19 @@ export function UploadDocumentModal({
             {/* Attached file summary */}
             {files.length > 0 && (
               <div className="space-y-1.5">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#183028]/50 block">
                   Attached Payload ({files.length})
                 </span>
-                <div className="space-y-1 max-h-32 overflow-y-auto">
+                <div className="space-y-1.5 max-h-32 overflow-y-auto">
                   {files.map((f) => (
                     <div
                       key={f.id}
-                      className="p-2 rounded-md flex items-center justify-between text-xs bg-muted/40 border border-border"
+                      className="p-2.5 rounded-xl flex items-center justify-between text-xs bg-[#FFFFFF] border border-[#E6E8E7]"
                     >
                       <div className="flex items-center gap-2 min-w-0">
-                        <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span className="font-medium text-foreground truncate">{f.name}</span>
-                        <span className="text-[10px] font-mono text-muted-foreground">({f.size})</span>
+                        <FileText className="h-3.5 w-3.5 text-[#183028]/60 shrink-0" />
+                        <span className="font-medium text-[#183028] truncate">{f.name}</span>
+                        <span className="text-[10px] font-mono text-[#183028]/60">({f.size})</span>
                       </div>
                       <button
                         type="button"
@@ -349,7 +336,7 @@ export function UploadDocumentModal({
                           e.stopPropagation();
                           removeFile(f.id);
                         }}
-                        className="p-1 rounded text-muted-foreground hover:text-rose-400 hover:bg-muted transition-colors cursor-pointer"
+                        className="p-1 rounded-lg text-[#183028]/40 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -359,18 +346,18 @@ export function UploadDocumentModal({
               </div>
             )}
 
-            <DialogFooter className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+            <DialogFooter className="flex items-center justify-end gap-2 pt-3 border-t border-[#E6E8E7]">
               <Button
                 type="button"
                 variant="outline"
                 onClick={handleCloseAndReset}
-                className="h-8 px-3 text-xs rounded-md"
+                className="h-8.5 px-3.5 text-xs rounded-xl border-[#E6E8E7] text-[#183028] hover:bg-[#C5E86C]/20 cursor-pointer"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
-                className="h-8 px-4 text-xs font-semibold bg-[#24A152] hover:bg-[#062A20] hover:text-[#54d0a2] hover:border hover:border-emerald-700/60 active:bg-[#1d8342] text-white rounded-md transition-all shadow-xs cursor-pointer"
+                className="h-8.5 px-4 text-xs font-semibold bg-[#183028] hover:bg-[#23453a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] text-white rounded-xl transition-all shadow-2xs cursor-pointer"
               >
                 Proceed to Verification →
               </Button>
@@ -382,11 +369,11 @@ export function UploadDocumentModal({
           <div className="space-y-4 pt-1">
             {/* Progress Meter */}
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs font-semibold text-foreground">
+              <div className="flex items-center justify-between text-xs font-semibold text-[#183028]">
                 <span className="flex items-center gap-1.5">
                   <Loader2
                     className={cn(
-                      "h-3.5 w-3.5 text-primary",
+                      "h-3.5 w-3.5 text-[#183028]",
                       uploadProgress < 100 && "animate-spin"
                     )}
                   />
@@ -394,9 +381,9 @@ export function UploadDocumentModal({
                     ? "Running Pre-Flight Rule & Signature Integrity Verification..."
                     : "Pre-Flight Verification Complete"}
                 </span>
-                <span className="font-mono text-emerald-400 font-bold">{uploadProgress}%</span>
+                <span className="font-mono text-[#183028] font-bold">{uploadProgress}%</span>
               </div>
-              <Progress value={uploadProgress} className="h-1.5 bg-muted" />
+              <Progress value={uploadProgress} className="h-1.5 bg-[#E6E8E7]" />
             </div>
 
             {/* Validation Checklist Items */}
@@ -405,44 +392,44 @@ export function UploadDocumentModal({
                 <div
                   key={file.id}
                   className={cn(
-                    "p-2.5 rounded-lg border flex items-center justify-between text-xs animate-slide-up",
-                    file.status === "valid" && "bg-emerald-950/30 border-emerald-800/50",
-                    file.status === "warning" && "bg-amber-950/30 border-amber-800/50",
-                    file.status === "invalid" && "bg-rose-950/30 border-rose-800/50"
+                    "p-3 rounded-xl border flex items-center justify-between text-xs animate-slide-up shadow-2xs",
+                    file.status === "valid" && "bg-emerald-50 border-emerald-200/80 text-emerald-950",
+                    file.status === "warning" && "bg-amber-50 border-amber-200/80 text-amber-950",
+                    file.status === "invalid" && "bg-rose-50 border-rose-200/80 text-rose-950"
                   )}
                   style={{ animationDelay: `${fileIdx * 50}ms` }}
                 >
                   <div className="flex items-center space-x-2.5 min-w-0">
-                    <div className="h-7 w-7 rounded-md bg-secondary border border-border flex items-center justify-center font-bold text-[10px] text-foreground shrink-0">
+                    <div className="h-7 w-7 rounded-lg bg-[#FFFFFF] border border-[#E6E8E7] flex items-center justify-center font-bold text-[10px] text-[#183028] shrink-0">
                       {file.type}
                     </div>
                     <div className="min-w-0">
-                      <p className="font-semibold text-foreground truncate">{file.name}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">{file.message}</p>
+                      <p className="font-semibold text-[#183028] truncate">{file.name}</p>
+                      <p className="text-[10px] text-[#183028]/60 mt-0.5">{file.message}</p>
                     </div>
                   </div>
 
                   <div className="shrink-0 pl-2">
                     {file.status === "valid" && (
-                      <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                     )}
                     {file.status === "warning" && (
-                      <AlertTriangle className="h-4 w-4 text-amber-400" />
+                      <AlertTriangle className="h-4 w-4 text-amber-600" />
                     )}
                     {file.status === "invalid" && (
-                      <XCircle className="h-4 w-4 text-rose-400" />
+                      <XCircle className="h-4 w-4 text-rose-600" />
                     )}
                   </div>
                 </div>
               ))}
             </div>
 
-            <DialogFooter className="flex items-center justify-between pt-2 border-t border-border">
+            <DialogFooter className="flex items-center justify-between pt-3 border-t border-[#E6E8E7]">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setStep("details")}
-                className="h-8 px-3 text-xs rounded-md"
+                className="h-8.5 px-3.5 text-xs rounded-xl border-[#E6E8E7] text-[#183028] hover:bg-[#C5E86C]/20 cursor-pointer"
               >
                 ← Back to Details
               </Button>
@@ -450,7 +437,7 @@ export function UploadDocumentModal({
                 type="button"
                 disabled={isPending || uploadProgress < 100}
                 onClick={handleFinalSubmit}
-                className="h-8 px-4 text-xs font-semibold bg-[#24A152] hover:bg-[#062A20] hover:text-[#54d0a2] hover:border hover:border-emerald-700/60 active:bg-[#1d8342] text-white rounded-md transition-all shadow-xs cursor-pointer"
+                className="h-8.5 px-4 text-xs font-semibold bg-[#183028] hover:bg-[#23453a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] disabled:opacity-50 text-white rounded-xl transition-all shadow-2xs cursor-pointer"
               >
                 {isPending ? (
                   <span className="flex items-center gap-1.5">
@@ -468,23 +455,23 @@ export function UploadDocumentModal({
         {step === "success" && (
           <div className="py-6 flex flex-col items-center text-center space-y-3 animate-slide-up">
             <div className="relative h-14 w-14">
-              <div className="absolute inset-0 rounded-full bg-emerald-500/20 border border-emerald-500/40 animate-pulse" />
-              <div className="relative h-14 w-14 rounded-full bg-emerald-950/60 border border-emerald-600/60 flex items-center justify-center">
-                <CheckCircle2 className="h-7 w-7 text-emerald-400 animate-check-pop" />
+              <div className="absolute inset-0 rounded-full bg-[#C5E86C]/30 animate-pulse" />
+              <div className="relative h-14 w-14 rounded-full bg-[#FFFFFF] border border-[#C5E86C] flex items-center justify-center">
+                <CheckCircle2 className="h-7 w-7 text-[#183028] animate-check-pop" />
               </div>
             </div>
             <div className="space-y-1">
-              <h3 className="text-sm font-bold text-foreground">
+              <h3 className="text-base font-bold text-[#183028]">
                 Document Successfully Submitted
               </h3>
-              <p className="text-xs text-muted-foreground max-w-sm">
-                Proposal <span className="font-semibold text-foreground">{title}</span> has been logged and assigned to the Compliance Evaluation Queue.
+              <p className="text-xs text-[#183028]/60 max-w-sm">
+                Proposal <span className="font-semibold text-[#183028]">{title}</span> has been logged and assigned to the Compliance Evaluation Queue.
               </p>
             </div>
             <div className="pt-2">
               <Button
                 onClick={handleCloseAndReset}
-                className="h-8 px-4 text-xs font-semibold bg-[#24A152] hover:bg-[#062A20] hover:text-[#54d0a2] hover:border hover:border-emerald-700/60 active:bg-[#1d8342] text-white rounded-md transition-all shadow-xs cursor-pointer"
+                className="h-8.5 px-5 text-xs font-semibold bg-[#183028] hover:bg-[#23453a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] text-white rounded-xl transition-all shadow-2xs cursor-pointer"
               >
                 Return to Workspace
               </Button>

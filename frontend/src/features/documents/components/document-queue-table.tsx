@@ -9,7 +9,6 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDocuments } from "../hooks/use-documents";
-import { EditDocumentModal } from "./edit-document-modal";
 import { DecisionDialog } from "@/features/review/components/decision-dialog";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -40,13 +39,17 @@ import {
   XCircle,
   AlertCircle,
   ShieldCheck,
-  Edit3,
   Filter,
   Percent,
+  Calendar,
 } from "lucide-react";
+import { DateFilterModal, type DateFilterPreset } from "./date-filter-modal";
+import { showSuccessToast, showErrorToast, showInfoToast } from "@/components/ui/toast";
 import type { DocumentItem } from "@/lib/validation/document";
 import { updateDocumentStatusAction } from "@/lib/actions/document-actions";
 import { cn } from "@/lib/utils";
+
+import { QueueSkeleton } from "./queue-skeleton";
 
 type FilterTab = "All" | "Pending" | "Needs Revision" | "Approved" | "Rejected";
 
@@ -62,9 +65,12 @@ export function DocumentQueueTable() {
   const [activeTab, setActiveTab] = useState<FilterTab>("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPriority, setSelectedPriority] = useState<string>("All");
+  const [isDateModalOpen, setIsDateModalOpen] = useState(false);
+  const [dateFilterPreset, setDateFilterPreset] = useState<DateFilterPreset>("All");
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
   const [sortField] = useState<"submittedAt" | "title" | "status">("submittedAt");
   const [sortDirection] = useState<"asc" | "desc">("desc");
-  const [editingDoc, setEditingDoc] = useState<DocumentItem | null>(null);
   const [decisionDoc, setDecisionDoc] = useState<{
     id: string;
     title: string;
@@ -72,20 +78,40 @@ export function DocumentQueueTable() {
   } | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
+  if (isPending) {
+    return <QueueSkeleton />;
+  }
+
   const handleDecisionExecution = async (
     status: "Approved" | "Needs Revision" | "Rejected",
     comment: string
   ) => {
     if (!decisionDoc) return;
+    const docDisplayId = `DOC-${decisionDoc.id.slice(-4).toUpperCase()}`;
     try {
       await updateDocumentStatusAction(decisionDoc.id, status);
       const target = documents.find((d) => d.id === decisionDoc.id);
       if (target) target.status = status;
-      setActionMessage(`Document ${decisionDoc.id} status updated to ${status}. Regulatory record logged.`);
+      const msg = `Document ${docDisplayId} status updated to ${status}. Regulatory record logged.`;
+      setActionMessage(msg);
+      if (status === "Approved") {
+        showSuccessToast("Queue Updated", msg);
+      } else if (status === "Needs Revision") {
+        showInfoToast("Queue Updated", msg);
+      } else {
+        showErrorToast("Queue Updated", msg);
+      }
       refetch();
     } catch {
-      setActionMessage(`Document ${decisionDoc.id} updated to ${status}.`);
+      const msg = `Document ${docDisplayId} updated to ${status}.`;
+      setActionMessage(msg);
+      showSuccessToast("Queue Updated", msg);
     }
+
+    setDecisionDoc(null);
+    setTimeout(() => {
+      setActionMessage(null);
+    }, 5000);
   };
 
   const getPriority = (doc: DocumentItem): "Urgent" | "High" | "Medium" | "Standard" => {
@@ -108,7 +134,57 @@ export function DocumentQueueTable() {
       const matchesPriority =
         selectedPriority === "All" || priority === selectedPriority;
 
-      return matchesTab && matchesSearch && matchesPriority;
+      if (!matchesTab || !matchesSearch || !matchesPriority) return false;
+
+      // Date filtering
+      if (dateFilterPreset !== "All") {
+        const docDate = new Date(doc.submittedAt);
+        const now = new Date();
+        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+        if (dateFilterPreset === "Today") {
+          if (docDate < startOfDay || docDate > endOfDay) return false;
+        } else if (dateFilterPreset === "Past 7 Days" || dateFilterPreset === "This Week") {
+          const past7 = new Date(startOfDay.getTime() - 7 * 24 * 60 * 60 * 1000);
+          if (docDate < past7 || docDate > endOfDay) return false;
+        } else if (dateFilterPreset === "Past 30 Days" || dateFilterPreset === "This Month") {
+          const past30 = new Date(startOfDay.getTime() - 30 * 24 * 60 * 60 * 1000);
+          if (docDate < past30 || docDate > endOfDay) return false;
+        } else if (dateFilterPreset === "Past 90 Days") {
+          const past90 = new Date(startOfDay.getTime() - 90 * 24 * 60 * 60 * 1000);
+          if (docDate < past90 || docDate > endOfDay) return false;
+        } else if (dateFilterPreset === "Past Year") {
+          const past365 = new Date(startOfDay.getTime() - 365 * 24 * 60 * 60 * 1000);
+          if (docDate < past365 || docDate > endOfDay) return false;
+        } else if (dateFilterPreset === "All Past Dates") {
+          if (docDate >= startOfDay) return false;
+        } else if (dateFilterPreset === "Next 7 Days") {
+          const next7 = new Date(endOfDay.getTime() + 7 * 24 * 60 * 60 * 1000);
+          if (docDate < startOfDay || docDate > next7) return false;
+        } else if (dateFilterPreset === "Next 30 Days") {
+          const next30 = new Date(endOfDay.getTime() + 30 * 24 * 60 * 60 * 1000);
+          if (docDate < startOfDay || docDate > next30) return false;
+        } else if (dateFilterPreset === "Next 90 Days") {
+          const next90 = new Date(endOfDay.getTime() + 90 * 24 * 60 * 60 * 1000);
+          if (docDate < startOfDay || docDate > next90) return false;
+        } else if (dateFilterPreset === "All Future Dates") {
+          if (docDate < startOfDay) return false;
+        } else if (dateFilterPreset === "Custom") {
+          if (customStartDate) {
+            const start = new Date(customStartDate);
+            start.setHours(0, 0, 0, 0);
+            if (docDate < start) return false;
+          }
+          if (customEndDate) {
+            const end = new Date(customEndDate);
+            end.setHours(23, 59, 59, 999);
+            if (docDate > end) return false;
+          }
+        }
+      }
+
+      return true;
     })
     .sort((a, b) => {
       if (sortField === "submittedAt") {
@@ -138,55 +214,17 @@ export function DocumentQueueTable() {
   const reviewedCount = counts.Approved + counts.Rejected;
   const reviewRate = counts.All ? Math.round((reviewedCount / counts.All) * 100) : 0;
 
-  const handleSaveEdit = async (updated: Partial<DocumentItem> & { id: string }) => {
-    const target = documents.find((d) => d.id === updated.id);
-    if (target) {
-      if (updated.title) target.title = updated.title;
-      if (updated.category) target.category = updated.category;
-      if (updated.status && updated.status !== target.status) {
-        target.status = updated.status;
-        if (
-          updated.status === "Approved" ||
-          updated.status === "Needs Revision" ||
-          updated.status === "Rejected"
-        ) {
-          await updateDocumentStatusAction(updated.id, updated.status);
-        }
-      }
-      setActionMessage(`Updated document ${updated.id} metadata successfully.`);
-      refetch();
-    }
-  };
-
   return (
     <div className="space-y-4 max-w-[1600px] mx-auto pb-16">
-      {/* Header Banner */}
-      <div className="border border-border bg-card/80 backdrop-blur-md rounded-2xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="chip bg-primary/20 text-emerald-400 border-primary/30 text-[10px] font-bold uppercase tracking-wider">
-              Regulatory Triage
-            </span>
-          </div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-            Officer Review Queue
-          </h1>
-        </div>
 
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => refetch()}
-            className="text-xs border-border bg-muted/30 hover:bg-muted font-semibold gap-1.5 cursor-pointer"
-          >
-            Refresh Queue
-          </Button>
-        </div>
-      </div>
 
       {actionMessage && (
-        <Alert variant="success" title="Queue Updated" message={actionMessage} />
+        <Alert
+          variant="success"
+          title="Queue Updated"
+          message={actionMessage}
+          onClose={() => setActionMessage(null)}
+        />
       )}
 
       {/* Structured Institutional Back-Office Metric Cards */}
@@ -200,14 +238,9 @@ export function DocumentQueueTable() {
             <div className="flex items-end justify-between gap-3">
               <div>
                 <h3 className="text-5xl font-bold tracking-tight text-foreground">{counts.All}</h3>
-                <p className="mt-1 text-xs text-muted-foreground">Total submissions across portfolios</p>
               </div>
             </div>
-            <div className="mt-7 border-t border-border/60 pt-3 text-[11px] text-muted-foreground text-right">
-              <span className="font-semibold text-amber-400">{counts.Pending} pending</span>
-              <span className="mx-1.5 text-muted-foreground/40">/</span>
-              <span>{counts.Approved} verified</span>
-            </div>
+
           </div>
           {/* Decorative Sparkline */}
           <div className="absolute bottom-0 left-0 w-full h-16 pointer-events-none">
@@ -222,11 +255,11 @@ export function DocumentQueueTable() {
         <div className="rounded-xl p-4 space-y-2 sm:col-span-1 lg:col-span-2 border border-border bg-card shadow-xs relative overflow-hidden flex flex-col justify-between group">
           <div className="relative z-10">
             <div className="flex items-center justify-between">
-              <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider">
+              <p className="text-[10px] font-semibold text-amber-700 uppercase tracking-wider">
                 Pending Evaluation
               </p>
               {counts.Pending > 0 && (
-                <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
               )}
             </div>
             <h3 className="text-3xl font-bold text-foreground mt-2">{counts.Pending}</h3>
@@ -316,8 +349,8 @@ export function DocumentQueueTable() {
                 className={cn(
                   "px-3 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer whitespace-nowrap",
                   activeTab === tab
-                    ? "bg-[#062a20] text-[#54d0a2] font-semibold shadow-xs"
-                    : "bg-transparent text-muted-foreground hover:text-[#54d0a2] hover:bg-[#062a20]"
+                    ? "bg-[#183028] text-white font-semibold shadow-xs"
+                    : "bg-transparent text-[#183028]/70 hover:text-[#183028] hover:bg-[#C5E86C]/20"
                 )}
               >
                 {tab} ({counts[tab] || 0})
@@ -328,6 +361,20 @@ export function DocumentQueueTable() {
 
         {/* Search & Priority Controls */}
         <div className="flex items-center gap-2">
+          {/* Date Filter Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsDateModalOpen(true)}
+            className={cn(
+              "h-8 px-2.5 text-xs rounded-md border border-border bg-background text-foreground hover:bg-[#C5E86C]/10 hover:border-[#183028] cursor-pointer flex items-center gap-1.5 shrink-0 transition-colors",
+              dateFilterPreset !== "All" && "border-[#183028] bg-[#C5E86C]/20 text-[#183028] font-semibold"
+            )}
+          >
+            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+            <span>{dateFilterPreset !== "All" ? `Date: ${dateFilterPreset}` : "Filter by Date"}</span>
+          </Button>
+
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
@@ -363,12 +410,21 @@ export function DocumentQueueTable() {
           <EmptyState
             title="Review Queue is Clear"
             description={
-              searchQuery
-                ? `No submissions matched "${searchQuery}" under the active filter.`
+              searchQuery || dateFilterPreset !== "All"
+                ? `No submissions matched your filter criteria.`
                 : "There are no pending documents requiring officer evaluation in this view."
             }
-            actionLabel={searchQuery ? "Clear Search" : undefined}
-            onAction={searchQuery ? () => setSearchQuery("") : undefined}
+            actionLabel={searchQuery || dateFilterPreset !== "All" ? "Clear Filters" : undefined}
+            onAction={
+              searchQuery || dateFilterPreset !== "All"
+                ? () => {
+                    setSearchQuery("");
+                    setDateFilterPreset("All");
+                    setCustomStartDate("");
+                    setCustomEndDate("");
+                  }
+                : undefined
+            }
           />
         ) : (
           <Table>
@@ -386,9 +442,6 @@ export function DocumentQueueTable() {
                 <TableHead className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   SUBMITTED DATE
                 </TableHead>
-                <TableHead className="w-24 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  PRIORITY
-                </TableHead>
                 <TableHead className="w-28 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   STATUS
                 </TableHead>
@@ -398,52 +451,49 @@ export function DocumentQueueTable() {
               </TableRow>
             </TableHeader>
 
-            <TableBody>
+            <TableBody className="divide-y divide-border/60">
               {filteredDocuments.map((doc) => {
-                const priority = getPriority(doc);
-
                 return (
                   <TableRow
                     key={doc.id}
-                    className="hover:bg-muted/40 transition-colors cursor-pointer border-b border-border/50"
                     onClick={() => router.push(`/documents/${doc.id}`)}
+                    className="hover:bg-muted/40 transition-colors cursor-pointer group"
                   >
-                    <TableCell className="pl-4 font-mono font-semibold text-foreground">
-                      {doc.id}
+                    <TableCell className="pl-4 font-mono text-xs font-semibold text-[#183028]">
+                      DOC-{doc.id.slice(-4).toUpperCase()}
                     </TableCell>
 
                     <TableCell>
-                      <div className="border-l-2 border-cyan-400 pl-2 font-medium text-foreground">{doc.title}</div>
-                      <div className="pl-2 text-[10px] text-muted-foreground font-medium">
-                        {doc.category} • {doc.fileSize || "2.4 MB"}
+                      <div className="max-w-[220px] sm:max-w-xs truncate">
+                        <p className="font-semibold text-foreground truncate">{doc.title}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
+                          {doc.category || "Unclassified Filing"}
+                        </p>
                       </div>
                     </TableCell>
 
                     <TableCell>
-                      <div className="font-medium text-foreground">{doc.submittedBy}</div>
-                      <div className="text-[10px] text-muted-foreground">{doc.advisorEmail || "advisor@springer.capital"}</div>
+                      <div className="flex items-center gap-2">
+                        <div className="h-6 w-6 rounded-full bg-[#183028] text-[#C5E86C] text-[10px] font-bold flex items-center justify-center shrink-0">
+                          {(doc.submittedBy || "Advisor").split(" ").map((n: string) => n[0]).join("")}
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-foreground">
+                            {doc.submittedBy || "Institutional Advisor"}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {doc.advisorEmail || "advisor@springer.capital"}
+                          </p>
+                        </div>
+                      </div>
                     </TableCell>
 
-                    <TableCell className="text-muted-foreground font-mono text-[11px]">
+                    <TableCell className="text-muted-foreground text-xs font-mono">
                       {new Date(doc.submittedAt).toLocaleDateString("en-US", {
                         month: "short",
                         day: "numeric",
                         year: "numeric",
                       })}
-                    </TableCell>
-
-                    <TableCell>
-                      <span
-                        className={cn(
-                          "px-1.5 py-0.2 text-[10px] font-mono font-semibold rounded border uppercase",
-                          priority === "Urgent" && "bg-rose-950/60 text-rose-300 border-rose-800/60",
-                          priority === "High" && "bg-amber-950/60 text-amber-300 border-amber-800/60",
-                          priority === "Medium" && "bg-secondary text-muted-foreground border-border",
-                          priority === "Standard" && "bg-secondary/50 text-muted-foreground/80 border-border/60"
-                        )}
-                      >
-                        {priority}
-                      </span>
                     </TableCell>
 
                     <TableCell>
@@ -456,7 +506,7 @@ export function DocumentQueueTable() {
                           size="sm"
                           variant="outline"
                           onClick={() => router.push(`/documents/${doc.id}`)}
-                          className="h-7 px-2.5 rounded border-border text-xs font-medium text-foreground bg-transparent hover:bg-[#062a20] hover:text-[#54d0a2] hover:border-emerald-800/60 transition-colors gap-1"
+                          className="h-7 px-2.5 rounded border-border text-xs font-medium text-foreground bg-transparent hover:bg-[#C5E86C]/20 hover:text-[#183028] hover:border-[#183028] transition-colors gap-1"
                         >
                           <Eye className="h-3 w-3" />
                           <span>Review</span>
@@ -472,7 +522,7 @@ export function DocumentQueueTable() {
                                 type: "Approved",
                               })
                             }
-                            className="inline-flex h-7 items-center gap-1 rounded bg-transparent border border-emerald-800/60 px-2.5 text-xs font-semibold text-[#54d0a2] hover:bg-[#062a20] hover:text-[#54d0a2] transition-colors cursor-pointer"
+                            className="inline-flex h-7 items-center gap-1 rounded bg-[#C5E86C]/30 border border-[#183028] px-2.5 text-xs font-semibold text-[#183028] hover:bg-[#C5E86C] transition-colors cursor-pointer"
                           >
                             <CheckCircle2 className="h-3 w-3" />
                             <span>Approve</span>
@@ -481,13 +531,13 @@ export function DocumentQueueTable() {
 
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <button className="h-7 w-7 rounded-md bg-transparent hover:bg-[#062a20] text-muted-foreground hover:text-[#54d0a2] hover:border-emerald-800/60 flex items-center justify-center transition-colors cursor-pointer border border-border">
+                            <button className="h-7 w-7 rounded-md bg-transparent hover:bg-[#C5E86C]/20 text-muted-foreground hover:text-[#183028] hover:border-[#183028] flex items-center justify-center transition-colors cursor-pointer border border-border">
                               <MoreHorizontal className="h-3.5 w-3.5" />
                             </button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48 bg-card shadow-xl rounded-xl border-border p-1">
+                          <DropdownMenuContent align="end" className="w-48 bg-[#FFFFFF] shadow-xl rounded-xl border-[#E6E8E7] p-1">
                             <DropdownMenuItem
-                              className="text-xs cursor-pointer gap-2 font-medium text-amber-400 hover:bg-amber-950/40 rounded-md px-2 py-1.5"
+                              className="text-xs cursor-pointer gap-2 font-medium text-amber-800 hover:bg-amber-50 rounded-md px-2 py-1.5"
                               onClick={() =>
                                 setDecisionDoc({
                                   id: doc.id,
@@ -499,7 +549,7 @@ export function DocumentQueueTable() {
                               <AlertCircle className="h-3.5 w-3.5" /> Request Revision
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              className="text-xs cursor-pointer gap-2 font-medium text-rose-400 hover:bg-rose-950/40 rounded-md px-2 py-1.5"
+                              className="text-xs cursor-pointer gap-2 font-medium text-rose-800 hover:bg-rose-50 rounded-md px-2 py-1.5"
                               onClick={() =>
                                 setDecisionDoc({
                                   id: doc.id,
@@ -509,13 +559,6 @@ export function DocumentQueueTable() {
                               }
                             >
                               <XCircle className="h-3.5 w-3.5" /> Reject Proposal
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator className="bg-border" />
-                            <DropdownMenuItem
-                              className="text-xs cursor-pointer gap-2 font-medium rounded-md px-2 py-1.5 text-foreground/90"
-                              onClick={() => setEditingDoc(doc)}
-                            >
-                              <Edit3 className="h-3.5 w-3.5 text-muted-foreground" /> Edit Metadata
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -541,12 +584,23 @@ export function DocumentQueueTable() {
         />
       )}
 
-      {/* Edit Metadata Modal */}
-      <EditDocumentModal
-        document={editingDoc}
-        isOpen={!!editingDoc}
-        onClose={() => setEditingDoc(null)}
-        onSave={handleSaveEdit}
+      {/* Date Filter Modal */}
+      <DateFilterModal
+        isOpen={isDateModalOpen}
+        onClose={() => setIsDateModalOpen(false)}
+        onApply={(preset, start, end) => {
+          setDateFilterPreset(preset);
+          setCustomStartDate(start);
+          setCustomEndDate(end);
+        }}
+        onReset={() => {
+          setDateFilterPreset("All");
+          setCustomStartDate("");
+          setCustomEndDate("");
+        }}
+        currentPreset={dateFilterPreset}
+        currentStartDate={customStartDate}
+        currentEndDate={customEndDate}
       />
     </div>
   );

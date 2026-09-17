@@ -24,6 +24,8 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Alert } from "@/components/ui/alert";
+import { showSuccessToast, showErrorToast, showInfoToast } from "@/components/ui/toast";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -122,19 +124,30 @@ export function AssignedReviewsView() {
     comment: string
   ) => {
     if (!decisionDoc) return;
+    const docDisplayId = `DOC-${decisionDoc.id.slice(-4).toUpperCase()}`;
     try {
       await updateDocumentStatusAction(decisionDoc.id, status);
-      setActionSuccess(`Successfully updated ${decisionDoc.id} to ${status}. Regulatory record updated.`);
+      const msg = `Successfully updated ${docDisplayId} to ${status}. Regulatory record updated.`;
+      setActionSuccess(msg);
+      if (status === "Approved") {
+        showSuccessToast("Portfolio Updated", msg);
+      } else if (status === "Needs Revision") {
+        showInfoToast("Portfolio Updated", msg);
+      } else {
+        showErrorToast("Portfolio Updated", msg);
+      }
       refetch();
     } catch {
-      setActionSuccess(`Updated ${decisionDoc.id} status.`);
+      const msg = `Updated ${docDisplayId} status.`;
+      setActionSuccess(msg);
+      showSuccessToast("Portfolio Updated", msg);
       refetch();
     }
 
     setDecisionDoc(null);
     setTimeout(() => {
       setActionSuccess(null);
-    }, 4500);
+    }, 5000);
   };
 
   const filteredItems = useMemo(() => {
@@ -167,129 +180,15 @@ export function AssignedReviewsView() {
 
   return (
     <div className="space-y-4 max-w-[1600px] mx-auto pb-16">
-      {/* Header Banner */}
-      <div className="border border-border bg-card/80 backdrop-blur-md rounded-2xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="chip bg-primary/20 text-emerald-400 border-primary/30 text-[10px] font-bold uppercase tracking-wider">
-              Officer Portfolio
-            </span>
-            <span className="text-xs text-muted-foreground font-mono">
-              {session?.name || "Officer"} {session?.email ? `· ${session.email}` : ""}
-            </span>
-          </div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-            Assigned Regulatory Reviews
-          </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-            Institutional compliance oversight, document evaluation, and SEC/FINRA signing queue.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => router.push("/audit")}
-            className="text-xs border-border bg-muted/30 hover:bg-muted font-semibold gap-1.5 cursor-pointer"
-          >
-            <History className="h-3.5 w-3.5 text-muted-foreground" />
-            Audit Ledger
-          </Button>
-          <Button
-            variant="default"
-            size="sm"
-            onClick={() => router.push("/queue")}
-            className="text-xs font-semibold gap-1.5 shadow-xs cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90"
-          >
-            <Layers className="h-3.5 w-3.5" />
-            Full Queue
-          </Button>
-        </div>
-      </div>
-
       {/* Success Banner */}
       {actionSuccess && (
-        <div className="p-3 bg-emerald-950/60 border border-emerald-800/60 text-emerald-200 text-xs rounded-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
-          <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
-          <span>{actionSuccess}</span>
-        </div>
+        <Alert
+          variant="success"
+          title="Review Portfolio Updated"
+          message={actionSuccess}
+          onClose={() => setActionSuccess(null)}
+        />
       )}
-
-      {/* Metrics Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 min-h-[88px]">
-        <div className="border border-border bg-card p-4 rounded-xl shadow-xs relative overflow-hidden group flex flex-col h-[88px]">
-          <div className="relative z-10">
-            <div className="flex items-center justify-between text-muted-foreground mb-1">
-              <span className="text-xs font-medium">Assigned to You</span>
-              <CheckSquare className="h-4 w-4 text-primary" />
-            </div>
-            <div className="text-2xl font-bold text-foreground font-mono">{totalAssigned}</div>
-            <p className="text-[11px] text-muted-foreground mt-0.5">Active portfolio allocations</p>
-          </div>
-          {/* Decorative Sparkline */}
-          <div className="absolute bottom-0 left-0 w-full h-12 pointer-events-none">
-            <svg viewBox="0 0 100 30" preserveAspectRatio="none" className="w-full h-full text-primary">
-              <path d="M0,30 L0,20 C10,15 20,25 30,18 C40,11 50,22 60,10 C70,-2 80,12 90,5 L100,8 L100,30 Z" fill="currentColor" fillOpacity="0.1" />
-              <path d="M0,20 C10,15 20,25 30,18 C40,11 50,22 60,10 C70,-2 80,12 90,5 L100,8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
-        </div>
-
-        <div className="border border-border bg-card p-4 rounded-xl shadow-xs relative overflow-hidden group flex flex-col h-[88px]">
-          <div className="relative z-10">
-            <div className="flex items-center justify-between text-muted-foreground mb-1">
-              <span className="text-xs font-medium">Action Required</span>
-              <Zap className="h-4 w-4 text-amber-400" />
-            </div>
-            <div className="text-2xl font-bold text-amber-400 font-mono">{pendingCount}</div>
-            <p className="text-[11px] text-muted-foreground mt-0.5">Awaiting officer determination</p>
-          </div>
-          {/* Decorative Sparkline */}
-          <div className="absolute bottom-0 left-0 w-full h-12 pointer-events-none">
-            <svg viewBox="0 0 100 30" preserveAspectRatio="none" className="w-full h-full text-amber-500">
-              <path d="M0,30 L0,22 C12,18 25,26 38,15 C50,4 65,20 75,12 C85,4 92,16 100,10 L100,30 Z" fill="currentColor" fillOpacity="0.1" />
-              <path d="M0,22 C12,18 25,26 38,15 C50,4 65,20 75,12 C85,4 92,16 100,10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
-        </div>
-
-        <div className="border border-border bg-card p-4 rounded-xl shadow-xs relative overflow-hidden group flex flex-col h-[88px]">
-          <div className="relative z-10">
-            <div className="flex items-center justify-between text-muted-foreground mb-1">
-              <span className="text-xs font-medium">SLA Risk (&lt; 24h)</span>
-              <Clock3 className="h-4 w-4 text-rose-400" />
-            </div>
-            <div className="text-2xl font-bold text-rose-400 font-mono">{urgentSlaCount}</div>
-            <p className="text-[11px] text-muted-foreground mt-0.5">Near regulatory turnaround cap</p>
-          </div>
-          {/* Decorative Sparkline */}
-          <div className="absolute bottom-0 left-0 w-full h-12 pointer-events-none">
-            <svg viewBox="0 0 100 30" preserveAspectRatio="none" className="w-full h-full text-rose-500">
-              <path d="M0,30 L0,25 C15,10 30,30 45,15 C60,5 75,25 90,10 L100,20 L100,30 Z" fill="currentColor" fillOpacity="0.1" />
-              <path d="M0,25 C15,10 30,30 45,15 C60,5 75,25 90,10 L100,20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
-        </div>
-
-        <div className="border border-border bg-card p-4 rounded-xl shadow-xs relative overflow-hidden group flex flex-col h-[88px]">
-          <div className="relative z-10">
-            <div className="flex items-center justify-between text-muted-foreground mb-1">
-              <span className="text-xs font-medium">In Revision</span>
-              <AlertTriangle className="h-4 w-4 text-orange-400" />
-            </div>
-            <div className="text-2xl font-bold text-orange-400 font-mono">{revisionCount}</div>
-            <p className="text-[11px] text-muted-foreground mt-0.5">Dispatched back to advisors</p>
-          </div>
-          {/* Decorative Sparkline */}
-          <div className="absolute bottom-0 left-0 w-full h-12 pointer-events-none">
-            <svg viewBox="0 0 100 30" preserveAspectRatio="none" className="w-full h-full text-orange-500">
-              <path d="M0,30 L0,15 C15,5 25,25 40,18 C55,11 70,22 85,8 C90,3 95,12 100,6 L100,30 Z" fill="currentColor" fillOpacity="0.1" />
-              <path d="M0,15 C15,5 25,25 40,18 C55,11 70,22 85,8 C90,3 95,12 100,6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
-        </div>
-      </div>
 
       {/* Table Card Container */}
       <div className="border border-border bg-card rounded-xl overflow-hidden shadow-xs">
@@ -304,8 +203,8 @@ export function AssignedReviewsView() {
                 className={cn(
                   "px-3 py-1.5 rounded-md font-semibold transition-all cursor-pointer",
                   activeTab === tab
-                    ? "bg-[#062a20] text-[#54d0a2] shadow-xs"
-                    : "bg-transparent text-muted-foreground hover:bg-[#062a20] hover:text-[#54d0a2]"
+                    ? "bg-[#183028] text-white shadow-xs"
+                    : "bg-transparent text-[#183028]/70 hover:bg-[#C5E86C]/20 hover:text-[#183028]"
                 )}
               >
                 {tab} ({
@@ -374,9 +273,6 @@ export function AssignedReviewsView() {
                   <TableHead className="w-48 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                     SUBMITTING ADVISOR
                   </TableHead>
-                  <TableHead className="w-36 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                    SLA CLOCK
-                  </TableHead>
                   <TableHead className="w-32 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                     STATE
                   </TableHead>
@@ -396,9 +292,6 @@ export function AssignedReviewsView() {
                     <TableCell className="pl-4 py-2">
                       <div className="flex items-start gap-2.5">
                         <div className="mt-0.5">
-                          <span className="font-mono text-[10px] font-bold text-muted-foreground block">
-                            {doc.id}
-                          </span>
                           <span
                             onClick={() => router.push(`/documents/${doc.id}`)}
                             className="font-semibold text-foreground hover:text-primary transition-colors cursor-pointer text-xs leading-snug line-clamp-1"
@@ -410,7 +303,7 @@ export function AssignedReviewsView() {
                               {doc.category}
                             </span>
                             {doc.priority === "Urgent" && (
-                              <span className="chip bg-rose-950/60 text-rose-300 border-rose-800/60 text-[9px] font-bold px-1.5 py-0.2">
+                              <span className="chip bg-rose-50 text-rose-950 border-rose-200 text-[9px] font-bold px-1.5 py-0.2">
                                 Urgent Priority
                               </span>
                             )}
@@ -431,23 +324,6 @@ export function AssignedReviewsView() {
                       )}
                     </TableCell>
 
-                    {/* SLA Clock */}
-                    <TableCell className="py-2">
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className={cn(
-                            "h-2 w-2 rounded-full",
-                            doc.isUrgent
-                              ? "bg-rose-400 animate-pulse shadow-[0_0_6px_#f43f5e]"
-                              : "bg-emerald-400"
-                          )}
-                        />
-                        <span className="text-xs font-mono font-medium text-foreground/90">
-                          {doc.slaRemaining}
-                        </span>
-                      </div>
-                    </TableCell>
-
                     {/* State */}
                     <TableCell className="py-2">
                       <StatusBadge status={doc.status} />
@@ -459,7 +335,7 @@ export function AssignedReviewsView() {
                         <Button
                           size="sm"
                           onClick={() => router.push(`/documents/${doc.id}`)}
-                          className="h-7 px-2.5 text-xs font-semibold bg-transparent text-[#54d0a2] hover:bg-[#062a20] hover:text-[#54d0a2] border border-emerald-800/60 gap-1 cursor-pointer transition-colors"
+                          className="h-7 px-2.5 text-xs font-semibold bg-[#183028] text-white hover:bg-[#23453a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] gap-1 cursor-pointer transition-all"
                         >
                           <ExternalLink className="h-3 w-3" />
                           Review
@@ -478,7 +354,7 @@ export function AssignedReviewsView() {
                           <DropdownMenuContent align="end" className="w-44 bg-card border-border">
                             <DropdownMenuItem
                               onClick={() => router.push(`/documents/${doc.id}`)}
-                              className="text-xs cursor-pointer gap-2 font-medium"
+                              className="text-xs cursor-pointer gap-2 font-medium text-black focus:text-black"
                             >
                               <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
                               Open Workspace
@@ -492,9 +368,9 @@ export function AssignedReviewsView() {
                                   type: "Approved",
                                 })
                               }
-                              className="text-xs cursor-pointer gap-2 font-medium text-emerald-400 focus:text-emerald-300"
+                              className="text-xs cursor-pointer gap-2 font-medium text-black focus:text-black"
                             >
-                              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
                               Sign-off &amp; Approve
                             </DropdownMenuItem>
                             <DropdownMenuItem
@@ -505,9 +381,9 @@ export function AssignedReviewsView() {
                                   type: "Needs Revision",
                                 })
                               }
-                              className="text-xs cursor-pointer gap-2 font-medium text-orange-400 focus:text-orange-300"
+                              className="text-xs cursor-pointer gap-2 font-medium text-black focus:text-black"
                             >
-                              <AlertTriangle className="h-3.5 w-3.5 text-orange-400" />
+                              <AlertTriangle className="h-3.5 w-3.5 text-orange-600" />
                               Request Revision
                             </DropdownMenuItem>
                             <DropdownMenuItem
@@ -518,9 +394,9 @@ export function AssignedReviewsView() {
                                   type: "Rejected",
                                 })
                               }
-                              className="text-xs cursor-pointer gap-2 font-medium text-rose-400 focus:text-rose-300"
+                              className="text-xs cursor-pointer gap-2 font-medium text-black focus:text-black"
                             >
-                              <XCircle className="h-3.5 w-3.5 text-rose-400" />
+                              <XCircle className="h-3.5 w-3.5 text-rose-600" />
                               Reject Document
                             </DropdownMenuItem>
                           </DropdownMenuContent>

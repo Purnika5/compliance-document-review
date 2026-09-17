@@ -16,21 +16,21 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-[#24A152] text-white shadow-xs hover:bg-[#062A20] hover:text-[#54d0a2] hover:border-emerald-700/60 font-semibold transition-all cursor-pointer",
+          "bg-[#183028] text-white shadow-xs hover:bg-[#23453a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] font-semibold transition-all cursor-pointer",
         primary:
-          "bg-[#24A152] text-white shadow-xs hover:bg-[#062A20] hover:text-[#54d0a2] hover:border-emerald-700/60 font-semibold transition-all cursor-pointer",
+          "bg-[#183028] text-white shadow-xs hover:bg-[#23453a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] font-semibold transition-all cursor-pointer",
         navy:
-          "bg-transparent text-foreground hover:bg-[#062A20] hover:text-[#54d0a2] border border-border transition-colors",
+          "bg-transparent text-[#183028] hover:bg-[#C5E86C]/20 border border-[#E6E8E7] transition-colors",
         destructive:
           "bg-destructive text-destructive-foreground shadow-xs hover:bg-destructive/90",
         outline:
-          "border border-border bg-transparent hover:bg-[#062A20] hover:text-[#54d0a2] hover:border-emerald-800/60 text-foreground shadow-2xs transition-colors",
+          "border border-[#E6E8E7] bg-white hover:bg-[#C5E86C]/20 text-[#183028] shadow-2xs transition-colors cursor-pointer",
         secondary:
-          "bg-transparent text-foreground hover:bg-[#062A20] hover:text-[#54d0a2] hover:border-emerald-800/60 border border-border/50 transition-colors",
+          "bg-white text-[#183028] hover:bg-[#C5E86C]/20 border border-[#E6E8E7] transition-colors cursor-pointer",
         ghost:
-          "bg-transparent text-muted-foreground hover:bg-[#062A20] hover:text-[#54d0a2] transition-colors",
+          "bg-transparent text-[#183028]/70 hover:bg-[#C5E86C]/20 hover:text-[#183028] transition-colors cursor-pointer",
         link:
-          "text-[#24A152] underline-offset-4 hover:underline hover:text-[#54d0a2]",
+          "text-[#183028] underline-offset-4 hover:underline hover:text-[#183028]/80",
       },
       size: {
         default: "h-9 px-4 py-2",

@@ -12,7 +12,7 @@ import { DollarSign, Globe, Building2 } from "lucide-react";
 
 export function AuthBrandSide() {
   return (
-    <div className="relative flex flex-col justify-between h-full min-h-[540px] lg:min-h-screen w-full p-8 lg:p-12 xl:p-14 bg-[#0e271c] text-white overflow-hidden select-none font-sans">
+    <div className="relative flex flex-col justify-between h-full min-h-[540px] lg:min-h-screen w-full p-8 lg:p-12 xl:p-14 bg-[#183028] text-white overflow-hidden select-none font-sans">
       {/* Background Dot Grid Pattern Overlay */}
       <div
         className="absolute inset-0 pointer-events-none opacity-20"

@@ -18,7 +18,7 @@ export default function HomePage() {
     if (!session) {
       router.replace("/login");
     } else if (session.role === "Advisor") {
-      router.replace("/submissions");
+      router.replace("/dashboard");
     } else {
       router.replace("/queue");
     }

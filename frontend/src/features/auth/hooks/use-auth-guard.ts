@@ -42,7 +42,7 @@ export function useAuthGuard(allowedRole?: RoleType) {
     // Role boundary violation -> Redirect to appropriate dashboard
     if (session && allowedRole && session.role !== allowedRole) {
       if (session.role === "Advisor") {
-        router.replace("/submissions");
+        router.replace("/dashboard");
       } else if (session.role === "Officer") {
         router.replace("/queue");
       }
@@ -69,7 +69,7 @@ export function useRedirectIfAuthenticated() {
   useEffect(() => {
     if (session) {
       if (session.role === "Advisor") {
-        router.replace("/submissions");
+        router.replace("/dashboard");
       } else {
         router.replace("/queue");
       }

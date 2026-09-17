@@ -25,26 +25,26 @@ export type ExtendedStatusType =
   | "In Review";
 
 const statusBadgeVariants = cva(
-  "inline-flex items-center gap-1.5 rounded-[5px] border px-2 py-0.5 text-[11px] font-semibold tracking-tight select-none transition-all animate-fade-in",
+  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold tracking-tight select-none transition-all animate-fade-in shadow-2xs",
   {
     variants: {
       status: {
         Approved:
-          "bg-emerald-950/60 text-emerald-300 border-emerald-800/60 shadow-[0_0_8px_rgba(34,197,94,0.12)]",
+          "bg-[#C5E86C]/35 text-[#183028] border-[#C5E86C]",
         Pending:
-          "bg-amber-950/60 text-amber-300 border-amber-800/60 shadow-[0_0_8px_rgba(245,158,11,0.12)]",
+          "bg-amber-50 text-amber-900 border-amber-200",
         "Under Review":
-          "bg-amber-950/60 text-amber-300 border-amber-800/60",
+          "bg-amber-50 text-amber-900 border-amber-200",
         "In Review":
-          "bg-amber-950/60 text-amber-300 border-amber-800/60",
+          "bg-amber-50 text-amber-900 border-amber-200",
         Submitted:
-          "bg-zinc-800/60 text-zinc-300 border-zinc-700/60",
+          "bg-[#FAFBFB] text-[#183028] border-[#E6E8E7]",
         "Needs Revision":
-          "bg-orange-950/60 text-orange-300 border-orange-800/60 shadow-[0_0_8px_rgba(249,115,22,0.12)]",
+          "bg-orange-50 text-orange-950 border-orange-200",
         Rejected:
-          "bg-rose-950/60 text-rose-300 border-rose-800/60 shadow-[0_0_8px_rgba(244,63,94,0.12)]",
+          "bg-rose-50 text-rose-950 border-rose-200",
         Draft:
-          "bg-zinc-850/60 text-zinc-400 border-zinc-700/60",
+          "bg-[#FAFBFB] text-[#183028]/70 border-[#E6E8E7]",
       },
     },
     defaultVariants: {
@@ -70,16 +70,16 @@ const statusIcons: Record<
 /** Statuses that get a pulsing dot indicator */
 const PULSING_STATUSES = new Set(["Pending", "Under Review", "In Review", "Needs Revision"]);
 
-/** Dot colors per status in dark mode */
+/** Dot colors per status in light mode */
 const statusDotColor: Record<string, string> = {
-  Pending:          "bg-amber-400 shadow-[0_0_6px_#f59e0b]",
-  "Under Review":   "bg-amber-400 shadow-[0_0_6px_#f59e0b]",
-  "In Review":      "bg-amber-400 shadow-[0_0_6px_#f59e0b]",
-  "Needs Revision": "bg-orange-400 shadow-[0_0_6px_#f97316]",
-  Approved:         "bg-emerald-400 shadow-[0_0_6px_#22c55e]",
-  Rejected:         "bg-rose-400 shadow-[0_0_6px_#f43f5e]",
-  Draft:            "bg-zinc-500",
-  Submitted:        "bg-zinc-400",
+  Pending:          "bg-amber-500",
+  "Under Review":   "bg-amber-500",
+  "In Review":      "bg-amber-500",
+  "Needs Revision": "bg-orange-500",
+  Approved:         "bg-[#183028]",
+  Rejected:         "bg-rose-500",
+  Draft:            "bg-[#183028]/40",
+  Submitted:        "bg-[#183028]/60",
 };
 
 export interface StatusBadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
