@@ -45,10 +45,7 @@ export function AuthBrandSide() {
       <div className="relative z-10 space-y-6 w-full max-w-2xl xl:max-w-3xl my-auto py-8">
         {/* Hero Section */}
         <div className="space-y-3.5">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-white/20 bg-white/[0.06] backdrop-blur-sm text-white text-xs font-medium">
-            <span className="text-xs">🌐</span>
-            <span>Institutional Portal • Direct Investment &amp; Advisory</span>
-          </div>
+
 
           <h1 className="text-3xl sm:text-4xl lg:text-[42px] xl:text-[46px] font-bold text-white tracking-tight leading-[1.12]">
             Global Real Estate<br />

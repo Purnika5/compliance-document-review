@@ -21,7 +21,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <div className="flex-1 min-h-screen bg-white text-slate-900 flex flex-col justify-between p-6 sm:p-10 lg:p-12 xl:p-14 relative overflow-y-auto">
         {/* Center Form Container */}
         <div className="w-full max-w-[480px] mx-auto my-auto py-6">
-          {children}
+          <div className="border border-slate-200 rounded-xl p-6 sm:p-8 shadow-sm">
+            {children}
+          </div>
         </div>
 
         {/* Footer */}

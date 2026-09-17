@@ -258,7 +258,7 @@ export function SignupForm() {
           variant="destructive"
           title="Registration Error"
           message={error}
-          className="mb-5 p-3 text-xs bg-rose-50 border-rose-200 text-rose-800"
+          className="mb-5 p-3 text-xs bg-red-50 border-red-300 text-red-900 [&>svg]:text-red-600 [&>h5]:text-red-700"
         />
       )}
 
@@ -281,8 +281,8 @@ export function SignupForm() {
                 touched.name && formErrors?.name
                   ? "border-rose-400 ring-1 ring-rose-400/50"
                   : touched.name && validFields?.name
-                  ? "border-emerald-500 ring-1 ring-emerald-500/30"
-                  : "border-slate-200"
+                    ? "border-emerald-500 ring-1 ring-emerald-500/30"
+                    : "border-slate-200"
               )}
             />
             {touched.name && validFields?.name && (
@@ -315,8 +315,8 @@ export function SignupForm() {
                 touched.email && formErrors?.email
                   ? "border-rose-400 ring-1 ring-rose-400/50"
                   : touched.email && validFields?.email
-                  ? "border-emerald-500 ring-1 ring-emerald-500/30"
-                  : "border-slate-200"
+                    ? "border-emerald-500 ring-1 ring-emerald-500/30"
+                    : "border-slate-200"
               )}
             />
             {touched.email && validFields?.email && (
@@ -407,8 +407,8 @@ export function SignupForm() {
                 touched.password && formErrors?.password
                   ? "border-rose-400 ring-1 ring-rose-400/50"
                   : touched.password && validFields?.password
-                  ? "border-emerald-500 ring-1 ring-emerald-500/30"
-                  : "border-slate-200"
+                    ? "border-emerald-500 ring-1 ring-emerald-500/30"
+                    : "border-slate-200"
               )}
             />
             <button
@@ -443,8 +443,8 @@ export function SignupForm() {
                 touched.confirmPassword && formErrors?.confirmPassword
                   ? "border-rose-400 ring-1 ring-rose-400/50"
                   : touched.confirmPassword && validFields?.confirmPassword
-                  ? "border-emerald-500 ring-1 ring-emerald-500/30"
-                  : "border-slate-200"
+                    ? "border-emerald-500 ring-1 ring-emerald-500/30"
+                    : "border-slate-200"
               )}
             />
             <button
@@ -461,12 +461,6 @@ export function SignupForm() {
           )}
         </div>
 
-        {/* Password Requirement Hint */}
-        <p className="text-[11px] text-slate-500 flex items-center gap-1.5 pt-0.5 text-left">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#84cc16] shrink-0" />
-          <span>Must be at least 8 characters with letters &amp; numbers</span>
-        </p>
-
         {/* Terms and Privacy Checkbox */}
         <div className="pt-1 space-y-1 text-left">
           <label className="flex items-center gap-2.5 cursor-pointer select-none">
@@ -475,8 +469,12 @@ export function SignupForm() {
               id="signup-terms-checkbox"
               checked={acceptedTerms}
               onChange={(e) => {
-                setAcceptedTerms(e.target.checked);
-                if (e.target.checked) clearFieldError("terms");
+                if (!acceptedTerms) {
+                  e.preventDefault();
+                  setShowTermsModal(true);
+                } else {
+                  setAcceptedTerms(false);
+                }
               }}
               className="h-4 w-4 rounded-sm border-slate-300 text-[#0e271c] focus:ring-emerald-700 cursor-pointer accent-[#0e271c]"
             />
@@ -546,9 +544,12 @@ export function SignupForm() {
       </form>
 
       {/* Terms & Conditions Dialog */}
-      <Dialog open={showTermsModal} onOpenChange={setShowTermsModal}>
-        <DialogContent className="max-w-lg p-0 overflow-hidden gap-0 bg-white text-slate-900 border border-slate-200 shadow-2xl">
-          <div className="h-1 bg-gradient-to-r from-emerald-700 via-[#84cc16] to-emerald-500" />
+      <Dialog open={showTermsModal} onOpenChange={(open) => { if (hasReadTerms) setShowTermsModal(open); }}>
+        <DialogContent
+          className="max-w-lg p-0 overflow-hidden gap-0 bg-white text-slate-900 border border-slate-200 shadow-2xl [&>button:last-child]:hidden"
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => { if (!hasReadTerms) e.preventDefault(); }}
+        >
           <DialogHeader className="px-6 pt-5 pb-3 border-b border-slate-100">
             <DialogTitle className="text-base font-bold text-slate-900">Terms &amp; Conditions</DialogTitle>
             <DialogDescription className="text-xs text-slate-500 mt-0.5">
@@ -579,18 +580,12 @@ export function SignupForm() {
             </p>
           </div>
 
-          <DialogFooter className="px-6 py-3.5 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between gap-3">
-            <button
-              type="button"
-              onClick={() => setShowTermsModal(false)}
-              className="text-xs text-slate-600 hover:text-slate-900 px-3 py-1.5 rounded-md transition-colors"
-            >
-              Close
-            </button>
+          <DialogFooter className="px-6 py-3.5 border-t border-slate-100 bg-slate-50/80 flex items-center justify-end gap-3">
             <Button
               type="button"
               onClick={handleAcceptTerms}
-              className="h-8 px-4 text-xs font-semibold rounded-md bg-[#132c20] hover:bg-[#183a2b] text-white"
+              disabled={!hasReadTerms}
+              className="h-8 px-4 text-xs font-semibold rounded-md bg-[#132c20] hover:bg-[#183a2b] text-white disabled:opacity-40 disabled:cursor-not-allowed"
             >
               ✓ Accept &amp; Agree
             </Button>

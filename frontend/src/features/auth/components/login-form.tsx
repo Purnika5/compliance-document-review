@@ -10,11 +10,11 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useLogin } from "../hooks/use-login";
 import { useRedirectIfAuthenticated } from "../hooks/use-auth-guard";
-import { loginSchema } from "@/lib/validation/auth";
+import { loginSchema, validateEmail } from "@/lib/validation/auth";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { CompanyLogo } from "@/components/ui/brand-logos";
-import { Mail, Lock, Eye, EyeOff, Loader2, ArrowRight, AlertCircle } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, Loader2, ArrowRight, AlertCircle, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function LoginForm() {
@@ -27,6 +27,31 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [validFields, setValidFields] = useState<Record<string, boolean>>({});
+
+  const handleEmailChange = (val: string) => {
+    setEmail(val);
+    clearError();
+    const isTouched = touched.email || val.length > 0;
+    if (!touched.email && val.length > 0) {
+      setTouched((prev) => ({ ...prev, email: true }));
+    }
+
+    if (isTouched) {
+      const result = validateEmail(val);
+      if (!result.success && result.error) {
+        setFormErrors((prev) => ({ ...prev, email: result.error! }));
+        setValidFields((prev) => ({ ...prev, email: false }));
+      } else {
+        setFormErrors((prev) => {
+          const next = { ...prev };
+          delete next.email;
+          return next;
+        });
+        setValidFields((prev) => ({ ...prev, email: true }));
+      }
+    }
+  };
 
   const authenticationMessage = error?.includes("401")
     ? "The email or password is incorrect. Check your credentials and try again."
@@ -75,7 +100,7 @@ export function LoginForm() {
           variant="destructive"
           title="Unable to sign in"
           message={authenticationMessage}
-          className="mb-5 p-3 text-xs bg-rose-50 border-rose-200 text-rose-800"
+          className="mb-5 p-3 text-xs bg-red-50 border-red-300 text-red-900 [&>svg]:text-red-600 [&>h5]:text-red-700"
         />
       )}
 
@@ -92,24 +117,20 @@ export function LoginForm() {
               id="login-email"
               placeholder="name@firm.com"
               value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                if (formErrors.email) {
-                  setFormErrors((prev) => {
-                    const n = { ...prev };
-                    delete n.email;
-                    return n;
-                  });
-                }
-              }}
+              onChange={(e) => handleEmailChange(e.target.value)}
               className={cn(
                 "w-full h-11 pl-10 pr-9 rounded-lg border bg-white text-slate-900 text-sm placeholder:text-slate-400 transition-all outline-hidden focus:border-emerald-800 focus:ring-1 focus:ring-emerald-800",
-                formErrors?.email
+                touched.email && formErrors?.email
                   ? "border-rose-400 ring-1 ring-rose-400/50"
-                  : "border-slate-200"
+                  : touched.email && validFields?.email
+                    ? "border-emerald-500 ring-1 ring-emerald-500/30"
+                    : "border-slate-200"
               )}
             />
-            {formErrors?.email && (
+            {touched.email && validFields?.email && (
+              <Check className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-600 pointer-events-none" />
+            )}
+            {touched.email && formErrors?.email && (
               <AlertCircle className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-rose-500 pointer-events-none" />
             )}
           </div>
