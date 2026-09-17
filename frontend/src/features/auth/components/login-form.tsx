@@ -32,25 +32,40 @@ export function LoginForm() {
   const handleEmailChange = (val: string) => {
     setEmail(val);
     clearError();
-    const isTouched = touched.email || val.length > 0;
-    if (!touched.email && val.length > 0) {
-      setTouched((prev) => ({ ...prev, email: true }));
+    setTouched((prev) => ({ ...prev, email: true }));
+    const result = validateEmail(val);
+    if (!result.success && result.error) {
+      setFormErrors((prev) => ({ ...prev, email: result.error! }));
+      setValidFields((prev) => ({ ...prev, email: false }));
+    } else {
+      setFormErrors((prev) => {
+        const next = { ...prev };
+        delete next.email;
+        return next;
+      });
+      setValidFields((prev) => ({ ...prev, email: true }));
     }
+  };
 
-    if (isTouched) {
-      const result = validateEmail(val);
-      if (!result.success && result.error) {
-        setFormErrors((prev) => ({ ...prev, email: result.error! }));
-        setValidFields((prev) => ({ ...prev, email: false }));
-      } else {
-        setFormErrors((prev) => {
-          const next = { ...prev };
-          delete next.email;
-          return next;
-        });
-        setValidFields((prev) => ({ ...prev, email: true }));
-      }
+  const handlePasswordChange = (val: string) => {
+    setPassword(val);
+    clearError();
+    setTouched((prev) => ({ ...prev, password: true }));
+    if (!val || val.trim().length === 0) {
+      setFormErrors((prev) => ({ ...prev, password: "Password is required" }));
+      setValidFields((prev) => ({ ...prev, password: false }));
+    } else {
+      setFormErrors((prev) => {
+        const next = { ...prev };
+        delete next.password;
+        return next;
+      });
+      setValidFields((prev) => ({ ...prev, password: true }));
     }
+  };
+
+  const markTouched = (field: string) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
   };
 
   const authenticationMessage = error?.includes("401")
@@ -115,9 +130,11 @@ export function LoginForm() {
             <input
               type="email"
               id="login-email"
-              placeholder="name@firm.com"
+              placeholder="name@springercapital.com"
               value={email}
               onChange={(e) => handleEmailChange(e.target.value)}
+              onPaste={() => markTouched("email")}
+              onBlur={() => handleEmailChange(email)}
               className={cn(
                 "w-full h-11 pl-10 pr-9 rounded-lg border bg-white text-slate-900 text-sm placeholder:text-slate-400 transition-all outline-hidden focus:border-emerald-800 focus:ring-1 focus:ring-emerald-800",
                 touched.email && formErrors?.email
@@ -134,7 +151,7 @@ export function LoginForm() {
               <AlertCircle className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-rose-500 pointer-events-none" />
             )}
           </div>
-          {formErrors.email && (
+          {touched.email && formErrors.email && (
             <p className="text-[11px] text-rose-500 font-medium">{formErrors.email}</p>
           )}
         </div>
@@ -159,21 +176,16 @@ export function LoginForm() {
               id="login-password"
               placeholder="••••••••"
               value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                if (formErrors.password) {
-                  setFormErrors((prev) => {
-                    const n = { ...prev };
-                    delete n.password;
-                    return n;
-                  });
-                }
-              }}
+              onChange={(e) => handlePasswordChange(e.target.value)}
+              onPaste={() => markTouched("password")}
+              onBlur={() => handlePasswordChange(password)}
               className={cn(
-                "w-full h-11 pl-10 pr-9 rounded-lg border bg-white text-slate-900 text-sm placeholder:text-slate-400 transition-all outline-hidden focus:border-emerald-800 focus:ring-1 focus:ring-emerald-800",
-                formErrors?.password
+                "w-full h-11 pl-10 pr-10 rounded-lg border bg-white text-slate-900 text-sm placeholder:text-slate-400 transition-all outline-hidden focus:border-emerald-800 focus:ring-1 focus:ring-emerald-800",
+                touched.password && formErrors?.password
                   ? "border-rose-400 ring-1 ring-rose-400/50"
-                  : "border-slate-200"
+                  : touched.password && validFields?.password
+                    ? "border-emerald-500 ring-1 ring-emerald-500/30"
+                    : "border-slate-200"
               )}
             />
             <button
@@ -185,7 +197,7 @@ export function LoginForm() {
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
-          {formErrors.password && (
+          {touched.password && formErrors.password && (
             <p className="text-[11px] text-rose-500 font-medium">{formErrors.password}</p>
           )}
         </div>

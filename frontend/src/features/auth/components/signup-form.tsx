@@ -71,70 +71,52 @@ export function SignupForm() {
 
   const handleNameChange = (val: string) => {
     setName(val);
-    const isTouched = touched.name || val.length > 0;
-    if (!touched.name && val.length > 0) {
-      setTouched((prev) => ({ ...prev, name: true }));
-    }
-
-    if (isTouched) {
-      const result = validateName(val);
-      if (!result.success && result.error) {
-        setFormErrors((prev) => ({ ...prev, name: result.error! }));
-        setValidFields((prev) => ({ ...prev, name: false }));
-      } else {
-        setFormErrors((prev) => {
-          const next = { ...prev };
-          delete next.name;
-          return next;
-        });
-        setValidFields((prev) => ({ ...prev, name: true }));
-      }
+    setTouched((prev) => ({ ...prev, name: true }));
+    const result = validateName(val);
+    if (!result.success && result.error) {
+      setFormErrors((prev) => ({ ...prev, name: result.error! }));
+      setValidFields((prev) => ({ ...prev, name: false }));
+    } else {
+      setFormErrors((prev) => {
+        const next = { ...prev };
+        delete next.name;
+        return next;
+      });
+      setValidFields((prev) => ({ ...prev, name: true }));
     }
   };
 
   const handleEmailChange = (val: string) => {
     setEmail(val);
-    const isTouched = touched.email || val.length > 0;
-    if (!touched.email && val.length > 0) {
-      setTouched((prev) => ({ ...prev, email: true }));
-    }
-
-    if (isTouched) {
-      const result = validateEmail(val);
-      if (!result.success && result.error) {
-        setFormErrors((prev) => ({ ...prev, email: result.error! }));
-        setValidFields((prev) => ({ ...prev, email: false }));
-      } else {
-        setFormErrors((prev) => {
-          const next = { ...prev };
-          delete next.email;
-          return next;
-        });
-        setValidFields((prev) => ({ ...prev, email: true }));
-      }
+    setTouched((prev) => ({ ...prev, email: true }));
+    const result = validateEmail(val);
+    if (!result.success && result.error) {
+      setFormErrors((prev) => ({ ...prev, email: result.error! }));
+      setValidFields((prev) => ({ ...prev, email: false }));
+    } else {
+      setFormErrors((prev) => {
+        const next = { ...prev };
+        delete next.email;
+        return next;
+      });
+      setValidFields((prev) => ({ ...prev, email: true }));
     }
   };
 
   const handlePasswordChange = (val: string) => {
     setPassword(val);
-    const isTouched = touched.password || val.length > 0;
-    if (!touched.password && val.length > 0) {
-      setTouched((prev) => ({ ...prev, password: true }));
-    }
-
-    if (isTouched) {
-      const result = validatePassword(val);
-      if (!result.success && result.error) {
-        setFormErrors((prev) => ({ ...prev, password: result.error! }));
-        setValidFields((prev) => ({ ...prev, password: false }));
-      } else {
-        setFormErrors((prev) => {
-          const next = { ...prev };
-          delete next.password;
-          return next;
-        });
-        setValidFields((prev) => ({ ...prev, password: true }));
-      }
+    setTouched((prev) => ({ ...prev, password: true }));
+    const result = validatePassword(val);
+    if (!result.success && result.error) {
+      setFormErrors((prev) => ({ ...prev, password: result.error! }));
+      setValidFields((prev) => ({ ...prev, password: false }));
+    } else {
+      setFormErrors((prev) => {
+        const next = { ...prev };
+        delete next.password;
+        return next;
+      });
+      setValidFields((prev) => ({ ...prev, password: true }));
     }
 
     if (confirmPassword && (touched.confirmPassword || confirmPassword.length > 0)) {
@@ -155,25 +137,23 @@ export function SignupForm() {
 
   const handleConfirmPasswordChange = (val: string) => {
     setConfirmPassword(val);
-    const isTouched = touched.confirmPassword || val.length > 0;
-    if (!touched.confirmPassword && val.length > 0) {
-      setTouched((prev) => ({ ...prev, confirmPassword: true }));
+    setTouched((prev) => ({ ...prev, confirmPassword: true }));
+    const result = validateConfirmPassword(password, val);
+    if (!result.success && result.error) {
+      setFormErrors((prev) => ({ ...prev, confirmPassword: result.error! }));
+      setValidFields((prev) => ({ ...prev, confirmPassword: false }));
+    } else {
+      setFormErrors((prev) => {
+        const next = { ...prev };
+        delete next.confirmPassword;
+        return next;
+      });
+      setValidFields((prev) => ({ ...prev, confirmPassword: true }));
     }
+  };
 
-    if (isTouched) {
-      const result = validateConfirmPassword(password, val);
-      if (!result.success && result.error) {
-        setFormErrors((prev) => ({ ...prev, confirmPassword: result.error! }));
-        setValidFields((prev) => ({ ...prev, confirmPassword: false }));
-      } else {
-        setFormErrors((prev) => {
-          const next = { ...prev };
-          delete next.confirmPassword;
-          return next;
-        });
-        setValidFields((prev) => ({ ...prev, confirmPassword: true }));
-      }
-    }
+  const markTouched = (field: string) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
   };
 
   const handleTermsScroll = useCallback(() => {
@@ -276,6 +256,8 @@ export function SignupForm() {
               placeholder="e.g. Eleanor Vance"
               value={name}
               onChange={(e) => handleNameChange(e.target.value)}
+              onPaste={() => markTouched("name")}
+              onBlur={() => handleNameChange(name)}
               className={cn(
                 "w-full h-11 pl-10 pr-9 rounded-lg border bg-white text-slate-900 text-sm placeholder:text-slate-400 transition-all outline-hidden focus:border-emerald-800 focus:ring-1 focus:ring-emerald-800",
                 touched.name && formErrors?.name
@@ -307,9 +289,11 @@ export function SignupForm() {
             <input
               type="email"
               id="signup-email"
-              placeholder="name@firm.com"
+              placeholder="name@springercapital.com"
               value={email}
               onChange={(e) => handleEmailChange(e.target.value)}
+              onPaste={() => markTouched("email")}
+              onBlur={() => handleEmailChange(email)}
               className={cn(
                 "w-full h-11 pl-10 pr-9 rounded-lg border bg-white text-slate-900 text-sm placeholder:text-slate-400 transition-all outline-hidden focus:border-emerald-800 focus:ring-1 focus:ring-emerald-800",
                 touched.email && formErrors?.email
@@ -402,6 +386,8 @@ export function SignupForm() {
               placeholder="••••••••"
               value={password}
               onChange={(e) => handlePasswordChange(e.target.value)}
+              onPaste={() => markTouched("password")}
+              onBlur={() => handlePasswordChange(password)}
               className={cn(
                 "w-full h-11 pl-10 pr-9 rounded-lg border bg-white text-slate-900 text-sm placeholder:text-slate-400 transition-all outline-hidden focus:border-emerald-800 focus:ring-1 focus:ring-emerald-800",
                 touched.password && formErrors?.password
@@ -438,6 +424,8 @@ export function SignupForm() {
               placeholder="••••••••"
               value={confirmPassword}
               onChange={(e) => handleConfirmPasswordChange(e.target.value)}
+              onPaste={() => markTouched("confirmPassword")}
+              onBlur={() => handleConfirmPasswordChange(confirmPassword)}
               className={cn(
                 "w-full h-11 pl-10 pr-9 rounded-lg border bg-white text-slate-900 text-sm placeholder:text-slate-400 transition-all outline-hidden focus:border-emerald-800 focus:ring-1 focus:ring-emerald-800",
                 touched.confirmPassword && formErrors?.confirmPassword
