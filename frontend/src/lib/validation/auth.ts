@@ -18,15 +18,12 @@ export type Role = z.infer<typeof roleEnum>;
 export const nameSchema = z.string().min(2, "Name must be at least 2 characters long");
 
 /**
- * DOCU: Corporate email validation schema requiring @springer.capital domain.
+ * DOCU: Corporate / Institutional email validation schema.
  */
 export const emailSchema = z
   .string()
-  .min(1, "Email must end with @springer.capital")
-  .refine(
-    (email) => email.trim().length > 0 && email.toLowerCase().endsWith("@springer.capital"),
-    "Email must end with @springer.capital"
-  );
+  .min(1, "Institutional email is required")
+  .email("Please enter a valid institutional email address");
 
 /**
  * DOCU: Secure password validation schema requiring minimum 8 characters.
@@ -34,15 +31,16 @@ export const emailSchema = z
 export const passwordSchema = z.string().min(8, "Password must be at least 8 characters long");
 
 /**
- * DOCU: Personnel registration schema validating name, corporate email, passwords, and assigned role.
+ * DOCU: Personnel registration schema validating name, corporate email, organization, passwords, and assigned role.
  */
 export const signupSchema = z
   .object({
     name: nameSchema,
     email: emailSchema,
+    organization: z.string().optional(),
     password: passwordSchema,
     confirmPassword: z.string().min(1, "Please confirm your password"),
-    role: roleEnum,
+    role: roleEnum.default("Advisor"),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match",

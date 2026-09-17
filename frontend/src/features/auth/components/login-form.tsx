@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * DOCU: Renders and manages the personnel login form in dark mode.
- * Last Updated Date: September 8, 2026
+ * DOCU: Renders and manages the personnel login form matching the institutional UI.
+ * Last Updated Date: September 15, 2026
  * @returns The login form view.
  * @author Keith
  */
@@ -12,48 +12,31 @@ import { useLogin } from "../hooks/use-login";
 import { useRedirectIfAuthenticated } from "../hooks/use-auth-guard";
 import { loginSchema } from "@/lib/validation/auth";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
 import { CompanyLogo } from "@/components/ui/brand-logos";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-} from "@/components/ui/card";
-import { Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, Loader2, ArrowRight, AlertCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-/**
- * DOCU: Renders the login form and processes user authentication submissions.
- * Last Updated Date: September 8, 2026
- * @returns The login form component.
- * @author Keith
- */
 export function LoginForm() {
   useRedirectIfAuthenticated();
   const { mutate, isPending, error, clearError } = useLogin();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberDevice, setRememberDevice] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+
   const authenticationMessage = error?.includes("401")
     ? "The email or password is incorrect. Check your credentials and try again."
     : error ?? undefined;
 
-  /**
-   * DOCU: Handles login form submission with schema validation.
-   * Last Updated Date: September 8, 2026
-   * @param e - Form submission event.
-   * @returns Void promise.
-   * @author Keith
-   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     clearError();
     setFormErrors({});
+    setTouched({ email: true, password: true });
 
     const validationResult = loginSchema.safeParse({ email, password });
     if (!validationResult.success) {
@@ -71,123 +54,171 @@ export function LoginForm() {
   };
 
   return (
-    <div className="w-full max-w-md mx-auto">
-      <Card className="rounded-xl overflow-hidden border border-border bg-card shadow-2xl shadow-black/70">
-        {/* Springer Brand Accent Hairline Strip */}
-        <div className="h-[2px] bg-gradient-to-r from-emerald-600 via-[#84c22b] to-emerald-500" />
+    <div className="w-full">
+      {/* Mobile Brand Logo */}
+      <div className="lg:hidden mb-6 flex justify-start">
+        <CompanyLogo />
+      </div>
 
-        <CardHeader className="text-center space-y-2 pb-4 pt-6">
-          <CompanyLogo className="justify-center" />
-          <CardTitle className="text-xl font-bold text-foreground tracking-tight">
-            Institutional Portal Login
-          </CardTitle>
-          <CardDescription className="text-xs text-muted-foreground">
-            Sign in to access compliance review and wealth advisory documents
-          </CardDescription>
+      {/* Header */}
+      <div className="space-y-1.5 mb-7 text-left">
+        <h2 className="text-2xl sm:text-[28px] font-bold text-slate-900 tracking-tight">
+          Sign in to your account
+        </h2>
+        <p className="text-xs sm:text-sm text-slate-500">
+          Enter your institutional credentials to access the Springer Capital investor &amp; advisor portal
+        </p>
+      </div>
 
-          {/* Role indicator pills */}
-          <div className="flex items-center justify-center gap-2 pt-1">
-            <span className="chip bg-emerald-950/60 text-emerald-300 border border-emerald-800/60">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse-dot inline-block" />
-              Advisor
-            </span>
-            <span className="chip bg-secondary text-muted-foreground border border-border">
-              <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-pulse-dot inline-block" style={{ animationDelay: "0.6s" }} />
-              Officer
-            </span>
-          </div>
-        </CardHeader>
+      {error && (
+        <Alert
+          variant="destructive"
+          title="Unable to sign in"
+          message={authenticationMessage}
+          className="mb-5 p-3 text-xs bg-rose-50 border-rose-200 text-rose-800"
+        />
+      )}
 
-        <CardContent className="space-y-4 pt-2">
-          {error && (
-            <Alert
-              variant="destructive"
-              className="p-3 shadow-xs animate-slide-down"
-              title="Unable to sign in"
-              message={authenticationMessage}
+      <form id="login-form" onSubmit={handleSubmit} noValidate className="space-y-4">
+        {/* Institutional / Corporate Email Field */}
+        <div className="space-y-1.5 text-left">
+          <label className="text-[11px] font-bold tracking-wider text-slate-700 uppercase">
+            Institutional / Corporate Email
+          </label>
+          <div className="relative">
+            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+            <input
+              type="email"
+              id="login-email"
+              placeholder="name@firm.com"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (formErrors.email) {
+                  setFormErrors((prev) => {
+                    const n = { ...prev };
+                    delete n.email;
+                    return n;
+                  });
+                }
+              }}
+              className={cn(
+                "w-full h-11 pl-10 pr-9 rounded-lg border bg-white text-slate-900 text-sm placeholder:text-slate-400 transition-all outline-hidden focus:border-emerald-800 focus:ring-1 focus:ring-emerald-800",
+                formErrors?.email
+                  ? "border-rose-400 ring-1 ring-rose-400/50"
+                  : "border-slate-200"
+              )}
             />
+            {formErrors?.email && (
+              <AlertCircle className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-rose-500 pointer-events-none" />
+            )}
+          </div>
+          {formErrors.email && (
+            <p className="text-[11px] text-rose-500 font-medium">{formErrors.email}</p>
           )}
+        </div>
 
-          <form id="login-form" onSubmit={handleSubmit} noValidate className="space-y-3.5">
-            {/* Email Field */}
-            <div className="space-y-1 text-left">
-              <label className="text-xs font-medium text-foreground/90">Email Address</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-                <Input
-                  type="email"
-                  id="login-email"
-                  placeholder="advisor@springer.capital"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-9 h-9 text-xs rounded-md bg-background border-border text-foreground focus-visible:ring-1 focus-visible:ring-primary"
-                />
-              </div>
-              {formErrors.email && (
-                <p className="text-[11px] text-rose-400 font-medium animate-fade-in">{formErrors.email}</p>
+        {/* Password Field with Forgot Password Link */}
+        <div className="space-y-1.5 text-left">
+          <div className="flex items-center justify-between">
+            <label className="text-[11px] font-bold tracking-wider text-slate-700 uppercase">
+              Password
+            </label>
+            <button
+              type="button"
+              className="text-xs text-slate-600 hover:text-slate-900 hover:underline cursor-pointer"
+            >
+              Forgot password?
+            </button>
+          </div>
+          <div className="relative">
+            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+            <input
+              type={showPassword ? "text" : "password"}
+              id="login-password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (formErrors.password) {
+                  setFormErrors((prev) => {
+                    const n = { ...prev };
+                    delete n.password;
+                    return n;
+                  });
+                }
+              }}
+              className={cn(
+                "w-full h-11 pl-10 pr-9 rounded-lg border bg-white text-slate-900 text-sm placeholder:text-slate-400 transition-all outline-hidden focus:border-emerald-800 focus:ring-1 focus:ring-emerald-800",
+                formErrors?.password
+                  ? "border-rose-400 ring-1 ring-rose-400/50"
+                  : "border-slate-200"
               )}
-            </div>
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((prev) => !prev)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+          {formErrors.password && (
+            <p className="text-[11px] text-rose-500 font-medium">{formErrors.password}</p>
+          )}
+        </div>
 
-            {/* Password Field */}
-            <div className="space-y-1 text-left">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-foreground/90">Password</label>
-                {/* <Link href="#" className="text-[11px] text-muted-foreground hover:text-primary transition-colors">
-                  Forgot?
-                </Link> */}
-              </div>
-              <div className="relative">
-                <Lock className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-                <Input
-                  type={showPassword ? "text" : "password"}
-                  id="login-password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-9 pr-9 h-9 text-xs rounded-md bg-background border-border text-foreground focus-visible:ring-1 focus-visible:ring-primary"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                </button>
-              </div>
-              {formErrors.password && (
-                <p className="text-[11px] text-rose-400 font-medium animate-fade-in">{formErrors.password}</p>
-              )}
-            </div>
-          </form>
-        </CardContent>
+        {/* Remember Device Checkbox */}
+        <div className="pt-1 text-left">
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              id="login-remember-device"
+              checked={rememberDevice}
+              onChange={(e) => setRememberDevice(e.target.checked)}
+              className="h-4 w-4 rounded-sm border-slate-300 text-[#0e271c] focus:ring-emerald-700 cursor-pointer accent-[#0e271c]"
+            />
+            <span className="text-xs text-slate-600">
+              Remember this device for 30 days
+            </span>
+          </label>
+        </div>
 
-        <CardFooter className="flex flex-col space-y-3 pt-2 pb-6 border-t border-border bg-muted/20">
+        {/* Submit Button */}
+        <div className="pt-2">
           <Button
             type="submit"
             form="login-form"
             id="login-submit"
             disabled={isPending}
-            className="w-full bg-[#24A152] hover:bg-[#062A20] hover:text-[#54d0a2] hover:border hover:border-emerald-700/60 active:bg-[#1d8342] text-white font-semibold text-xs h-9 rounded-md transition-all hover:-translate-y-px hover:shadow-md disabled:opacity-60 disabled:translate-y-0 cursor-pointer"
+            className="w-full bg-[#132c20] hover:bg-[#183a2b] active:bg-[#0c2217] text-white font-medium text-sm h-11 rounded-lg flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-950/10 hover:shadow-lg disabled:opacity-60 cursor-pointer"
           >
             {isPending ? (
-              <span className="flex items-center gap-2">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <span className="flex items-center gap-2 text-white">
+                <Loader2 className="h-4 w-4 animate-spin text-white" />
                 Authenticating...
               </span>
             ) : (
-              "Sign In to Workspace"
+              <>
+                <span>Sign in to Institutional Portal</span>
+                <ArrowRight className="h-4 w-4 text-white" />
+              </>
             )}
           </Button>
+        </div>
 
-          <p className="text-xs text-muted-foreground text-center">
-            New personnel?{" "}
-            <Link href="/signup" className="text-[#24A152] hover:text-[#54d0a2] font-semibold hover:underline">
-              Create Account
+        {/* Register Account Link */}
+        <div className="pt-3 text-center">
+          <p className="text-xs text-slate-600">
+            Don&apos;t have institutional access?{" "}
+            <Link href="/signup" className="font-bold text-slate-900 hover:underline inline-flex items-center gap-0.5">
+              <span>Register for access</span>
+              <span className="text-sm">→</span>
             </Link>
           </p>
-        </CardFooter>
-      </Card>
+        </div>
+      </form>
     </div>
   );
 }

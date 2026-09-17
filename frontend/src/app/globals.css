@@ -1,11 +1,13 @@
 /**
  * DOCU: Defines the Tailwind entry point, shadcn-inspired dark design tokens, and Springer Capital brand palette.
- * Last Updated Date: September 8, 2026
+ * Last Updated Date: September 15, 2026
  * @author Keith
  */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
 @theme {
+  --font-sans: var(--font-outfit), "Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
   --color-card: hsl(var(--card));
@@ -101,6 +103,18 @@
   --input: 240 6% 16%;
   --ring: 142 63% 39%;
   --radius: 0.5rem;
+}
+
+*,
+*::before,
+*::after,
+html,
+body,
+input,
+button,
+select,
+textarea {
+  font-family: var(--font-outfit), "Outfit", sans-serif;
 }
 
 /* ─── Keyframe Animations ──────────────────────────────────────────────── */

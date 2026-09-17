@@ -1,19 +1,19 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { authStore } from "@/lib/auth/auth-store";
-import { AppWorkspaceLoader } from "@/components/shared/app-workspace-loader";
 
 /**
- * DOCU: Displays the institutional 100% loading sequence and popup transition before opening the application.
- * Last Updated Date: September 13, 2026
- * @returns The workspace loader with auto-navigation on 100% completion.
+ * DOCU: Automatically redirects the user to their appropriate landing route without showing a loading screen.
+ * Last Updated Date: September 15, 2026
+ * @returns Null (immediate redirect).
  * @author Keith
  */
 export default function HomePage() {
   const router = useRouter();
 
-  const handleComplete = () => {
+  useEffect(() => {
     const session = authStore.getSession();
     if (!session) {
       router.replace("/login");
@@ -22,7 +22,7 @@ export default function HomePage() {
     } else {
       router.replace("/queue");
     }
-  };
+  }, [router]);
 
-  return <AppWorkspaceLoader title="Connecting to Workspace" onComplete={handleComplete} />;
+  return null;
 }
