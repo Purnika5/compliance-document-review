@@ -421,7 +421,7 @@ export function DocumentQueueTable() {
 
                     <TableCell>
                       <div className="font-medium text-foreground">{doc.submittedBy}</div>
-                      <div className="text-[10px] text-muted-foreground">{doc.advisorEmail || "advisor@springercapital.com"}</div>
+                      <div className="text-[10px] text-muted-foreground">{doc.advisorEmail || "advisor@springer.capital"}</div>
                     </TableCell>
 
                     <TableCell className="text-muted-foreground font-mono text-[11px]">

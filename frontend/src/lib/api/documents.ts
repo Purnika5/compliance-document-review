@@ -30,6 +30,8 @@ interface ApiDocument {
   advisor_email?: string;
   created_at: string;
   updated_at: string;
+  masked_text?: string;
+  original_text?: string;
 }
 
 /**
@@ -53,12 +55,18 @@ function mapApiDocumentToItem(doc: ApiDocument): DocumentItem {
     submittedAt: doc.created_at,
     status: doc.status,
     fileSize: doc.file_size ? (doc.file_size < 1024 * 1024 ? `${(doc.file_size / 1024).toFixed(1)} KB` : `${(doc.file_size / (1024 * 1024)).toFixed(1)} MB`) : undefined,
+    notes: doc.description,
+    fileName: doc.file_name,
+    filePath: doc.file_path,
+    mimeType: doc.mime_type,
+    maskedText: doc.masked_text,
+    originalText: doc.original_text,
     fileUrl: doc.file_path ? (() => {
       const p = doc.file_path.replace(/\\/g, '/');
-      const match = p.match(/(?:\/)?(uploads\/.*)/);
-      const suffix = match ? `/${match[1]}` : (p.startsWith('/') ? p : `/${p}`);
-      return `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '')}${suffix}`.replace(/([^:]\/)\/+/g, "$1");
-    })() : undefined,
+      const match = p.match(/(?:\/)?uploads\/(.*)/);
+      const suffix = match ? match[1] : p.split('/').pop();
+      return suffix ? `/api/raw-file/${suffix}` : undefined;
+    })() : (doc.file_name ? `/api/raw-file/documents/${doc.file_name}` : undefined),
   };
 }
 

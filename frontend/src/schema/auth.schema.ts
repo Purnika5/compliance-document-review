@@ -17,14 +17,14 @@ export type Role = z.infer<typeof roleEnum>;
 export const nameSchema = z.string().min(2, "Name must be at least 2 characters long");
 
 /**
- * DOCU: Validates corporate email format ending with @springercapital.com.
+ * DOCU: Validates corporate email format ending with @springer.capital.
  */
 export const emailSchema = z
   .string()
   .email("Please enter a valid email address")
   .refine(
-    (email) => email.toLowerCase().endsWith("@springercapital.com"),
-    "Email must end with @springercapital.com"
+    (email) => email.toLowerCase().endsWith("@springer.capital"),
+    "Email must end with @springer.capital"
   );
 
 /**
