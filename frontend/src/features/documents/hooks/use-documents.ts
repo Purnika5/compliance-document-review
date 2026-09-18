@@ -17,9 +17,21 @@ import type { DocumentItem, DocumentStatusType } from "@/lib/validation/document
  * @returns Document data, loading state, error state, and refresh function.
  * @author Keith
  */
-export function useDocuments(mode: "my-submissions" | "queue" = "queue") {
-  const [allDocuments, setAllDocuments] = useState<DocumentItem[]>([]);
-  const [activeStatus, setActiveStatus] = useState<string>("All");
+export function useDocuments(mode: "my-submissions" | "queue" = "queue", statusFilter: string = "All") {
+  const [documents, setDocuments] = useState<DocumentItem[]>([]);
+  const [statusCounts, setStatusCounts] = useState<{
+    All: number;
+    Pending: number;
+    Approved: number;
+    "Needs Revision": number;
+    Rejected: number;
+  }>({
+    All: 0,
+    Pending: 0,
+    Approved: 0,
+    "Needs Revision": 0,
+    Rejected: 0,
+  });
   const [isPending, setIsPending] = useState(true);
 
   const loadDocuments = useCallback(async () => {
@@ -28,46 +40,56 @@ export function useDocuments(mode: "my-submissions" | "queue" = "queue") {
       let data: DocumentItem[] = [];
       if (mode === "my-submissions") {
         data = await getMySubmissionsAction();
+        setDocuments(data);
+        setStatusCounts({
+          All: data.length,
+          Pending: data.filter((d) => d.status === "Pending").length,
+          Approved: data.filter((d) => d.status === "Approved").length,
+          "Needs Revision": data.filter((d) => d.status === "Needs Revision").length,
+          Rejected: data.filter((d) => d.status === "Rejected").length,
+        });
       } else {
-        data = await getQueueAction("All");
+        data = await getQueueAction(statusFilter);
+        setDocuments(data);
+
+        if (statusFilter === "All") {
+          setStatusCounts({
+            All: data.length,
+            Pending: data.filter((d) => d.status === "Pending").length,
+            Approved: data.filter((d) => d.status === "Approved").length,
+            "Needs Revision": data.filter((d) => d.status === "Needs Revision").length,
+            Rejected: data.filter((d) => d.status === "Rejected").length,
+          });
+        } else {
+          getQueueAction("All").then((allDocs) => {
+            setStatusCounts({
+              All: allDocs.length,
+              Pending: allDocs.filter((d) => d.status === "Pending").length,
+              Approved: allDocs.filter((d) => d.status === "Approved").length,
+              "Needs Revision": allDocs.filter((d) => d.status === "Needs Revision").length,
+              Rejected: allDocs.filter((d) => d.status === "Rejected").length,
+            });
+          }).catch(() => {});
+        }
       }
-      setAllDocuments(data);
     } catch {
-      setAllDocuments([]);
+      setDocuments([]);
     } finally {
       setIsPending(false);
     }
-  }, [mode]);
+  }, [mode, statusFilter]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadDocuments();
   }, [loadDocuments]);
 
-  // Compute status counts dynamically from all fetched documents
-  const counts = useMemo(() => {
-    return {
-      All: allDocuments.length,
-      Pending: allDocuments.filter((d) => d.status === "Pending").length,
-      Approved: allDocuments.filter((d) => d.status === "Approved").length,
-      "Needs Revision": allDocuments.filter((d) => d.status === "Needs Revision").length,
-      Rejected: allDocuments.filter((d) => d.status === "Rejected").length,
-    };
-  }, [allDocuments]);
-
-  // Client-side filtering — instant, smooth, no loading flicker
-  const filteredDocuments = useMemo(() => {
-    if (activeStatus === "All") return allDocuments;
-    return allDocuments.filter((doc) => doc.status === (activeStatus as DocumentStatusType));
-  }, [allDocuments, activeStatus]);
-
   return {
-    documents: filteredDocuments,
-    allDocuments,
-    activeStatus,
-    setActiveStatus,
+    documents,
+    allDocuments: documents,
+    activeStatus: statusFilter,
+    setActiveStatus: () => {},
     isPending,
-    counts,
+    counts: statusCounts,
     refetch: loadDocuments,
   };
 }

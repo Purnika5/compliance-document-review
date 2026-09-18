@@ -6,7 +6,7 @@
  * @returns The document review workspace view.
  * @author Keith
  */
-import React, { useState, useRef, useEffect, useSyncExternalStore } from "react";
+import React, { useState, useRef, useEffect, useSyncExternalStore, useMemo } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -32,7 +32,10 @@ import {
   ShieldCheck,
   Search,
   ExternalLink,
+  Eye,
+  EyeOff,
 } from "lucide-react";
+import { buildPiiMap, unmaskText } from "@/utils/pii-unmasker";
 import type { DocumentStatusType, DocumentItem } from "@/lib/validation/document";
 import { getDocumentAction, updateDocumentStatusAction } from "@/lib/actions/document-actions";
 import { EditDocumentModal } from "@/features/documents/components/edit-document-modal";
@@ -42,7 +45,9 @@ import { AuditTrailTable, type IAuditLogEntry } from "@/features/audit/component
 import { auditService } from "@/services/audit.service";
 import { documentService } from "@/services/document.service";
 import { DecisionDialog } from "./decision-dialog";
+import { DocxViewer } from "./docx-viewer";
 import { ReviewWorkspaceSkeleton } from "./review-workspace-skeleton";
+import { VersionLineageSelector, type LineageEntry } from "./version-lineage-selector";
 import { FileTypeIcon } from "@/components/shared/file-type-icon";
 import { cn } from "@/lib/utils";
 import { authStore } from "@/lib/auth/auth-store";
@@ -53,21 +58,34 @@ export interface ReviewWorkspaceProps {
 }
 
 function renderHighlightedText(text: string, passage?: string) {
-  if (!passage || !passage.trim()) {
+  if (!passage || !passage.trim() || !text) {
     return text;
   }
-  const cleanPassage = passage.trim().replace(/^["']|["']$/g, "");
+  const cleanPassage = passage.trim().replace(/^["'“”‘’]+|["'“”‘’]+$/g, "");
   const words = cleanPassage.split(/\s+/).filter(Boolean);
   if (words.length === 0) return text;
 
-  const escapedWords = words.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-  const regex = new RegExp(escapedWords.join("\\s+"), "i");
-  let match = text.match(regex);
+  // 1. Full exact match with whitespace flexibility
+  const fullRegex = new RegExp(
+    words.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("\\s+"),
+    "i"
+  );
+  let match = text.match(fullRegex);
 
+  // 2. Sliding window of longest matching word sequence (down to 3 words)
   if (!match || match.index === undefined) {
-    const fallbackWords = escapedWords.slice(0, 3);
-    const fallbackRegex = new RegExp(fallbackWords.join("\\s+"), "i");
-    match = text.match(fallbackRegex);
+    for (let len = words.length - 1; len >= 3; len--) {
+      for (let start = 0; start <= words.length - len; start++) {
+        const sub = words.slice(start, start + len);
+        const subRegex = new RegExp(
+          sub.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("\\s+"),
+          "i"
+        );
+        match = text.match(subRegex);
+        if (match && match.index !== undefined) break;
+      }
+      if (match && match.index !== undefined) break;
+    }
   }
 
   if (!match || match.index === undefined) {
@@ -85,7 +103,7 @@ function renderHighlightedText(text: string, passage?: string) {
       {before}
       <mark
         id="flagged-passage-highlight"
-        className="bg-amber-400/35 text-amber-100 border-2 border-amber-500 rounded px-1.5 py-0.5 font-bold ring-2 ring-amber-500/60 shadow-lg shadow-amber-950/70 inline"
+        className="bg-amber-400/35 text-amber-900 border-2 border-amber-500 rounded px-1.5 py-0.5 font-bold ring-2 ring-amber-500/60 shadow-lg inline"
       >
         {matchedText}
       </mark>
@@ -122,11 +140,26 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
   const [documentError, setDocumentError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"iframe" | "paper" | "text">("iframe");
   const [isLoadingAnalysis, setIsLoadingAnalysis] = useState<boolean>(true);
+  const [isUnmasked, setIsUnmasked] = useState<boolean>(false);
+  const [revisionRefreshKey, setRevisionRefreshKey] = useState(0);
+  const [activeDocId, setActiveDocId] = useState<string>(documentId);
+  const [lineageVersions, setLineageVersions] = useState<(DocumentItem & { version: number })[]>([]);
+  const [lineageEntries, setLineageEntries] = useState<LineageEntry[]>([]);
+  const [isLoadingLineage, setIsLoadingLineage] = useState<boolean>(true);
+
+  useEffect(() => {
+    setActiveDocId(documentId);
+  }, [documentId]);
+
+  const handleSelectVersion = (version: DocumentItem & { version: number }) => {
+    setActiveDocId(version.id);
+    setSelectedFlag(null);
+  };
 
   const handleRefreshAnalysis = () => {
     setIsLoadingAnalysis(true);
     documentService
-      .getAnalysis(documentId)
+      .getAnalysis(activeDocId)
       .then((flags) => {
         setAnalysisFlags(flags);
       })
@@ -141,13 +174,35 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
   useEffect(() => {
     let isActive = true;
 
-    getDocumentAction(documentId)
+    // 1. Fetch document version history & lineage thread entries (GET /documents/:id/versions)
+    setIsLoadingLineage(true);
+    documentService
+      .getDocumentVersions(activeDocId)
+      .then((res) => {
+        if (!isActive) return;
+        setLineageVersions(res.versions);
+        setLineageEntries(res.threadEntries);
+      })
+      .catch(() => {
+        if (!isActive) {
+          setLineageVersions([]);
+          setLineageEntries([]);
+        }
+      })
+      .finally(() => {
+        if (isActive) setIsLoadingLineage(false);
+      });
+
+    // 2. Fetch document record for current version
+    setIsLoadingDocument(true);
+    getDocumentAction(activeDocId)
       .then((document) => {
         if (!isActive) return;
         setLoadedDoc(document);
         setTitle(document.title);
         setCategory(document.category);
         setStatus(document.status);
+        setDocumentError(null);
       })
       .catch((error: unknown) => {
         if (!isActive) return;
@@ -157,8 +212,10 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
         if (isActive) setIsLoadingDocument(false);
       });
 
+    // 3. Fetch automated AI analysis flags for current version
+    setIsLoadingAnalysis(true);
     documentService
-      .getAnalysis(documentId)
+      .getAnalysis(activeDocId)
       .then((flags) => {
         if (!isActive) return;
         setAnalysisFlags(flags);
@@ -170,14 +227,15 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
         if (isActive) setIsLoadingAnalysis(false);
       });
 
+    // 4. Fetch audit trail entries for current document
     auditService
-      .getDocumentAuditTrail(documentId)
+      .getDocumentAuditTrail(activeDocId)
       .then((logs) => {
         if (!isActive) return;
         setAuditLogs(
           logs.map((log, idx) => ({
             id: log.id || `AUDIT-${idx + 1}`,
-            documentId: log.document_id || documentId,
+            documentId: log.document_id || activeDocId,
             documentTitle: title || "Document",
             timestamp: log.timestamp || new Date().toISOString(),
             relativeTime: new Date(log.timestamp || Date.now()).toLocaleDateString(),
@@ -191,16 +249,16 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
         );
       })
       .catch(() => {
-        if (isActive) setAuditLogs([]);
+        if (!isActive) setAuditLogs([]);
       });
 
     return () => {
       isActive = false;
     };
-  }, [documentId, title, status]);
+  }, [activeDocId, revisionRefreshKey]);
 
   const currentDocItem: DocumentItem = loadedDoc || {
-    id: documentId,
+    id: activeDocId,
     title: title || "Compliance Document",
     category: category || "Document",
     submittedBy: session?.name || "Advisor",
@@ -208,6 +266,27 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
     submittedAt: new Date().toISOString(),
     status,
   };
+
+  const piiMap = useMemo(() => {
+    if (!isOfficer || !currentDocItem) return {};
+    return buildPiiMap(currentDocItem.originalText, currentDocItem.maskedText);
+  }, [isOfficer, currentDocItem.originalText, currentDocItem.maskedText]);
+
+  const isDocx = Boolean(
+    currentDocItem.category === "DOCX" ||
+    currentDocItem.mimeType?.includes("word") ||
+    currentDocItem.fileName?.toLowerCase().endsWith(".docx") ||
+    currentDocItem.fileName?.toLowerCase().endsWith(".doc") ||
+    currentDocItem.fileUrl?.toLowerCase().endsWith(".docx") ||
+    currentDocItem.fileUrl?.toLowerCase().endsWith(".doc")
+  );
+
+  const isPdf = Boolean(
+    currentDocItem.category === "PDF" ||
+    currentDocItem.mimeType?.includes("pdf") ||
+    currentDocItem.fileName?.toLowerCase().endsWith(".pdf") ||
+    currentDocItem.fileUrl?.toLowerCase().endsWith(".pdf")
+  );
 
   /**
    * DOCU: Selects an AI flag, switches page view, and scrolls to flagged passage.
@@ -231,7 +310,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
       }, 150);
       return () => clearTimeout(timer);
     }
-  }, [selectedFlag, viewMode]);
+  }, [selectedFlag, viewMode, isUnmasked]);
 
   /**
    * DOCU: Executes officer status update and updates audit state.
@@ -247,10 +326,34 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
   ) => {
     setIsUpdating(true);
     setActionSuccess(null);
-    const docDisplayId = `DOC-${documentId.slice(-4).toUpperCase()}`;
+    const docDisplayId = `DOC-${activeDocId.slice(-4).toUpperCase()}`;
     try {
-      await updateDocumentStatusAction(documentId, newStatus);
+      await updateDocumentStatusAction(activeDocId, newStatus, comment);
       setStatus(newStatus);
+      setRevisionRefreshKey((prev) => prev + 1);
+
+      // Refresh audit logs immediately
+      try {
+        const freshLogs = await auditService.getDocumentAuditTrail(activeDocId);
+        setAuditLogs(
+          freshLogs.map((log, idx) => ({
+            id: log.id || `AUDIT-${idx + 1}`,
+            documentId: log.document_id || activeDocId,
+            documentTitle: title || "Document",
+            timestamp: log.timestamp || new Date().toISOString(),
+            relativeTime: new Date(log.timestamp || Date.now()).toLocaleDateString(),
+            user: log.actor_name || "Officer",
+            role: (log.actor_role as "Advisor" | "Officer" | "System") || "Officer",
+            action: log.action || "STATUS_RECORDED",
+            version: "v1.0",
+            details: log.notes || "Compliance action recorded.",
+            statusResult: log.new_status || newStatus,
+          }))
+        );
+      } catch {
+        // preserve existing logs
+      }
+
       setActionSuccess(
         `Decision executed: Document ${docDisplayId} marked as "${newStatus}". Immutable audit log recorded.`
       );
@@ -298,19 +401,22 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
   };
 
   /**
-   * DOCU: Downloads and exports the current document as a PDF.
+   * DOCU: Downloads and exports the current document.
    */
-  const handleExportPdf = () => {
+  const handleDownloadFile = () => {
     if (currentDocItem.fileUrl) {
+      const ext = isDocx ? ".docx" : isPdf ? ".pdf" : "";
+      const baseName = currentDocItem.fileName || currentDocItem.title || "document";
+      const filename = baseName.includes(".") ? baseName : `${baseName}${ext}`;
       const link = document.createElement("a");
       link.href = currentDocItem.fileUrl;
-      link.download = `${currentDocItem.title || "document"}.pdf`;
+      link.download = filename;
       link.target = "_blank";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     } else {
-      showInfoToast("PDF not available for export.");
+      showInfoToast("File not available for download.");
     }
   };
 
@@ -340,6 +446,9 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
               <h1 className="text-xs font-bold text-[#183028] truncate max-w-xs sm:max-w-md">
                 {title}
               </h1>
+              <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#183028] text-[#C5E86C]">
+                v{currentDocItem?.version || 1}
+              </span>
               <StatusBadge status={status} />
             </div>
             <p className="text-[11px] text-[#183028]/60 hidden sm:block">
@@ -350,14 +459,23 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
 
         <div className="flex items-center gap-2 shrink-0">
           <button
-            onClick={handleExportPdf}
+            onClick={handleDownloadFile}
             className="inline-flex items-center gap-1.5 h-8 px-3 rounded-xl text-xs font-semibold bg-[#183028] hover:bg-[#23453a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] text-white transition-all cursor-pointer shadow-2xs"
           >
             <Download className="h-3.5 w-3.5" />
-            <span>Export PDF</span>
+            <span>{isDocx ? "Download Word" : isPdf ? "Export PDF" : "Download File"}</span>
           </button>
         </div>
       </div>
+
+      {/* Version Lineage Selector (v1, v2) with Officer Revision Remarks */}
+      <VersionLineageSelector
+        versions={lineageVersions}
+        activeVersionId={activeDocId}
+        threadEntries={lineageEntries}
+        onSelectVersion={handleSelectVersion}
+        isLoading={isLoadingLineage}
+      />
 
       {documentError && (
         <ErrorState title="Unable to load document" message={documentError} />
@@ -372,39 +490,45 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
       )}
 
       {/* Mobile/Tablet Zone Switcher Tabs */}
-      <div className="border border-[#E6E8E7] bg-white flex lg:hidden p-1 rounded-xl shadow-2xs">
+      <div className="border border-[#E6E8E7] bg-white flex lg:hidden p-1.5 rounded-xl shadow-2xs gap-1.5">
         <button
+          type="button"
           onClick={() => setMobileActiveZone("document")}
           className={cn(
-            "flex-1 py-1.5 text-xs font-semibold rounded-lg text-center transition-colors cursor-pointer",
+            "flex-1 py-1.5 px-2 text-xs font-semibold rounded-lg text-center transition-colors cursor-pointer flex items-center justify-center gap-1.5",
             mobileActiveZone === "document"
               ? "bg-[#C5E86C] text-[#183028] font-bold shadow-2xs"
               : "bg-transparent text-[#183028]/70 hover:bg-[#C5E86C]/20 hover:text-[#183028]"
           )}
         >
-          Document Canvas
+          <FileText className="h-3.5 w-3.5" />
+          <span>Canvas</span>
         </button>
         <button
+          type="button"
           onClick={() => setMobileActiveZone("ai")}
           className={cn(
-            "flex-1 py-1.5 text-xs font-semibold rounded-lg text-center transition-colors cursor-pointer",
+            "flex-1 py-1.5 px-2 text-xs font-semibold rounded-lg text-center transition-colors cursor-pointer flex items-center justify-center gap-1.5",
             mobileActiveZone === "ai"
               ? "bg-[#C5E86C] text-[#183028] font-bold shadow-2xs"
               : "bg-transparent text-[#183028]/70 hover:bg-[#C5E86C]/20 hover:text-[#183028]"
           )}
         >
-          AI Assistance (3)
+          <Bot className="h-3.5 w-3.5" />
+          <span>AI Guidance ({analysisFlags.length})</span>
         </button>
         <button
+          type="button"
           onClick={() => setMobileActiveZone("decision")}
           className={cn(
-            "flex-1 py-1.5 text-xs font-semibold rounded-lg text-center transition-colors cursor-pointer",
+            "flex-1 py-1.5 px-2 text-xs font-semibold rounded-lg text-center transition-colors cursor-pointer flex items-center justify-center gap-1.5",
             mobileActiveZone === "decision"
               ? "bg-[#C5E86C] text-[#183028] font-bold shadow-2xs"
               : "bg-transparent text-[#183028]/70 hover:bg-[#C5E86C]/20 hover:text-[#183028]"
           )}
         >
-          Decision & History
+          <ShieldCheck className="h-3.5 w-3.5" />
+          <span>{isOfficer ? "Decision" : "Metadata"}</span>
         </button>
       </div>
 
@@ -488,12 +612,12 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                       <p className="text-[#183028] mt-0.5 font-medium">
                         {currentDocItem.submittedAt
                           ? new Date(currentDocItem.submittedAt).toLocaleDateString(undefined, {
-                              year: "numeric",
-                              month: "short",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
                           : "Recently Submitted"}
                       </p>
                     </div>
@@ -531,9 +655,9 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                       type="button"
                       disabled={isUpdating}
                       onClick={() => setActiveDecision("Approved")}
-                      className="w-full flex items-center justify-start gap-2 h-9 px-3 rounded-xl font-semibold text-xs bg-[#183028] text-white hover:bg-[#23453a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] cursor-pointer disabled:opacity-50 transition-all shadow-2xs"
+                      className="w-full flex items-center justify-start gap-2 h-9 px-3 rounded-xl font-bold text-xs bg-[#C5E86C] text-[#183028] hover:bg-[#b4db53] border border-[#a8ce4a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] cursor-pointer disabled:opacity-50 transition-all shadow-2xs"
                     >
-                      <CheckCircle2 className="h-4 w-4 text-[#C5E86C]" />
+                      <CheckCircle2 className="h-4 w-4 text-[#183028]" />
                       <span>Approve Proposal</span>
                     </button>
 
@@ -559,11 +683,11 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                   </div>}
                 </div>
               ) : activeLeftTab === "history" ? (
-                <RevisionThread documentId={documentId} />
+                <RevisionThread documentId={activeDocId} refreshKey={revisionRefreshKey} />
               ) : isOfficer ? (
-                <AuditTrailTable documentIdFilter={documentId} entries={auditLogs} />
+                <AuditTrailTable documentIdFilter={activeDocId} entries={auditLogs} />
               ) : (
-                <RevisionThread documentId={documentId} readOnly />
+                <RevisionThread documentId={activeDocId} readOnly refreshKey={revisionRefreshKey} />
               )}
             </div>
           </div>
@@ -584,7 +708,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
               <div className="flex items-center space-x-1.5">
                 <FileText className="h-3.5 w-3.5 text-[#183028]" />
                 <span className="font-mono text-[#183028] font-semibold truncate max-w-[120px] sm:max-w-[180px]">
-                  {currentDocItem.fileName || `${documentId}_Document`}
+                  {currentDocItem.fileName || `${activeDocId}_Document`}
                 </span>
               </div>
 
@@ -596,11 +720,11 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                   className={cn(
                     "px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors cursor-pointer",
                     viewMode === "iframe"
-                      ? "bg-[#183028] text-white shadow-2xs"
-                      : "text-[#183028]/70 hover:text-[#183028] hover:bg-white"
+                      ? "bg-[#C5E86C] text-[#183028] font-bold shadow-2xs"
+                      : "text-[#183028]/70 hover:text-[#183028] hover:bg-[#C5E86C]/20"
                   )}
                 >
-                  File Embed (PDF)
+                  {isDocx ? "Word Document" : isPdf ? "PDF Document" : "File Preview"}
                 </button>
                 <button
                   type="button"
@@ -608,8 +732,8 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                   className={cn(
                     "px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors cursor-pointer",
                     viewMode === "text"
-                      ? "bg-[#183028] text-white shadow-2xs"
-                      : "text-[#183028]/70 hover:text-[#183028] hover:bg-white"
+                      ? "bg-[#C5E86C] text-[#183028] font-bold shadow-2xs"
+                      : "text-[#183028]/70 hover:text-[#183028] hover:bg-[#C5E86C]/20"
                   )}
                 >
                   Extracted Text
@@ -620,8 +744,8 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                   className={cn(
                     "px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors cursor-pointer",
                     viewMode === "paper"
-                      ? "bg-[#183028] text-white shadow-2xs"
-                      : "text-[#183028]/70 hover:text-[#183028] hover:bg-white"
+                      ? "bg-[#C5E86C] text-[#183028] font-bold shadow-2xs"
+                      : "text-[#183028]/70 hover:text-[#183028] hover:bg-[#C5E86C]/20"
                   )}
                 >
                   Overview
@@ -654,6 +778,37 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                 >
                   <Printer className="h-3.5 w-3.5" />
                 </button>
+
+                {isOfficer && (
+                  <>
+                    <div className="h-4 w-px bg-[#E6E8E7] mx-1" />
+                    <button
+                      type="button"
+                      onClick={() => setIsUnmasked((prev) => !prev)}
+                      title={isUnmasked ? "Switch to Masked PII view" : "Switch to Raw Unmasked PII view (Officer Only)"}
+                      className={cn(
+                        "flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-lg border transition-all cursor-pointer shadow-2xs",
+                        isUnmasked
+                          ? "bg-amber-100 text-amber-950 border-amber-300 font-bold"
+                          : "bg-white text-[#183028] border-[#E6E8E7] hover:bg-[#E6E8E7]/40"
+                      )}
+                    >
+                      {isUnmasked ? (
+                        <>
+                          <EyeOff className="h-3.5 w-3.5 text-amber-800" />
+                          <span className="hidden sm:inline">Raw PII Active</span>
+                          <span className="sm:hidden">Raw</span>
+                        </>
+                      ) : (
+                        <>
+                          <Eye className="h-3.5 w-3.5 text-[#183028]/70" />
+                          <span className="hidden sm:inline">Show Raw PII</span>
+                          <span className="sm:hidden">Masked</span>
+                        </>
+                      )}
+                    </button>
+                  </>
+                )}
               </div>
             </div>
 
@@ -664,8 +819,13 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                   <span className="font-mono text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-100 border border-amber-300 text-amber-900 shrink-0">
                     {selectedFlag.severity || "MEDIUM"} • Rule {selectedFlag.ruleCode}
                   </span>
+                  {isOfficer && isUnmasked && (
+                    <span className="font-mono text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-200/80 border border-amber-400 text-amber-950 shrink-0">
+                      Raw PII
+                    </span>
+                  )}
                   <span className="truncate text-[11px] text-amber-900 font-serif italic max-w-[320px] sm:max-w-[480px]">
-                    &quot;{selectedFlag.passage}&quot;
+                    &quot;{isOfficer && isUnmasked ? unmaskText(selectedFlag.passage, piiMap) : selectedFlag.passage}&quot;
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
@@ -690,10 +850,29 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
             )}
 
             {/* Document Canvas Display */}
-            <div className="bg-white p-3 sm:p-4 flex-1 overflow-auto flex justify-center items-start">
+            <div className="bg-[#FAFBFB] p-2 sm:p-4 flex-1 overflow-y-auto overflow-x-hidden flex flex-col items-center justify-start">
               {viewMode === "iframe" ? (
-                <div className="w-full h-full min-h-[640px] flex flex-col items-center justify-center">
-                  {currentDocItem.fileUrl || currentDocItem.fileName ? (
+                <div className="w-full flex-1 flex flex-col items-center justify-start min-h-0">
+                  {isDocx && (currentDocItem.fileUrl || currentDocItem.fileName) ? (
+                    <DocxViewer
+                      fileUrl={
+                        currentDocItem.fileUrl ||
+                        `/api/raw-file/documents/${currentDocItem.fileName}`
+                      }
+                      zoomLevel={zoomLevel}
+                      title={currentDocItem.title}
+                      onFallbackToText={() => setViewMode("text")}
+                    />
+                  ) : isPdf && (currentDocItem.fileUrl || currentDocItem.fileName) ? (
+                    <iframe
+                      src={
+                        currentDocItem.fileUrl ||
+                        `/api/raw-file/documents/${currentDocItem.fileName}`
+                      }
+                      className="w-full h-[650px] border border-[#E6E8E7] rounded-xl bg-white shadow-2xs"
+                      title={currentDocItem.title || "Uploaded Document"}
+                    />
+                  ) : currentDocItem.fileUrl || currentDocItem.fileName ? (
                     <iframe
                       src={
                         currentDocItem.fileUrl ||
@@ -737,17 +916,26 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                   className="w-full max-w-[640px] bg-white text-[#183028] rounded-xl border border-[#E6E8E7] p-6 space-y-4 transition-transform duration-150 text-xs shadow-2xs"
                 >
                   <div className="flex items-center justify-between border-b border-[#E6E8E7] pb-3">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <FileText className="h-4 w-4 text-[#183028]" />
                       <span className="font-semibold text-xs text-[#183028]">Extracted Document Text</span>
+                      {isOfficer && isUnmasked && (
+                        <span className="px-2 py-0.5 text-[9px] font-bold rounded bg-amber-100 text-amber-900 border border-amber-300">
+
+                        </span>
+                      )}
                     </div>
                   </div>
 
                   <div className="bg-white p-4 rounded-xl border border-[#E6E8E7] font-mono text-[11px] leading-relaxed text-[#183028] whitespace-pre-wrap max-h-[520px] overflow-y-auto">
                     {currentDocItem.maskedText || currentDocItem.originalText ? (
                       renderHighlightedText(
-                        currentDocItem.maskedText || currentDocItem.originalText || "",
-                        selectedFlag?.passage
+                        isOfficer && isUnmasked
+                          ? unmaskText(currentDocItem.maskedText || currentDocItem.originalText || "", piiMap)
+                          : currentDocItem.maskedText || currentDocItem.originalText || "",
+                        isOfficer && isUnmasked && selectedFlag?.passage
+                          ? unmaskText(selectedFlag.passage, piiMap)
+                          : selectedFlag?.passage
                       )
                     ) : (
                       <div className="text-[#183028]/70 italic space-y-2 font-sans">
@@ -820,12 +1008,12 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                       <p className="text-[10px] text-[#183028]/50 mt-0.5">
                         Filing Date: {currentDocItem.submittedAt
                           ? new Date(currentDocItem.submittedAt).toLocaleDateString(undefined, {
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
                           : "Recently Submitted"}
                       </p>
                     </div>
@@ -905,7 +1093,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
             {/* Viewer Bottom Controls */}
             <div className="border-t border-[#E6E8E7] bg-white px-3.5 py-2.5 flex items-center justify-between text-xs text-[#183028] shrink-0">
               <span className="font-mono text-[11px] text-[#183028]/60">
-                Document {documentId}
+                Document {activeDocId}
               </span>
             </div>
           </div>
@@ -922,12 +1110,16 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
         >
           {isOfficer ? (
             <AIAssistPanel
-              documentId={documentId}
+              documentId={activeDocId}
               flags={analysisFlags}
               selectedFlagId={selectedFlag?.id || null}
               onSelectFlag={handleSelectFlag}
               isLoading={isLoadingAnalysis}
               onRefresh={handleRefreshAnalysis}
+              isUnmasked={isUnmasked}
+              onToggleUnmask={() => setIsUnmasked((prev) => !prev)}
+              piiMap={piiMap}
+              isOfficer={isOfficer}
             />
           ) : (
             <div className="border border-[#E6E8E7] bg-white text-[#183028] rounded-2xl h-full p-6 text-sm shadow-2xs">
@@ -943,7 +1135,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
       {isOfficer && <DecisionDialog
         isOpen={!!activeDecision}
         onClose={() => setActiveDecision(null)}
-        documentId={documentId}
+        documentId={activeDocId}
         documentTitle={title}
         decisionType={activeDecision}
         onConfirmDecision={handleExecuteDecision}

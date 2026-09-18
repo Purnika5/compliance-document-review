@@ -6,3 +6,4 @@
 export * from "./auth.service";
 export * from "./document.service";
 export * from "./audit.service";
+export * from "./notification.service";

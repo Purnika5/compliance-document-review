@@ -72,8 +72,49 @@ export interface DocumentItem {
   maskedText?: string;
   /** Original extracted text content. */
   originalText?: string;
+  /** Document version number in lineage (1, 2, ...). */
+  version?: number;
+  /** Root document identifier for versioned lineage tracking. */
+  originalDocumentId?: string | null;
   /** Full URL to access uploaded file. */
   fileUrl?: string;
+}
+
+/**
+ * DOCU: Represents a specific historical version in a document lineage.
+ * Last Updated Date: September 18, 2026
+ * @author Keith
+ */
+export interface DocumentVersionItem extends DocumentItem {
+  version: number;
+  previousOfficerRemarks?: string;
+}
+
+/**
+ * DOCU: Lineage thread entry representing an action, remark, or revision submission.
+ * Last Updated Date: September 18, 2026
+ * @author Keith
+ */
+export interface LineageThreadEntry {
+  id: string;
+  threadId: string;
+  documentId: string;
+  authorId: string;
+  authorName: string;
+  authorRole: "Officer" | "Advisor" | "System" | string;
+  entryType: "decision" | "submission" | "comment" | string;
+  message: string;
+  createdAt: string;
+}
+
+/**
+ * DOCU: Response structure for GET /documents/:id/versions.
+ * Last Updated Date: September 18, 2026
+ * @author Keith
+ */
+export interface DocumentLineageResponse {
+  versions: DocumentVersionItem[];
+  threadEntries: LineageThreadEntry[];
 }
 
 /**

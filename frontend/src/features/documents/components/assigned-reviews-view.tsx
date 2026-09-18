@@ -203,7 +203,7 @@ export function AssignedReviewsView() {
                 className={cn(
                   "px-3 py-1.5 rounded-md font-semibold transition-all cursor-pointer",
                   activeTab === tab
-                    ? "bg-[#183028] text-white shadow-xs"
+                    ? "bg-[#C5E86C] text-[#183028] font-bold shadow-xs"
                     : "bg-transparent text-[#183028]/70 hover:bg-[#C5E86C]/20 hover:text-[#183028]"
                 )}
               >

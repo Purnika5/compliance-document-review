@@ -17,46 +17,18 @@ import {
 export function QueueSkeleton() {
   return (
     <div className="space-y-4 max-w-[1600px] mx-auto pb-16 animate-fade-in">
-      {/* 3 Metric Cards Skeleton Grid */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12">
-        {/* Card 1: Review Queue Volume */}
-        <div className="rounded-xl p-5 sm:col-span-2 lg:col-span-4 border border-[#E6E8E7] bg-white shadow-2xs space-y-3">
-          <Skeleton className="h-3 w-32 rounded bg-[#E6E8E7]/70" />
-          <div className="flex items-baseline justify-between">
-            <Skeleton className="h-11 w-16 rounded-lg bg-[#E6E8E7]/80" />
-            <Skeleton className="h-4 w-28 rounded bg-[#E6E8E7]/50" />
+      {/* 5 Metric Cards Skeleton Grid (Balanced 5-Column Grid) */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="rounded-xl p-4 border border-[#E6E8E7] bg-white shadow-2xs space-y-2.5">
+            <Skeleton className="h-3 w-28 rounded bg-[#E6E8E7]/70" />
+            <div className="flex items-baseline justify-between pt-1">
+              <Skeleton className="h-8 w-14 rounded-lg bg-[#E6E8E7]/80" />
+              <Skeleton className="h-3 w-20 rounded bg-[#E6E8E7]/50" />
+            </div>
+            <Skeleton className="h-8 w-full rounded-md bg-[#E6E8E7]/40 mt-2" />
           </div>
-          <div className="pt-2 border-t border-[#E6E8E7] flex items-center justify-between">
-            <Skeleton className="h-3 w-24 rounded bg-[#E6E8E7]/50" />
-            <Skeleton className="h-3 w-16 rounded bg-[#E6E8E7]/50" />
-          </div>
-        </div>
-
-        {/* Card 2: Direct Action Needed */}
-        <div className="rounded-xl p-5 sm:col-span-1 lg:col-span-4 border border-[#E6E8E7] bg-white shadow-2xs space-y-3">
-          <Skeleton className="h-3 w-36 rounded bg-[#E6E8E7]/70" />
-          <div className="flex items-baseline justify-between">
-            <Skeleton className="h-11 w-16 rounded-lg bg-[#E6E8E7]/80" />
-            <Skeleton className="h-4 w-24 rounded bg-[#E6E8E7]/50" />
-          </div>
-          <div className="pt-2 border-t border-[#E6E8E7] flex items-center justify-between">
-            <Skeleton className="h-3 w-28 rounded bg-[#E6E8E7]/50" />
-            <Skeleton className="h-3 w-12 rounded bg-[#E6E8E7]/50" />
-          </div>
-        </div>
-
-        {/* Card 3: Compliance Review Velocity */}
-        <div className="rounded-xl p-5 sm:col-span-1 lg:col-span-4 border border-[#E6E8E7] bg-white shadow-2xs space-y-3">
-          <Skeleton className="h-3 w-44 rounded bg-[#E6E8E7]/70" />
-          <div className="flex items-baseline justify-between">
-            <Skeleton className="h-11 w-20 rounded-lg bg-[#E6E8E7]/80" />
-            <Skeleton className="h-4 w-20 rounded bg-[#E6E8E7]/50" />
-          </div>
-          <div className="pt-2 border-t border-[#E6E8E7] flex items-center justify-between">
-            <Skeleton className="h-3 w-32 rounded bg-[#E6E8E7]/50" />
-            <Skeleton className="h-3 w-14 rounded bg-[#E6E8E7]/50" />
-          </div>
-        </div>
+        ))}
       </div>
 
       {/* Queue Toolbar Skeleton */}

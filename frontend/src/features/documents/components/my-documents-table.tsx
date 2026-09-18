@@ -56,6 +56,7 @@ import {
 } from "lucide-react";
 import type { DocumentItem } from "@/lib/validation/document";
 import { cn } from "@/lib/utils";
+import { MetricLineChart } from "@/components/shared/metric-line-chart";
 import { showInfoToast } from "@/components/ui/toast";
 import { FileTypeIcon } from "@/components/shared/file-type-icon";
 import { DateFilterModal, type DateFilterPreset } from "./date-filter-modal";
@@ -412,9 +413,32 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
               </TableHeader>
               <TableBody className="bg-[#FFFFFF] divide-y divide-[#E6E8E7]">
                 {paginatedDocuments.length === 0 ? (
-                  <TableRow className="bg-[#FFFFFF]">
-                    <TableCell colSpan={6} className="text-center py-12 text-[#183028]/50 text-xs">
-                      No documents found matching your filter criteria.
+                  <TableRow className="bg-[#FFFFFF] hover:bg-transparent">
+                    <TableCell colSpan={6} className="py-12 px-4 text-center">
+                      <EmptyState
+                        icon={Search}
+                        title={searchQuery || activeFilter !== "All" || dateFilterPreset !== "All" ? "No Matching Submissions" : "No Submissions Recorded"}
+                        description={
+                          searchQuery || activeFilter !== "All" || dateFilterPreset !== "All"
+                            ? "No document submissions matched your search query or selected filter criteria."
+                            : "You have not submitted any compliance documents yet. Click below to initiate your first filing."
+                        }
+                        actionLabel={
+                          searchQuery || activeFilter !== "All" || dateFilterPreset !== "All"
+                            ? "Clear Filters"
+                            : "Upload Document"
+                        }
+                        onAction={
+                          searchQuery || activeFilter !== "All" || dateFilterPreset !== "All"
+                            ? () => {
+                              setSearchQuery("");
+                              setActiveFilter("All");
+                              setDateFilterPreset("All");
+                              setSelectedDay(null);
+                            }
+                            : openModal
+                        }
+                      />
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -543,109 +567,123 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
               </div>
             </div>
 
-            {/* 5 Metric KPI Cards matching Officer Review Queue */}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12 pt-5">
+            {/* 5 Metric KPI Cards matching Officer Review Queue (Balanced 5-Column Grid) */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 pt-5">
               {/* Total Submissions */}
-              <div className="rounded-xl p-5 sm:col-span-2 lg:col-span-4 border border-border bg-card shadow-xs flex flex-col justify-center relative overflow-hidden group">
-                <div className="relative z-10 space-y-2">
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                    Review Queue Volume
-                  </p>
-                  <div className="flex items-end justify-between gap-3">
-                    <div>
-                      <h3 className="text-5xl font-bold tracking-tight text-foreground">{documents.length}</h3>
-                    </div>
+              <div className="rounded-xl p-4 border border-border bg-card shadow-xs flex flex-col justify-between group">
+                <div>
+                  <div className="flex items-center justify-between gap-1">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider truncate">
+                      Review Queue Volume
+                    </p>
+                  </div>
+                  <div className="mt-2 flex items-baseline justify-between gap-2">
+                    <h3 className="text-3xl font-bold text-foreground tracking-tight">{documents.length}</h3>
+                    <span className="text-[11px] text-muted-foreground font-medium truncate">Total submissions</span>
                   </div>
                 </div>
-                {/* Decorative Sparkline */}
-                <div className="absolute bottom-0 left-0 w-full h-16 pointer-events-none">
-                  <svg viewBox="0 0 100 30" preserveAspectRatio="none" className="w-full h-full text-cyan-500">
-                    <path d="M0,30 L0,18 C15,10 25,25 40,20 C55,15 70,26 85,14 C90,10 95,18 100,12 L100,30 Z" fill="currentColor" fillOpacity="0.1" />
-                    <path d="M0,18 C15,10 25,25 40,20 C55,15 70,26 85,14 C90,10 95,18 100,12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                <div className="mt-3 w-full">
+                  <MetricLineChart
+                    value={documents.length}
+                    color="#0284c7"
+                    height={36}
+                  />
                 </div>
               </div>
 
               {/* Pending Review */}
-              <div className="rounded-xl p-4 space-y-2 sm:col-span-1 lg:col-span-2 border border-border bg-card shadow-xs relative overflow-hidden flex flex-col justify-between group">
-                <div className="relative z-10">
-                  <div className="flex items-center justify-between">
-                    <p className="text-[10px] font-semibold text-amber-700 uppercase tracking-wider">
+              <div className="rounded-xl p-4 border border-border bg-card shadow-xs flex flex-col justify-between group">
+                <div>
+                  <div className="flex items-center justify-between gap-1">
+                    <p className="text-[10px] font-semibold text-amber-700 uppercase tracking-wider truncate">
                       Pending Evaluation
                     </p>
                     {pendingCount > 0 && (
-                      <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0 animate-pulse" />
                     )}
                   </div>
-                  <h3 className="text-3xl font-bold text-foreground mt-2">{pendingCount}</h3>
-                  <span className="text-[11px] text-muted-foreground">Needs action</span>
+                  <div className="mt-2 flex items-baseline justify-between gap-2">
+                    <h3 className="text-3xl font-bold text-foreground tracking-tight">{pendingCount}</h3>
+                    <span className="text-[11px] text-muted-foreground font-medium truncate">Needs action</span>
+                  </div>
                 </div>
-                {/* Decorative Sparkline */}
-                <div className="absolute bottom-0 left-0 w-full h-12 pointer-events-none">
-                  <svg viewBox="0 0 100 30" preserveAspectRatio="none" className="w-full h-full text-amber-500">
-                    <path d="M0,30 L0,22 C12,18 25,26 38,15 C50,4 65,20 75,12 C85,4 92,16 100,10 L100,30 Z" fill="currentColor" fillOpacity="0.1" />
-                    <path d="M0,22 C12,18 25,26 38,15 C50,4 65,20 75,12 C85,4 92,16 100,10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                <div className="mt-3 w-full">
+                  <MetricLineChart
+                    value={pendingCount}
+                    color="#d97706"
+                    height={36}
+                  />
                 </div>
               </div>
 
               {/* Needs Revision / High Priority */}
-              <div className="rounded-xl p-4 space-y-2 sm:col-span-1 lg:col-span-2 border border-border bg-card shadow-xs relative overflow-hidden flex flex-col justify-between group">
-                <div className="relative z-10">
-                  <div className="flex items-center justify-between">
-                    <p className="text-[10px] font-semibold text-orange-400 uppercase tracking-wider">
+              <div className="rounded-xl p-4 border border-border bg-card shadow-xs flex flex-col justify-between group">
+                <div>
+                  <div className="flex items-center justify-between gap-1">
+                    <p className="text-[10px] font-semibold text-orange-500 uppercase tracking-wider truncate">
                       Action Required (Revisions)
                     </p>
                     {needsRevisionCount > 0 && (
-                      <span className="h-1.5 w-1.5 rounded-full bg-orange-400 animate-pulse" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-orange-400 shrink-0 animate-pulse" />
                     )}
                   </div>
-                  <h3 className="text-3xl font-bold text-foreground mt-2">{needsRevisionCount}</h3>
-                  <span className="text-[11px] text-muted-foreground">Awaiting advisor</span>
+                  <div className="mt-2 flex items-baseline justify-between gap-2">
+                    <h3 className="text-3xl font-bold text-foreground tracking-tight">{needsRevisionCount}</h3>
+                    <span className="text-[11px] text-muted-foreground font-medium truncate">Awaiting advisor</span>
+                  </div>
                 </div>
-                {/* Decorative Sparkline */}
-                <div className="absolute bottom-0 left-0 w-full h-12 pointer-events-none">
-                  <svg viewBox="0 0 100 30" preserveAspectRatio="none" className="w-full h-full text-orange-500">
-                    <path d="M0,30 L0,15 C15,5 25,25 40,18 C55,11 70,22 85,8 C90,3 95,12 100,6 L100,30 Z" fill="currentColor" fillOpacity="0.1" />
-                    <path d="M0,15 C15,5 25,25 40,18 C55,11 70,22 85,8 C90,3 95,12 100,6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                <div className="mt-3 w-full">
+                  <MetricLineChart
+                    value={needsRevisionCount}
+                    color="#ea580c"
+                    height={36}
+                  />
                 </div>
               </div>
 
               {/* Approved Records */}
-              <div className="rounded-xl p-4 space-y-2 sm:col-span-1 lg:col-span-2 border border-border bg-card shadow-xs relative overflow-hidden flex flex-col justify-between group">
-                <div className="relative z-10">
-                  <p className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider">
-                    Approved &amp; Verified
-                  </p>
-                  <h3 className="text-3xl font-bold text-foreground mt-2">{approvedCount}</h3>
-                  <span className="text-[11px] text-muted-foreground">Audit compliant</span>
+              <div className="rounded-xl p-4 border border-border bg-card shadow-xs flex flex-col justify-between group">
+                <div>
+                  <div className="flex items-center justify-between gap-1">
+                    <p className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wider truncate">
+                      Approved &amp; Verified
+                    </p>
+                  </div>
+                  <div className="mt-2 flex items-baseline justify-between gap-2">
+                    <h3 className="text-3xl font-bold text-foreground tracking-tight">{approvedCount}</h3>
+                    <span className="text-[11px] text-muted-foreground font-medium truncate">Audit compliant</span>
+                  </div>
                 </div>
-                {/* Decorative Sparkline */}
-                <div className="absolute bottom-0 left-0 w-full h-12 pointer-events-none">
-                  <svg viewBox="0 0 100 30" preserveAspectRatio="none" className="w-full h-full text-emerald-500">
-                    <path d="M0,30 L0,25 C20,20 30,10 50,15 C70,20 80,5 100,2 L100,30 Z" fill="currentColor" fillOpacity="0.1" />
-                    <path d="M0,25 C20,20 30,10 50,15 C70,20 80,5 100,2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                <div className="mt-3 w-full">
+                  <MetricLineChart
+                    value={approvedCount}
+                    color="#16a34a"
+                    height={36}
+                  />
                 </div>
               </div>
 
               {/* Review Throughput */}
-              <div className="rounded-xl p-4 space-y-2 sm:col-span-1 lg:col-span-2 border border-border bg-card shadow-xs relative overflow-hidden flex flex-col justify-between group">
-                <div className="relative z-10">
-                  <div className="flex items-center justify-between">
-                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Review throughput</p>
-                    <Percent className="h-4 w-4 text-emerald-400" />
+              <div className="rounded-xl p-4 border border-border bg-card shadow-xs flex flex-col justify-between group">
+                <div>
+                  <div className="flex items-center justify-between gap-1">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider truncate">
+                      Review throughput
+                    </p>
+                    <Percent className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
                   </div>
-                  <h3 className="text-3xl font-bold text-foreground mt-2">{reviewRate}%</h3>
-                  <p className="text-[11px] text-muted-foreground">Approved or rejected records</p>
+                  <div className="mt-2 flex items-baseline justify-between gap-2">
+                    <h3 className="text-3xl font-bold text-foreground tracking-tight">{reviewRate}%</h3>
+                    <span className="text-[11px] text-muted-foreground font-medium truncate">Processed</span>
+                  </div>
                 </div>
-                {/* Decorative Sparkline */}
-                <div className="absolute bottom-0 left-0 w-full h-12 pointer-events-none">
-                  <svg viewBox="0 0 100 30" preserveAspectRatio="none" className="w-full h-full text-emerald-500">
-                    <path d="M0,30 L0,20 C10,15 20,25 30,18 C40,11 50,22 60,10 C70,-2 80,12 90,5 L100,8 L100,30 Z" fill="currentColor" fillOpacity="0.1" />
-                    <path d="M0,20 C10,15 20,25 30,18 C40,11 50,22 60,10 C70,-2 80,12 90,5 L100,8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                <div className="mt-3 w-full">
+                  <MetricLineChart
+                    value={reviewRate}
+                    type="percent"
+                    color="#10b981"
+                    height={36}
+                  />
                 </div>
               </div>
             </div>

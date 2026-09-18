@@ -98,6 +98,14 @@ export const authStore = {
   },
 
   /**
+   * DOCU: Returns whether a valid user session token exists.
+   * Last Updated Date: September 18, 2026
+   */
+  isAuthenticated(): boolean {
+    return Boolean(currentSession?.token);
+  },
+
+  /**
    * DOCU: Replaces the current session, persists to storage, and notifies all subscribers.
    * Last Updated Date: September 7, 2026
    * @param session - New UserSession object or null to log out.

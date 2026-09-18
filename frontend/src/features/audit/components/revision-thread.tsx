@@ -12,8 +12,10 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { cn } from "@/lib/utils";
-
 import { authStore } from "@/lib/auth/auth-store";
+import { apiClient } from "@/utils/apiClient";
+import { API_ENDPOINTS } from "@/constants/api-endpoints";
+import type { ApiResponseEnvelope } from "@/entities/types/api.type";
 
 export interface IRevisionEvent {
   id: string;
@@ -31,15 +33,17 @@ export interface RevisionThreadProps {
   events?: IRevisionEvent[];
   onAddComment?: (comment: string) => void;
   readOnly?: boolean;
+  refreshKey?: number;
 }
 
 /**
  * DOCU: Renders the revision history and optional comment form for a document.
- * Last Updated Date: September 7, 2026
+ * Last Updated Date: September 18, 2026
  * @param documentId - Document identifier displayed in the revision header.
  * @param events - Revision events supplied by the document workflow.
  * @param onAddComment - Optional callback invoked after a comment is added.
  * @param readOnly - Whether comment submission controls are disabled.
+ * @param refreshKey - Dynamic trigger to re-query backend thread entries.
  * @returns The revision thread view.
  * @author Keith
  */
@@ -48,23 +52,76 @@ export function RevisionThread({
   events = [],
   onAddComment,
   readOnly = false,
+  refreshKey = 0,
 }: RevisionThreadProps) {
-  const [timeline, setTimeline] = useState<IRevisionEvent[]>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(`revisions_${documentId}`);
-      if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch (e) {
-          console.error("Failed to parse revisions from localStorage", e);
-        }
-      }
-    }
-    return events;
-  });
+  const [timeline, setTimeline] = useState<IRevisionEvent[]>(events);
+  const [isLoadingThread, setIsLoadingThread] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    let isActive = true;
+    async function loadBackendThread() {
+      setIsLoadingThread(true);
+      try {
+        const res = await apiClient.get<
+          ApiResponseEnvelope<{ versions?: Record<string, unknown>[]; thread_entries?: Record<string, unknown>[] }>
+        >(API_ENDPOINTS.DOCUMENTS.VERSIONS(documentId));
+
+        const entries = res?.data?.thread_entries;
+        if (Array.isArray(entries) && isActive) {
+          const apiTimeline: IRevisionEvent[] = entries.map((entry, idx) => {
+            const roleStr = String(entry.author_role || "").toUpperCase();
+            const role: "Advisor" | "Officer" | "System" = roleStr === "OFFICER" ? "Officer" : "Advisor";
+            const isDecision = entry.entry_type === "decision";
+            const isSubmission = entry.entry_type === "submission";
+            return {
+              id: String(entry.id || `entry-${idx + 1}`),
+              version: `v1.${idx + 1}`,
+              author: String(entry.author_name || (role === "Officer" ? "Compliance Officer" : "Advisor")),
+              role,
+              action: isDecision
+                ? "Officer Review Decision"
+                : isSubmission
+                ? "Advisor Document Submission"
+                : "Collaboration Note",
+              comment: String(entry.message || ""),
+              timestamp: entry.created_at ? new Date(String(entry.created_at)).toLocaleString() : "Recently",
+            };
+          });
+
+          if (apiTimeline.length > 0) {
+            setTimeline(apiTimeline);
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn("[RevisionThread] Failed to fetch backend thread entries:", err);
+      } finally {
+        if (isActive) setIsLoadingThread(false);
+      }
+
+      // Fallback to localStorage or provided events if backend returns no entries
+      if (typeof window !== "undefined") {
+        const saved = localStorage.getItem(`revisions_${documentId}`);
+        if (saved) {
+          try {
+            setTimeline(JSON.parse(saved));
+            return;
+          } catch {
+            // ignore
+          }
+        }
+      }
+      setTimeline(events);
+    }
+
+    loadBackendThread();
+    return () => {
+      isActive = false;
+    };
+  }, [documentId, refreshKey, events]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && timeline.length > 0) {
       localStorage.setItem(`revisions_${documentId}`, JSON.stringify(timeline));
     }
   }, [timeline, documentId]);

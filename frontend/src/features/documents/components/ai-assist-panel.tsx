@@ -14,8 +14,12 @@ import {
   FileCheck,
   RefreshCw,
   Loader2,
+  Eye,
+  EyeOff,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { unmaskText } from "@/utils/pii-unmasker";
 
 export interface IAIFlagItem {
   id: string;
@@ -35,6 +39,10 @@ export interface AIAssistPanelProps {
   onSelectFlag?: (flag: IAIFlagItem) => void;
   isLoading?: boolean;
   onRefresh?: () => void;
+  isUnmasked?: boolean;
+  onToggleUnmask?: () => void;
+  piiMap?: Record<string, string>;
+  isOfficer?: boolean;
 }
 
 export function AIAssistPanel({
@@ -44,6 +52,10 @@ export function AIAssistPanel({
   onSelectFlag,
   isLoading = false,
   onRefresh,
+  isUnmasked = false,
+  onToggleUnmask,
+  piiMap = {},
+  isOfficer = false,
 }: AIAssistPanelProps) {
   const [activeTab, setActiveTab] = useState<"flags" | "copilot">("flags");
 
@@ -67,17 +79,45 @@ export function AIAssistPanel({
           </div>
         </div>
 
-        {onRefresh && (
-          <button
-            type="button"
-            disabled={isLoading}
-            onClick={onRefresh}
-            title="Refresh AI Analysis"
-            className="p-1.5 rounded-xl text-[#183028]/60 hover:text-[#183028] hover:bg-[#C5E86C]/20 transition-colors cursor-pointer border border-[#E6E8E7] disabled:opacity-50"
-          >
-            <RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin text-[#183028]")} />
-          </button>
-        )}
+        <div className="flex items-center gap-1.5">
+          {isOfficer && onToggleUnmask && (
+            <button
+              type="button"
+              onClick={onToggleUnmask}
+              title={isUnmasked ? "Switch to Masked PII view" : "Switch to Raw Unmasked PII view (Officer Only)"}
+              className={cn(
+                "flex items-center gap-1 px-2 py-1 rounded-xl text-[10px] font-semibold border transition-all cursor-pointer",
+                isUnmasked
+                  ? "bg-amber-100 text-amber-900 border-amber-300 shadow-2xs font-bold"
+                  : "bg-white text-[#183028]/70 border-[#E6E8E7] hover:text-[#183028] hover:bg-[#E6E8E7]/40"
+              )}
+            >
+              {isUnmasked ? (
+                <>
+                  <EyeOff className="h-3 w-3 text-amber-700" />
+                  <span>Raw PII</span>
+                </>
+              ) : (
+                <>
+                  <Eye className="h-3 w-3" />
+                  <span>Masked</span>
+                </>
+              )}
+            </button>
+          )}
+
+          {onRefresh && (
+            <button
+              type="button"
+              disabled={isLoading}
+              onClick={onRefresh}
+              title="Refresh AI Analysis"
+              className="p-1.5 rounded-xl text-[#183028]/60 hover:text-[#183028] hover:bg-[#C5E86C]/20 transition-colors cursor-pointer border border-[#E6E8E7] disabled:opacity-50"
+            >
+              <RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin text-[#183028]")} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Institutional Framing Notice (Never AI Decision Maker) */}
@@ -172,6 +212,9 @@ export function AIAssistPanel({
                 <div className="space-y-2">
                   {flags.map((flag) => {
                     const isSelected = selectedFlagId === flag.id;
+                    const displayTitle = isUnmasked ? unmaskText(flag.title, piiMap) : flag.title;
+                    const displayPassage = isUnmasked ? unmaskText(flag.passage, piiMap) : flag.passage;
+                    const displayExplanation = isUnmasked ? unmaskText(flag.explanation, piiMap) : flag.explanation;
 
                     return (
                       <div
@@ -185,35 +228,49 @@ export function AIAssistPanel({
                         )}
                       >
                         <div className="flex items-center justify-between gap-1 mb-1">
-                          <span
-                            className={cn(
-                              "px-1.5 py-0.5 text-[10px] font-bold rounded-lg border uppercase tracking-wider font-mono",
-                              flag.severity === "HIGH" && "bg-rose-50 text-rose-900 border-rose-300",
-                              flag.severity === "MEDIUM" && "bg-amber-50 text-amber-900 border-amber-300",
-                              flag.severity === "LOW" && "bg-[#E6E8E7]/50 text-[#183028] border-[#E6E8E7]"
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span
+                              className={cn(
+                                "px-1.5 py-0.5 text-[10px] font-bold rounded-lg border uppercase tracking-wider font-mono",
+                                flag.severity === "HIGH" && "bg-rose-50 text-rose-900 border-rose-300",
+                                flag.severity === "MEDIUM" && "bg-amber-50 text-amber-900 border-amber-300",
+                                flag.severity === "LOW" && "bg-[#E6E8E7]/50 text-[#183028] border-[#E6E8E7]"
+                              )}
+                            >
+                              {flag.severity} • Rule {flag.ruleCode}
+                            </span>
+                            {isUnmasked && (
+                              <span className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-amber-100 text-amber-900 border border-amber-300">
+                                Raw PII Active
+                              </span>
                             )}
-                          >
-                            {flag.severity} • Rule {flag.ruleCode}
-                          </span>
+                          </div>
                           <span className="text-[10px] text-[#183028]/60 font-mono">
                             Page {flag.pageNumber}
                           </span>
                         </div>
 
-                        <h4 className="text-xs font-bold text-[#183028] leading-snug">{flag.title}</h4>
+                        <h4 className="text-xs font-bold text-[#183028] leading-snug">{displayTitle}</h4>
 
-                        {flag.passage && (
+                        {displayPassage && (
                           <div className="border border-[#E6E8E7] bg-[#E6E8E7]/20 rounded-lg mt-1.5 p-2 text-[#183028] text-[11px] space-y-0.5">
-                            <span className="font-semibold block text-[10px] uppercase tracking-wider text-[#183028]/50">
-                              Flagged Passage
-                            </span>
-                            <p className="italic font-serif leading-relaxed text-[#183028]/90">{`"${flag.passage}"`}</p>
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold block text-[10px] uppercase tracking-wider text-[#183028]/50">
+                                Flagged Passage
+                              </span>
+                              {isUnmasked && (
+                                <span className="text-[9px] font-semibold text-amber-800 italic">
+                                  Display-Layer Unmasked
+                                </span>
+                              )}
+                            </div>
+                            <p className="italic font-serif leading-relaxed text-[#183028]/90">{`"${displayPassage}"`}</p>
                           </div>
                         )}
 
                         <p className="mt-1.5 text-[11px] text-[#183028]/70 leading-normal">
                           <strong className="text-[#183028]">Rule Rationale: </strong>
-                          {flag.explanation}
+                          {displayExplanation}
                         </p>
 
                         <div className="mt-2 pt-2 border-t border-[#E6E8E7] flex items-center justify-between text-[10px] text-[#183028]/60">

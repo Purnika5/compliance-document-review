@@ -60,6 +60,10 @@ export interface DocumentItem {
   maskedText?: string;
   /** Original extracted text content. */
   originalText?: string;
+  /** Document version number in lineage (1, 2, ...). */
+  version?: number;
+  /** Root document identifier for versioned lineage tracking. */
+  originalDocumentId?: string | null;
   /** URL to access the uploaded file. */
   fileUrl?: string;
 }

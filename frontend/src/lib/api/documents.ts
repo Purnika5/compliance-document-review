@@ -25,6 +25,8 @@ interface ApiDocument {
   file_size: number;
   mime_type: string;
   status: DocumentStatusType;
+  version?: number;
+  original_document_id?: string | null;
   advisor_id: string;
   advisor_name?: string;
   advisor_email?: string;
@@ -54,6 +56,8 @@ function mapApiDocumentToItem(doc: ApiDocument): DocumentItem {
     advisorEmail: doc.advisor_email,
     submittedAt: doc.created_at,
     status: doc.status,
+    version: doc.version ? Number(doc.version) : 1,
+    originalDocumentId: doc.original_document_id,
     fileSize: doc.file_size ? (doc.file_size < 1024 * 1024 ? `${(doc.file_size / 1024).toFixed(1)} KB` : `${(doc.file_size / (1024 * 1024)).toFixed(1)} MB`) : undefined,
     notes: doc.description,
     fileName: doc.file_name,
@@ -93,9 +97,8 @@ export async function fetchMySubmissionsRequest(): Promise<DocumentItem[]> {
  * @author Keith
  */
 export async function fetchQueueRequest(statusFilter?: string): Promise<DocumentItem[]> {
-  const query =
-    statusFilter && statusFilter !== "All" ? `?status=${encodeURIComponent(statusFilter)}` : "";
-  const envelope = await client.get<Envelope<ApiDocument[]>>(`/documents${query}`);
+  const query = statusFilter ? `?status=${encodeURIComponent(statusFilter)}` : "";
+  const envelope = await client.get<Envelope<ApiDocument[]>>(`/documents/queue${query}`);
   return envelope.data.map(mapApiDocumentToItem);
 }
 
@@ -109,6 +112,65 @@ export async function fetchQueueRequest(statusFilter?: string): Promise<Document
 export async function fetchDocumentRequest(documentId: string): Promise<DocumentItem> {
   const envelope = await client.get<Envelope<ApiDocument>>(`/documents/${documentId}`);
   return mapApiDocumentToItem(envelope.data);
+}
+
+/**
+ * DOCU: Retrieves all versions and revision thread entries for a document lineage.
+ * Calls GET /documents/:id/versions.
+ * Last Updated Date: September 18, 2026
+ * @param documentId - Document identifier to retrieve versions for.
+ * @returns Document lineage versions and revision thread entries.
+ * @author Keith
+ */
+export async function fetchDocumentVersionsRequest(documentId: string): Promise<{
+  versions: (DocumentItem & { version: number })[];
+  threadEntries: {
+    id: string;
+    threadId: string;
+    documentId: string;
+    authorId: string;
+    authorName: string;
+    authorRole: string;
+    entryType: string;
+    message: string;
+    createdAt: string;
+  }[];
+}> {
+  const envelope = await client.get<Envelope<{
+    versions: ApiDocument[];
+    thread_entries: {
+      id: string;
+      thread_id: string;
+      document_id: string;
+      author_id: string;
+      author_name: string;
+      author_role: string;
+      entry_type: string;
+      message: string;
+      created_at: string;
+    }[];
+  }>>(`/documents/${documentId}/versions`);
+
+  const rawVersions = Array.isArray(envelope.data?.versions) ? envelope.data.versions : [];
+  const rawEntries = Array.isArray(envelope.data?.thread_entries) ? envelope.data.thread_entries : [];
+
+  return {
+    versions: rawVersions.map((doc) => ({
+      ...mapApiDocumentToItem(doc),
+      version: doc.version ? Number(doc.version) : 1,
+    })),
+    threadEntries: rawEntries.map((e) => ({
+      id: e.id,
+      threadId: e.thread_id,
+      documentId: e.document_id,
+      authorId: e.author_id,
+      authorName: e.author_name,
+      authorRole: e.author_role,
+      entryType: e.entry_type,
+      message: e.message,
+      createdAt: e.created_at,
+    })),
+  };
 }
 
 /**
@@ -157,13 +219,14 @@ export async function uploadDocumentRequest(data: UploadDocumentInput): Promise<
  */
 export async function updateDocumentStatusRequest(
   id: string,
-  status: "Approved" | "Needs Revision" | "Rejected"
+  status: "Approved" | "Needs Revision" | "Rejected",
+  comment?: string
 ): Promise<{ id: string; status: DocumentStatusType; updated_at: string }> {
   const envelope = await client.request<
     Envelope<{ id: string; status: DocumentStatusType; updated_at: string }>
   >(`/documents/${id}/status`, {
     method: "PATCH",
-    body: JSON.stringify({ status }),
+    body: JSON.stringify({ status, comment }),
   });
   return envelope.data;
 }
