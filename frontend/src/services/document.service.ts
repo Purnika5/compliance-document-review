@@ -15,6 +15,15 @@ import { ApiResponseEnvelope } from "@/entities/types/api.type";
 import { UploadDocumentInput, EditDocumentInput } from "@/schema/document.schema";
 import { formatFileSize } from "@/utils/helpers";
 import { API_ENDPOINTS } from "@/constants/api-endpoints";
+import { IAIFlagItem } from "@/features/documents/components/ai-assist-panel";
+
+export interface DocumentAnalysisResult {
+  flags: IAIFlagItem[];
+  isDegraded: boolean;
+  status: string;
+  summary?: string;
+  message?: string;
+}
 
 export class DocumentService {
   private client: APIClient;
@@ -171,7 +180,7 @@ export class DocumentService {
    * @returns Promise resolving to array of IAIFlagItem flags.
    * @author Keith
    */
-  public async getAnalysis(id: string) {
+  public async getAnalysis(id: string): Promise<DocumentAnalysisResult> {
     try {
       const envelope = await this.client.get<ApiResponseEnvelope<Record<string, unknown>>>(API_ENDPOINTS.DOCUMENTS.ANALYSIS(id));
       const rawFlags = Array.isArray(envelope?.data?.flags)
@@ -180,7 +189,13 @@ export class DocumentService {
         ? (envelope.data as Record<string, unknown>[])
         : [];
 
-      return rawFlags.map((item, index) => ({
+      const isDegraded = Boolean(
+        envelope?.data?.is_degraded ||
+        envelope?.data?.status === "unavailable" ||
+        (envelope?.data?.summary && String(envelope.data.summary).includes("unavailable"))
+      );
+
+      const flags: IAIFlagItem[] = rawFlags.map((item, index) => ({
         id: String(item.id || `flag-${index + 1}`),
         ruleCode: String(item.rule || item.ruleCode || item.rule_code || `RULE-${index + 1}`),
         severity: ((String(item.severity || "MEDIUM")).toUpperCase() as "HIGH" | "MEDIUM" | "LOW"),
@@ -190,8 +205,22 @@ export class DocumentService {
         confidenceScore: Number(item.confidenceScore || item.confidence_score || item.confidence || 85),
         pageNumber: Number(item.pageNumber || item.page_number || item.page || 1),
       }));
+
+      return {
+        flags,
+        isDegraded,
+        status: typeof envelope?.data?.status === "string" ? envelope.data.status : (isDegraded ? "unavailable" : "available"),
+        summary: typeof envelope?.data?.summary === "string" ? envelope.data.summary : undefined,
+        message: typeof envelope?.data?.message === "string" ? envelope.data.message : undefined,
+      };
     } catch {
-      return [];
+      return {
+        flags: [],
+        isDegraded: true,
+        status: "unavailable",
+        summary: "AI service unreachable.",
+        message: "AI compliance analysis is temporarily unavailable.",
+      };
     }
   }
 

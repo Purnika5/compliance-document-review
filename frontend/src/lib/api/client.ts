@@ -6,14 +6,7 @@
  */
 import { authStore } from "@/lib/auth/auth-store";
 
-if (!process.env.NEXT_PUBLIC_API_URL) {
-  throw new Error(
-    "[client.ts] NEXT_PUBLIC_API_URL is not defined. " +
-    "Copy .env.example to .env.local and set the value."
-  );
-}
-
-const BASE_API_URL = process.env.NEXT_PUBLIC_API_URL;
+const BASE_API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 
 export class ApiError extends Error {

@@ -44,5 +44,13 @@ export const config = {
   services: {
     piiMaskerUrl: process.env.PII_MASKER_URL || (process.env.NODE_ENV === 'production' ? 'http://pii-masker:8002' : 'http://localhost:8002'),
     aiServiceUrl: process.env.AI_SERVICE_URL || (process.env.NODE_ENV === 'production' ? 'http://ai-service:8000' : 'http://localhost:8000'),
+  },
+
+  retrieval: {
+    serviceUrl: process.env.RETRIEVAL_SERVICE_URL || (process.env.NODE_ENV === 'production' ? 'http://mock-ai-api:8001' : 'http://localhost:8001'),
+    ruleThreshold: parseFloat(process.env.RULE_RETRIEVAL_THRESHOLD || '0.45'),
+    ruleTopK: parseInt(process.env.RULE_RETRIEVAL_TOP_K || '5', 10),
+    precedentThreshold: parseFloat(process.env.PRECEDENT_SEARCH_THRESHOLD || process.env.PRECEDENT_THRESHOLD || '0.50'),
+    precedentTopK: parseInt(process.env.PRECEDENT_SEARCH_TOP_K || process.env.PRECEDENT_TOP_K || '5', 10),
   }
 };

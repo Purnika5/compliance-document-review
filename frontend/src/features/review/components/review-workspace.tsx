@@ -140,31 +140,19 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
   const [documentError, setDocumentError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"iframe" | "paper" | "text">("iframe");
   const [isLoadingAnalysis, setIsLoadingAnalysis] = useState<boolean>(true);
-  const [isUnmasked, setIsUnmasked] = useState<boolean>(false);
-  const [revisionRefreshKey, setRevisionRefreshKey] = useState(0);
-  const [activeDocId, setActiveDocId] = useState<string>(documentId);
-  const [lineageVersions, setLineageVersions] = useState<(DocumentItem & { version: number })[]>([]);
-  const [lineageEntries, setLineageEntries] = useState<LineageEntry[]>([]);
-  const [isLoadingLineage, setIsLoadingLineage] = useState<boolean>(true);
-
-  useEffect(() => {
-    setActiveDocId(documentId);
-  }, [documentId]);
-
-  const handleSelectVersion = (version: DocumentItem & { version: number }) => {
-    setActiveDocId(version.id);
-    setSelectedFlag(null);
-  };
+  const [isAiDegraded, setIsAiDegraded] = useState<boolean>(false);
 
   const handleRefreshAnalysis = () => {
     setIsLoadingAnalysis(true);
     documentService
-      .getAnalysis(activeDocId)
-      .then((flags) => {
-        setAnalysisFlags(flags);
+      .getAnalysis(documentId)
+      .then((res) => {
+        setAnalysisFlags(res.flags);
+        setIsAiDegraded(res.isDegraded);
       })
       .catch(() => {
         setAnalysisFlags([]);
+        setIsAiDegraded(true);
       })
       .finally(() => {
         setIsLoadingAnalysis(false);
@@ -215,13 +203,16 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
     // 3. Fetch automated AI analysis flags for current version
     setIsLoadingAnalysis(true);
     documentService
-      .getAnalysis(activeDocId)
-      .then((flags) => {
+      .getAnalysis(documentId)
+      .then((res) => {
         if (!isActive) return;
-        setAnalysisFlags(flags);
+        setAnalysisFlags(res.flags);
+        setIsAiDegraded(res.isDegraded);
       })
       .catch(() => {
-        if (!isActive) setAnalysisFlags([]);
+        if (!isActive) return;
+        setAnalysisFlags([]);
+        setIsAiDegraded(true);
       })
       .finally(() => {
         if (isActive) setIsLoadingAnalysis(false);
@@ -1115,6 +1106,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
               selectedFlagId={selectedFlag?.id || null}
               onSelectFlag={handleSelectFlag}
               isLoading={isLoadingAnalysis}
+              isDegraded={isAiDegraded}
               onRefresh={handleRefreshAnalysis}
               isUnmasked={isUnmasked}
               onToggleUnmask={() => setIsUnmasked((prev) => !prev)}

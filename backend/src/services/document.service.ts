@@ -1,7 +1,11 @@
-import { query } from '../db/pool';
+import fs from 'fs';
+import { pool, query } from '../db/pool';
 import { AuthTokenPayload, DocumentAnalysis, DocumentRecord, DocumentStatus, DocumentWithAdvisor, RevisionThreadEntry } from '../types/models';
 import { AppError } from '../middleware/error.middleware';
+import { AuditService } from './audit.service';
+import { NotificationService } from './notification.service';
 import { PipelineService } from './pipeline.service';
+import { aiCircuitBreaker } from '../utils/circuitBreaker';
 
 export interface CreateDocumentInput {
   title: string;
@@ -35,65 +39,90 @@ export class DocumentService {
   public static async submitDocument(input: CreateDocumentInput): Promise<DocumentRecord> {
     const { title, description, file, advisorId } = input;
 
-    const result = await query<DocumentRecord>(
-      `INSERT INTO documents (
-        title,
-        description,
-        file_name,
-        file_path,
-        file_size,
-        mime_type,
-        status,
-        version,
-        original_document_id,
-        advisor_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, 'Pending', 1, NULL, $7)
-      RETURNING *`,
-      [
-        title.trim(),
-        description ? description.trim() : null,
-        file.originalname,
-        file.path,
-        file.size,
-        file.mimetype,
-        advisorId
-      ]
-    );
-
-    const newDoc = result.rows[0];
-
-    // Create root revision thread
     try {
-      const threadRes = await query<{ id: string }>(
-        `INSERT INTO revision_threads (root_document_id)
-         VALUES ($1)
-         ON CONFLICT (root_document_id) DO UPDATE SET root_document_id = EXCLUDED.root_document_id
-         RETURNING id`,
-        [newDoc.id]
+      const result = await query<DocumentRecord>(
+        `INSERT INTO documents (
+          title,
+          description,
+          file_name,
+          file_path,
+          file_size,
+          mime_type,
+          status,
+          version,
+          original_document_id,
+          advisor_id
+        ) VALUES ($1, $2, $3, $4, $5, $6, 'Pending', 1, NULL, $7)
+        RETURNING *`,
+        [
+          title.trim(),
+          description ? description.trim() : null,
+          file.originalname,
+          file.path,
+          file.size,
+          file.mimetype,
+          advisorId
+        ]
       );
 
-      if (threadRes.rows.length > 0) {
-        await query(
-          `INSERT INTO revision_thread_entries (
-            thread_id,
-            document_id,
-            author_id,
-            entry_type,
-            message
-          ) VALUES ($1, $2, $3, 'submission', 'Initial submission')`,
-          [threadRes.rows[0].id, newDoc.id, advisorId]
+      const newDoc = result.rows[0];
+
+      // Create root revision thread
+      try {
+        const threadRes = await query<{ id: string }>(
+          `INSERT INTO revision_threads (root_document_id)
+           VALUES ($1)
+           ON CONFLICT (root_document_id) DO UPDATE SET root_document_id = EXCLUDED.root_document_id
+           RETURNING id`,
+          [newDoc.id]
         );
+
+        if (threadRes.rows.length > 0) {
+          await query(
+            `INSERT INTO revision_thread_entries (
+              thread_id,
+              document_id,
+              author_id,
+              entry_type,
+              message
+            ) VALUES ($1, $2, $3, 'submission', 'Initial submission')`,
+            [threadRes.rows[0].id, newDoc.id, advisorId]
+          );
+        }
+      } catch (err) {
+        console.error('[DocumentService] Failed to record revision thread for new submission:', err);
       }
-    } catch (err) {
-      console.error('[DocumentService] Failed to record revision thread for new submission:', err);
+
+      // Record Audit Trail for document submission
+      try {
+        await AuditService.createAuditRecord({
+          documentId: newDoc.id,
+          userId: advisorId,
+          action: 'DOCUMENT_SUBMITTED',
+          newStatus: 'Pending',
+          fileSize: file.size,
+          fileType: file.mimetype
+        });
+      } catch (err) {
+        console.error('[DocumentService] Failed to record audit log for submission:', err);
+      }
+
+      // Trigger Text Extraction -> DevOps PII Masker -> AI Analysis pipeline asynchronously
+      PipelineService.processDocument(newDoc.id, newDoc.version, newDoc.file_path, newDoc.mime_type).catch((err) => {
+        console.error('[DocumentService] Failed pipeline processing for submission:', err);
+      });
+
+      return newDoc;
+    } catch (error) {
+      if (file && file.path) {
+        try {
+          await fs.promises.unlink(file.path);
+        } catch {
+          // ignore cleanup errors if file was already unlinked
+        }
+      }
+      throw error;
     }
-
-    // Trigger Text Extraction -> DevOps PII Masker -> AI Analysis pipeline asynchronously
-    PipelineService.processDocument(newDoc.id, newDoc.version, newDoc.file_path, newDoc.mime_type).catch((err) => {
-      console.error('[DocumentService] Pipeline processing failed for submission:', err);
-    });
-
-    return newDoc;
   }
 
   public static async updateDocumentStatus(
@@ -110,6 +139,9 @@ export class DocumentService {
     if (existing.rows.length === 0) {
       throw new AppError('Document not found', 404, 'DOCUMENT_NOT_FOUND');
     }
+
+    const previousStatus = existing.rows[0].status;
+    const advisorId = existing.rows[0].advisor_id;
 
     const validStatuses: DocumentStatus[] = ['Pending', 'Approved', 'Needs Revision', 'Rejected'];
     if (!validStatuses.includes(newStatus)) {
@@ -167,6 +199,53 @@ export class DocumentService {
       }
     }
 
+    // Record Audit Trail entries
+    try {
+      const actorId = officerId || advisorId;
+      await AuditService.createAuditRecord({
+        documentId,
+        userId: actorId,
+        action: 'STATUS_UPDATED',
+        previousStatus,
+        newStatus,
+        reason: comment || null
+      });
+
+      if (comment && comment.trim()) {
+        await AuditService.createAuditRecord({
+          documentId,
+          userId: actorId,
+          action: 'REVISION_COMMENT_ADDED',
+          reason: comment.trim()
+        });
+      }
+    } catch (err) {
+      console.error('[DocumentService] Failed to record audit log for status update:', err);
+    }
+
+    // Automated In-App Notification Triggers for Advisor
+    try {
+      await NotificationService.createNotification({
+        userId: advisorId,
+        documentId,
+        title: `Document Status Updated: ${newStatus}`,
+        message: `Your document status has been updated to '${newStatus}'.` + (comment ? ` Remark: ${comment}` : ''),
+        type: 'STATUS_CHANGE'
+      });
+
+      if (comment && comment.trim()) {
+        await NotificationService.createNotification({
+          userId: advisorId,
+          documentId,
+          title: 'New Revision Comment Added',
+          message: `Officer comment: ${comment.trim()}`,
+          type: 'REVISION_COMMENT'
+        });
+      }
+    } catch (err) {
+      console.error('[DocumentService] Failed to send automated notification:', err);
+    }
+
     return updatedDoc;
   }
 
@@ -213,90 +292,96 @@ export class DocumentService {
     input: ResubmitDocumentInput,
     user: AuthTokenPayload
   ): Promise<DocumentRecord> {
-    const existing = await query<DocumentRecord>(
-      'SELECT * FROM documents WHERE id = $1',
-      [documentId]
-    );
-
-    if (existing.rows.length === 0) {
-      throw new AppError('Document not found', 404, 'DOCUMENT_NOT_FOUND');
-    }
-
-    const currentDoc = existing.rows[0];
-
-    if (currentDoc.advisor_id !== user.id) {
-      throw new AppError('Forbidden: Only the original submitting advisor can resubmit this document', 403, 'FORBIDDEN');
-    }
-
-    if (currentDoc.status !== 'Needs Revision') {
-      throw new AppError(
-        `Cannot resubmit document with status '${currentDoc.status}'. Only documents marked 'Needs Revision' can be resubmitted.`,
-        400,
-        'CANNOT_RESUBMIT'
-      );
-    }
-
-    const rootDocumentId = currentDoc.original_document_id || currentDoc.id;
-
-    const pendingCheck = await query<{ id: string }>(
-      `SELECT id FROM documents 
-       WHERE (id = $1 OR original_document_id = $1) AND status = 'Pending'`,
-      [rootDocumentId]
-    );
-
-    if (pendingCheck.rows.length > 0) {
-      throw new AppError('A resubmission for this document is already pending review', 409, 'RESUBMISSION_PENDING');
-    }
-
-    const maxVerRes = await query<{ max_version: number }>(
-      `SELECT COALESCE(MAX(version), 1) AS max_version 
-       FROM documents 
-       WHERE id = $1 OR original_document_id = $1`,
-      [rootDocumentId]
-    );
-
-    const nextVersion = Number(maxVerRes.rows[0].max_version) + 1;
-
-    const title = input.title && input.title.trim() ? input.title.trim() : currentDoc.title;
-    const description = input.description !== undefined ? (input.description ? input.description.trim() : null) : currentDoc.description;
-
-    const insertResult = await query<DocumentRecord>(
-      `INSERT INTO documents (
-        title,
-        description,
-        file_name,
-        file_path,
-        file_size,
-        mime_type,
-        status,
-        version,
-        original_document_id,
-        advisor_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, 'Pending', $7, $8, $9)
-      RETURNING *`,
-      [
-        title,
-        description,
-        input.file.originalname,
-        input.file.path,
-        input.file.size,
-        input.file.mimetype,
-        nextVersion,
-        rootDocumentId,
-        user.id
-      ]
-    );
-
-    const newDoc = insertResult.rows[0];
+    const client = await pool.connect();
+    let newDoc: DocumentRecord;
 
     try {
-      let threadRes = await query<{ id: string }>(
+      await client.query('BEGIN');
+
+      // Lock the target parent record using SELECT ... FOR UPDATE to block concurrent resubmission attempts
+      const existing = await client.query<DocumentRecord>(
+        'SELECT id, status, advisor_id, title, description, original_document_id FROM documents WHERE id = $1 FOR UPDATE',
+        [documentId]
+      );
+
+      if (existing.rows.length === 0) {
+        throw new AppError('Document not found', 404, 'DOCUMENT_NOT_FOUND');
+      }
+
+      const currentDoc = existing.rows[0];
+
+      if (currentDoc.advisor_id !== user.id) {
+        throw new AppError('Forbidden: Only the original submitting advisor can resubmit this document', 403, 'FORBIDDEN');
+      }
+
+      if (currentDoc.status !== 'Needs Revision') {
+        throw new AppError(
+          `Cannot resubmit document with status '${currentDoc.status}'. Only documents marked 'Needs Revision' can be resubmitted.`,
+          400,
+          'CANNOT_RESUBMIT'
+        );
+      }
+
+      const rootDocumentId = currentDoc.original_document_id || currentDoc.id;
+
+      const pendingCheck = await client.query<{ id: string }>(
+        `SELECT id FROM documents 
+         WHERE (id = $1 OR original_document_id = $1) AND status = 'Pending' FOR UPDATE`,
+        [rootDocumentId]
+      );
+
+      if (pendingCheck.rows.length > 0) {
+        throw new AppError('A resubmission for this document is already pending review', 409, 'RESUBMISSION_PENDING');
+      }
+
+      const maxVerRes = await client.query<{ max_version: number }>(
+        `SELECT COALESCE(MAX(version), 1) AS max_version 
+         FROM documents 
+         WHERE id = $1 OR original_document_id = $1`,
+        [rootDocumentId]
+      );
+
+      const nextVersion = Number(maxVerRes.rows[0].max_version) + 1;
+
+      const title = input.title && input.title.trim() ? input.title.trim() : currentDoc.title;
+      const description = input.description !== undefined ? (input.description ? input.description.trim() : null) : currentDoc.description;
+
+      const insertResult = await client.query<DocumentRecord>(
+        `INSERT INTO documents (
+          title,
+          description,
+          file_name,
+          file_path,
+          file_size,
+          mime_type,
+          status,
+          version,
+          original_document_id,
+          advisor_id
+        ) VALUES ($1, $2, $3, $4, $5, $6, 'Pending', $7, $8, $9)
+        RETURNING *`,
+        [
+          title,
+          description,
+          input.file.originalname,
+          input.file.path,
+          input.file.size,
+          input.file.mimetype,
+          nextVersion,
+          rootDocumentId,
+          user.id
+        ]
+      );
+
+      newDoc = insertResult.rows[0];
+
+      let threadRes = await client.query<{ id: string }>(
         'SELECT id FROM revision_threads WHERE root_document_id = $1',
         [rootDocumentId]
       );
 
       if (threadRes.rows.length === 0) {
-        threadRes = await query<{ id: string }>(
+        threadRes = await client.query<{ id: string }>(
           `INSERT INTO revision_threads (root_document_id)
            VALUES ($1)
            ON CONFLICT (root_document_id) DO UPDATE SET root_document_id = EXCLUDED.root_document_id
@@ -307,7 +392,7 @@ export class DocumentService {
 
       if (threadRes.rows.length > 0) {
         const msg = input.notes && input.notes.trim() ? input.notes.trim() : `Resubmitted as version ${nextVersion}`;
-        await query(
+        await client.query(
           `INSERT INTO revision_thread_entries (
             thread_id,
             document_id,
@@ -318,8 +403,46 @@ export class DocumentService {
           [threadRes.rows[0].id, newDoc.id, user.id, msg]
         );
       }
-    } catch (err) {
-      console.error('[DocumentService] Failed to record resubmission in revision thread:', err);
+
+      // Record Audit Trail entries for resubmission inside transaction
+      await client.query(
+        `INSERT INTO audit_trail (
+          document_id, user_id, action, previous_status, new_status, reason, file_size, file_type
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          newDoc.id,
+          user.id,
+          'DOCUMENT_SUBMITTED',
+          'Needs Revision',
+          'Pending',
+          input.notes || null,
+          input.file.size,
+          input.file.mimetype ? input.file.mimetype.substring(0, 50) : null
+        ]
+      );
+
+      if (input.notes && input.notes.trim()) {
+        await client.query(
+          `INSERT INTO audit_trail (
+            document_id, user_id, action, previous_status, new_status, reason, file_size, file_type
+          ) VALUES ($1, $2, 'REVISION_COMMENT_ADDED', NULL, NULL, $3, NULL, NULL)`,
+          [newDoc.id, user.id, input.notes.trim()]
+        );
+      }
+
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      if (input.file && input.file.path) {
+        try {
+          await fs.promises.unlink(input.file.path);
+        } catch {
+          // ignore cleanup errors if file was already unlinked
+        }
+      }
+      throw error;
+    } finally {
+      client.release();
     }
 
     // Trigger Text Extraction -> DevOps PII Masker -> AI Analysis pipeline for resubmission asynchronously
@@ -509,10 +632,22 @@ export class DocumentService {
     const res = await query<DocumentAnalysis>(sql, [doc.id, doc.version]);
 
     if (res.rows.length === 0 || res.rows[0].summary === 'AI analysis could not be completed for this document.') {
-      // If not yet analyzed or previous attempt failed, process it on-the-fly and persist
+      // If not yet analyzed or previous attempt failed, process it on-the-fly
       const analyzed = await PipelineService.processDocument(doc.id, doc.version, doc.file_path, doc.mime_type);
       if (!analyzed) {
-        throw new AppError('Document analysis is not available or still in progress', 404, 'ANALYSIS_NOT_FOUND');
+        return {
+          id: `degraded-${doc.id}-${doc.version}`,
+          document_id: doc.id,
+          version: doc.version,
+          status: 'unavailable',
+          is_degraded: true,
+          circuit_breaker: aiCircuitBreaker.getState(),
+          summary: 'AI compliance analysis is temporarily unavailable. Graceful degradation active.',
+          flags: [],
+          message: 'AI service is currently offline or unreachable. Manual compliance review is active.',
+          created_at: new Date(),
+          updated_at: new Date(),
+        } as any;
       }
       return analyzed;
     }
@@ -520,4 +655,3 @@ export class DocumentService {
     return res.rows[0];
   }
 }
-

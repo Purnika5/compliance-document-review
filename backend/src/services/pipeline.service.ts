@@ -3,7 +3,8 @@ import path from 'path';
 import pdfParse from 'pdf-parse';
 import { query } from '../db/pool';
 import { config } from '../config';
-import { ComplianceFlag, DocumentAnalysis } from '../types/models';
+import { ComplianceFlag, DocumentAnalysis, RetrievedRule, PrecedentItem } from '../types/models';
+import { aiCircuitBreaker } from '../utils/circuitBreaker';
 
 export class PipelineService {
   /**
@@ -75,54 +76,122 @@ export class PipelineService {
   }
 
   /**
-   * Dispatch masked text to the AI analysis service.
+   * Week 3 Data Engineering: Retrieve grounded compliance rules and precedents.
    */
-  public static async analyzeWithAi(
-    documentId: string,
-    version: number,
+  public static async retrieveRulesAndPrecedents(
     maskedText: string
-  ): Promise<{ summary: string; flags: ComplianceFlag[] }> {
+  ): Promise<{ retrieved_rules: RetrievedRule[]; precedents: PrecedentItem[] }> {
     if (!maskedText || !maskedText.trim()) {
-      return {
-        summary: 'No extractable text found in this document.',
-        flags: [],
-      };
+      return { retrieved_rules: [], precedents: [] };
     }
 
-    const endpoint = `${config.services.aiServiceUrl}/analyze`;
+    const endpoint = `${config.retrieval.serviceUrl}/retrieve`;
     try {
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          document_id: documentId,
-          version,
           masked_text: maskedText,
+          rule_threshold: config.retrieval.ruleThreshold,
+          rule_top_k: config.retrieval.ruleTopK,
+          precedent_threshold: config.retrieval.precedentThreshold,
+          precedent_top_k: config.retrieval.precedentTopK,
         }),
-        signal: AbortSignal.timeout(45000),
+        signal: AbortSignal.timeout(10000),
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.warn(`[PipelineService] AI Service returned status ${response.status}: ${errorText}`);
-        return {
-          summary: 'AI analysis could not be completed for this document.',
-          flags: [],
-        };
+        console.warn(`[PipelineService] Retrieval Service returned status ${response.status}`);
+        return { retrieved_rules: [], precedents: [] };
       }
 
-      const result = await response.json() as { summary?: string; flags?: ComplianceFlag[] };
+      const data = (await response.json()) as {
+        retrieved_rules?: RetrievedRule[];
+        precedents?: PrecedentItem[];
+      };
+
       return {
-        summary: result.summary || 'Summary generated.',
-        flags: Array.isArray(result.flags) ? result.flags : [],
+        retrieved_rules: Array.isArray(data.retrieved_rules) ? data.retrieved_rules : [],
+        precedents: Array.isArray(data.precedents) ? data.precedents : [],
       };
     } catch (err) {
-      console.warn(`[PipelineService] AI Service unreachable at ${endpoint}:`, err);
+      console.warn(`[PipelineService] Retrieval Service unreachable at ${endpoint}:`, err);
+      return { retrieved_rules: [], precedents: [] };
+    }
+  }
+
+  /**
+   * Dispatch masked text and retrieved rules to the AI analysis service.
+   * Resiliently wrapped with Circuit Breaker to fail fast during outages.
+   */
+  public static async analyzeWithAi(
+    documentId: string,
+    version: number,
+    maskedText: string,
+    retrievedRules: RetrievedRule[] = [],
+    precedents: PrecedentItem[] = []
+  ): Promise<{ summary: string; flags: ComplianceFlag[]; isDegraded?: boolean; circuitState?: string }> {
+    if (!maskedText || !maskedText.trim()) {
       return {
-        summary: 'AI service currently offline or unreachable.',
+        summary: 'No extractable text found in this document.',
         flags: [],
+        isDegraded: false,
+        circuitState: aiCircuitBreaker.getState(),
       };
     }
+
+    const endpoint = `${config.services.aiServiceUrl}/analyze`;
+
+    interface AiAnalysisExecutionResult {
+      summary: string;
+      flags: ComplianceFlag[];
+      isDegraded: boolean;
+      circuitState: string;
+    }
+
+    return aiCircuitBreaker.execute<AiAnalysisExecutionResult>(
+      async (signal) => {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            document_id: documentId,
+            version,
+            masked_text: maskedText,
+            retrieved_rules: retrievedRules,
+            precedents: precedents,
+          }),
+          signal,
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`AI Service returned status ${response.status}: ${errorText}`);
+        }
+
+        const result = (await response.json()) as { summary?: string; flags?: ComplianceFlag[] };
+        return {
+          summary: result.summary || 'Summary generated.',
+          flags: Array.isArray(result.flags) ? result.flags : [],
+          isDegraded: false,
+          circuitState: aiCircuitBreaker.getState(),
+        };
+      },
+      (error) => {
+        const isCircuitOpen = aiCircuitBreaker.isOpen();
+        console.warn(
+          `[PipelineService] AI Analysis fallback invoked (${isCircuitOpen ? 'CIRCUIT_OPEN' : 'SERVICE_ERROR'}): ${error.message}`
+        );
+        return {
+          summary: isCircuitOpen
+            ? 'AI compliance analysis is temporarily unavailable (circuit breaker open). Graceful degradation active.'
+            : 'AI compliance analysis could not be completed at this time. Graceful degradation active.',
+          flags: [],
+          isDegraded: true,
+          circuitState: aiCircuitBreaker.getState(),
+        };
+      }
+    );
   }
 
   private static inFlightJobs = new Map<string, Promise<DocumentAnalysis | null>>();
@@ -197,16 +266,40 @@ export class PipelineService {
     // 2. DevOps PII Masking
     const maskedText = await this.maskPii(documentId, version, rawText || 'Empty document');
 
-    // 3. Gemini AI Analysis
-    const { summary, flags } = await this.analyzeWithAi(documentId, version, maskedText);
+    // 3. Week 3 Data Engineering: Rule Retrieval and Precedent Search
+    const { retrieved_rules, precedents } = await this.retrieveRulesAndPrecedents(maskedText);
 
-    // If AI analysis could not be completed, skip persistence to allow retry
+    // 4. Gemini AI Analysis with Rule Grounding & Circuit Breaker
+    const { summary, flags, isDegraded, circuitState } = await this.analyzeWithAi(
+      documentId,
+      version,
+      maskedText,
+      retrieved_rules,
+      precedents
+    );
+
+    // If AI analysis is degraded / failed: return graceful degradation object without poisoning DB
     if (
+      isDegraded ||
       summary === 'AI analysis could not be completed for this document.' ||
       summary === 'AI service currently offline or unreachable.'
     ) {
-      console.warn(`[PipelineService] Document ${documentId} (v${version}) analysis could not be completed, skipping database persistence to allow retry.`);
-      return null;
+      console.warn(
+        `[PipelineService] Document ${documentId} (v${version}) AI analysis degraded (circuit: ${circuitState || aiCircuitBreaker.getState()}). Returning graceful degradation response.`
+      );
+      return {
+        id: `degraded-${documentId}-${version}`,
+        document_id: documentId,
+        version,
+        masked_text: maskedText,
+        summary: summary || 'AI compliance analysis is temporarily unavailable. Graceful degradation active.',
+        flags: [],
+        created_at: new Date(),
+        updated_at: new Date(),
+        status: 'unavailable',
+        is_degraded: true,
+        circuit_breaker: circuitState || aiCircuitBreaker.getState(),
+      } as any;
     }
 
     // 4. Store in PostgreSQL

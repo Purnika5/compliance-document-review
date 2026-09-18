@@ -5,15 +5,23 @@ import { AuthTokenPayload, UserRole } from '../types/models';
 import { AppError } from './error.middleware';
 
 export const authenticateToken = (req: Request, res: Response, next: NextFunction): void => {
+  let token: string | undefined;
+
   const authHeader = req.headers['authorization'];
-  
-  if (!authHeader || typeof authHeader !== 'string' || !authHeader.startsWith('Bearer ')) {
-    return next(new AppError('Authentication token required', 401, 'UNAUTHORIZED'));
+  if (authHeader && typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+    token = authHeader.slice(7).trim();
+  } else if (req.query && typeof req.query.token === 'string' && req.query.token.trim()) {
+    token = req.query.token.trim();
   }
 
-  const token = authHeader.slice(7).trim();
   if (!token) {
-    return next(new AppError('Authentication token required', 401, 'UNAUTHORIZED'));
+    return next(
+      new AppError(
+        "Authentication token required. Provide header 'Authorization: Bearer <token>' or query parameter '?token=<jwt_token>'",
+        401,
+        'UNAUTHORIZED'
+      )
+    );
   }
 
   try {

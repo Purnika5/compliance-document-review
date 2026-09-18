@@ -159,4 +159,68 @@ describe('Document Pipeline & Analysis Integration Tests', () => {
     const res = await request(app).get(`/documents/${docId}/analysis`);
     expect(res.status).toBe(401);
   });
+
+  it('PipelineService.retrieveRulesAndPrecedents should handle empty text gracefully', async () => {
+    const { PipelineService } = await import('../src/services/pipeline.service');
+    const result = await PipelineService.retrieveRulesAndPrecedents('');
+    expect(result.retrieved_rules).toEqual([]);
+    expect(result.precedents).toEqual([]);
+  });
+
+  it('PipelineService.analyzeWithAi should send retrieved_rules and precedents in request body', async () => {
+    const { PipelineService } = await import('../src/services/pipeline.service');
+    let capturedBody: any = null;
+
+    const originalFetch = global.fetch;
+    (global as any).fetch = jest.fn().mockImplementation(async (url: string, init: any) => {
+      if (url.includes('/analyze')) {
+        capturedBody = JSON.parse(init.body);
+        return {
+          ok: true,
+          json: async () => ({ summary: 'Mock grounded summary', flags: [] }),
+        };
+      }
+      return { ok: true, json: async () => ({}) };
+    });
+
+    try {
+      const mockRules = [
+        {
+          id: 'rule-123',
+          rule_code: 'FINRA-2210',
+          title: 'Communications with the Public',
+          description: 'No false statements',
+          similarity_score: 0.85,
+        },
+      ];
+      const mockPrecedents = [
+        {
+          id: 'prec-456',
+          document_id: 'doc-789',
+          passage: 'Guaranteed returns',
+          outcome: 'flagged',
+          explanation: 'Violates FINRA 2210',
+          similarity_score: 0.77,
+        },
+      ];
+
+      const res = await PipelineService.analyzeWithAi(
+        'test-doc-id',
+        1,
+        'Guaranteed 15% return annually',
+        mockRules,
+        mockPrecedents
+      );
+
+      expect(res.summary).toBe('Mock grounded summary');
+      expect(capturedBody).toBeDefined();
+      expect(capturedBody.document_id).toBe('test-doc-id');
+      expect(capturedBody.masked_text).toBe('Guaranteed 15% return annually');
+      expect(capturedBody.retrieved_rules).toEqual(mockRules);
+      expect(capturedBody.precedents).toEqual(mockPrecedents);
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
 });
+
