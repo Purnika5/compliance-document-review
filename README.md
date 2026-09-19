@@ -84,8 +84,23 @@ python scripts/verify_setup.py
 
 ---
 
-## 🛡️ Penetration Testing & Security Audit
+## 🛡️ Security Audits & Penetration Testing
 
+### 1. Outgoing AI Payload Masking Audit (CI & Pre-Demo)
+To ensure **100% masking and zero PII leakage** before transmission to third-party AI APIs (FINRA / SEC Reg S-P compliance), run the loud security audit scanner:
+
+```bash
+# Manual verification before live demos
+python scripts/audit_masking_security.py
+
+# Or via backend npm scripts
+cd backend && npm run audit:masking
+
+# Run in CI mode (fails loudly with exit code 1 if any unmasked PII pattern is detected)
+python scripts/audit_masking_security.py --ci
+```
+
+### 2. Adversarial Penetration Testing Suite
 The repository includes an adversarial pen-testing suite executing **29 security attack vectors** against the PII Masker and Role Boundary middleware:
 
 ```bash
@@ -157,7 +172,8 @@ compliance-document-review/
 ├── scripts/
 │   ├── start.bat            # 1-click startup script for Windows
 │   ├── start.sh             # 1-click startup script for macOS/Linux
-│   └── verify_setup.py      # Automated microservice verification test
+│   ├── verify_setup.py      # Automated microservice verification test
+│   └── audit_masking_security.py # Outgoing AI payload masking security audit scanner
 ├── docker-compose.yml       # Production multi-service orchestration definition
 ├── .env.example             # Documented environment configuration template
 └── PEN_TEST_SECURITY_REPORT.md # Judge-ready penetration testing & audit report

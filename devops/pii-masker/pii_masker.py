@@ -72,9 +72,9 @@ class PiiMasker:
         r'(?i:\b(?:account|acct|routing)(?:\s+number|\s+#)?[\s:]+)([A-Za-z0-9\-]{6,20})\b'
     )
 
-    # Physical street address pattern
+    # Physical street address pattern (including Terrace, Place, Highway, Circle, Parkway and optional Suite/Apt)
     STREET_ADDRESS_PATTERN = re.compile(
-        r'\b\d{1,5}\s+[A-Z][a-zA-Z0-9\.\s]{2,25}\s+(?:Street|St|Avenue|Ave|Boulevard|Blvd|Road|Rd|Drive|Dr|Lane|Ln|Way|Court|Ct|Plaza|Plz|Suite|Ste|Apt)\b\.?',
+        r'\b\d{1,5}\s+[A-Za-z0-9\.\s]{2,30}\s+(?:Street|St|Avenue|Ave|Boulevard|Blvd|Road|Rd|Drive|Dr|Lane|Ln|Way|Court|Ct|Plaza|Plz|Terrace|Ter|Place|Pl|Highway|Hwy|Circle|Cir|Parkway|Pkwy|Trail|Trl)\b(?:\s*,\s*(?:Suite|Ste|Apt|Unit|Floor|Fl)\s*[A-Za-z0-9\-]+)?\.?',
         re.IGNORECASE
     )
 

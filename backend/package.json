@@ -11,7 +11,8 @@
     "seed": "ts-node-dev src/db/seed.ts",
     "test": "jest --runInBand --detectOpenHandles",
     "test:pii-leakage": "jest --runInBand --detectOpenHandles tests/pii_leakage_gate.test.ts",
-    "test:secrets": "jest --runInBand --detectOpenHandles tests/security_secrets.test.ts"
+    "test:secrets": "jest --runInBand --detectOpenHandles tests/security_secrets.test.ts",
+    "audit:masking": "python ../scripts/audit_masking_security.py"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

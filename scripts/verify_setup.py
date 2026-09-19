@@ -137,6 +137,15 @@ def test_masking_execution():
             return True, "PII Masking round-trip verified (SSN and Email sanitized to deterministic tags)"
     return False, f"Unexpected masking response: {body}"
 
+def test_masking_security_audit():
+    import subprocess
+    import os
+    script_path = os.path.join(os.path.dirname(__file__), "audit_masking_security.py")
+    res = subprocess.run([sys.executable, script_path, "--ci"], capture_output=True, text=True)
+    if res.returncode == 0:
+        return True, "100% Outgoing AI Payload Masking Audit Passed (0 PII Leaks)"
+    return False, f"Masking audit failed:\n{res.stdout}"
+
 def main():
     print("==================================================================")
     print("  SPRINGER CAPITAL -- FRESH CHECKOUT & ENVIRONMENT VERIFICATION    ")
@@ -151,10 +160,11 @@ def main():
     check_step("6. Seeded Officer Authentication", test_officer_auth)
     check_step("7. Compliance Queue Access (RBAC)", test_officer_queue)
     check_step("8. End-to-End PII Sanitization", test_masking_execution)
+    check_step("9. Outgoing AI Payload Security Audit", test_masking_security_audit)
 
     print()
     print("==================================================================")
-    print(f"  VERIFICATION RESULTS: {passed_checks}/8 Passed, {failed_checks} Failed")
+    print(f"  VERIFICATION RESULTS: {passed_checks}/9 Passed, {failed_checks} Failed")
     print("==================================================================")
 
     if failed_checks == 0:
