@@ -162,19 +162,37 @@ uvicorn server:app --host 0.0.0.0 --port 8002 --reload
 compliance-document-review/
 ├── frontend/                # Next.js 16 Web Portal (App Router, Tailwind CSS v4, Lucide)
 ├── backend/                 # Node.js 22 + Express API with PostgreSQL & JWT
-│   ├── src/db/migrations/   # Versioned SQL migration files
+│   ├── src/db/migrations/   # Versioned SQL migration files (001-005 pgvector)
 │   ├── src/db/seed.ts       # Idempotent seed data (users, sample documents)
 │   └── src/middleware/      # Auth, RBAC, upload, and validation guards
 ├── devops/
 │   ├── pii-masker/          # FastAPI deterministic PII masking microservice
-│   └── mock-ai-api/         # Offline mock LLM endpoint for deterministic testing
+│   └── mock-ai-api/         # Offline mock LLM & pgvector retrieval service
 ├── ai/                      # Gemini AI prompt templates and review service
 ├── scripts/
 │   ├── start.bat            # 1-click startup script for Windows
 │   ├── start.sh             # 1-click startup script for macOS/Linux
-│   ├── verify_setup.py      # Automated microservice verification test
+│   ├── verify_setup.py      # Automated microservice verification test (10 checks)
+│   ├── seed_vector_store.py # Seed rules & precedents into pgvector DB
+│   ├── test_vector_retrieval.py # Verify pgvector rule retrieval DoD
 │   └── audit_masking_security.py # Outgoing AI payload masking security audit scanner
+├── render.yaml              # Render Infrastructure-as-Code Blueprint definition
 ├── docker-compose.yml       # Production multi-service orchestration definition
 ├── .env.example             # Documented environment configuration template
 └── PEN_TEST_SECURITY_REPORT.md # Judge-ready penetration testing & audit report
 ```
+
+---
+
+## ☁️ Cloud Deployment (Render Blueprint)
+
+The application includes a zero-configuration Infrastructure-as-Code Blueprint (`render.yaml`) for deploying to **Render**:
+
+1. **Connect Repository**: Connect your GitHub repository on [Render](https://render.com).
+2. **New Blueprint**: Click **New +** -> **Blueprint** and select this repository. Render automatically provisions:
+   - Managed **PostgreSQL 15** with `pgvector` extension.
+   - **`compliance-backend`** Express API Web Service.
+   - **`compliance-frontend`** Next.js 16 Web Service.
+   - **`compliance-pii-masker`** & **`compliance-mock-ai`** Private Web Services.
+3. **Deploy-on-Push**: GitHub Actions workflow (`.github/workflows/render-deploy.yml`) runs tests, security audits, and triggers Render deployment automatically on push to `staging` or `main`.
+
