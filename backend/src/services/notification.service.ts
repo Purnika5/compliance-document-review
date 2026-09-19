@@ -2,7 +2,8 @@ import { Response } from 'express';
 import { query } from '../db/pool';
 import {
   CreateNotificationInput,
-  NotificationRecord
+  NotificationRecord,
+  NotificationType
 } from '../types/notification';
 import { AppError } from '../middleware/error.middleware';
 
@@ -88,6 +89,30 @@ export class NotificationService {
     this.broadcastNotification(userId, notification);
 
     return notification;
+  }
+
+  public static async notifyOfficers(
+    documentId: string,
+    title: string,
+    message: string,
+    type: NotificationType = 'STATUS_CHANGE'
+  ): Promise<void> {
+    try {
+      const officersRes = await query<{ id: string }>(
+        "SELECT id FROM users WHERE LOWER(role) = 'officer'"
+      );
+      for (const officer of officersRes.rows) {
+        await this.createNotification({
+          userId: officer.id,
+          documentId,
+          title,
+          message,
+          type
+        });
+      }
+    } catch (err) {
+      console.error('[NotificationService] Failed to notify officers:', err);
+    }
   }
 
   public static async getUserNotifications(

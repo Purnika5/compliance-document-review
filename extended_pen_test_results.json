@@ -1,0 +1,306 @@
+{
+  "summary": {
+    "total_tests": 29,
+    "passed_defended": 29,
+    "gaps_or_observations": 0,
+    "execution_time_ms": 332.9
+  },
+  "masker_tests": [
+    {
+      "id": "PII-EV-01",
+      "name": "Standard Multi-Entity PII Baseline",
+      "category": "Baseline",
+      "latency_ms": 30.57,
+      "verdict": "DEFENDED (PASS)",
+      "passed": true,
+      "input_sample": "Advisor Marcus Vance met with Dr. Jane Doe. Contact: jane.doe@example.com, Phone: 555-123-...",
+      "output_sample": "Advisor Marcus Vance met with Dr. [NAME_1]. Contact: [EMAIL_1], Phone: [PHONE_1], SSN: [SSN_1], Card: [CARD_1]..."
+    },
+    {
+      "id": "PII-EV-02",
+      "name": "SSN Space & Dot Delimiters",
+      "category": "SSN Evasion",
+      "latency_ms": 3.55,
+      "verdict": "DEFENDED (PASS)",
+      "passed": true,
+      "input_sample": "Client SSN with spaces: 123 45 6789. Another with dots: 987.65.4321.",
+      "output_sample": "Client SSN with spaces: [SSN_1]. Another with dots: [SSN_2]."
+    },
+    {
+      "id": "PII-EV-03",
+      "name": "SSN Contextual Keyword Variation",
+      "category": "SSN Evasion",
+      "latency_ms": 3.12,
+      "verdict": "DEFENDED (PASS)",
+      "passed": true,
+      "input_sample": "social security: 111-22-3333, ss# 444556666, SSN 999887777",
+      "output_sample": "social security: [SSN_1], ss# [SSN_2], SSN [SSN_3]"
+    },
+    {
+      "id": "PII-EV-04",
+      "name": "Email Plus-Addressing & Multi-Level Subdomains",
+      "category": "Email Evasion",
+      "latency_ms": 7.03,
+      "verdict": "DEFENDED (PASS)",
+      "passed": true,
+      "input_sample": "Confidential email: marcus.vance+audit.2026@division.sub.corp.springer.capital and mailto:...",
+      "output_sample": "Confidential email: [EMAIL_1] and mailto:[EMAIL_2]."
+    },
+    {
+      "id": "PII-EV-05",
+      "name": "Spaced/Spelled-Out Email Obfuscation",
+      "category": "Email Evasion",
+      "latency_ms": 3.73,
+      "verdict": "DEFENDED (PASS)",
+      "passed": true,
+      "input_sample": "Contact advisor at john.doe [at] protonmail [dot] com or alice (at) domain.com.",
+      "output_sample": "Contact advisor at john.doe [at] protonmail [dot] com or alice (at) domain.com."
+    },
+    {
+      "id": "PII-EV-06",
+      "name": "Institutional Stopword Protection (Zero False-Positives)",
+      "category": "Noise Filtering",
+      "latency_ms": 12.25,
+      "verdict": "DEFENDED (PASS)",
+      "passed": true,
+      "input_sample": "Under Springer Capital Compliance Policy and FINRA Rule 206, the January Securities Exchan...",
+      "output_sample": "Under Springer Capital Compliance Policy and FINRA Rule 206, the January Securities Exchange Commission report..."
+    },
+    {
+      "id": "PII-EV-07",
+      "name": "Salutation & Contextual Names",
+      "category": "Name Detection",
+      "latency_ms": 3.93,
+      "verdict": "DEFENDED (PASS)",
+      "passed": true,
+      "input_sample": "Dear Robert Oppenheimer, please coordinate with Advisor: Alice Cooper and Client: David Bo...",
+      "output_sample": "Dear [NAME_1], please coordinate with Advisor: [NAME_2] and Client: [NAME_3]."
+    },
+    {
+      "id": "PII-EV-08",
+      "name": "Case Variation Salutations (All-Caps / Lowercase)",
+      "category": "Name Evasion",
+      "latency_ms": 3.23,
+      "verdict": "DEFENDED (PASS)",
+      "passed": true,
+      "input_sample": "DEAR JANE DOE, please reply. Also dear john smith, call back.",
+      "output_sample": "DEAR JANE DOE, please reply. Also dear john smith, call back."
+    },
+    {
+      "id": "PII-EV-09",
+      "name": "Pre-Existing Token Protection (Idempotency)",
+      "category": "Idempotency",
+      "latency_ms": 3.16,
+      "verdict": "DEFENDED (PASS)",
+      "passed": true,
+      "input_sample": "Document already contains [NAME_1] and [EMAIL_1]. Do not alter [SSN_1] or [ACCOUNT_1].",
+      "output_sample": "Document already contains [NAME_1] and [EMAIL_1]. Do not alter [SSN_1] or [ACCOUNT_1]."
+    },
+    {
+      "id": "PII-EV-10",
+      "name": "Deterministic Tag Coherence",
+      "category": "Determinism",
+      "latency_ms": 3.35,
+      "verdict": "DEFENDED (PASS)",
+      "passed": true,
+      "input_sample": "Dr. Jane Doe met with Marcus Vance. Dr. Jane Doe emailed jane@example.com. Later Dr. Jane ...",
+      "output_sample": "Dr. [NAME_1] met with [NAME_2]. Dr. [NAME_1] emailed [EMAIL_1]. [NAME_3]. [NAME_1] confirmed receipt at [EMAIL..."
+    },
+    {
+      "id": "PII-EV-11",
+      "name": "Adversarial Partial Boundaries (Sub-threshold digits)",
+      "category": "Adversarial Noise",
+      "latency_ms": 4.63,
+      "verdict": "DEFENDED (PASS)",
+      "passed": true,
+      "input_sample": "Order # 12-345-678 (8 digits), Partial card: 1234-5678, Short phone: 555-123.",
+      "output_sample": "Order # 12-345-678 (8 digits), Partial card: 1234-5678, Short phone: 555-123."
+    },
+    {
+      "id": "PII-EV-12",
+      "name": "High-Density ReDoS / Catastrophic Backtracking Stress",
+      "category": "ReDoS Resilience",
+      "latency_ms": 6.72,
+      "verdict": "DEFENDED (PASS)",
+      "passed": true,
+      "input_sample": "Dear John Doe, SSN: 123-45-6789, email: test@example.com. Dear John Doe, SSN: 123-45-6789,...",
+      "output_sample": "Dear [NAME_1], SSN: [SSN_1], email: [EMAIL_1]. Dear [NAME_1], SSN: [SSN_1], email: [EMAIL_1]. Dear [NAME_1], S..."
+    }
+  ],
+  "auth_rbac_tests": [
+    {
+      "id": "SEC-RBAC-01",
+      "name": "Advisor Accessing Officer Compliance Queue",
+      "endpoint": "/documents/queue",
+      "status": 403,
+      "verdict": "DEFENDED (403)",
+      "passed": true,
+      "description": "Advisor attempting to list the Officer compliance triage queue.",
+      "body": "{'success': False, 'message': \"Forbidden: User role 'Advisor' lacks permission\", 'error': {'code': '"
+    },
+    {
+      "id": "SEC-RBAC-02",
+      "name": "Advisor Self-Approving Pending Document",
+      "endpoint": "/documents/f02fb93e-4224-45bc-92ae-21128c0f6605/status",
+      "status": 403,
+      "verdict": "DEFENDED (403)",
+      "passed": true,
+      "description": "Advisor attempting to alter compliance state of their own document to 'Approved'.",
+      "body": "{'success': False, 'message': \"Forbidden: User role 'Advisor' lacks permission\", 'error': {'code': '"
+    },
+    {
+      "id": "SEC-RBAC-03",
+      "name": "Advisor Rejecting Competitor Document",
+      "endpoint": "/documents/5d7894e4-88bb-44aa-a814-614c813ab51b/status",
+      "status": 403,
+      "verdict": "DEFENDED (403)",
+      "passed": true,
+      "description": "Advisor attempting to reject another advisor's submission.",
+      "body": "{'success': False, 'message': \"Forbidden: User role 'Advisor' lacks permission\", 'error': {'code': '"
+    },
+    {
+      "id": "SEC-RBAC-04",
+      "name": "Inverse Boundary: Officer Submitting Advisory Document",
+      "endpoint": "/documents",
+      "status": 403,
+      "verdict": "DEFENDED (403)",
+      "passed": true,
+      "description": "Compliance Officer attempting to submit a document directly (Advisors-only role boundary).",
+      "body": "{'success': False, 'message': \"Forbidden: User role 'Officer' lacks permission\", 'error': {'code': '"
+    },
+    {
+      "id": "SEC-RBAC-05",
+      "name": "Legitimate Officer Queue Access (Baseline Control)",
+      "endpoint": "/documents/queue",
+      "status": 200,
+      "verdict": "AUTHORIZED (200 OK)",
+      "passed": true,
+      "description": "Officer authorized access to review triage queue.",
+      "body": "{'success': True, 'message': 'Officer review queue retrieved successfully', 'data': [{'id': '5d7894e"
+    }
+  ],
+  "jwt_integrity_tests": [
+    {
+      "id": "SEC-AUTH-01",
+      "name": "Missing Authorization Header",
+      "endpoint": "/documents/queue",
+      "status": 401,
+      "verdict": "DEFENDED (BLOCKED 401)",
+      "passed": true,
+      "description": "Completely unauthenticated client requests protected officer queue.",
+      "body": "{'success': False, 'message': \"Authentication token required. Provide header 'Authorization: Bearer "
+    },
+    {
+      "id": "SEC-AUTH-02",
+      "name": "Malformed Bearer Token String",
+      "endpoint": "/documents/queue",
+      "status": 401,
+      "verdict": "DEFENDED (BLOCKED 401)",
+      "passed": true,
+      "description": "Garbage string passed inside Bearer authorization header.",
+      "body": "{'success': False, 'message': 'Invalid authentication token', 'error': {'code': 'INVALID_TOKEN', 'me"
+    },
+    {
+      "id": "SEC-AUTH-03",
+      "name": "Unsigned Token / Alg: None Exploit",
+      "endpoint": "/documents/queue",
+      "status": 401,
+      "verdict": "DEFENDED (BLOCKED 401)",
+      "passed": true,
+      "description": "Classic CVE-style algorithm confusion attack setting alg:none to bypass signature.",
+      "body": "{'success': False, 'message': 'Invalid authentication token', 'error': {'code': 'INVALID_TOKEN', 'me"
+    },
+    {
+      "id": "SEC-AUTH-04",
+      "name": "Forged Token with Rogue Secret Key",
+      "endpoint": "/documents/queue",
+      "status": 401,
+      "verdict": "DEFENDED (BLOCKED 401)",
+      "passed": true,
+      "description": "Token signed with arbitrary HMAC secret claiming high-privilege Officer role.",
+      "body": "{'success': False, 'message': 'Invalid authentication token', 'error': {'code': 'INVALID_TOKEN', 'me"
+    },
+    {
+      "id": "SEC-AUTH-05",
+      "name": "Role Tampering with Invalid Role Enum",
+      "endpoint": "/documents/queue",
+      "status": 401,
+      "verdict": "DEFENDED (BLOCKED 401)",
+      "passed": true,
+      "description": "Injected non-existent role name to test strict type/schema rejection.",
+      "body": "{'success': False, 'message': 'Invalid authentication token', 'error': {'code': 'INVALID_TOKEN', 'me"
+    }
+  ],
+  "injection_and_idor_tests": [
+    {
+      "id": "SEC-IDOR-01",
+      "name": "Cross-Tenant Document Read (IDOR)",
+      "endpoint": "/documents/5d7894e4-88bb-44aa-a814-614c813ab51b",
+      "status": 403,
+      "verdict": "DEFENDED (403)",
+      "passed": true,
+      "description": "Advisor Marcus Vance directly requesting document ID belonging to Advisor qwewqe.",
+      "body": "{'success': False, 'message': 'Forbidden: You do not have permission to view this document', 'error'"
+    },
+    {
+      "id": "SEC-IDOR-02",
+      "name": "Cross-Tenant Version Lineage Read (IDOR)",
+      "endpoint": "/documents/5d7894e4-88bb-44aa-a814-614c813ab51b/versions",
+      "status": 403,
+      "verdict": "DEFENDED (403)",
+      "passed": true,
+      "description": "Advisor requesting version history and revision thread of another advisor.",
+      "body": "{'success': False, 'message': 'Forbidden: You do not have permission to view this document lineage',"
+    },
+    {
+      "id": "SEC-IDOR-03",
+      "name": "Cross-Tenant AI Analysis Read (IDOR)",
+      "endpoint": "/documents/5d7894e4-88bb-44aa-a814-614c813ab51b/analysis",
+      "status": 403,
+      "verdict": "DEFENDED (403)",
+      "passed": true,
+      "description": "Advisor querying compliance AI analysis/summary of a foreign document.",
+      "body": "{'success': False, 'message': 'Forbidden: You do not have permission to view this document', 'error'"
+    },
+    {
+      "id": "SEC-IDOR-04",
+      "name": "Cross-Tenant Revision Resubmission Hijack",
+      "endpoint": "/documents/5d7894e4-88bb-44aa-a814-614c813ab51b/resubmit",
+      "status": 400,
+      "verdict": "DEFENDED (400)",
+      "passed": true,
+      "description": "Advisor attempting to submit a new version onto another advisor's document.",
+      "body": "{'success': False, 'message': 'A revised document file is required (PDF, DOCX, XLSX, TXT)', 'error':"
+    },
+    {
+      "id": "SEC-STATE-05",
+      "name": "Premature Resubmission of Pending Document",
+      "endpoint": "/documents/f02fb93e-4224-45bc-92ae-21128c0f6605/resubmit",
+      "status": 400,
+      "verdict": "DEFENDED (400)",
+      "passed": true,
+      "description": "Advisor attempting to violate lifecycle by resubmitting document not in 'Needs Revision' status.",
+      "body": "{'success': False, 'message': 'A revised document file is required (PDF, DOCX, XLSX, TXT)', 'error':"
+    },
+    {
+      "id": "SEC-INJ-06",
+      "name": "SQL Injection in UUID Route Parameter",
+      "endpoint": "/documents/'%20OR%201=1--",
+      "status": 400,
+      "verdict": "DEFENDED (400)",
+      "passed": true,
+      "description": "Testing parameterized input validation against classic tautology SQL injection payload.",
+      "body": "{'success': False, 'message': 'Validation failed for request parameters', 'error': {'code': 'VALIDAT"
+    },
+    {
+      "id": "SEC-AUTH-07",
+      "name": "Legitimate Advisor Read Own Document (Baseline Control)",
+      "endpoint": "/documents/f02fb93e-4224-45bc-92ae-21128c0f6605",
+      "status": 200,
+      "verdict": "AUTHORIZED (200 OK)",
+      "passed": true,
+      "description": "Advisor authorized access to their own document record.",
+      "body": "{'success': True, 'message': 'Document retrieved successfully', 'data': {'id': 'f02fb93e-4224-45bc-9"
+    }
+  ]
+}

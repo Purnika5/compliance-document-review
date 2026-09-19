@@ -36,7 +36,8 @@ STOPWORDS: Set[str] = {
     "Dear", "Please", "Thank", "Thanks", "Regards", "Sincerely", "Best", "Yours",
     "Agreement", "Terms", "Conditions", "Policy", "Privacy", "Notice", "Form",
     "Federal", "State", "Public", "Internal", "Confidential", "Management",
-    "Services", "Portfolio", "Asset", "Wealth", "Equity", "Fixed", "Income"
+    "Services", "Portfolio", "Asset", "Wealth", "Equity", "Fixed", "Income",
+    "Routing", "Number", "Card", "Bank", "Wire", "Transfer", "Credit", "Debit"
 }
 
 
@@ -53,7 +54,7 @@ class PiiMasker:
 
     # Social Security Numbers: 000-00-0000 or 000 00 0000 or labeled 9-digits
     SSN_PATTERN = re.compile(
-        r'(?:\b\d{3}[-\s]\d{2}[-\s]\d{4}\b)|(?:(?i:ssn|social\s+security(?:\s+number)?|ss#)[\s:]*(\b\d{9}\b|\b\d{3}[-\s]\d{2}[-\s]\d{4}\b))'
+        r'(?:\b\d{3}[-\s./]\d{2}[-\s./]\d{4}\b)|(?:(?i:ssn|social\s+security(?:\s+number)?|ss#)[\s:]*(\b\d{9}\b|\b\d{3}[-\s./]\d{2}[-\s./]\d{4}\b))'
     )
 
     # Phone numbers: US and international formats
@@ -66,9 +67,9 @@ class PiiMasker:
         r'\b(?:\d{4}[-\s]?){3}\d{4}\b|\b\d{4}[-\s]?\d{6}[-\s]?\d{5}\b'
     )
 
-    # Labeled account numbers
+    # Labeled account numbers (supports 'Account Number:', 'Routing Number:', 'Acct #', etc.)
     ACCOUNT_LABEL_PATTERN = re.compile(
-        r'(?i:\b(?:account|acct|routing)(?:\s+number|\s+#|:)\s*)([A-Za-z0-9\-]{6,20})\b'
+        r'(?i:\b(?:account|acct|routing)(?:\s+number|\s+#)?[\s:]+)([A-Za-z0-9\-]{6,20})\b'
     )
 
     # Physical street address pattern

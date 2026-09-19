@@ -15,6 +15,8 @@ import {
   RefreshCw,
   Loader2,
   AlertTriangle,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { unmaskText } from "@/utils/pii-unmasker";

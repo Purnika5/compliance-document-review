@@ -9,7 +9,6 @@
 import React, { useState, useRef, useEffect, useSyncExternalStore, useMemo } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { StatusBadge } from "@/components/shared/status-badge";
 import { ErrorState } from "@/components/shared/error-state";
 import { Alert } from "@/components/ui/alert";
 import {
@@ -34,11 +33,14 @@ import {
   ExternalLink,
   Eye,
   EyeOff,
+  MessageSquare,
+  UploadCloud,
 } from "lucide-react";
 import { buildPiiMap, unmaskText } from "@/utils/pii-unmasker";
 import type { DocumentStatusType, DocumentItem } from "@/lib/validation/document";
 import { getDocumentAction, updateDocumentStatusAction } from "@/lib/actions/document-actions";
 import { EditDocumentModal } from "@/features/documents/components/edit-document-modal";
+import { ResubmitRevisionModal } from "@/features/documents/components/resubmit-revision-modal";
 import { AIAssistPanel, type IAIFlagItem } from "@/features/documents/components/ai-assist-panel";
 import { RevisionThread } from "@/features/audit/components/revision-thread";
 import { AuditTrailTable, type IAuditLogEntry } from "@/features/audit/components/audit-trail-table";
@@ -141,6 +143,70 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
   const [viewMode, setViewMode] = useState<"iframe" | "paper" | "text">("iframe");
   const [isLoadingAnalysis, setIsLoadingAnalysis] = useState<boolean>(true);
   const [isAiDegraded, setIsAiDegraded] = useState<boolean>(false);
+  const [isUnmasked, setIsUnmasked] = useState<boolean>(false);
+  const [revisionRefreshKey, setRevisionRefreshKey] = useState<number>(0);
+  const [activeDocId, setActiveDocId] = useState<string>(documentId);
+  const [lineageVersions, setLineageVersions] = useState<(DocumentItem & { version: number })[]>([]);
+  const [lineageEntries, setLineageEntries] = useState<LineageEntry[]>([]);
+  const [isLoadingLineage, setIsLoadingLineage] = useState<boolean>(true);
+  const [isResubmitModalOpen, setIsResubmitModalOpen] = useState<boolean>(false);
+
+  useEffect(() => {
+    setActiveDocId(documentId);
+  }, [documentId]);
+
+  const handleSelectVersion = (version: DocumentItem & { version: number }) => {
+    setActiveDocId(version.id);
+    setSelectedFlag(null);
+  };
+
+  // Derived remarks and version feedback for Document Feedback panel
+  const sortedVersions = useMemo(() => {
+    return [...lineageVersions].sort((a, b) => a.version - b.version);
+  }, [lineageVersions]);
+
+  const activeVersion = useMemo(() => {
+    return sortedVersions.find((v) => v.id === activeDocId) || sortedVersions[sortedVersions.length - 1];
+  }, [sortedVersions, activeDocId]);
+
+  const activeVersionRemarks = useMemo(() => {
+    if (!activeVersion) return [];
+    return lineageEntries.filter(
+      (e) => (e.entryType === "decision" || e.authorRole === "Officer") && e.documentId === activeVersion.id
+    );
+  }, [lineageEntries, activeVersion]);
+
+  const previousVersion = useMemo(() => {
+    if (!activeVersion) return undefined;
+    return sortedVersions.find((v) => v.version === (activeVersion.version || 1) - 1);
+  }, [sortedVersions, activeVersion]);
+
+  const previousOfficerRemarks = useMemo(() => {
+    if (!previousVersion) return [];
+    return lineageEntries.filter(
+      (e) => (e.entryType === "decision" || e.authorRole === "Officer") && e.documentId === previousVersion.id
+    );
+  }, [lineageEntries, previousVersion]);
+
+  const advisorSubmissionNote = useMemo(() => {
+    if (!activeVersion) return undefined;
+    return lineageEntries.find(
+      (e) => (e.entryType === "resubmission" || e.authorRole === "Advisor") && e.documentId === activeVersion.id
+    );
+  }, [lineageEntries, activeVersion]);
+
+  const maxVersion = useMemo(() => {
+    if (sortedVersions.length > 0) {
+      return Math.max(...sortedVersions.map((v) => v.version || 1));
+    }
+    return activeVersion?.version || 1;
+  }, [sortedVersions, activeVersion]);
+
+  const nextVersion = maxVersion + 1;
+  const isNeedsRevision = status === "Needs Revision" || activeVersion?.status === "Needs Revision";
+  const isVersion2OrHigher = (activeVersion?.version || 1) >= 2 || sortedVersions.length > 1;
+  const canResubmit = isNeedsRevision;
+  const canShowUploadVersion = (!isOfficer && (isNeedsRevision || isVersion2OrHigher)) || isNeedsRevision || isVersion2OrHigher;
 
   const handleRefreshAnalysis = () => {
     setIsLoadingAnalysis(true);
@@ -437,10 +503,6 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
               <h1 className="text-xs font-bold text-[#183028] truncate max-w-xs sm:max-w-md">
                 {title}
               </h1>
-              <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#183028] text-[#C5E86C]">
-                v{currentDocItem?.version || 1}
-              </span>
-              <StatusBadge status={status} />
             </div>
             <p className="text-[11px] text-[#183028]/60 hidden sm:block">
               Advisor: {currentDocItem?.submittedBy || "System User"} • Submitted {currentDocItem?.submittedAt ? new Date(currentDocItem.submittedAt).toLocaleDateString() : "Recently"} • Category: {currentDocItem?.category || "General"}
@@ -449,6 +511,35 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          {/* Upload Version button if v2, v3, etc. or Needs Revision */}
+          {canShowUploadVersion && (
+            <button
+              onClick={() => {
+                if (canResubmit) {
+                  setIsResubmitModalOpen(true);
+                } else {
+                  showInfoToast(
+                    `Revisions can only be uploaded when document status is 'Needs Revision' (Current status: ${status}).`
+                  );
+                }
+              }}
+              className={cn(
+                "inline-flex items-center gap-1.5 h-8 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs",
+                canResubmit
+                  ? "bg-[#C5E86C] hover:bg-[#b4db53] text-[#183028] border border-[#a8ce4a] hover:shadow-[0_0_12px_rgba(197,232,108,0.4)]"
+                  : "bg-[#F4F5F4] text-[#183028]/60 border border-[#E6E8E7] hover:bg-[#E6E8E7]"
+              )}
+              title={
+                canResubmit
+                  ? `Upload new revision (v${nextVersion}) for compliance review`
+                  : `Upload version (v${nextVersion}) - requires Needs Revision status`
+              }
+            >
+              <UploadCloud className="h-3.5 w-3.5 shrink-0" />
+              <span>Upload Version (v{nextVersion})</span>
+            </button>
+          )}
+
           <button
             onClick={handleDownloadFile}
             className="inline-flex items-center gap-1.5 h-8 px-3 rounded-xl text-xs font-semibold bg-[#183028] hover:bg-[#23453a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] text-white transition-all cursor-pointer shadow-2xs"
@@ -1114,10 +1205,73 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
               isOfficer={isOfficer}
             />
           ) : (
-            <div className="border border-[#E6E8E7] bg-white text-[#183028] rounded-2xl h-full p-6 text-sm shadow-2xs">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#183028]/50">Document feedback</p>
-              <h2 className="mt-2 text-base font-bold text-[#183028]">Review status and revision history</h2>
-              <p className="mt-2 text-xs leading-relaxed text-[#183028]/70">Officer feedback and revision requests appear in the Revision tab. AI compliance analysis is available to compliance officers.</p>
+            <div className="border border-[#E6E8E7] bg-white text-[#183028] rounded-2xl h-full p-6 text-sm shadow-2xs space-y-4">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#183028]/50">
+                  Document feedback
+                </p>
+                <h2 className="mt-1 text-base font-bold text-[#183028]">
+                  Review status and revision history
+                </h2>
+                <p className="mt-1 text-xs leading-relaxed text-[#183028]/70">
+                  Officer feedback and revision requests appear in the Revision tab. AI compliance analysis is available to compliance officers.
+                </p>
+              </div>
+
+              {/* Active Officer Revision Remarks */}
+              {activeVersionRemarks.length > 0 && (
+                <div className="p-3.5 bg-amber-50/90 border border-amber-200 rounded-xl space-y-2 shadow-2xs">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-amber-900 font-bold text-xs">
+                      <AlertCircle className="h-4 w-4 text-amber-700 shrink-0" />
+                      <span>Officer Revision Remarks (v{activeVersion?.version})</span>
+                    </div>
+                    <span className="text-[10px] text-amber-700 font-mono">
+                      {new Date(activeVersionRemarks[activeVersionRemarks.length - 1].createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <p className="text-amber-950 font-medium leading-relaxed text-xs italic bg-white/70 p-2.5 rounded-lg border border-amber-200/60">
+                    &ldquo;{activeVersionRemarks[activeVersionRemarks.length - 1].message}&rdquo;
+                  </p>
+                  <p className="text-[10px] text-amber-800/80">
+                    Recorded by {activeVersionRemarks[activeVersionRemarks.length - 1].authorName} ({activeVersionRemarks[activeVersionRemarks.length - 1].authorRole})
+                  </p>
+                </div>
+              )}
+
+              {/* Preceding Officer Revision Feedback (from previous version) */}
+              {activeVersion && activeVersion.version > 1 && previousOfficerRemarks.length > 0 && activeVersionRemarks.length === 0 && (
+                <div className="p-3.5 bg-amber-50/90 border border-amber-200 rounded-xl space-y-2 shadow-2xs">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-amber-900 font-bold text-xs">
+                      <MessageSquare className="h-4 w-4 text-amber-700 shrink-0" />
+                      <span>Preceding Officer Revision Feedback (from v{previousVersion?.version})</span>
+                    </div>
+                    <span className="text-[10px] text-amber-700 font-mono">
+                      {new Date(previousOfficerRemarks[previousOfficerRemarks.length - 1].createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <p className="text-amber-950 font-medium leading-relaxed text-xs italic bg-white/70 p-2.5 rounded-lg border border-amber-200/60">
+                    &ldquo;{previousOfficerRemarks[previousOfficerRemarks.length - 1].message}&rdquo;
+                  </p>
+                  <p className="text-[10px] text-amber-800/80">
+                    Feedback issued by {previousOfficerRemarks[previousOfficerRemarks.length - 1].authorName} ({previousOfficerRemarks[previousOfficerRemarks.length - 1].authorRole})
+                  </p>
+                </div>
+              )}
+
+              {/* Advisor Resubmission Remarks */}
+              {advisorSubmissionNote && activeVersion && activeVersion.version > 1 && (
+                <div className="p-3.5 bg-emerald-50/80 border border-emerald-200 rounded-xl space-y-2 shadow-2xs">
+                  <div className="flex items-center gap-1.5 text-emerald-900 font-bold text-xs">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-700 shrink-0" />
+                    <span>Advisor Resubmission Remarks (v{activeVersion.version})</span>
+                  </div>
+                  <p className="text-emerald-950 font-medium leading-relaxed text-xs bg-white/70 p-2.5 rounded-lg border border-emerald-200/60">
+                    {advisorSubmissionNote.message}
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1143,6 +1297,36 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
           onSave={handleSaveEdit}
         />
       )}
+
+      {/* Resubmit Revision Modal (Upload version 2, 3, etc.) */}
+      <ResubmitRevisionModal
+        isOpen={isResubmitModalOpen}
+        onClose={() => setIsResubmitModalOpen(false)}
+        documentItem={currentDocItem}
+        onSuccess={() => {
+          setIsLoadingLineage(true);
+          documentService
+            .getDocumentVersions(activeDocId)
+            .then((res) => {
+              setLineageVersions(res.versions);
+              setLineageEntries(res.threadEntries);
+            })
+            .catch(() => {})
+            .finally(() => setIsLoadingLineage(false));
+
+          getDocumentAction(activeDocId)
+            .then((doc) => {
+              setLoadedDoc(doc);
+              setTitle(doc.title);
+              setCategory(doc.category);
+              setStatus(doc.status);
+            })
+            .catch(() => {});
+
+          setRevisionRefreshKey((prev) => prev + 1);
+          setActionSuccess(`Document revision (v${nextVersion}) uploaded and submitted for compliance review.`);
+        }}
+      />
     </div>
   );
 }
