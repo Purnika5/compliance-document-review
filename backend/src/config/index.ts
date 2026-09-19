@@ -8,12 +8,15 @@ export const config = {
   port: parseInt(process.env.PORT || '5000', 10),
 
   db: {
+    connectionString: process.env.DATABASE_URL,
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT || '5432', 10),
     database: process.env.DB_NAME || 'compliance_doc_review',
     user: process.env.DB_USER || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
-    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+    ssl: (process.env.DB_SSL === 'true' || Boolean(process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('localhost')))
+      ? { rejectUnauthorized: false }
+      : false,
     max: parseInt(process.env.DB_POOL_MAX || '20', 10),
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 5000,
@@ -44,5 +47,13 @@ export const config = {
   services: {
     piiMaskerUrl: process.env.PII_MASKER_URL || (process.env.NODE_ENV === 'production' ? 'http://pii-masker:8002' : 'http://localhost:8002'),
     aiServiceUrl: process.env.AI_SERVICE_URL || (process.env.NODE_ENV === 'production' ? 'http://ai-service:8000' : 'http://localhost:8000'),
+  },
+
+  retrieval: {
+    serviceUrl: process.env.RETRIEVAL_SERVICE_URL || (process.env.NODE_ENV === 'production' ? 'http://mock-ai-api:8001' : 'http://localhost:8001'),
+    ruleThreshold: parseFloat(process.env.RULE_RETRIEVAL_THRESHOLD || '0.45'),
+    ruleTopK: parseInt(process.env.RULE_RETRIEVAL_TOP_K || '5', 10),
+    precedentThreshold: parseFloat(process.env.PRECEDENT_SEARCH_THRESHOLD || process.env.PRECEDENT_THRESHOLD || '0.50'),
+    precedentTopK: parseInt(process.env.PRECEDENT_SEARCH_TOP_K || process.env.PRECEDENT_TOP_K || '5', 10),
   }
 };

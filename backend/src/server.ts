@@ -2,10 +2,16 @@ import { app } from './app';
 import { config } from './config';
 import { checkDatabaseConnection, pool } from './db/pool';
 import { runMigrations } from './db/migrate';
+import { seedDatabase } from './db/seed';
 
 const startServer = async () => {
   try {
     await runMigrations();
+    try {
+      await seedDatabase();
+    } catch (seedErr) {
+      console.warn('[Server] Warning: Automatic seeding encountered an error (skipping):', seedErr);
+    }
 
     const isDbConnected = await checkDatabaseConnection();
     if (!isDbConnected) {

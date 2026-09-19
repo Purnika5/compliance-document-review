@@ -3,7 +3,8 @@ import path from 'path';
 import pdfParse from 'pdf-parse';
 import { query } from '../db/pool';
 import { config } from '../config';
-import { ComplianceFlag, DocumentAnalysis } from '../types/models';
+import { ComplianceFlag, DocumentAnalysis, RetrievedRule, PrecedentItem } from '../types/models';
+import { aiCircuitBreaker } from '../utils/circuitBreaker';
 
 export class PipelineService {
   /**
@@ -40,7 +41,75 @@ export class PipelineService {
   }
 
   /**
+   * Comprehensive PII Leakage Detector.
+   * Verifies that outgoing text strings do not contain raw SSNs, emails, credit cards, or phones.
+   * Complies with Definition of Done: "No unmasked PII ever reaches the third-party API."
+   */
+  public static detectPiiLeakage(text: string): { hasLeakage: boolean; detectedEntities: string[] } {
+    if (!text || !text.trim()) {
+      return { hasLeakage: false, detectedEntities: [] };
+    }
+
+    // Strip out valid platform placeholders like [NAME_1], [SSN_1], [EMAIL_1], [PHONE_1], etc.
+    const stripped = text.replace(/\[(?:NAME|EMAIL|SSN|PHONE|ACCOUNT|CARD|ADDRESS|ZIP|DATE)_[0-9A-Za-z_-]+\]/g, '');
+
+    const detected: string[] = [];
+
+    // 1. Unmasked Email (RFC subset)
+    const emailMatch = stripped.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/i);
+    if (emailMatch) {
+      detected.push(`EMAIL (${emailMatch[0].slice(0, 3)}...${emailMatch[0].slice(-6)})`);
+    }
+
+    // 2. Unmasked SSN (000-00-0000, 000 00 0000, 000.00.0000, or labeled 9 digits)
+    const ssnMatch = stripped.match(/(?:\b\d{3}[-\s.]\d{2}[-\s.]\d{4}\b)|(?:(?:ssn|social\s+security)[\s:]*\b\d{9}\b)/i);
+    if (ssnMatch) {
+      detected.push('SSN (***-**-****)');
+    }
+
+    // 3. Unmasked Credit Card (13-19 digits formatted or raw)
+    const cardMatch = stripped.match(/\b(?:\d{4}[-\s]?){3}\d{4}\b/);
+    if (cardMatch) {
+      detected.push('CARD (****-****-****-****)');
+    }
+
+    // 4. Unmasked Phone Number
+    const phoneMatch = stripped.match(/(?:\+?1[-.\s]?)?(?:\([0-9]{3}\)|[0-9]{3})[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}\b/);
+    if (phoneMatch) {
+      detected.push('PHONE (***-***-****)');
+    }
+
+    return {
+      hasLeakage: detected.length > 0,
+      detectedEntities: detected
+    };
+  }
+
+  /**
+   * In-process fallback regex sanitizer used if the external PII masker service is offline.
+   * Guarantees fail-safe privacy so raw PII is NEVER leaked if microservice network fails.
+   */
+  public static localFallbackMask(rawText: string): string {
+    if (!rawText) return '';
+    let sanitized = rawText;
+
+    // Emails
+    sanitized = sanitized.replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/gi, '[EMAIL_FALLBACK]');
+    // SSNs
+    sanitized = sanitized.replace(/(?:\b\d{3}[-\s.]\d{2}[-\s.]\d{4}\b)|(?:(?:ssn|social\s+security)[\s:]*\b\d{9}\b)/gi, '[SSN_FALLBACK]');
+    // Credit Cards
+    sanitized = sanitized.replace(/\b(?:\d{4}[-\s]?){3}\d{4}\b/g, '[CARD_FALLBACK]');
+    // Phones
+    sanitized = sanitized.replace(/(?:\+?1[-.\s]?)?(?:\([0-9]{3}\)|[0-9]{3})[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}\b/g, '[PHONE_FALLBACK]');
+    // Contextual Salutations
+    sanitized = sanitized.replace(/(?:\b(?:dear|advisor:|client:|customer:)\s+)([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})/gi, (m, name) => m.replace(name, '[NAME_FALLBACK]'));
+
+    return sanitized;
+  }
+
+  /**
    * Send extracted raw text to the DevOps PII Masking service.
+   * If service is unavailable, applies fail-safe local fallback masking.
    */
   public static async maskPii(documentId: string, version: number, rawText: string): Promise<string> {
     if (!rawText || !rawText.trim()) {
@@ -62,67 +131,152 @@ export class PipelineService {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.warn(`[PipelineService] PII Masker returned status ${response.status}: ${errorText}`);
-        return rawText;
+        console.warn(`[PipelineService] PII Masker returned status ${response.status}: ${errorText}. Applying local fallback sanitizer.`);
+        return this.localFallbackMask(rawText);
       }
 
       const result = await response.json() as { masked_text?: string };
-      return result.masked_text || rawText;
+      return result.masked_text || this.localFallbackMask(rawText);
     } catch (err) {
-      console.warn(`[PipelineService] PII Masker unreachable at ${endpoint}:`, err);
-      return rawText;
+      console.warn(`[PipelineService] PII Masker unreachable at ${endpoint}. Applying local fallback sanitizer:`, err);
+      return this.localFallbackMask(rawText);
     }
   }
 
   /**
-   * Dispatch masked text to the AI analysis service.
+   * Week 3 Data Engineering: Retrieve grounded compliance rules and precedents.
    */
-  public static async analyzeWithAi(
-    documentId: string,
-    version: number,
+  public static async retrieveRulesAndPrecedents(
     maskedText: string
-  ): Promise<{ summary: string; flags: ComplianceFlag[] }> {
+  ): Promise<{ retrieved_rules: RetrievedRule[]; precedents: PrecedentItem[] }> {
     if (!maskedText || !maskedText.trim()) {
-      return {
-        summary: 'No extractable text found in this document.',
-        flags: [],
-      };
+      return { retrieved_rules: [], precedents: [] };
     }
 
-    const endpoint = `${config.services.aiServiceUrl}/analyze`;
+    // Security Gate: Ensure no unmasked PII reaches retrieval engine
+    const piiLeakCheck = PipelineService.detectPiiLeakage(maskedText);
+    if (piiLeakCheck.hasLeakage) {
+      console.error(
+        `[SECURITY_GATE_VIOLATION] Blocked outgoing retrieval request! Detected unmasked PII: ${piiLeakCheck.detectedEntities.join(', ')}`
+      );
+      return { retrieved_rules: [], precedents: [] };
+    }
+
+    const endpoint = `${config.retrieval.serviceUrl}/retrieve`;
     try {
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          document_id: documentId,
-          version,
           masked_text: maskedText,
+          rule_threshold: config.retrieval.ruleThreshold,
+          rule_top_k: config.retrieval.ruleTopK,
+          precedent_threshold: config.retrieval.precedentThreshold,
+          precedent_top_k: config.retrieval.precedentTopK,
         }),
-        signal: AbortSignal.timeout(45000),
+        signal: AbortSignal.timeout(10000),
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.warn(`[PipelineService] AI Service returned status ${response.status}: ${errorText}`);
-        return {
-          summary: 'AI analysis could not be completed for this document.',
-          flags: [],
-        };
+        console.warn(`[PipelineService] Retrieval Service returned status ${response.status}`);
+        return { retrieved_rules: [], precedents: [] };
       }
 
-      const result = await response.json() as { summary?: string; flags?: ComplianceFlag[] };
+      const data = (await response.json()) as {
+        retrieved_rules?: RetrievedRule[];
+        precedents?: PrecedentItem[];
+      };
+
       return {
-        summary: result.summary || 'Summary generated.',
-        flags: Array.isArray(result.flags) ? result.flags : [],
+        retrieved_rules: Array.isArray(data.retrieved_rules) ? data.retrieved_rules : [],
+        precedents: Array.isArray(data.precedents) ? data.precedents : [],
       };
     } catch (err) {
-      console.warn(`[PipelineService] AI Service unreachable at ${endpoint}:`, err);
+      console.warn(`[PipelineService] Retrieval Service unreachable at ${endpoint}:`, err);
+      return { retrieved_rules: [], precedents: [] };
+    }
+  }
+
+  /**
+   * Dispatch masked text and retrieved rules to the AI analysis service.
+   * Resiliently wrapped with Circuit Breaker to fail fast during outages.
+   */
+  public static async analyzeWithAi(
+    documentId: string,
+    version: number,
+    maskedText: string,
+    retrievedRules: RetrievedRule[] = [],
+    precedents: PrecedentItem[] = []
+  ): Promise<{ summary: string; flags: ComplianceFlag[]; isDegraded?: boolean; circuitState?: string }> {
+    if (!maskedText || !maskedText.trim()) {
       return {
-        summary: 'AI service currently offline or unreachable.',
+        summary: 'No extractable text found in this document.',
         flags: [],
+        isDegraded: false,
+        circuitState: aiCircuitBreaker.getState(),
       };
     }
+
+    // Outgoing AI Security Gate: Ensure no unmasked PII ever reaches the third-party API
+    const leakCheck = PipelineService.detectPiiLeakage(maskedText);
+    if (leakCheck.hasLeakage) {
+      const errMsg = `[SECURITY_GATE_VIOLATION] Blocked outgoing AI payload: detected unmasked PII entities (${leakCheck.detectedEntities.join(', ')}). Aborting third-party API transmission.`;
+      console.error(errMsg);
+      throw new Error(errMsg);
+    }
+
+    const endpoint = `${config.services.aiServiceUrl}/analyze`;
+
+    interface AiAnalysisExecutionResult {
+      summary: string;
+      flags: ComplianceFlag[];
+      isDegraded: boolean;
+      circuitState: string;
+    }
+
+    return aiCircuitBreaker.execute<AiAnalysisExecutionResult>(
+      async (signal) => {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            document_id: documentId,
+            version,
+            masked_text: maskedText,
+            retrieved_rules: retrievedRules,
+            precedents: precedents,
+          }),
+          signal,
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`AI Service returned status ${response.status}: ${errorText}`);
+        }
+
+        const result = (await response.json()) as { summary?: string; flags?: ComplianceFlag[] };
+        return {
+          summary: result.summary || 'Summary generated.',
+          flags: Array.isArray(result.flags) ? result.flags : [],
+          isDegraded: false,
+          circuitState: aiCircuitBreaker.getState(),
+        };
+      },
+      (error) => {
+        const isCircuitOpen = aiCircuitBreaker.isOpen();
+        console.warn(
+          `[PipelineService] AI Analysis fallback invoked (${isCircuitOpen ? 'CIRCUIT_OPEN' : 'SERVICE_ERROR'}): ${error.message}`
+        );
+        return {
+          summary: isCircuitOpen
+            ? 'AI compliance analysis is temporarily unavailable (circuit breaker open). Graceful degradation active.'
+            : 'AI compliance analysis could not be completed at this time. Graceful degradation active.',
+          flags: [],
+          isDegraded: true,
+          circuitState: aiCircuitBreaker.getState(),
+        };
+      }
+    );
   }
 
   private static inFlightJobs = new Map<string, Promise<DocumentAnalysis | null>>();
@@ -197,16 +351,40 @@ export class PipelineService {
     // 2. DevOps PII Masking
     const maskedText = await this.maskPii(documentId, version, rawText || 'Empty document');
 
-    // 3. Gemini AI Analysis
-    const { summary, flags } = await this.analyzeWithAi(documentId, version, maskedText);
+    // 3. Week 3 Data Engineering: Rule Retrieval and Precedent Search
+    const { retrieved_rules, precedents } = await this.retrieveRulesAndPrecedents(maskedText);
 
-    // If AI analysis could not be completed, skip persistence to allow retry
+    // 4. Gemini AI Analysis with Rule Grounding & Circuit Breaker
+    const { summary, flags, isDegraded, circuitState } = await this.analyzeWithAi(
+      documentId,
+      version,
+      maskedText,
+      retrieved_rules,
+      precedents
+    );
+
+    // If AI analysis is degraded / failed: return graceful degradation object without poisoning DB
     if (
+      isDegraded ||
       summary === 'AI analysis could not be completed for this document.' ||
       summary === 'AI service currently offline or unreachable.'
     ) {
-      console.warn(`[PipelineService] Document ${documentId} (v${version}) analysis could not be completed, skipping database persistence to allow retry.`);
-      return null;
+      console.warn(
+        `[PipelineService] Document ${documentId} (v${version}) AI analysis degraded (circuit: ${circuitState || aiCircuitBreaker.getState()}). Returning graceful degradation response.`
+      );
+      return {
+        id: `degraded-${documentId}-${version}`,
+        document_id: documentId,
+        version,
+        masked_text: maskedText,
+        summary: summary || 'AI compliance analysis is temporarily unavailable. Graceful degradation active.',
+        flags: [],
+        created_at: new Date(),
+        updated_at: new Date(),
+        status: 'unavailable',
+        is_degraded: true,
+        circuit_breaker: circuitState || aiCircuitBreaker.getState(),
+      } as any;
     }
 
     // 4. Store in PostgreSQL

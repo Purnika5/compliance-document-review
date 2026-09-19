@@ -23,12 +23,12 @@ export function ComplianceFlagCard({
   const getSeverityBadge = () => {
     switch (flag.severity) {
       case "HIGH":
-        return "bg-rose-950/60 text-rose-300 border-rose-800/60 shadow-[0_0_8px_rgba(244,63,94,0.12)]";
+        return "bg-rose-50 text-rose-900 border-rose-300";
       case "MEDIUM":
-        return "bg-amber-950/60 text-amber-300 border-amber-800/60 shadow-[0_0_8px_rgba(245,158,11,0.12)]";
+        return "bg-amber-50 text-amber-900 border-amber-300";
       case "LOW":
       default:
-        return "bg-secondary text-muted-foreground border-border";
+        return "bg-[#E6E8E7]/50 text-[#183028] border-[#E6E8E7]";
     }
   };
 
@@ -36,41 +36,41 @@ export function ComplianceFlagCard({
     <div
       onClick={() => onSelect(flag)}
       className={cn(
-        "p-3 rounded-lg border text-left transition-all cursor-pointer bg-card/60",
+        "p-3 rounded-xl border text-left transition-all cursor-pointer shadow-2xs",
         isSelected
-          ? "border-emerald-800/60 ring-1 ring-emerald-600/40 bg-[#062a20] shadow-xs"
-          : "border-border bg-transparent hover:border-emerald-800/40 hover:bg-[#062a20]/40"
+          ? "border-[#183028] ring-1 ring-[#183028] bg-[#C5E86C]/15"
+          : "border-[#E6E8E7] bg-white hover:border-[#183028] hover:bg-[#C5E86C]/10"
       )}
     >
       <div className="flex items-center justify-between gap-1 mb-1.5">
         <span
           className={cn(
-            "px-1.5 py-0.2 text-[10px] font-semibold rounded border uppercase tracking-wider",
+            "px-1.5 py-0.5 text-[10px] font-bold rounded-lg border uppercase tracking-wider font-mono",
             getSeverityBadge()
           )}
         >
           {flag.severity} • Rule {flag.ruleCode}
         </span>
-        <span className="text-[10px] font-mono text-muted-foreground">Page {flag.pageNumber}</span>
+        <span className="text-[10px] font-mono text-[#183028]/60">Page {flag.pageNumber}</span>
       </div>
 
-      <h4 className="text-xs font-semibold text-foreground leading-snug">{flag.title}</h4>
+      <h4 className="text-xs font-semibold text-[#183028] leading-snug">{flag.title}</h4>
 
-      <div className="mt-2 p-2 rounded-md bg-secondary/50 border border-border text-foreground/90 text-[11px] space-y-0.5">
-        <span className="font-semibold block text-[10px] uppercase tracking-wider text-muted-foreground">
+      <div className="mt-2 p-2 rounded-lg bg-[#E6E8E7]/20 border border-[#E6E8E7] text-[#183028] text-[11px] space-y-0.5">
+        <span className="font-semibold block text-[10px] uppercase tracking-wider text-[#183028]/50">
           Document Passage
         </span>
-        <p className="italic font-serif leading-relaxed text-foreground/90">{`"${flag.passage}"`}</p>
+        <p className="italic font-serif leading-relaxed text-[#183028]/90">{`"${flag.passage}"`}</p>
       </div>
 
-      <div className="mt-2 text-[11px] text-muted-foreground leading-normal">
-        <strong className="text-foreground/90">Rule Logic: </strong>
+      <div className="mt-2 text-[11px] text-[#183028]/70 leading-normal">
+        <strong className="text-[#183028]">Rule Logic: </strong>
         {flag.explanation}
       </div>
 
-      <div className="mt-2.5 pt-2 border-t border-border/60 flex items-center justify-between text-[10px] text-muted-foreground">
-        <span>Confidence: <strong className="text-foreground">{flag.confidenceScore}%</strong></span>
-        <span className="font-medium text-emerald-400 flex items-center gap-0.5 hover:underline">
+      <div className="mt-2.5 pt-2 border-t border-[#E6E8E7] flex items-center justify-between text-[10px] text-[#183028]/60">
+        <span>Confidence: <strong className="text-[#183028]">{flag.confidenceScore}%</strong></span>
+        <span className="font-medium text-[#183028] flex items-center gap-0.5 hover:underline">
           Highlight in Document <ChevronRight className="h-3 w-3" />
         </span>
       </div>

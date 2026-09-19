@@ -6,14 +6,7 @@
  */
 import { authStore } from "@/lib/auth/auth-store";
 
-if (!process.env.NEXT_PUBLIC_API_URL) {
-  throw new Error(
-    "[client.ts] NEXT_PUBLIC_API_URL is not defined. " +
-    "Copy .env.example to .env.local and set the value."
-  );
-}
-
-const BASE_API_URL = process.env.NEXT_PUBLIC_API_URL;
+const BASE_API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 
 export class ApiError extends Error {
@@ -67,7 +60,17 @@ export const client = {
       return (await response.json()) as T;
     } catch (err) {
       if (err instanceof ApiError) throw err;
-      throw new ApiError(500, err instanceof Error ? err.message : "Network error occurred");
+
+      const isConnectionRefused =
+        err instanceof TypeError && err.message === "Failed to fetch";
+
+      const message = isConnectionRefused
+        ? "Unable to reach the server. Please check that the backend is running and try again."
+        : err instanceof Error
+          ? err.message
+          : "An unexpected network error occurred. Please try again.";
+
+      throw new ApiError(isConnectionRefused ? 503 : 500, message);
     }
   },
 

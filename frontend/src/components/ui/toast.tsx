@@ -48,7 +48,7 @@ const createToast = (
 ) => {
   const message = `${header}${subheader ? `|${subheader}` : ""}`;
   return toastFn(message, {
-    duration: options?.duration || 4000,
+    duration: options?.duration || 5000,
     position: options?.position || "top-center",
   });
 };
@@ -126,19 +126,19 @@ const parseToastMessage = (message: unknown): ToastData => {
 /** Icon and color config per toast type */
 const TOAST_CONFIG = {
   success: {
-    icon: <CheckCircle2 className="h-4 w-4 text-primary" />,
-    iconBg: "bg-primary/15 ring-1 ring-primary/30",
-    accent: "bg-primary",
+    icon: <CheckCircle2 className="h-4 w-4 text-[#183028]" />,
+    iconBg: "bg-[#C5E86C]/30 ring-1 ring-[#C5E86C]",
+    accent: "bg-[#C5E86C]",
   },
   error: {
-    icon: <XCircle className="h-4 w-4 text-rose-400" />,
-    iconBg: "bg-rose-500/15 ring-1 ring-rose-500/30",
+    icon: <XCircle className="h-4 w-4 text-rose-600" />,
+    iconBg: "bg-rose-50 ring-1 ring-rose-200",
     accent: "bg-rose-500",
   },
   default: {
-    icon: <Info className="h-4 w-4 text-accent-foreground" />,
-    iconBg: "bg-accent/15 ring-1 ring-accent/30",
-    accent: "bg-accent",
+    icon: <Info className="h-4 w-4 text-[#183028]" />,
+    iconBg: "bg-[#E6E8E7]/60 ring-1 ring-[#E6E8E7]",
+    accent: "bg-[#183028]",
   },
 };
 
@@ -178,11 +178,11 @@ const ToastIconBadge = ({ t }: { t: Toast }) => {
  */
 const ToastContent = ({ toast_data }: { toast_data: ToastData }) => (
   <div className="flex-1 text-left min-w-0">
-    <div className="text-xs font-bold text-foreground leading-tight">
+    <div className="text-xs font-bold text-[#183028] leading-tight">
       {toast_data.header}
     </div>
     {toast_data.subheader && (
-      <div className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+      <div className="text-[11px] text-[#183028]/70 mt-0.5 leading-snug">
         {toast_data.subheader}
       </div>
     )}
@@ -214,21 +214,21 @@ export const ToastProvider = ({ position = "top-center" }: ToastProviderProps) =
         zIndex: 99999,
       }}
       toastOptions={{
-        duration: 4500,
+        duration: 5000,
         style: {
-          background: "hsl(var(--card))",
-          color: "hsl(var(--card-foreground))",
-          border: "1px solid hsl(var(--border))",
+          background: "#FFFFFF",
+          color: "#183028",
+          border: "1px solid #E6E8E7",
           borderRadius: "12px",
           padding: "0",
-          maxWidth: "420px",
-          boxShadow: "0 12px 30px -6px rgba(0,0,0,0.6), 0 4px 12px -2px rgba(0,0,0,0.4)",
+          maxWidth: "450px",
+          boxShadow: "0 12px 30px -6px rgba(24, 48, 40, 0.15), 0 4px 12px -2px rgba(24, 48, 40, 0.08)",
         },
         success: {
-          iconTheme: { primary: "hsl(var(--primary))", secondary: "#FFFFFF" },
+          iconTheme: { primary: "#183028", secondary: "#C5E86C" },
         },
         error: {
-          iconTheme: { primary: "#f43f5e", secondary: "#FFFFFF" },
+          iconTheme: { primary: "#e11d48", secondary: "#FFFFFF" },
         },
       }}
     >
@@ -244,14 +244,14 @@ export const ToastProvider = ({ position = "top-center" }: ToastProviderProps) =
                 : TOAST_CONFIG.default;
 
             return (
-              <div className="flex w-full min-w-[320px] items-center gap-3 px-4 py-3 bg-card border border-border rounded-xl shadow-2xl relative overflow-hidden text-card-foreground">
+              <div className="flex w-full min-w-[320px] items-center gap-3 px-4 py-3 bg-[#FFFFFF] border border-[#E6E8E7] rounded-xl shadow-xl relative overflow-hidden text-[#183028]">
                 <ToastIconBadge t={t} />
                 <ToastContent toast_data={toast_data} />
 
                 {/* Close button */}
                 <button
                   onClick={() => toast.dismiss(t.id)}
-                  className="shrink-0 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer"
+                  className="shrink-0 p-1 rounded-md text-[#183028]/50 hover:text-[#183028] hover:bg-[#E6E8E7]/40 transition-all cursor-pointer"
                   aria-label="Dismiss notification"
                 >
                   <X className="h-3.5 w-3.5" />

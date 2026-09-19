@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import { ReviewWorkspace } from "@/features/review/components/review-workspace";
+import { ReviewWorkspaceSkeleton } from "@/features/review/components/review-workspace-skeleton";
 
 interface DocumentDetailPageProps {
   params: Promise<{
@@ -15,5 +17,9 @@ interface DocumentDetailPageProps {
  */
 export default async function DocumentDetailPage({ params }: DocumentDetailPageProps) {
   const resolvedParams = await params;
-  return <ReviewWorkspace documentId={resolvedParams.id} />;
+  return (
+    <Suspense fallback={<ReviewWorkspaceSkeleton />}>
+      <ReviewWorkspace documentId={resolvedParams.id} />
+    </Suspense>
+  );
 }

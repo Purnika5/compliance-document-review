@@ -95,9 +95,9 @@ export function DecisionDialog({
         description:
           "Executing this decision will mark the document as Approved in the institutional record and notify the submitting advisor.",
         icon: CheckCircle2,
-        iconBg: "bg-primary/15 text-primary border-primary/30",
+        iconBg: "bg-[#C5E86C]/20 text-[#183028] border border-[#C5E86C]",
         confirmBtnText: "Execute Approval",
-        confirmBtnClass: "bg-[#24A152] hover:bg-[#062A20] hover:text-[#54d0a2] hover:border hover:border-emerald-700/60 active:bg-[#1d8342] text-white shadow-xs cursor-pointer",
+        confirmBtnClass: "bg-[#183028] hover:bg-[#23453a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] text-white shadow-2xs cursor-pointer",
         placeholder: "Optional officer approval remark or regulatory notes...",
       };
     }
@@ -107,9 +107,9 @@ export function DecisionDialog({
         description:
           "Specify the exact regulatory deficiency, rule code, or required amendments for the advisor.",
         icon: AlertCircle,
-        iconBg: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+        iconBg: "bg-amber-100 text-amber-900 border border-amber-300",
         confirmBtnText: "Transmit Revision Request",
-        confirmBtnClass: "bg-amber-600 hover:bg-amber-500 text-white shadow-xs",
+        confirmBtnClass: "bg-amber-600 hover:bg-amber-700 text-white shadow-2xs cursor-pointer",
         placeholder: "Detail the specific passage, missing schedule, or rule citation (required)...",
       };
     }
@@ -118,9 +118,9 @@ export function DecisionDialog({
       description:
         "Formal rejection terminates evaluation of this submission version. A regulatory reason must be recorded for audit history.",
       icon: XCircle,
-      iconBg: "bg-destructive/15 text-destructive border-destructive/30",
+      iconBg: "bg-rose-100 text-rose-900 border border-rose-300",
       confirmBtnText: "Confirm Regulatory Rejection",
-      confirmBtnClass: "bg-destructive hover:bg-destructive/90 text-white shadow-xs",
+      confirmBtnClass: "bg-rose-700 hover:bg-rose-800 text-white shadow-2xs cursor-pointer",
       placeholder: "State the regulatory violation or non-compliance reason (required)...",
     };
   };
@@ -130,31 +130,31 @@ export function DecisionDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-lg border border-border bg-card text-card-foreground p-6 shadow-2xl">
+      <DialogContent className="max-w-lg border border-[#E6E8E7] bg-white text-[#183028] p-6 shadow-2xl rounded-2xl">
         <DialogHeader className="space-y-1 pb-2">
           <div className="flex items-center gap-3">
             <div
-              className={`h-10 w-10 rounded border flex items-center justify-center shrink-0 ${config.iconBg}`}
+              className={`h-10 w-10 rounded-xl border flex items-center justify-center shrink-0 ${config.iconBg}`}
             >
               <Icon className="h-5 w-5" />
             </div>
             <div>
-              <DialogTitle className="text-base font-bold text-foreground">
+              <DialogTitle className="text-base font-bold text-[#183028]">
                 {config.title}
               </DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground font-medium">
-                Document <span className="font-mono text-foreground/80">{documentId}</span> • {documentTitle}
+              <DialogDescription className="text-xs text-[#183028]/60 font-medium">
+                Document <span className="font-mono text-[#183028] font-bold">{documentId}</span> • {documentTitle}
               </DialogDescription>
             </div>
           </div>
         </DialogHeader>
 
         <div className="space-y-3 pt-2">
-          <p className="text-xs text-muted-foreground leading-normal">{config.description}</p>
+          <p className="text-xs text-[#183028]/70 leading-normal">{config.description}</p>
 
           <div className="space-y-1.5">
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-              Officer Audit Statement {(isRevision || isRejection) && <span className="text-destructive">*</span>}
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-[#183028]/60">
+              Officer Audit Statement {(isRevision || isRejection) && <span className="text-rose-500">*</span>}
             </label>
             <Textarea
               value={comment}
@@ -164,30 +164,30 @@ export function DecisionDialog({
               }}
               placeholder={config.placeholder}
               className={cn(
-                "bg-muted/30 border-border text-foreground placeholder:text-muted-foreground/60 text-xs min-h-[90px] rounded-md focus-visible:ring-1 focus-visible:ring-primary transition-colors",
-                validationError && "border-rose-500/80 focus-visible:ring-rose-500"
+                "bg-white border border-[#E6E8E7] text-[#183028] placeholder:text-[#183028]/45 text-xs min-h-[90px] rounded-xl focus-visible:ring-1 focus-visible:ring-[#183028] transition-colors shadow-2xs",
+                validationError && "border-rose-500 ring-1 ring-rose-500"
               )}
             />
             {validationError && (
-              <p className="text-[11px] text-rose-400 font-medium animate-fade-in">{validationError}</p>
+              <p className="text-[11px] text-rose-600 font-medium animate-fade-in">{validationError}</p>
             )}
           </div>
 
-          <div className="bg-muted/20 border border-border/80 p-2.5 rounded-md flex items-center gap-2 text-[11px] text-muted-foreground">
-            <ShieldCheck className="h-4 w-4 text-primary shrink-0" />
+          <div className="bg-[#E6E8E7]/20 border border-[#E6E8E7] p-2.5 rounded-xl flex items-center gap-2 text-[11px] text-[#183028]/70">
+            <ShieldCheck className="h-4 w-4 text-[#183028] shrink-0" />
             <span>
               Decision execution is immutably logged with officer credential and timestamp.
             </span>
           </div>
         </div>
 
-        <DialogFooter className="flex items-center justify-end gap-2 pt-3 border-t border-border">
+        <DialogFooter className="flex items-center justify-end gap-2 pt-3 border-t border-[#E6E8E7]">
           <Button
             type="button"
             variant="outline"
             onClick={onClose}
             disabled={isSubmitting}
-            className="h-8 px-3 text-xs rounded border-border bg-transparent hover:bg-[#062A20] hover:text-[#54d0a2] hover:border-emerald-800/60 text-foreground"
+            className="h-8.5 px-3.5 text-xs rounded-xl border border-[#E6E8E7] bg-white hover:bg-[#C5E86C]/20 text-[#183028] cursor-pointer"
           >
             Cancel
           </Button>
@@ -195,7 +195,7 @@ export function DecisionDialog({
             type="button"
             onClick={handleConfirm}
             disabled={isSubmitting}
-            className={`h-8 px-4 text-xs font-semibold rounded ${config.confirmBtnClass}`}
+            className={`h-8.5 px-4 text-xs font-semibold rounded-xl ${config.confirmBtnClass}`}
           >
             {isSubmitting ? (
               <span className="flex items-center gap-1.5">

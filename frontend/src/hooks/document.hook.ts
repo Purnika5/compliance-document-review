@@ -33,7 +33,7 @@ export function useDocuments(mode: "my-submissions" | "queue" = "queue") {
       if (mode === "my-submissions") {
         data = await documentService.getMySubmissions();
       } else {
-        data = await documentService.getQueue();
+        data = await documentService.getQueue({ status: activeStatus });
       }
       setAllDocuments(data);
     } catch (err) {
@@ -42,7 +42,7 @@ export function useDocuments(mode: "my-submissions" | "queue" = "queue") {
     } finally {
       setIsPending(false);
     }
-  }, [mode]);
+  }, [mode, activeStatus]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect

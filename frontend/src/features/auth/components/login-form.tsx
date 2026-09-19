@@ -10,11 +10,11 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useLogin } from "../hooks/use-login";
 import { useRedirectIfAuthenticated } from "../hooks/use-auth-guard";
-import { loginSchema } from "@/lib/validation/auth";
+import { loginSchema, validateEmail } from "@/lib/validation/auth";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { CompanyLogo } from "@/components/ui/brand-logos";
-import { Mail, Lock, Eye, EyeOff, Loader2, ArrowRight, AlertCircle } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, Loader2, ArrowRight, AlertCircle, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function LoginForm() {
@@ -27,6 +27,46 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [validFields, setValidFields] = useState<Record<string, boolean>>({});
+
+  const handleEmailChange = (val: string) => {
+    setEmail(val);
+    clearError();
+    setTouched((prev) => ({ ...prev, email: true }));
+    const result = validateEmail(val);
+    if (!result.success && result.error) {
+      setFormErrors((prev) => ({ ...prev, email: result.error! }));
+      setValidFields((prev) => ({ ...prev, email: false }));
+    } else {
+      setFormErrors((prev) => {
+        const next = { ...prev };
+        delete next.email;
+        return next;
+      });
+      setValidFields((prev) => ({ ...prev, email: true }));
+    }
+  };
+
+  const handlePasswordChange = (val: string) => {
+    setPassword(val);
+    clearError();
+    setTouched((prev) => ({ ...prev, password: true }));
+    if (!val || val.trim().length === 0) {
+      setFormErrors((prev) => ({ ...prev, password: "Password is required" }));
+      setValidFields((prev) => ({ ...prev, password: false }));
+    } else {
+      setFormErrors((prev) => {
+        const next = { ...prev };
+        delete next.password;
+        return next;
+      });
+      setValidFields((prev) => ({ ...prev, password: true }));
+    }
+  };
+
+  const markTouched = (field: string) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+  };
 
   const authenticationMessage = error?.includes("401")
     ? "The email or password is incorrect. Check your credentials and try again."
@@ -75,7 +115,7 @@ export function LoginForm() {
           variant="destructive"
           title="Unable to sign in"
           message={authenticationMessage}
-          className="mb-5 p-3 text-xs bg-rose-50 border-rose-200 text-rose-800"
+          className="mb-5 p-3 text-xs bg-red-50 border-red-300 text-red-900 [&>svg]:text-red-600 [&>h5]:text-red-700"
         />
       )}
 
@@ -90,30 +130,28 @@ export function LoginForm() {
             <input
               type="email"
               id="login-email"
-              placeholder="name@firm.com"
+              placeholder="name@springercapital.com"
               value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                if (formErrors.email) {
-                  setFormErrors((prev) => {
-                    const n = { ...prev };
-                    delete n.email;
-                    return n;
-                  });
-                }
-              }}
+              onChange={(e) => handleEmailChange(e.target.value)}
+              onPaste={() => markTouched("email")}
+              onBlur={() => handleEmailChange(email)}
               className={cn(
                 "w-full h-11 pl-10 pr-9 rounded-lg border bg-white text-slate-900 text-sm placeholder:text-slate-400 transition-all outline-hidden focus:border-emerald-800 focus:ring-1 focus:ring-emerald-800",
-                formErrors?.email
+                touched.email && formErrors?.email
                   ? "border-rose-400 ring-1 ring-rose-400/50"
-                  : "border-slate-200"
+                  : touched.email && validFields?.email
+                    ? "border-emerald-500 ring-1 ring-emerald-500/30"
+                    : "border-slate-200"
               )}
             />
-            {formErrors?.email && (
+            {touched.email && validFields?.email && (
+              <Check className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-600 pointer-events-none" />
+            )}
+            {touched.email && formErrors?.email && (
               <AlertCircle className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-rose-500 pointer-events-none" />
             )}
           </div>
-          {formErrors.email && (
+          {touched.email && formErrors.email && (
             <p className="text-[11px] text-rose-500 font-medium">{formErrors.email}</p>
           )}
         </div>
@@ -138,21 +176,16 @@ export function LoginForm() {
               id="login-password"
               placeholder="••••••••"
               value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                if (formErrors.password) {
-                  setFormErrors((prev) => {
-                    const n = { ...prev };
-                    delete n.password;
-                    return n;
-                  });
-                }
-              }}
+              onChange={(e) => handlePasswordChange(e.target.value)}
+              onPaste={() => markTouched("password")}
+              onBlur={() => handlePasswordChange(password)}
               className={cn(
-                "w-full h-11 pl-10 pr-9 rounded-lg border bg-white text-slate-900 text-sm placeholder:text-slate-400 transition-all outline-hidden focus:border-emerald-800 focus:ring-1 focus:ring-emerald-800",
-                formErrors?.password
+                "w-full h-11 pl-10 pr-10 rounded-lg border bg-white text-slate-900 text-sm placeholder:text-slate-400 transition-all outline-hidden focus:border-emerald-800 focus:ring-1 focus:ring-emerald-800",
+                touched.password && formErrors?.password
                   ? "border-rose-400 ring-1 ring-rose-400/50"
-                  : "border-slate-200"
+                  : touched.password && validFields?.password
+                    ? "border-emerald-500 ring-1 ring-emerald-500/30"
+                    : "border-slate-200"
               )}
             />
             <button
@@ -164,7 +197,7 @@ export function LoginForm() {
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
-          {formErrors.password && (
+          {touched.password && formErrors.password && (
             <p className="text-[11px] text-rose-500 font-medium">{formErrors.password}</p>
           )}
         </div>
@@ -177,7 +210,7 @@ export function LoginForm() {
               id="login-remember-device"
               checked={rememberDevice}
               onChange={(e) => setRememberDevice(e.target.checked)}
-              className="h-4 w-4 rounded-sm border-slate-300 text-[#0e271c] focus:ring-emerald-700 cursor-pointer accent-[#0e271c]"
+              className="h-4 w-4 rounded-sm border-slate-300 text-[#183028] focus:ring-[#183028] cursor-pointer accent-[#183028]"
             />
             <span className="text-xs text-slate-600">
               Remember this device for 30 days
@@ -192,7 +225,7 @@ export function LoginForm() {
             form="login-form"
             id="login-submit"
             disabled={isPending}
-            className="w-full bg-[#132c20] hover:bg-[#183a2b] active:bg-[#0c2217] text-white font-medium text-sm h-11 rounded-lg flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-950/10 hover:shadow-lg disabled:opacity-60 cursor-pointer"
+            className="w-full bg-[#183028] hover:bg-[#23453a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] active:bg-[#10221c] text-white font-medium text-sm h-11 rounded-lg flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-950/10 hover:shadow-lg disabled:opacity-60 cursor-pointer"
           >
             {isPending ? (
               <span className="flex items-center gap-2 text-white">

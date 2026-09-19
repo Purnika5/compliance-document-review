@@ -7,11 +7,25 @@
 import { uploadDocumentSchema, type UploadDocumentInput, type DocumentItem, type DocumentStatusType } from "@/lib/validation/document";
 import {
   fetchDocumentRequest,
+  fetchDocumentVersionsRequest,
   fetchMySubmissionsRequest,
   fetchQueueRequest,
   uploadDocumentRequest,
   updateDocumentStatusRequest,
 } from "@/lib/api/documents";
+
+export { fetchQueueRequest, fetchDocumentVersionsRequest };
+
+/**
+ * DOCU: Retrieves all versions and revision history for a document.
+ * Last Updated Date: September 18, 2026
+ * @param documentId - Document identifier to retrieve versions for.
+ * @returns Document lineage versions and revision thread entries.
+ * @author Keith
+ */
+export async function getDocumentVersionsAction(documentId: string) {
+  return fetchDocumentVersionsRequest(documentId);
+}
 
 /**
  * DOCU: Retrieves one document through the document API action layer.
@@ -67,7 +81,8 @@ export async function uploadDocumentAction(input: UploadDocumentInput): Promise<
  */
 export async function updateDocumentStatusAction(
   id: string,
-  status: "Approved" | "Needs Revision" | "Rejected"
+  status: "Approved" | "Needs Revision" | "Rejected",
+  comment?: string
 ): Promise<{ id: string; status: DocumentStatusType; updated_at: string }> {
-  return updateDocumentStatusRequest(id, status);
+  return updateDocumentStatusRequest(id, status, comment);
 }

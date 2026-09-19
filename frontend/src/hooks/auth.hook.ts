@@ -60,7 +60,7 @@ export function useLogin() {
         } else if (session.role === "Officer") {
           router.push("/queue");
         } else {
-          router.push("/submissions");
+          router.push("/dashboard");
         }
         return session;
       } catch (err: unknown) {
@@ -97,7 +97,7 @@ export function useSignup() {
         if (session.role === "Officer") {
           router.push("/queue");
         } else {
-          router.push("/submissions");
+          router.push("/dashboard");
         }
         return session;
       } catch (err: unknown) {

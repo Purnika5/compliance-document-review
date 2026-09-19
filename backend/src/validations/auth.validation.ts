@@ -1,8 +1,12 @@
 import { z } from 'zod';
 
 const isCorporateEmail = (email: string) => {
-  const lower = email.toLowerCase();
-  return lower.endsWith('@springer.capital') || process.env.NODE_ENV === 'test';
+  const lower = email.toLowerCase().trim();
+  return (
+    lower.endsWith('@springer.capital') ||
+    lower.endsWith('@springercapital.com') ||
+    process.env.NODE_ENV === 'test'
+  );
 };
 
 export const signupSchema = z.object({
@@ -12,7 +16,7 @@ export const signupSchema = z.object({
     .email('Invalid email address format')
     .refine(
       isCorporateEmail,
-      'Email must end with @springer.capital'
+      'Email must end with @springer.capital or @springercapital.com'
     ),
   password: z.string().min(6, 'Password must be at least 6 characters long'),
   role: z.enum(['Advisor', 'Officer'], {
@@ -26,7 +30,7 @@ export const loginSchema = z.object({
     .email('Invalid email address format')
     .refine(
       isCorporateEmail,
-      'Email must end with @springer.capital'
+      'Email must end with @springer.capital or @springercapital.com'
     ),
   password: z.string().min(1, 'Password is required')
 });

@@ -12,8 +12,10 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { cn } from "@/lib/utils";
-
 import { authStore } from "@/lib/auth/auth-store";
+import { apiClient } from "@/utils/apiClient";
+import { API_ENDPOINTS } from "@/constants/api-endpoints";
+import type { ApiResponseEnvelope } from "@/entities/types/api.type";
 
 export interface IRevisionEvent {
   id: string;
@@ -31,15 +33,17 @@ export interface RevisionThreadProps {
   events?: IRevisionEvent[];
   onAddComment?: (comment: string) => void;
   readOnly?: boolean;
+  refreshKey?: number;
 }
 
 /**
  * DOCU: Renders the revision history and optional comment form for a document.
- * Last Updated Date: September 7, 2026
+ * Last Updated Date: September 18, 2026
  * @param documentId - Document identifier displayed in the revision header.
  * @param events - Revision events supplied by the document workflow.
  * @param onAddComment - Optional callback invoked after a comment is added.
  * @param readOnly - Whether comment submission controls are disabled.
+ * @param refreshKey - Dynamic trigger to re-query backend thread entries.
  * @returns The revision thread view.
  * @author Keith
  */
@@ -48,23 +52,76 @@ export function RevisionThread({
   events = [],
   onAddComment,
   readOnly = false,
+  refreshKey = 0,
 }: RevisionThreadProps) {
-  const [timeline, setTimeline] = useState<IRevisionEvent[]>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(`revisions_${documentId}`);
-      if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch (e) {
-          console.error("Failed to parse revisions from localStorage", e);
-        }
-      }
-    }
-    return events;
-  });
+  const [timeline, setTimeline] = useState<IRevisionEvent[]>(events);
+  const [isLoadingThread, setIsLoadingThread] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    let isActive = true;
+    async function loadBackendThread() {
+      setIsLoadingThread(true);
+      try {
+        const res = await apiClient.get<
+          ApiResponseEnvelope<{ versions?: Record<string, unknown>[]; thread_entries?: Record<string, unknown>[] }>
+        >(API_ENDPOINTS.DOCUMENTS.VERSIONS(documentId));
+
+        const entries = res?.data?.thread_entries;
+        if (Array.isArray(entries) && isActive) {
+          const apiTimeline: IRevisionEvent[] = entries.map((entry, idx) => {
+            const roleStr = String(entry.author_role || "").toUpperCase();
+            const role: "Advisor" | "Officer" | "System" = roleStr === "OFFICER" ? "Officer" : "Advisor";
+            const isDecision = entry.entry_type === "decision";
+            const isSubmission = entry.entry_type === "submission";
+            return {
+              id: String(entry.id || `entry-${idx + 1}`),
+              version: `v1.${idx + 1}`,
+              author: String(entry.author_name || (role === "Officer" ? "Compliance Officer" : "Advisor")),
+              role,
+              action: isDecision
+                ? "Officer Review Decision"
+                : isSubmission
+                ? "Advisor Document Submission"
+                : "Collaboration Note",
+              comment: String(entry.message || ""),
+              timestamp: entry.created_at ? new Date(String(entry.created_at)).toLocaleString() : "Recently",
+            };
+          });
+
+          if (apiTimeline.length > 0) {
+            setTimeline(apiTimeline);
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn("[RevisionThread] Failed to fetch backend thread entries:", err);
+      } finally {
+        if (isActive) setIsLoadingThread(false);
+      }
+
+      // Fallback to localStorage or provided events if backend returns no entries
+      if (typeof window !== "undefined") {
+        const saved = localStorage.getItem(`revisions_${documentId}`);
+        if (saved) {
+          try {
+            setTimeline(JSON.parse(saved));
+            return;
+          } catch {
+            // ignore
+          }
+        }
+      }
+      setTimeline(events);
+    }
+
+    loadBackendThread();
+    return () => {
+      isActive = false;
+    };
+  }, [documentId, refreshKey, events]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && timeline.length > 0) {
       localStorage.setItem(`revisions_${documentId}`, JSON.stringify(timeline));
     }
   }, [timeline, documentId]);
@@ -108,18 +165,12 @@ export function RevisionThread({
   return (
     <div className="space-y-4 min-w-0">
       {/* Header Info */}
-      <div className="border border-border bg-muted/30 flex items-center justify-between rounded-lg px-3 py-2 text-xs">
-        <div className="flex items-center gap-2">
-          <span className="font-bold text-foreground">Revision History</span>
-          <span className="rounded-md border border-primary/30 bg-primary/15 px-1.5 py-0.5 text-[10px] font-mono font-semibold text-primary">
-            {timeline.length} events
-          </span>
-        </div>
-        <span className="font-mono text-[11px] text-muted-foreground">{documentId}</span>
+      <div className="border border-[#E6E8E7] bg-white text-[#183028] flex items-center rounded-xl px-3.5 py-2.5 text-xs shadow-2xs">
+        <span className="font-bold text-[#183028]">Revision History</span>
       </div>
 
       {/* Structured Chronological Timeline */}
-      <div className="relative space-y-3 pl-3 before:absolute before:left-1 before:top-2 before:bottom-2 before:w-px before:bg-border">
+      <div className="relative space-y-3 pl-3 before:absolute before:left-1 before:top-2 before:bottom-2 before:w-px before:bg-[#E6E8E7]">
         {timeline.map((item) => {
           const isOfficer = item.role === "Officer";
 
@@ -128,44 +179,44 @@ export function RevisionThread({
               {/* Timeline Dot */}
               <div
                 className={cn(
-                  "absolute -left-3.5 top-1 h-3 w-3 rounded-full border-2 border-background shadow-xs",
-                  isOfficer ? "bg-primary ring-2 ring-primary/30" : "bg-muted-foreground ring-2 ring-muted"
+                  "absolute -left-3.5 top-1 h-3 w-3 rounded-full border-2 border-white shadow-2xs",
+                  isOfficer ? "bg-[#183028] ring-2 ring-[#C5E86C]" : "bg-[#183028]/40 ring-2 ring-[#E6E8E7]"
                 )}
               />
 
               {/* Event Content Card */}
-              <div className="border border-border bg-card text-card-foreground rounded-xl p-3 space-y-2 text-xs shadow-xs">
+              <div className="border border-[#E6E8E7] bg-white text-[#183028] rounded-xl p-3.5 space-y-2 text-xs shadow-2xs">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                     {isOfficer ? (
-                      <Shield className="h-3.5 w-3.5 text-primary" />
+                      <Shield className="h-3.5 w-3.5 text-[#183028]" />
                     ) : (
-                      <User className="h-3.5 w-3.5 text-muted-foreground" />
+                      <User className="h-3.5 w-3.5 text-[#183028]/60" />
                     )}
-                    <span className="font-bold text-foreground">{item.author}</span>
+                    <span className="font-bold text-[#183028]">{item.author}</span>
                     <span
                       className={cn(
-                        "text-[9px] font-bold px-1.5 py-0.5 rounded uppercase border",
+                        "text-[9px] font-bold px-1.5 py-0.5 rounded-lg uppercase border",
                         isOfficer
-                          ? "bg-primary/15 text-primary border-primary/30"
-                          : "bg-muted text-muted-foreground border-border"
+                          ? "bg-[#C5E86C]/20 text-[#183028] border-[#C5E86C]"
+                          : "bg-[#E6E8E7]/50 text-[#183028] border-[#E6E8E7]"
                       )}
                     >
                       {item.role}
                     </span>
-                    <span className="text-[10px] font-mono text-muted-foreground">
+                    <span className="text-[10px] font-mono text-[#183028]/60">
                       ({item.version})
                     </span>
                   </div>
 
-                  <span className="text-[10px] text-muted-foreground flex items-center gap-1 sm:max-w-[130px]">
+                  <span className="text-[10px] text-[#183028]/50 flex items-center gap-1 sm:max-w-[130px]">
                     <Clock className="h-2.5 w-2.5" />
                     {item.timestamp}
                   </span>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-foreground/90">{item.action}</span>
+                  <span className="font-medium text-[#183028]">{item.action}</span>
                   {item.statusChange && (
                     <div className="flex items-center gap-1">
                       <StatusBadge status={item.statusChange.to} showIcon={false} />
@@ -174,7 +225,7 @@ export function RevisionThread({
                 </div>
 
                 {item.comment && (
-                  <p className="border border-border/80 bg-muted/40 p-2.5 rounded-lg text-foreground/90 leading-relaxed font-normal">
+                  <p className="border border-[#E6E8E7] bg-[#E6E8E7]/20 p-2.5 rounded-lg text-[#183028] leading-relaxed font-normal">
                     {item.comment}
                   </p>
                 )}
@@ -186,22 +237,22 @@ export function RevisionThread({
 
       {/* Add Collaboration Remark Form */}
       {!readOnly && (
-        <form onSubmit={handleSubmit} noValidate className="space-y-2 border-t border-border pt-3">
-          <label className="block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+        <form onSubmit={handleSubmit} noValidate className="space-y-2 border-t border-[#E6E8E7] pt-3">
+          <label className="block text-[11px] font-bold uppercase tracking-wider text-[#183028]/60">
             Append Collaboration Remark
           </label>
           <Textarea
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             placeholder="Document notes, regulatory findings, or instructions..."
-            className="bg-muted/30 border-border text-foreground placeholder:text-muted-foreground/60 min-h-[60px] rounded-lg text-xs focus-visible:ring-1 focus-visible:ring-primary"
+            className="bg-white border border-[#E6E8E7] text-[#183028] placeholder:text-[#183028]/45 min-h-[60px] rounded-xl text-xs focus-visible:ring-1 focus-visible:ring-[#183028] shadow-2xs"
           />
           <div className="flex justify-end sm:justify-end">
             <Button
               type="submit"
               disabled={isSubmitting || !newComment.trim()}
               size="sm"
-              className="h-8 max-w-full px-3 rounded-md text-xs font-semibold bg-[#24A152] hover:bg-[#062A20] hover:text-[#54d0a2] hover:border hover:border-emerald-700/60 active:bg-[#1d8342] text-white gap-1.5 shadow-xs cursor-pointer transition-all"
+              className="h-8.5 max-w-full px-4 rounded-xl text-xs font-semibold bg-[#183028] hover:bg-[#23453a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] text-white gap-1.5 shadow-2xs cursor-pointer transition-all"
             >
               <Send className="h-3 w-3" />
               <span>Record Remark</span>

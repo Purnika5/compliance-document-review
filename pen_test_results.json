@@ -1,0 +1,248 @@
+{
+  "masker_tests": [
+    {
+      "id": "MASK-01",
+      "category": "Baseline Standard PII",
+      "description": "Standard formats for Email, SSN, Phone, Card, Address, Prefixed Name",
+      "input_sample": "Advisor Marcus Vance met with Dr. Jane Doe. Contact: jane.doe@example.com or 555...",
+      "output_sample": "Advisor Marcus Vance met with Dr. [NAME_1]. Contact: [EMAIL_1] or [PHONE_1]. SSN is [SSN_1]. Card is...",
+      "latency_ms": 81.43,
+      "passed": true,
+      "verdict": "DEFENDED (PASS)",
+      "notes": "Fast deterministic replacement"
+    },
+    {
+      "id": "MASK-02",
+      "category": "SSN Delimiter Evasion",
+      "description": "SSN separated by spaces, dots, slashes, or preceded by label variations",
+      "input_sample": "Case A: 123 45 6789. Case B: SSN 987654321. Case C: social security: 111-22-3333...",
+      "output_sample": "Case A: [SSN_1]. Case B: SSN [SSN_2]. Case C: social security: [SSN_3]. Case D: ss# [SSN_4]. Case E:...",
+      "latency_ms": 5.95,
+      "passed": true,
+      "verdict": "DEFENDED (PASS)",
+      "notes": "Fast deterministic replacement"
+    },
+    {
+      "id": "MASK-03",
+      "category": "Email Obfuscation & Subdomains",
+      "description": "Multi-tier subdomains, plus-tag addressing, and obfuscated bracket forms",
+      "input_sample": "Primary: marcus.vance+compliance-audit@division.sub.springer.capital. Mailto: ma...",
+      "output_sample": "Primary: [EMAIL_1]. Mailto: mailto:[EMAIL_2]. Obfuscated: target.client [at] protonmail [dot] com.",
+      "latency_ms": 5.32,
+      "passed": true,
+      "verdict": "DEFENDED (PASS)",
+      "notes": "Fast deterministic replacement"
+    },
+    {
+      "id": "MASK-04",
+      "category": "Account & Financial Identifiers",
+      "description": "Labeled bank account numbers and unhyphenated credit card digits",
+      "input_sample": "Wire transfer info: Account Number: ACCT-987654321, Routing Number: 021000021, A...",
+      "output_sample": "Wire transfer info: Account Number: [ACCOUNT_1], Routing Number: [ACCOUNT_2], Acct # [ACCOUNT_3]. Un...",
+      "latency_ms": 5.97,
+      "passed": true,
+      "verdict": "DEFENDED (PASS)",
+      "notes": "Fast deterministic replacement"
+    },
+    {
+      "id": "MASK-05",
+      "category": "Stopword Collision & Financial Preservations",
+      "description": "Ensures institutional phrases and regulatory terms are NOT falsely masked as personal names",
+      "input_sample": "According to Springer Capital Compliance Policy and FINRA Rule 206, the January ...",
+      "output_sample": "According to Springer Capital Compliance Policy and FINRA Rule 206, the January Investment Fund Repo...",
+      "latency_ms": 5.67,
+      "passed": true,
+      "verdict": "DEFENDED (PASS)",
+      "notes": "Fast deterministic replacement"
+    },
+    {
+      "id": "MASK-06",
+      "category": "Salutation & Contextual Names",
+      "description": "Tests Dear <Name>, Advisor: <Name>, Client: <Name>, and Prefixes",
+      "input_sample": "Dear Robert Oppenheimer, please contact Advisor: Alice Cooper regarding Applican...",
+      "output_sample": "Dear [NAME_1], please contact Advisor: [NAME_2] regarding Applicant: [NAME_3].",
+      "latency_ms": 5.11,
+      "passed": true,
+      "verdict": "DEFENDED (PASS)",
+      "notes": "Fast deterministic replacement"
+    },
+    {
+      "id": "MASK-07",
+      "category": "Idempotency & Re-Masking Injection",
+      "description": "Pass pre-existing tokens ([NAME_1], [EMAIL_1]) to ensure they are NOT corrupted or double-masked",
+      "input_sample": "Hello [NAME_1], your email [EMAIL_1] has been verified. Please don't share [SSN_...",
+      "output_sample": "Hello [NAME_1], your email [EMAIL_1] has been verified. Please don't share [SSN_1] with anyone.",
+      "latency_ms": 5.36,
+      "passed": true,
+      "verdict": "DEFENDED (PASS)",
+      "notes": "Fast deterministic replacement"
+    },
+    {
+      "id": "MASK-08",
+      "category": "Deterministic Identity Mapping",
+      "description": "Repeated instances of the exact same PII entity must receive identical index tags",
+      "input_sample": "Meeting with Dr. Jane Doe. Later, Dr. Jane Doe called back. Sent confirmation to...",
+      "output_sample": "Meeting with Dr. [NAME_1]. Later, Dr. [NAME_1] called back. Sent confirmation to [EMAIL_1], and CC'd...",
+      "latency_ms": 4.79,
+      "passed": true,
+      "verdict": "DEFENDED (PASS)",
+      "notes": "Fast deterministic replacement"
+    },
+    {
+      "id": "MASK-09",
+      "category": "Adversarial Noise & Boundary Fragments",
+      "description": "Tests malformed brackets, partial digits, fake SSNs, and punctuation boundaries",
+      "input_sample": "Testing [[NAME_1]], [UNKNOWN_TAG_99], SSN: 12-345-678 (invalid 8 digits), Phone:...",
+      "output_sample": "Testing [[NAME_1]], [UNKNOWN_TAG_99], SSN: 12-345-678 (invalid 8 digits), Phone: 123-45 (too short),...",
+      "latency_ms": 4.88,
+      "passed": true,
+      "verdict": "DEFENDED (PASS)",
+      "notes": "Fast deterministic replacement"
+    },
+    {
+      "id": "MASK-10",
+      "category": "ReDoS & High-Density Payload",
+      "description": "1,000 repeated tokens with nested spaces to probe regex backtracking and latency",
+      "input_sample": "Dear John Doe, SSN: 123-45-6789. Dear John Doe, SSN: 123-45-6789. Dear John Doe,...",
+      "output_sample": "Dear [NAME_1], SSN: [SSN_1]. Dear [NAME_1], SSN: [SSN_1]. Dear [NAME_1], SSN: [SSN_1]. Dear [NAME_1]...",
+      "latency_ms": 7.8,
+      "passed": true,
+      "verdict": "DEFENDED (PASS)",
+      "notes": "Fast deterministic replacement"
+    }
+  ],
+  "auth_tests": [
+    {
+      "id": "AUTH-01",
+      "category": "Missing Authentication Token",
+      "description": "Unauthenticated client requests Officer queue",
+      "method": "GET",
+      "endpoint": "/documents/queue",
+      "http_status": 401,
+      "passed": true,
+      "verdict": "DEFENDED (BLOCKED)",
+      "response_snippet": "{'success': False, 'message': \"Authentication token required. Provide header 'Authorization: Bearer <token>' or query parameter '?token=<jwt"
+    },
+    {
+      "id": "AUTH-02",
+      "category": "JWT Alg: None Signature Bypass",
+      "description": "Unsigned JWT with alg:none claiming Officer role",
+      "method": "GET",
+      "endpoint": "/documents/queue",
+      "http_status": 401,
+      "passed": true,
+      "verdict": "DEFENDED (BLOCKED)",
+      "response_snippet": "{'success': False, 'message': 'Invalid authentication token', 'error': {'code': 'INVALID_TOKEN', 'message': 'Invalid authentication token'}}"
+    },
+    {
+      "id": "AUTH-03",
+      "category": "JWT False Secret Forgery",
+      "description": "Officer token forged using illegitimate symmetric secret",
+      "method": "GET",
+      "endpoint": "/documents/queue",
+      "http_status": 401,
+      "passed": true,
+      "verdict": "DEFENDED (BLOCKED)",
+      "response_snippet": "{'success': False, 'message': 'Invalid authentication token', 'error': {'code': 'INVALID_TOKEN', 'message': 'Invalid authentication token'}}"
+    },
+    {
+      "id": "AUTH-04",
+      "category": "Vertical Privilege Escalation",
+      "description": "Advisor attempting to access Officer review queue",
+      "method": "GET",
+      "endpoint": "/documents/queue",
+      "http_status": 403,
+      "passed": true,
+      "verdict": "DEFENDED (BLOCKED)",
+      "response_snippet": "{'success': False, 'message': \"Forbidden: User role 'Advisor' lacks permission\", 'error': {'code': 'FORBIDDEN', 'message': \"Forbidden: User "
+    },
+    {
+      "id": "AUTH-05",
+      "category": "Vertical Privilege Escalation",
+      "description": "Advisor attempting to self-approve document via PATCH /status",
+      "method": "PATCH",
+      "endpoint": "/documents/f02fb93e-4224-45bc-92ae-21128c0f6605/status",
+      "http_status": 403,
+      "passed": true,
+      "verdict": "DEFENDED (BLOCKED)",
+      "response_snippet": "{'success': False, 'message': \"Forbidden: User role 'Advisor' lacks permission\", 'error': {'code': 'FORBIDDEN', 'message': \"Forbidden: User "
+    },
+    {
+      "id": "AUTH-06",
+      "category": "Horizontal IDOR Traversal",
+      "description": "Advisor Marcus Vance accessing Advisor Qwewqe's confidential document",
+      "method": "GET",
+      "endpoint": "/documents/5d7894e4-88bb-44aa-a814-614c813ab51b",
+      "http_status": 403,
+      "passed": true,
+      "verdict": "DEFENDED (BLOCKED)",
+      "response_snippet": "{'success': False, 'message': 'Forbidden: You do not have permission to view this document', 'error': {'code': 'FORBIDDEN', 'message': 'Forb"
+    },
+    {
+      "id": "AUTH-07",
+      "category": "Horizontal IDOR Traversal",
+      "description": "Advisor Marcus Vance attempting to read Advisor Qwewqe's revision thread",
+      "method": "GET",
+      "endpoint": "/documents/5d7894e4-88bb-44aa-a814-614c813ab51b/versions",
+      "http_status": 403,
+      "passed": true,
+      "verdict": "DEFENDED (BLOCKED)",
+      "response_snippet": "{'success': False, 'message': 'Forbidden: You do not have permission to view this document lineage', 'error': {'code': 'FORBIDDEN', 'message"
+    },
+    {
+      "id": "AUTH-08",
+      "category": "Cross-User Resubmission Tampering",
+      "description": "Advisor Marcus Vance attempting to hijack another advisor's revision workflow",
+      "method": "POST",
+      "endpoint": "/documents/5d7894e4-88bb-44aa-a814-614c813ab51b/resubmit",
+      "http_status": 400,
+      "passed": true,
+      "verdict": "DEFENDED (BLOCKED)",
+      "response_snippet": "{'success': False, 'message': 'A revised document file is required (PDF, DOCX, XLSX, TXT)', 'error': {'code': 'FILE_REQUIRED', 'message': 'A"
+    },
+    {
+      "id": "AUTH-09",
+      "category": "Workflow State Machine Integrity",
+      "description": "Advisor resubmitting document when status is Pending (must be 'Needs Revision')",
+      "method": "POST",
+      "endpoint": "/documents/f02fb93e-4224-45bc-92ae-21128c0f6605/resubmit",
+      "http_status": 400,
+      "passed": true,
+      "verdict": "DEFENDED (BLOCKED)",
+      "response_snippet": "{'success': False, 'message': 'A revised document file is required (PDF, DOCX, XLSX, TXT)', 'error': {'code': 'FILE_REQUIRED', 'message': 'A"
+    },
+    {
+      "id": "AUTH-10",
+      "category": "Inverse Role Separation",
+      "description": "Compliance Officer attempting to submit a new advisory document directly",
+      "method": "POST",
+      "endpoint": "/documents",
+      "http_status": 403,
+      "passed": true,
+      "verdict": "DEFENDED (BLOCKED)",
+      "response_snippet": "{'success': False, 'message': \"Forbidden: User role 'Officer' lacks permission\", 'error': {'code': 'FORBIDDEN', 'message': \"Forbidden: User "
+    },
+    {
+      "id": "AUTH-11",
+      "category": "Legitimate Officer Action",
+      "description": "Authorized Officer Elena Rostova accessing the compliance queue",
+      "method": "GET",
+      "endpoint": "/documents/queue",
+      "http_status": 200,
+      "passed": true,
+      "verdict": "AUTHORIZED (ALLOWED)",
+      "response_snippet": "{'success': True, 'message': 'Officer review queue retrieved successfully', 'data': [{'id': '5d7894e4-88bb-44aa-a814-614c813ab51b', 'title':"
+    },
+    {
+      "id": "AUTH-12",
+      "category": "Legitimate Advisor Action",
+      "description": "Advisor Marcus Vance legitimately accessing his own document",
+      "method": "GET",
+      "endpoint": "/documents/f02fb93e-4224-45bc-92ae-21128c0f6605",
+      "http_status": 200,
+      "passed": true,
+      "verdict": "AUTHORIZED (ALLOWED)",
+      "response_snippet": "{'success': True, 'message': 'Document retrieved successfully', 'data': {'id': 'f02fb93e-4224-45bc-92ae-21128c0f6605', 'title': 'Test Docx O"
+    }
+  ]
+}
