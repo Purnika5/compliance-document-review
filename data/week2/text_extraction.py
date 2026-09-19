@@ -11,24 +11,53 @@ Responsibilities:
   - Return a single normalized `ExtractedDocument` regardless of source
     format, so downstream steps (masking, vector store) don't need to know
     the original file type.
+  - NEW (this task): Corrupted, malformed, or password-encrypted files no
+    longer crash the worker with an unhandled exception. They're caught and
+    converted into a structured `FileProcessingError` (HTTP 400), instead
+    of an unhandled 500.
 
 This module does NOT do masking — that's DevOps's PII Masking Engine
 (Week 2 dependency, see roadmap). See `pipeline.py` for how the two connect.
 """
 
 import io
+import zipfile
 from dataclasses import dataclass, field
 
 import pdfplumber
 import pytesseract
 from pdf2image import convert_from_bytes
 from docx import Document as DocxDocument
+from docx.opc.exceptions import PackageNotFoundError
 from openpyxl import load_workbook
+from openpyxl.utils.exceptions import InvalidFileException
+from pypdf import PdfReader
+from pypdf.errors import PdfReadError, FileNotDecryptedError
 
 
 class TextExtractionError(Exception):
     """Raised when a file can't be parsed into text."""
     pass
+
+
+class FileProcessingError(TextExtractionError):
+    """
+    Raised specifically for corrupted / password-encrypted / malformed
+    files (PdfReadError, BadZipFile, encryption errors, etc.).
+
+    Subclasses TextExtractionError, so any existing code that catches
+    TextExtractionError (e.g. pipeline.py) still works unchanged. Carries
+    a `.status_code` so an API layer can catch this specifically and
+    return the structured JSON body via `.to_response()` with HTTP 400,
+    instead of letting it fall through to a generic 500.
+    """
+
+    def __init__(self, message="File corrupted or password-protected", status_code=400):
+        self.status_code = status_code
+        super().__init__(message)
+
+    def to_response(self):
+        return {"error": str(self)}
 
 
 @dataclass
@@ -45,7 +74,27 @@ def extract_pdf(file_bytes: bytes) -> ExtractedDocument:
     A multi-page PDF is treated as scanned/image-based when pdfplumber extracts
     fewer than 50 characters. OCR is then run over rendered PDF pages using
     Tesseract. Tables extracted by pdfplumber are preserved separately.
+
+    NEW: corrupted or password-encrypted PDFs raise FileProcessingError
+    (structured 400) instead of an unhandled crash.
     """
+    # --- Pre-check: corrupted / encrypted, before we ever touch pdfplumber ---
+    try:
+        reader = PdfReader(io.BytesIO(file_bytes))
+        if reader.is_encrypted:
+            try:
+                if reader.decrypt("") == 0:
+                    raise FileProcessingError()
+            except (FileNotDecryptedError, NotImplementedError):
+                raise FileProcessingError()
+    except FileProcessingError:
+        raise
+    except PdfReadError as exc:
+        raise FileProcessingError() from exc
+    except Exception as exc:
+        # malformed/truncated PDF that pypdf can't even open
+        raise FileProcessingError() from exc
+
     text_parts = []
     tables = []
 
@@ -60,8 +109,10 @@ def extract_pdf(file_bytes: bytes) -> ExtractedDocument:
 
                 for table in page.extract_tables():
                     tables.append(table)
+    except FileProcessingError:
+        raise
     except Exception as exc:
-        raise TextExtractionError(f"Could not parse PDF: {exc}") from exc
+        raise FileProcessingError() from exc
 
     raw_text = "\n\n".join(text_parts).strip()
 
@@ -96,8 +147,18 @@ def extract_pdf(file_bytes: bytes) -> ExtractedDocument:
 
 
 def extract_docx(file_bytes: bytes) -> ExtractedDocument:
-    """Extract text and tables from a DOCX using python-docx."""
-    doc = DocxDocument(io.BytesIO(file_bytes))
+    """Extract text and tables from a DOCX using python-docx.
+
+    NEW: corrupted/malformed DOCX files (not a valid zip, or a valid zip
+    that isn't a valid docx package) raise FileProcessingError (400)
+    instead of an unhandled crash.
+    """
+    try:
+        doc = DocxDocument(io.BytesIO(file_bytes))
+    except (zipfile.BadZipFile, PackageNotFoundError) as exc:
+        raise FileProcessingError() from exc
+    except Exception as exc:
+        raise FileProcessingError() from exc
 
     text_parts = [p.text for p in doc.paragraphs if p.text.strip()]
 
@@ -119,8 +180,19 @@ def extract_docx(file_bytes: bytes) -> ExtractedDocument:
 
 def extract_xlsx(file_bytes: bytes) -> ExtractedDocument:
     """Extract cell text from every sheet in an XLSX using openpyxl.
-    Each sheet's rows are also captured as a 'table' for downstream use."""
-    wb = load_workbook(io.BytesIO(file_bytes), data_only=True)
+    Each sheet's rows are also captured as a 'table' for downstream use.
+
+    NEW: corrupted/malformed/password-encrypted XLSX files raise
+    FileProcessingError (400) instead of an unhandled crash.
+    """
+    try:
+        wb = load_workbook(io.BytesIO(file_bytes), data_only=True)
+    except (zipfile.BadZipFile, InvalidFileException) as exc:
+        raise FileProcessingError() from exc
+    except Exception as exc:
+        # openpyxl raises a plain ValueError ("File is encrypted...") for
+        # password-protected workbooks — caught here too.
+        raise FileProcessingError() from exc
 
     text_parts = []
     tables = []

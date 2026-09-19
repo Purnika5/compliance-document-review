@@ -5,3 +5,4 @@ pytesseract
 pdf2image
 pytest
 reportlab
+pypdf>=4.0.0
