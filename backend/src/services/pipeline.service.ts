@@ -62,7 +62,7 @@ export class PipelineService {
     }
 
     // 2. Unmasked SSN (000-00-0000, 000 00 0000, 000.00.0000, or labeled 9 digits)
-    const ssnMatch = stripped.match(/(?:\b\d{3}[-\s.]\d{2}[-\s.]\d{4}\b)|(?:(?i:ssn|social\s+security)[\s:]*\b\d{9}\b)/i);
+    const ssnMatch = stripped.match(/(?:\b\d{3}[-\s.]\d{2}[-\s.]\d{4}\b)|(?:(?:ssn|social\s+security)[\s:]*\b\d{9}\b)/i);
     if (ssnMatch) {
       detected.push('SSN (***-**-****)');
     }
@@ -96,13 +96,13 @@ export class PipelineService {
     // Emails
     sanitized = sanitized.replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/gi, '[EMAIL_FALLBACK]');
     // SSNs
-    sanitized = sanitized.replace(/(?:\b\d{3}[-\s.]\d{2}[-\s.]\d{4}\b)|(?:(?i:ssn|social\s+security)[\s:]*\b\d{9}\b)/gi, '[SSN_FALLBACK]');
+    sanitized = sanitized.replace(/(?:\b\d{3}[-\s.]\d{2}[-\s.]\d{4}\b)|(?:(?:ssn|social\s+security)[\s:]*\b\d{9}\b)/gi, '[SSN_FALLBACK]');
     // Credit Cards
     sanitized = sanitized.replace(/\b(?:\d{4}[-\s]?){3}\d{4}\b/g, '[CARD_FALLBACK]');
     // Phones
     sanitized = sanitized.replace(/(?:\+?1[-.\s]?)?(?:\([0-9]{3}\)|[0-9]{3})[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}\b/g, '[PHONE_FALLBACK]');
     // Contextual Salutations
-    sanitized = sanitized.replace(/(?i:\b(?:dear|advisor:|client:|customer:)\s+)([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})/g, (m, name) => m.replace(name, '[NAME_FALLBACK]'));
+    sanitized = sanitized.replace(/(?:\b(?:dear|advisor:|client:|customer:)\s+)([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})/gi, (m, name) => m.replace(name, '[NAME_FALLBACK]'));
 
     return sanitized;
   }

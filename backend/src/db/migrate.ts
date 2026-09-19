@@ -47,14 +47,30 @@ export const runMigrations = async (): Promise<void> => {
           .filter((s) => s.length > 0);
 
         for (const stmt of statements) {
-          if (stmt.toLowerCase().includes('create extension')) {
-            try {
-              await client.query(stmt);
-            } catch (extErr) {
-              // Ignore extension unsupported error in test mode
-            }
-          } else {
+          try {
             await client.query(stmt);
+          } catch (stmtErr) {
+            if (process.env.NODE_ENV === 'test') {
+              // In test mode (pg-mem), fallback for vector types/indexes/extensions
+              const lower = stmt.toLowerCase();
+              if (
+                lower.includes('create extension') ||
+                lower.includes('using ivfflat') ||
+                lower.includes('vector(')
+              ) {
+                // If VECTOR type table creation failed in pg-mem, attempt sanitized schema replacing VECTOR(128) with TEXT
+                if (lower.includes('create table') && lower.includes('vector(')) {
+                  try {
+                    const sanitizedStmt = stmt.replace(/VECTOR\(\d+\)/gi, 'TEXT');
+                    await client.query(sanitizedStmt);
+                  } catch (fallbackErr) {
+                    // Ignore fallback failure in pg-mem test mode
+                  }
+                }
+                continue;
+              }
+            }
+            throw stmtErr;
           }
         }
 

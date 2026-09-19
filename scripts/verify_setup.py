@@ -146,6 +146,15 @@ def test_masking_security_audit():
         return True, "100% Outgoing AI Payload Masking Audit Passed (0 PII Leaks)"
     return False, f"Masking audit failed:\n{res.stdout}"
 
+def test_vector_retrieval():
+    import subprocess
+    import os
+    script_path = os.path.join(os.path.dirname(__file__), "test_vector_retrieval.py")
+    res = subprocess.run([sys.executable, script_path], capture_output=True, text=True)
+    if res.returncode == 0:
+        return True, "PostgreSQL pgvector store returned relevant rules for sample document passage (FINRA-2210 score >= 0.45)"
+    return False, f"Vector retrieval check failed:\n{res.stdout}\n{res.stderr}"
+
 def main():
     print("==================================================================")
     print("  SPRINGER CAPITAL -- FRESH CHECKOUT & ENVIRONMENT VERIFICATION    ")
@@ -161,10 +170,11 @@ def main():
     check_step("7. Compliance Queue Access (RBAC)", test_officer_queue)
     check_step("8. End-to-End PII Sanitization", test_masking_execution)
     check_step("9. Outgoing AI Payload Security Audit", test_masking_security_audit)
+    check_step("10. PostgreSQL pgvector & Rule Retrieval", test_vector_retrieval)
 
     print()
     print("==================================================================")
-    print(f"  VERIFICATION RESULTS: {passed_checks}/9 Passed, {failed_checks} Failed")
+    print(f"  VERIFICATION RESULTS: {passed_checks}/10 Passed, {failed_checks} Failed")
     print("==================================================================")
 
     if failed_checks == 0:

@@ -174,13 +174,118 @@ class GeminiGenerateContentRequest(BaseModel):
     contents: Optional[List[Any]] = None
 
 
+import os
+try:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+    PSYCOPG2_AVAILABLE = True
+except ImportError:
+    PSYCOPG2_AVAILABLE = False
+
+
+def _get_db_conn():
+    if not PSYCOPG2_AVAILABLE:
+        return None
+    db_url = os.getenv("DATABASE_URL")
+    try:
+        if db_url:
+            return psycopg2.connect(db_url, connect_timeout=3)
+        host = os.getenv("DB_HOST", "localhost")
+        port = int(os.getenv("DB_PORT", "5432"))
+        dbname = os.getenv("DB_NAME", "compliance_doc_review")
+        user = os.getenv("DB_USER", "postgres")
+        password = os.getenv("DB_PASSWORD", "postgres")
+        return psycopg2.connect(
+            host=host, port=port, dbname=dbname, user=user, password=password, connect_timeout=3
+        )
+    except Exception as err:
+        return None
+
+
+def query_pgvector_rules(query_vec: List[float], top_k: int, threshold: float) -> Optional[List[Dict[str, Any]]]:
+    conn = _get_db_conn()
+    if not conn:
+        return None
+    try:
+        vec_str = "[" + ",".join(str(v) for v in query_vec) + "]"
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                SELECT id, rule_code, title, description,
+                       (1 - (embedding <=> %s::vector)) AS similarity_score
+                FROM rules
+                WHERE (1 - (embedding <=> %s::vector)) >= %s
+                ORDER BY similarity_score DESC
+                LIMIT %s;
+            """, (vec_str, vec_str, threshold, top_k))
+            rows = cur.fetchall()
+            if rows:
+                results = []
+                for row in rows:
+                    results.append({
+                        "id": str(row["id"]),
+                        "rule_code": row["rule_code"],
+                        "title": row["title"],
+                        "description": row["description"],
+                        "similarity_score": round(float(row["similarity_score"]), 4)
+                    })
+                return results
+    except Exception:
+        pass
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+    return None
+
+
+def query_pgvector_precedents(query_vec: List[float], top_k: int, threshold: float) -> Optional[List[Dict[str, Any]]]:
+    conn = _get_db_conn()
+    if not conn:
+        return None
+    try:
+        vec_str = "[" + ",".join(str(v) for v in query_vec) + "]"
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("""
+                SELECT id, document_id, passage, outcome, explanation,
+                       (1 - (embedding <=> %s::vector)) AS similarity_score
+                FROM precedent_decisions
+                WHERE (1 - (embedding <=> %s::vector)) >= %s
+                ORDER BY similarity_score DESC
+                LIMIT %s;
+            """, (vec_str, vec_str, threshold, top_k))
+            rows = cur.fetchall()
+            if rows:
+                results = []
+                for row in rows:
+                    results.append({
+                        "id": str(row["id"]),
+                        "document_id": str(row["document_id"]) if row["document_id"] else None,
+                        "passage": row["passage"],
+                        "outcome": row["outcome"],
+                        "explanation": row["explanation"],
+                        "similarity_score": round(float(row["similarity_score"]), 4)
+                    })
+                return results
+    except Exception:
+        pass
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+    return None
+
+
 @app.get("/health")
 def health_check() -> Dict[str, str]:
+    db_connected = _get_db_conn() is not None
     return {
         "status": "ok",
         "service": "mock-ai-api",
-        "mode": "offline-simulation",
-        "retrieval_ready": "true"
+        "mode": "vector-store-connected" if db_connected else "offline-simulation",
+        "retrieval_ready": "true",
+        "pgvector_active": str(db_connected).lower()
     }
 
 
@@ -190,6 +295,13 @@ def retrieve_rules_endpoint(req: RetrievalQueryRequest) -> List[Dict[str, Any]]:
     if not query_text.strip():
         return []
     query_vec = embed_128d(query_text)
+    
+    # Attempt Postgres pgvector lookup first
+    pg_results = query_pgvector_rules(query_vec, req.top_k, req.threshold)
+    if pg_results is not None:
+        return pg_results
+
+    # Fallback to in-memory cosine matching
     hits = []
     for r, r_vec in RULE_EMBEDDINGS:
         score = cosine_sim(query_vec, r_vec)
@@ -211,6 +323,13 @@ def retrieve_precedents_endpoint(req: PrecedentQueryRequest) -> List[Dict[str, A
     if not query_text.strip():
         return []
     query_vec = embed_128d(query_text)
+    
+    # Attempt Postgres pgvector lookup first
+    pg_results = query_pgvector_precedents(query_vec, req.top_k, req.threshold)
+    if pg_results is not None:
+        return pg_results
+
+    # Fallback to in-memory cosine matching
     hits = []
     for p, p_vec in PRECEDENT_EMBEDDINGS:
         score = cosine_sim(query_vec, p_vec)
