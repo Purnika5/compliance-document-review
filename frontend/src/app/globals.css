@@ -7,21 +7,26 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: var(--font-outfit), "Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sans: var(--font-outfit), "Outfit", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+  --color-primary: #183028;
+  --color-primary-hover: #23453a;
+  --color-accent: #C5E86C;
+  --color-accent-hover: #b4db53;
+  --color-tertiary: #E6E8E7;
+  --color-white: #FFFFFF;
+
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
   --color-card: hsl(var(--card));
   --color-card-foreground: hsl(var(--card-foreground));
   --color-popover: hsl(var(--popover));
   --color-popover-foreground: hsl(var(--popover-foreground));
-  --color-primary: hsl(var(--primary));
-  --color-primary-foreground: hsl(var(--primary-foreground));
   --color-secondary: hsl(var(--secondary));
   --color-secondary-foreground: hsl(var(--secondary-foreground));
   --color-muted: hsl(var(--muted));
   --color-muted-foreground: hsl(var(--muted-foreground));
-  --color-accent: hsl(var(--accent));
-  --color-accent-foreground: hsl(var(--accent-foreground));
   --color-destructive: hsl(var(--destructive));
   --color-destructive-foreground: hsl(var(--destructive-foreground));
   --color-border: hsl(var(--border));
@@ -29,27 +34,27 @@
   --color-ring: hsl(var(--ring));
 
   /* Springer Capital Brand Tokens */
-  --color-springer-forest: hsl(125 40% 42%);
-  --color-springer-emerald: hsl(142 65% 42%);
-  --color-springer-chartreuse: hsl(84 65% 50%);
-  --color-springer-lime: hsl(85 70% 55%);
+  --color-springer-primary: #183028;
+  --color-springer-accent: #C5E86C;
+  --color-springer-tertiary: #E6E8E7;
+  --color-springer-white: #FFFFFF;
 
-  /* Status semantic dark palette */
-  --color-status-approved-bg: hsl(150 50% 10%);
-  --color-status-approved-text: hsl(142 70% 65%);
-  --color-status-approved-border: hsl(142 50% 25%);
+  /* Status semantic palette */
+  --color-status-approved-bg: #ecfccb;
+  --color-status-approved-text: #183028;
+  --color-status-approved-border: #C5E86C;
 
-  --color-status-pending-bg: hsl(42 60% 11%);
-  --color-status-pending-text: hsl(42 90% 68%);
-  --color-status-pending-border: hsl(42 55% 26%);
+  --color-status-pending-bg: #fef3c7;
+  --color-status-pending-text: #92400e;
+  --color-status-pending-border: #fde68a;
 
-  --color-status-revision-bg: hsl(28 65% 12%);
-  --color-status-revision-text: hsl(28 90% 68%);
-  --color-status-revision-border: hsl(28 60% 28%);
+  --color-status-revision-bg: #ffedd5;
+  --color-status-revision-text: #9a3412;
+  --color-status-revision-border: #fed7aa;
 
-  --color-status-rejected-bg: hsl(0 60% 12%);
-  --color-status-rejected-text: hsl(0 85% 72%);
-  --color-status-rejected-border: hsl(0 50% 28%);
+  --color-status-rejected-bg: #ffe4e6;
+  --color-status-rejected-text: #9f1239;
+  --color-status-rejected-border: #fecdd3;
 
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
@@ -62,47 +67,35 @@
 }
 
 :root {
-  /* Default Institutional Fintech Dark Theme (shadcn standard + Springer identity) */
-  --background: 240 10% 4%;
-  /* #090a0f deep obsidian */
-  --foreground: 0 0% 98%;
-  /* #fafafa high contrast text */
+  /* Official 4-Color Springer Capital Palette */
+  --background: 0 0% 100%;       /* #FFFFFF */
+  --foreground: 161 33% 14%;      /* #183028 */
 
-  --card: 240 10% 7%;
-  /* #111218 elevated card surface */
-  --card-foreground: 0 0% 98%;
+  --card: 0 0% 100%;             /* #FFFFFF */
+  --card-foreground: 161 33% 14%; /* #183028 */
 
-  --popover: 240 10% 7.5%;
-  /* #13141b dropdown/dialog surface */
-  --popover-foreground: 0 0% 98%;
+  --popover: 0 0% 100%;          /* #FFFFFF */
+  --popover-foreground: 161 33% 14%;
 
-  /* Springer Forest & Emerald Primary */
-  --primary: 142 63% 39%;
-  /* #24A152 institutional emerald */
-  --primary-foreground: 0 0% 100%;
+  --primary: 161 33% 14%;         /* #183028 */
+  --primary-foreground: 0 0% 100%; /* #FFFFFF */
 
-  --secondary: 240 5% 15%;
-  /* #25262c muted button/pill background */
-  --secondary-foreground: 0 0% 98%;
+  --secondary: 150 3% 91%;        /* #E6E8E7 */
+  --secondary-foreground: 161 33% 14%;
 
-  --muted: 240 5% 14%;
-  /* #212228 */
-  --muted-foreground: 240 5% 65%;
-  /* #a1a1aa readable secondary text */
+  --muted: 150 4% 95%;
+  --muted-foreground: 161 15% 42%;
 
-  /* Springer Accent & Ring */
-  --accent: 142 63% 39%;
-  /* #24A152 */
-  --accent-foreground: 0 0% 100%;
+  --accent: 77 72% 67%;           /* #C5E86C */
+  --accent-foreground: 161 33% 14%;
 
-  --destructive: 0 65% 50%;
+  --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
 
-  --border: 240 6% 16%;
-  /* #27272f subtle 1px divider */
-  --input: 240 6% 16%;
-  --ring: 142 63% 39%;
-  --radius: 0.5rem;
+  --border: 150 3% 91%;           /* #E6E8E7 */
+  --input: 150 3% 91%;            /* #E6E8E7 */
+  --ring: 77 72% 67%;             /* #C5E86C */
+  --radius: 0.75rem;
 }
 
 *,
@@ -115,6 +108,14 @@ button,
 select,
 textarea {
   font-family: var(--font-outfit), "Outfit", sans-serif;
+}
+
+code,
+pre,
+kbd,
+samp,
+.font-mono {
+  font-family: var(--font-mono), monospace !important;
 }
 
 /* ─── Keyframe Animations ──────────────────────────────────────────────── */

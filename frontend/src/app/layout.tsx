@@ -11,7 +11,7 @@ const outfit = Outfit({
 
 export const metadata: Metadata = {
   title: "Springer Capital | Institutional Compliance Document Review",
-  description: "Enterprise compliance review, document verification, and audit trail platform for Wealth Advisory",
+  description: "Enterprise compliance review, document uploading, verification, and audit trail platform",
 };
 
 /**
@@ -27,9 +27,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`dark ${outfit.variable}`} suppressHydrationWarning>
+    <html lang="en" className={outfit.variable} suppressHydrationWarning>
       <body
-        className={`${outfit.className} min-h-screen bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary font-sans`}
+        className={`${outfit.className} min-h-screen bg-white text-[#183028] antialiased selection:bg-[#C5E86C] selection:text-[#183028] font-sans`}
         suppressHydrationWarning
       >
         {children}

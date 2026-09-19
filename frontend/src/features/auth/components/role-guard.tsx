@@ -38,7 +38,7 @@ export function RoleGuard({ allowedRole, children }: RoleGuardProps) {
       router.push("/login");
     } else if (session.role !== allowedRole) {
       if (session.role === "Advisor") {
-        router.push("/submissions");
+        router.push("/dashboard");
       } else if (session.role === "Officer") {
         router.push("/queue");
       } else {
@@ -49,14 +49,7 @@ export function RoleGuard({ allowedRole, children }: RoleGuardProps) {
 
   // While verifying authorization or redirecting
   if (!session || session.role !== allowedRole) {
-    return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="text-center space-y-2">
-          <Loader2 className="animate-spin h-5 w-5 text-primary mx-auto" />
-          <p className="text-xs text-muted-foreground font-medium">Verifying authorization...</p>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return <>{children}</>;

@@ -71,70 +71,52 @@ export function SignupForm() {
 
   const handleNameChange = (val: string) => {
     setName(val);
-    const isTouched = touched.name || val.length > 0;
-    if (!touched.name && val.length > 0) {
-      setTouched((prev) => ({ ...prev, name: true }));
-    }
-
-    if (isTouched) {
-      const result = validateName(val);
-      if (!result.success && result.error) {
-        setFormErrors((prev) => ({ ...prev, name: result.error! }));
-        setValidFields((prev) => ({ ...prev, name: false }));
-      } else {
-        setFormErrors((prev) => {
-          const next = { ...prev };
-          delete next.name;
-          return next;
-        });
-        setValidFields((prev) => ({ ...prev, name: true }));
-      }
+    setTouched((prev) => ({ ...prev, name: true }));
+    const result = validateName(val);
+    if (!result.success && result.error) {
+      setFormErrors((prev) => ({ ...prev, name: result.error! }));
+      setValidFields((prev) => ({ ...prev, name: false }));
+    } else {
+      setFormErrors((prev) => {
+        const next = { ...prev };
+        delete next.name;
+        return next;
+      });
+      setValidFields((prev) => ({ ...prev, name: true }));
     }
   };
 
   const handleEmailChange = (val: string) => {
     setEmail(val);
-    const isTouched = touched.email || val.length > 0;
-    if (!touched.email && val.length > 0) {
-      setTouched((prev) => ({ ...prev, email: true }));
-    }
-
-    if (isTouched) {
-      const result = validateEmail(val);
-      if (!result.success && result.error) {
-        setFormErrors((prev) => ({ ...prev, email: result.error! }));
-        setValidFields((prev) => ({ ...prev, email: false }));
-      } else {
-        setFormErrors((prev) => {
-          const next = { ...prev };
-          delete next.email;
-          return next;
-        });
-        setValidFields((prev) => ({ ...prev, email: true }));
-      }
+    setTouched((prev) => ({ ...prev, email: true }));
+    const result = validateEmail(val);
+    if (!result.success && result.error) {
+      setFormErrors((prev) => ({ ...prev, email: result.error! }));
+      setValidFields((prev) => ({ ...prev, email: false }));
+    } else {
+      setFormErrors((prev) => {
+        const next = { ...prev };
+        delete next.email;
+        return next;
+      });
+      setValidFields((prev) => ({ ...prev, email: true }));
     }
   };
 
   const handlePasswordChange = (val: string) => {
     setPassword(val);
-    const isTouched = touched.password || val.length > 0;
-    if (!touched.password && val.length > 0) {
-      setTouched((prev) => ({ ...prev, password: true }));
-    }
-
-    if (isTouched) {
-      const result = validatePassword(val);
-      if (!result.success && result.error) {
-        setFormErrors((prev) => ({ ...prev, password: result.error! }));
-        setValidFields((prev) => ({ ...prev, password: false }));
-      } else {
-        setFormErrors((prev) => {
-          const next = { ...prev };
-          delete next.password;
-          return next;
-        });
-        setValidFields((prev) => ({ ...prev, password: true }));
-      }
+    setTouched((prev) => ({ ...prev, password: true }));
+    const result = validatePassword(val);
+    if (!result.success && result.error) {
+      setFormErrors((prev) => ({ ...prev, password: result.error! }));
+      setValidFields((prev) => ({ ...prev, password: false }));
+    } else {
+      setFormErrors((prev) => {
+        const next = { ...prev };
+        delete next.password;
+        return next;
+      });
+      setValidFields((prev) => ({ ...prev, password: true }));
     }
 
     if (confirmPassword && (touched.confirmPassword || confirmPassword.length > 0)) {
@@ -155,25 +137,23 @@ export function SignupForm() {
 
   const handleConfirmPasswordChange = (val: string) => {
     setConfirmPassword(val);
-    const isTouched = touched.confirmPassword || val.length > 0;
-    if (!touched.confirmPassword && val.length > 0) {
-      setTouched((prev) => ({ ...prev, confirmPassword: true }));
+    setTouched((prev) => ({ ...prev, confirmPassword: true }));
+    const result = validateConfirmPassword(password, val);
+    if (!result.success && result.error) {
+      setFormErrors((prev) => ({ ...prev, confirmPassword: result.error! }));
+      setValidFields((prev) => ({ ...prev, confirmPassword: false }));
+    } else {
+      setFormErrors((prev) => {
+        const next = { ...prev };
+        delete next.confirmPassword;
+        return next;
+      });
+      setValidFields((prev) => ({ ...prev, confirmPassword: true }));
     }
+  };
 
-    if (isTouched) {
-      const result = validateConfirmPassword(password, val);
-      if (!result.success && result.error) {
-        setFormErrors((prev) => ({ ...prev, confirmPassword: result.error! }));
-        setValidFields((prev) => ({ ...prev, confirmPassword: false }));
-      } else {
-        setFormErrors((prev) => {
-          const next = { ...prev };
-          delete next.confirmPassword;
-          return next;
-        });
-        setValidFields((prev) => ({ ...prev, confirmPassword: true }));
-      }
-    }
+  const markTouched = (field: string) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
   };
 
   const handleTermsScroll = useCallback(() => {
@@ -258,7 +238,7 @@ export function SignupForm() {
           variant="destructive"
           title="Registration Error"
           message={error}
-          className="mb-5 p-3 text-xs bg-rose-50 border-rose-200 text-rose-800"
+          className="mb-5 p-3 text-xs bg-red-50 border-red-300 text-red-900 [&>svg]:text-red-600 [&>h5]:text-red-700"
         />
       )}
 
@@ -276,13 +256,15 @@ export function SignupForm() {
               placeholder="e.g. Eleanor Vance"
               value={name}
               onChange={(e) => handleNameChange(e.target.value)}
+              onPaste={() => markTouched("name")}
+              onBlur={() => handleNameChange(name)}
               className={cn(
                 "w-full h-11 pl-10 pr-9 rounded-lg border bg-white text-slate-900 text-sm placeholder:text-slate-400 transition-all outline-hidden focus:border-emerald-800 focus:ring-1 focus:ring-emerald-800",
                 touched.name && formErrors?.name
                   ? "border-rose-400 ring-1 ring-rose-400/50"
                   : touched.name && validFields?.name
-                  ? "border-emerald-500 ring-1 ring-emerald-500/30"
-                  : "border-slate-200"
+                    ? "border-emerald-500 ring-1 ring-emerald-500/30"
+                    : "border-slate-200"
               )}
             />
             {touched.name && validFields?.name && (
@@ -307,16 +289,18 @@ export function SignupForm() {
             <input
               type="email"
               id="signup-email"
-              placeholder="name@firm.com"
+              placeholder="name@springercapital.com"
               value={email}
               onChange={(e) => handleEmailChange(e.target.value)}
+              onPaste={() => markTouched("email")}
+              onBlur={() => handleEmailChange(email)}
               className={cn(
                 "w-full h-11 pl-10 pr-9 rounded-lg border bg-white text-slate-900 text-sm placeholder:text-slate-400 transition-all outline-hidden focus:border-emerald-800 focus:ring-1 focus:ring-emerald-800",
                 touched.email && formErrors?.email
                   ? "border-rose-400 ring-1 ring-rose-400/50"
                   : touched.email && validFields?.email
-                  ? "border-emerald-500 ring-1 ring-emerald-500/30"
-                  : "border-slate-200"
+                    ? "border-emerald-500 ring-1 ring-emerald-500/30"
+                    : "border-slate-200"
               )}
             />
             {touched.email && validFields?.email && (
@@ -402,13 +386,15 @@ export function SignupForm() {
               placeholder="••••••••"
               value={password}
               onChange={(e) => handlePasswordChange(e.target.value)}
+              onPaste={() => markTouched("password")}
+              onBlur={() => handlePasswordChange(password)}
               className={cn(
                 "w-full h-11 pl-10 pr-9 rounded-lg border bg-white text-slate-900 text-sm placeholder:text-slate-400 transition-all outline-hidden focus:border-emerald-800 focus:ring-1 focus:ring-emerald-800",
                 touched.password && formErrors?.password
                   ? "border-rose-400 ring-1 ring-rose-400/50"
                   : touched.password && validFields?.password
-                  ? "border-emerald-500 ring-1 ring-emerald-500/30"
-                  : "border-slate-200"
+                    ? "border-emerald-500 ring-1 ring-emerald-500/30"
+                    : "border-slate-200"
               )}
             />
             <button
@@ -438,13 +424,15 @@ export function SignupForm() {
               placeholder="••••••••"
               value={confirmPassword}
               onChange={(e) => handleConfirmPasswordChange(e.target.value)}
+              onPaste={() => markTouched("confirmPassword")}
+              onBlur={() => handleConfirmPasswordChange(confirmPassword)}
               className={cn(
                 "w-full h-11 pl-10 pr-9 rounded-lg border bg-white text-slate-900 text-sm placeholder:text-slate-400 transition-all outline-hidden focus:border-emerald-800 focus:ring-1 focus:ring-emerald-800",
                 touched.confirmPassword && formErrors?.confirmPassword
                   ? "border-rose-400 ring-1 ring-rose-400/50"
                   : touched.confirmPassword && validFields?.confirmPassword
-                  ? "border-emerald-500 ring-1 ring-emerald-500/30"
-                  : "border-slate-200"
+                    ? "border-emerald-500 ring-1 ring-emerald-500/30"
+                    : "border-slate-200"
               )}
             />
             <button
@@ -461,12 +449,6 @@ export function SignupForm() {
           )}
         </div>
 
-        {/* Password Requirement Hint */}
-        <p className="text-[11px] text-slate-500 flex items-center gap-1.5 pt-0.5 text-left">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#84cc16] shrink-0" />
-          <span>Must be at least 8 characters with letters &amp; numbers</span>
-        </p>
-
         {/* Terms and Privacy Checkbox */}
         <div className="pt-1 space-y-1 text-left">
           <label className="flex items-center gap-2.5 cursor-pointer select-none">
@@ -475,10 +457,14 @@ export function SignupForm() {
               id="signup-terms-checkbox"
               checked={acceptedTerms}
               onChange={(e) => {
-                setAcceptedTerms(e.target.checked);
-                if (e.target.checked) clearFieldError("terms");
+                if (!acceptedTerms) {
+                  e.preventDefault();
+                  setShowTermsModal(true);
+                } else {
+                  setAcceptedTerms(false);
+                }
               }}
-              className="h-4 w-4 rounded-sm border-slate-300 text-[#0e271c] focus:ring-emerald-700 cursor-pointer accent-[#0e271c]"
+              className="h-4 w-4 rounded-sm border-slate-300 text-[#183028] focus:ring-[#183028] cursor-pointer accent-[#183028]"
             />
             <span className="text-xs text-slate-600 leading-snug">
               I agree to the{" "}
@@ -517,7 +503,7 @@ export function SignupForm() {
             form="signup-form"
             id="signup-submit"
             disabled={isPending}
-            className="w-full bg-[#132c20] hover:bg-[#183a2b] active:bg-[#0c2217] text-white font-medium text-sm h-11 rounded-lg flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-950/10 hover:shadow-lg disabled:opacity-60 cursor-pointer"
+            className="w-full bg-[#183028] hover:bg-[#23453a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] active:bg-[#10221c] text-white font-medium text-sm h-11 rounded-lg flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-950/10 hover:shadow-lg disabled:opacity-60 cursor-pointer"
           >
             {isPending ? (
               <span className="flex items-center gap-2 text-white">
@@ -546,9 +532,12 @@ export function SignupForm() {
       </form>
 
       {/* Terms & Conditions Dialog */}
-      <Dialog open={showTermsModal} onOpenChange={setShowTermsModal}>
-        <DialogContent className="max-w-lg p-0 overflow-hidden gap-0 bg-white text-slate-900 border border-slate-200 shadow-2xl">
-          <div className="h-1 bg-gradient-to-r from-emerald-700 via-[#84cc16] to-emerald-500" />
+      <Dialog open={showTermsModal} onOpenChange={(open) => { if (hasReadTerms) setShowTermsModal(open); }}>
+        <DialogContent
+          className="max-w-lg p-0 overflow-hidden gap-0 bg-white text-slate-900 border border-slate-200 shadow-2xl [&>button:last-child]:hidden"
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => { if (!hasReadTerms) e.preventDefault(); }}
+        >
           <DialogHeader className="px-6 pt-5 pb-3 border-b border-slate-100">
             <DialogTitle className="text-base font-bold text-slate-900">Terms &amp; Conditions</DialogTitle>
             <DialogDescription className="text-xs text-slate-500 mt-0.5">
@@ -563,7 +552,7 @@ export function SignupForm() {
           >
             <p className="font-semibold text-slate-800">1. Acceptance of Terms</p>
             <p>
-              By registering for and using the Springer Capital Institutional Compliance &amp; Wealth Advisory Platform, you agree to be bound by these Terms and Conditions.
+              By registering for and using the Springer Capital Institutional Compliance &amp; Document Review Platform, you agree to be bound by these Terms and Conditions.
             </p>
             <p className="font-semibold text-slate-800">2. Authorized Personnel Only</p>
             <p>
@@ -579,18 +568,12 @@ export function SignupForm() {
             </p>
           </div>
 
-          <DialogFooter className="px-6 py-3.5 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between gap-3">
-            <button
-              type="button"
-              onClick={() => setShowTermsModal(false)}
-              className="text-xs text-slate-600 hover:text-slate-900 px-3 py-1.5 rounded-md transition-colors"
-            >
-              Close
-            </button>
+          <DialogFooter className="px-6 py-3.5 border-t border-slate-100 bg-slate-50/80 flex items-center justify-end gap-3">
             <Button
               type="button"
               onClick={handleAcceptTerms}
-              className="h-8 px-4 text-xs font-semibold rounded-md bg-[#132c20] hover:bg-[#183a2b] text-white"
+              disabled={!hasReadTerms}
+              className="h-8 px-4 text-xs font-semibold rounded-md bg-[#132c20] hover:bg-[#183a2b] text-white disabled:opacity-40 disabled:cursor-not-allowed"
             >
               ✓ Accept &amp; Agree
             </Button>

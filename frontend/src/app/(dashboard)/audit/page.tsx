@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { RoleGuard } from "@/features/auth/components/role-guard";
 import { AuditHistoryView } from "@/features/audit/components/audit-history-view";
+import { AuditSkeleton } from "@/features/audit/components/audit-skeleton";
 
 /**
  * DOCU: Renders the officer regulatory audit history and cryptographic ledger.
@@ -11,7 +12,7 @@ import { AuditHistoryView } from "@/features/audit/components/audit-history-view
 export default function AuditPage() {
   return (
     <RoleGuard allowedRole="Officer">
-      <Suspense fallback={null}>
+      <Suspense fallback={<AuditSkeleton />}>
         <AuditHistoryView />
       </Suspense>
     </RoleGuard>

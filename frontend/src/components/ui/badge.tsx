@@ -10,16 +10,16 @@ import { cn } from "@/lib/utils";
 import { StatusBadge, type ExtendedStatusType } from "@/components/shared/status-badge";
 
 const badgeVariants = cva(
-  "inline-flex items-center gap-1.5 rounded-[4px] border px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold transition-colors select-none",
+  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold transition-colors select-none",
   {
     variants: {
       variant: {
-        default: "border-border bg-secondary text-foreground",
-        secondary: "border-border bg-card text-muted-foreground",
-        destructive: "border-destructive/40 bg-destructive/15 text-rose-300",
-        outline: "border-border bg-transparent text-muted-foreground",
-        emerald: "border-emerald-700/50 bg-emerald-950/50 text-emerald-300",
-        chartreuse: "border-[#84c22b]/50 bg-[#84c22b]/15 text-[#a3e635]",
+        default: "border-[#E6E8E7] bg-[#183028] text-white",
+        secondary: "border-[#E6E8E7] bg-[#FAFBFB] text-[#183028]",
+        destructive: "border-rose-200 bg-rose-50 text-rose-950",
+        outline: "border-[#E6E8E7] bg-transparent text-[#183028]",
+        emerald: "border-[#C5E86C] bg-[#C5E86C]/30 text-[#183028]",
+        chartreuse: "border-[#C5E86C] bg-[#C5E86C]/30 text-[#183028]",
       },
     },
     defaultVariants: {

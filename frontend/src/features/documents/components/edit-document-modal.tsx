@@ -38,11 +38,11 @@ export interface EditDocumentModalProps {
 }
 
 const CATEGORIES = [
-  { value: "Investment Proposal", label: "Investment Proposal" },
   { value: "Compliance Document", label: "Compliance Statement" },
   { value: "Audit Report", label: "Audit Report" },
-  { value: "Tax Strategy", label: "Tax Strategy" },
-  { value: "Portfolio Brief", label: "Portfolio Brief" },
+  { value: "Regulatory Filing", label: "Regulatory Filing" },
+  { value: "Policy Agreement", label: "Policy Agreement" },
+  { value: "Identity & KYC Verification", label: "Identity & KYC Verification" },
 ];
 
 const STATUS_OPTIONS: { value: DocumentStatusType; label: string }[] = [
@@ -104,27 +104,27 @@ function EditDocumentForm({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-lg p-6 bg-card border border-border text-foreground shadow-2xl shadow-black/80">
+      <DialogContent className="max-w-lg p-6 sm:p-7 bg-white border border-slate-200/90 text-slate-900 shadow-2xl rounded-2xl">
         <DialogHeader className="space-y-1 pb-2">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-emerald-950/80 border border-emerald-800/60 text-emerald-400 flex items-center justify-center shrink-0">
+            <div className="h-9 w-9 rounded-xl bg-emerald-50 border border-emerald-200/70 text-emerald-800 flex items-center justify-center shrink-0">
               <Edit3 className="h-4 w-4" />
             </div>
             <div>
-              <DialogTitle className="text-base font-semibold text-foreground">
+              <DialogTitle className="text-base font-bold text-slate-900">
                 Edit Submission Metadata
               </DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground">
-                Update classification &amp; properties for <span className="font-mono text-foreground font-semibold">{document.id}</span>
+              <DialogDescription className="text-xs text-slate-500">
+                Update classification &amp; properties for <span className="font-mono text-slate-900 font-semibold">{document.id}</span>
               </DialogDescription>
             </div>
           </div>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} noValidate className="space-y-3.5 pt-1 text-xs">
-          <div className="space-y-1">
-            <label className="block text-xs font-medium text-foreground/90">
-              Document Title <span className="text-rose-400">*</span>
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-slate-700">
+              Document Title <span className="text-rose-500">*</span>
             </label>
             <Input
               value={title}
@@ -133,27 +133,27 @@ function EditDocumentForm({
                 if (titleError) setTitleError(null);
               }}
               className={cn(
-                "h-9 rounded-md text-xs bg-background border-border text-foreground transition-colors",
+                "h-9 rounded-xl text-xs bg-[#FFFFFF] border-[#E6E8E7] text-[#183028] focus:border-[#183028] focus:ring-1 focus:ring-[#183028] transition-colors shadow-2xs",
                 titleError && "border-rose-500 ring-1 ring-rose-500"
               )}
             />
             {titleError && (
-              <p className="text-[11px] text-rose-400 font-medium animate-fade-in">{titleError}</p>
+              <p className="text-[11px] text-rose-600 font-medium animate-fade-in">{titleError}</p>
             )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label className="block text-xs font-medium text-foreground/90">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-[#183028]">
                 Category
               </label>
               <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger className="h-9 rounded-md text-xs bg-background border-border text-foreground">
+                <SelectTrigger className="h-9 w-full rounded-xl text-xs bg-white border border-[#E6E8E7] text-[#183028] focus:border-[#183028] focus:ring-1 focus:ring-[#183028] shadow-2xs cursor-pointer">
                   <SelectValue placeholder="Select Category" />
                 </SelectTrigger>
-                <SelectContent className="bg-card rounded-xl border-border">
+                <SelectContent className="bg-white rounded-xl border border-[#E6E8E7] shadow-xl text-[#183028]">
                   {CATEGORIES.map((cat) => (
-                    <SelectItem key={cat.value} value={cat.value} className="text-xs cursor-pointer py-1.5 text-foreground/90">
+                    <SelectItem key={cat.value} value={cat.value} className="text-xs cursor-pointer py-1.5 text-[#183028] hover:bg-[#C5E86C]/20">
                       {cat.label}
                     </SelectItem>
                   ))}
@@ -161,17 +161,17 @@ function EditDocumentForm({
               </Select>
             </div>
 
-            <div className="space-y-1">
-              <label className="block text-xs font-medium text-foreground/90">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-[#183028]">
                 Review Status
               </label>
               <Select value={status} onValueChange={(val) => setStatus(val as DocumentStatusType)}>
-                <SelectTrigger className="h-9 rounded-md text-xs bg-background border-border text-foreground">
+                <SelectTrigger className="h-9 w-full rounded-xl text-xs bg-white border border-[#E6E8E7] text-[#183028] focus:border-[#183028] focus:ring-1 focus:ring-[#183028] shadow-2xs cursor-pointer">
                   <SelectValue placeholder="Select Status" />
                 </SelectTrigger>
-                <SelectContent className="bg-card rounded-xl border-border">
+                <SelectContent className="bg-white rounded-xl border border-[#E6E8E7] shadow-xl text-[#183028]">
                   {STATUS_OPTIONS.map((st) => (
-                    <SelectItem key={st.value} value={st.value} className="text-xs cursor-pointer py-1.5 text-foreground/90">
+                    <SelectItem key={st.value} value={st.value} className="text-xs cursor-pointer py-1.5 text-[#183028] hover:bg-[#C5E86C]/20">
                       {st.label}
                     </SelectItem>
                   ))}
@@ -180,31 +180,31 @@ function EditDocumentForm({
             </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="block text-xs font-medium text-foreground/90">
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-[#183028]">
               Audit / Revision Remarks (Optional)
             </label>
             <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Record notes on classification changes..."
-              className="min-h-[70px] rounded-md text-xs bg-background border-border text-foreground"
+              className="min-h-[70px] w-full rounded-xl text-xs bg-white border border-[#E6E8E7] text-[#183028] placeholder:text-[#183028]/45 focus:border-[#183028] focus:ring-1 focus:ring-[#183028] shadow-2xs resize-none"
             />
           </div>
 
-          <DialogFooter className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+          <DialogFooter className="flex items-center justify-end gap-2 pt-3 border-t border-[#E6E8E7]">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
-              className="h-8 px-3 rounded-md text-xs"
+              className="h-8.5 px-3.5 rounded-xl text-xs border-[#E6E8E7] text-[#183028] hover:bg-[#C5E86C]/20 cursor-pointer"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={isSaving || !title.trim()}
-              className="h-8 px-4 rounded-md text-xs font-semibold bg-[#24A152] hover:bg-[#062A20] hover:text-[#54d0a2] hover:border hover:border-emerald-700/60 active:bg-[#1d8342] text-white transition-all shadow-xs cursor-pointer"
+              className="h-8.5 px-4 rounded-xl text-xs font-semibold bg-[#183028] hover:bg-[#23453a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] disabled:opacity-50 text-white transition-all shadow-2xs cursor-pointer"
             >
               {isSaving ? (
                 <span className="flex items-center gap-1.5">

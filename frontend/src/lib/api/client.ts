@@ -60,7 +60,17 @@ export const client = {
       return (await response.json()) as T;
     } catch (err) {
       if (err instanceof ApiError) throw err;
-      throw new ApiError(500, err instanceof Error ? err.message : "Network error occurred");
+
+      const isConnectionRefused =
+        err instanceof TypeError && err.message === "Failed to fetch";
+
+      const message = isConnectionRefused
+        ? "Unable to reach the server. Please check that the backend is running and try again."
+        : err instanceof Error
+          ? err.message
+          : "An unexpected network error occurred. Please try again.";
+
+      throw new ApiError(isConnectionRefused ? 503 : 500, message);
     }
   },
 

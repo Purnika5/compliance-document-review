@@ -40,7 +40,7 @@ export function useLogin() {
 
       // Redirect based on role in token / session
       if (session.role === "Advisor") {
-        router.push("/submissions");
+        router.push("/dashboard");
       } else if (session.role === "Officer") {
         router.push("/queue");
       } else {

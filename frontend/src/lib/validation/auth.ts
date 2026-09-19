@@ -17,13 +17,23 @@ export type Role = z.infer<typeof roleEnum>;
  */
 export const nameSchema = z.string().min(2, "Name must be at least 2 characters long");
 
+export const isInstitutionalEmail = (email: string): boolean => {
+  const lower = email.toLowerCase().trim();
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@(springer\.capital|springercapital\.com)$/i;
+  return emailRegex.test(lower);
+};
+
 /**
  * DOCU: Corporate / Institutional email validation schema.
  */
 export const emailSchema = z
   .string()
   .min(1, "Institutional email is required")
-  .email("Please enter a valid institutional email address");
+  .email("Please enter a valid institutional email address")
+  .refine(
+    isInstitutionalEmail,
+    "Please enter a valid institutional email address (@springer.capital or @springercapital.com)"
+  );
 
 /**
  * DOCU: Secure password validation schema requiring minimum 8 characters.

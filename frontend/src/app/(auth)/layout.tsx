@@ -11,17 +11,19 @@ import { AuthBrandSide } from "@/features/auth/components/auth-brand-side";
  */
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen w-full flex flex-col lg:flex-row bg-[#0e271c]">
+    <div className="min-h-screen w-full flex flex-col lg:flex-row bg-[#183028]">
       {/* Left Brand Showcase Panel */}
       <div className="w-full lg:w-[48%] xl:w-[46%] min-h-[500px] lg:min-h-screen lg:sticky lg:top-0 shrink-0">
         <AuthBrandSide />
       </div>
 
       {/* Right Content Panel */}
-      <div className="flex-1 min-h-screen bg-white text-slate-900 flex flex-col justify-between p-6 sm:p-10 lg:p-12 xl:p-14 relative overflow-y-auto">
+      <div className="flex-1 min-h-screen bg-[#FFFFFF] text-[#183028] flex flex-col justify-between p-6 sm:p-10 lg:p-12 xl:p-14 relative overflow-y-auto">
         {/* Center Form Container */}
         <div className="w-full max-w-[480px] mx-auto my-auto py-6">
-          {children}
+          <div className="border border-[#E6E8E7] rounded-xl p-6 sm:p-8 shadow-sm bg-[#FFFFFF]">
+            {children}
+          </div>
         </div>
 
         {/* Footer */}

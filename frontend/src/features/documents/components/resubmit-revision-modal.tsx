@@ -90,17 +90,17 @@ export function ResubmitRevisionModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleReset()}>
-      <DialogContent className="max-w-lg p-6 bg-card border border-border text-foreground shadow-2xl">
+      <DialogContent className="max-w-lg p-6 sm:p-7 bg-white border border-slate-200/90 text-slate-900 shadow-2xl rounded-2xl">
         <DialogHeader className="space-y-1 pb-2">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-amber-950/80 border border-amber-700/60 text-amber-400 flex items-center justify-center shrink-0">
+            <div className="h-9 w-9 rounded-xl bg-amber-50 border border-amber-200/70 text-amber-700 flex items-center justify-center shrink-0">
               <RefreshCw className="h-5 w-5" />
             </div>
             <div>
-              <DialogTitle className="text-base font-semibold text-foreground">
+              <DialogTitle className="text-base font-bold text-slate-900">
                 Resubmit Document Revision
               </DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground">
+              <DialogDescription className="text-xs text-slate-500">
                 Upload a revised file payload (v2) and submit notes explaining modifications.
               </DialogDescription>
             </div>
@@ -110,23 +110,23 @@ export function ResubmitRevisionModal({
         {documentItem && (
           <form onSubmit={handleSubmit} className="space-y-4 text-xs pt-1">
             {/* Target Document Meta Box */}
-            <div className="p-3 rounded-lg border border-amber-800/40 bg-amber-950/20 space-y-1">
+            <div className="p-3.5 rounded-xl border border-amber-200/80 bg-amber-50/50 space-y-1 shadow-2xs">
               <div className="flex items-center justify-between text-[11px]">
-                <span className="font-mono font-bold text-amber-400">{documentItem.id}</span>
-                <span className="px-2 py-0.5 rounded font-semibold text-[10px] bg-amber-900/60 text-amber-300 border border-amber-700/60">
+                <span className="font-mono font-bold text-amber-800">{documentItem.id}</span>
+                <span className="px-2 py-0.5 rounded-full font-semibold text-[10px] bg-amber-100 text-amber-900 border border-amber-300">
                   {documentItem.status}
                 </span>
               </div>
-              <p className="font-semibold text-foreground text-xs truncate">{documentItem.title}</p>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="font-semibold text-[#183028] text-xs truncate">{documentItem.title}</p>
+              <p className="text-[11px] text-[#183028]/60">
                 Category: {documentItem.category} • Submitted by {documentItem.submittedBy}
               </p>
             </div>
 
             {/* File Upload Box */}
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-foreground">
-                Revised Attachment File <span className="text-rose-400">*</span>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-[#183028]">
+                Revised Attachment File <span className="text-rose-500">*</span>
               </label>
               <div
                 onDragOver={(e) => {
@@ -137,12 +137,12 @@ export function ResubmitRevisionModal({
                 onDrop={handleFileDrop}
                 onClick={() => fileInputRef.current?.click()}
                 className={cn(
-                  "border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all flex flex-col items-center justify-center space-y-2",
+                  "border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all flex flex-col items-center justify-center space-y-2 shadow-2xs",
                   isDragOver
-                    ? "border-emerald-500 bg-emerald-950/20"
+                    ? "border-[#183028] bg-[#C5E86C]/15"
                     : selectedFile
-                    ? "border-emerald-600/70 bg-emerald-950/30"
-                    : "border-border hover:border-emerald-600/60 hover:bg-muted/30"
+                    ? "border-[#183028] bg-[#C5E86C]/10"
+                    : "border-[#E6E8E7] bg-[#FFFFFF] hover:bg-[#C5E86C]/10 hover:border-[#183028]"
                 )}
               >
                 <input
@@ -154,12 +154,12 @@ export function ResubmitRevisionModal({
                 />
 
                 {selectedFile ? (
-                  <div className="flex items-center justify-between w-full p-2 bg-background rounded-lg border border-border">
+                  <div className="flex items-center justify-between w-full p-2.5 bg-[#FFFFFF] rounded-xl border border-[#E6E8E7] shadow-2xs">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <FileText className="h-5 w-5 text-emerald-400 shrink-0" />
+                      <FileText className="h-5 w-5 text-[#183028] shrink-0" />
                       <div className="text-left min-w-0">
-                        <p className="font-semibold text-foreground truncate text-xs">{selectedFile.name}</p>
-                        <p className="text-[10px] text-muted-foreground font-mono">
+                        <p className="font-semibold text-[#183028] truncate text-xs">{selectedFile.name}</p>
+                        <p className="text-[10px] text-[#183028]/60 font-mono">
                           {(selectedFile.size / 1024).toFixed(1)} KB
                         </p>
                       </div>
@@ -170,17 +170,17 @@ export function ResubmitRevisionModal({
                         e.stopPropagation();
                         setSelectedFile(null);
                       }}
-                      className="p-1 rounded text-rose-400 hover:bg-rose-950/50 cursor-pointer"
+                      className="p-1 rounded-lg text-[#183028]/40 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
                 ) : (
                   <>
-                    <UploadCloud className="h-8 w-8 text-amber-400/80" />
+                    <UploadCloud className="h-8 w-8 text-[#183028]/70" />
                     <div>
-                      <p className="font-semibold text-foreground">Click to upload revised document</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                      <p className="font-semibold text-[#183028]">Click to upload revised document</p>
+                      <p className="text-[10px] text-[#183028]/60 mt-0.5">
                         Supports PDF, DOCX, DOC, or TXT up to 25MB
                       </p>
                     </div>
@@ -190,32 +190,32 @@ export function ResubmitRevisionModal({
             </div>
 
             {/* Revision Notes / Explanation */}
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-foreground">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-[#183028]">
                 Revision Notes &amp; Addressed Changes
               </label>
               <Textarea
                 placeholder="Explain the changes made in this revised version..."
                 value={revisionNotes}
                 onChange={(e) => setRevisionNotes(e.target.value)}
-                className="min-h-[90px] text-xs bg-background border-border text-foreground rounded-md resize-none"
+                className="min-h-[90px] w-full text-xs bg-white border border-[#E6E8E7] text-[#183028] placeholder:text-[#183028]/45 rounded-xl resize-none focus:border-[#183028] focus:ring-1 focus:ring-[#183028] shadow-2xs"
               />
             </div>
 
-            <DialogFooter className="pt-2 gap-2 sm:gap-0">
+            <DialogFooter className="pt-3 border-t border-[#E6E8E7] gap-2 sm:gap-0">
               <Button
                 type="button"
                 variant="outline"
                 onClick={handleReset}
                 disabled={isSubmitting}
-                className="h-8 text-xs border-border"
+                className="h-8.5 px-3.5 text-xs rounded-xl border-[#E6E8E7] text-[#183028] hover:bg-[#C5E86C]/20 cursor-pointer"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={isSubmitting || !selectedFile}
-                className="h-8 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white gap-1.5 cursor-pointer"
+                className="h-8.5 px-4 text-xs font-semibold bg-[#183028] hover:bg-[#23453a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] disabled:opacity-50 text-white rounded-xl gap-1.5 transition-all shadow-2xs cursor-pointer"
               >
                 {isSubmitting ? (
                   <>

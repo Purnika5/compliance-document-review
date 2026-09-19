@@ -15,13 +15,13 @@ export interface NavItem {
 export const NAVIGATION_CONFIG: Record<RoleType, NavItem[]> = {
   Advisor: [
     {
-      title: "My Submissions",
-      href: "/submissions",
+      title: "Dashboard",
+      href: "/dashboard",
       iconName: "FileText",
     },
     {
       title: "Upload Document",
-      href: "/submissions?upload=true",
+      href: "/dashboard?upload=true",
       iconName: "Upload",
     },
   ],

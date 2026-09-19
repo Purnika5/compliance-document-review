@@ -57,6 +57,8 @@ export class DocumentService {
       advisorEmail: doc.advisor_email,
       submittedAt: doc.created_at,
       status: doc.status,
+      version: (doc as any).version ? Number((doc as any).version) : 1,
+      originalDocumentId: (doc as any).original_document_id,
       fileSize: doc.file_size ? formatFileSize(doc.file_size) : undefined,
       notes: doc.description,
       fileName: doc.file_name,
@@ -90,26 +92,18 @@ export class DocumentService {
    */
   public async getQueue(filters?: DocumentFilterOptions): Promise<DocumentItem[]> {
     const params: Record<string, string | undefined> = {};
-    if (filters?.status && filters.status !== "All") {
+    if (filters?.status) {
       params.status = filters.status;
     }
     if (filters?.advisorId) {
       params.advisor_id = filters.advisorId;
     }
 
-    try {
-      const envelope = await this.client.get<ApiResponseEnvelope<ApiDocument[]>>(API_ENDPOINTS.DOCUMENTS.QUEUE, {
-        params,
-      });
-      const data = Array.isArray(envelope?.data) ? envelope.data : [];
-      return data.map(this.mapToDocumentItem.bind(this));
-    } catch {
-      const envelope = await this.client.get<ApiResponseEnvelope<ApiDocument[]>>(API_ENDPOINTS.DOCUMENTS.BASE, {
-        params,
-      });
-      const data = Array.isArray(envelope?.data) ? envelope.data : [];
-      return data.map(this.mapToDocumentItem.bind(this));
-    }
+    const envelope = await this.client.get<ApiResponseEnvelope<ApiDocument[]>>(API_ENDPOINTS.DOCUMENTS.QUEUE, {
+      params,
+    });
+    const data = Array.isArray(envelope?.data) ? envelope.data : [];
+    return data.map(this.mapToDocumentItem.bind(this));
   }
 
   /**
@@ -253,6 +247,69 @@ export class DocumentService {
       formData
     );
     return this.mapToDocumentItem(envelope.data);
+  }
+
+  /**
+   * DOCU: Fetches the lineage and revision history for a document.
+   * Calls GET /documents/:id/versions.
+   * Last Updated Date: September 18, 2026
+   * @param id - Document unique identifier.
+   * @returns Promise resolving to lineage versions and thread entries.
+   * @author Keith
+   */
+  public async getDocumentVersions(id: string): Promise<{
+    versions: (DocumentItem & { version: number })[];
+    threadEntries: {
+      id: string;
+      threadId: string;
+      documentId: string;
+      authorId: string;
+      authorName: string;
+      authorRole: string;
+      entryType: string;
+      message: string;
+      createdAt: string;
+    }[];
+  }> {
+    const envelope = await this.client.get<ApiResponseEnvelope<{
+      versions: (ApiDocument & { version?: number })[];
+      thread_entries: {
+        id: string;
+        thread_id: string;
+        document_id: string;
+        author_id: string;
+        author_name: string;
+        author_role: string;
+        entry_type: string;
+        message: string;
+        created_at: string;
+      }[];
+    }>>(API_ENDPOINTS.DOCUMENTS.VERSIONS(id));
+
+    const rawVersions = Array.isArray(envelope?.data?.versions) ? envelope.data.versions : [];
+    const rawEntries = Array.isArray(envelope?.data?.thread_entries) ? envelope.data.thread_entries : [];
+
+    const mappedVersions = rawVersions.map((v) => ({
+      ...this.mapToDocumentItem(v),
+      version: v.version ? Number(v.version) : 1,
+    }));
+
+    const mappedEntries = rawEntries.map((e) => ({
+      id: e.id,
+      threadId: e.thread_id,
+      documentId: e.document_id,
+      authorId: e.author_id,
+      authorName: e.author_name,
+      authorRole: e.author_role,
+      entryType: e.entry_type,
+      message: e.message,
+      createdAt: e.created_at,
+    }));
+
+    return {
+      versions: mappedVersions,
+      threadEntries: mappedEntries,
+    };
   }
 }
 

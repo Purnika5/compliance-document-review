@@ -21,4 +21,11 @@ export const API_ENDPOINTS = {
     ANALYSIS: (id: string) => `/documents/${id}/analysis`,
     RESUBMIT: (id: string) => `/documents/${id}/resubmit`,
   },
+  NOTIFICATIONS: {
+    BASE: "/notifications",
+    STREAM: "/notifications/stream",
+    UNREAD_COUNT: "/notifications/unread-count",
+    READ: (id: string) => `/notifications/${id}/read`,
+    READ_ALL: "/notifications/read-all",
+  },
 } as const;

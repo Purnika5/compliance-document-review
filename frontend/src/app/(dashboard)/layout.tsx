@@ -15,7 +15,7 @@ import { ChatbotWidget } from "@/components/ui/chatbot-widget";
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-[#FFFFFF] text-[#183028] flex">
       {/* Role-aware Navigation Sidebar */}
       <AppSidebar
         isOpenMobile={mobileSidebarOpen}

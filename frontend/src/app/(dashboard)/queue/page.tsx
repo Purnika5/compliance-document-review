@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { RoleGuard } from "@/features/auth/components/role-guard";
 import { DocumentQueueTable } from "@/features/documents/components/document-queue-table";
+import { QueueSkeleton } from "@/features/documents/components/queue-skeleton";
 
 /**
  * DOCU: Renders the officer-only document review queue.
@@ -11,7 +12,7 @@ import { DocumentQueueTable } from "@/features/documents/components/document-que
 export default function QueuePage() {
   return (
     <RoleGuard allowedRole="Officer">
-      <Suspense fallback={null}>
+      <Suspense fallback={<QueueSkeleton />}>
         <DocumentQueueTable />
       </Suspense>
     </RoleGuard>
