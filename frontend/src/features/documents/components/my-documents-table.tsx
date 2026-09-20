@@ -53,8 +53,6 @@ import {
   RefreshCw,
   ArrowUpRight,
   Lock,
-  LineChart,
-  BarChart2,
 } from "lucide-react";
 import type { DocumentItem } from "@/lib/validation/document";
 import { cn } from "@/lib/utils";
@@ -63,7 +61,6 @@ import { showInfoToast } from "@/components/ui/toast";
 import { FileTypeIcon } from "@/components/shared/file-type-icon";
 import { DateFilterModal, type DateFilterPreset } from "./date-filter-modal";
 import { generateMetricTrends } from "../utils/metric-trend.util";
-import { ComplianceTrendChart } from "./compliance-trend-chart";
 import { SubmissionsSkeleton } from "./submissions-skeleton";
 import { DashboardSkeleton } from "./dashboard-skeleton";
 
@@ -108,7 +105,6 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<string>("All");
   const [dateFilter, setDateFilter] = useState<string>("All");
-  const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [editingDoc, setEditingDoc] = useState<DocumentItem | null>(null);
   const [resubmitDoc, setResubmitDoc] = useState<DocumentItem | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
@@ -127,7 +123,6 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
   const [calendarMonthOffset, setCalendarMonthOffset] = useState(0);
-  const [analyticsView, setAnalyticsView] = useState<"cards" | "chart" | "both">("both");
 
   const baseDate = new Date();
   const viewedCalendarDate = new Date(baseDate.getFullYear(), baseDate.getMonth() + calendarMonthOffset, 1);
@@ -166,16 +161,7 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
 
     const docDate = new Date(doc.submittedAt);
 
-    // Filter by calendar selected day
-    if (selectedDay !== null) {
-      if (
-        docDate.getDate() !== selectedDay ||
-        docDate.getMonth() !== currentMonth ||
-        docDate.getFullYear() !== currentYear
-      ) {
-        return false;
-      }
-    }
+
 
     // Filter by date filter preset or dropdown
     const activePreset = dateFilterPreset !== "All" ? dateFilterPreset : (dateFilter as DateFilterPreset);
@@ -246,26 +232,20 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
   const activeDatePreset = dateFilterPreset !== "All" ? dateFilterPreset : (dateFilter as DateFilterPreset);
 
   const activePresetTitle = React.useMemo(() => {
-    if (selectedDay !== null) {
-      return `${monthLabel.split(" ")[0]} ${selectedDay}, ${currentYear}`;
-    }
     if (dateFilterPreset === "Custom" && (customStartDate || customEndDate)) {
       return `${customStartDate || "Start"} to ${customEndDate || "Now"}`;
     }
     return dateFilterPreset !== "All" ? dateFilterPreset : "All Time";
-  }, [selectedDay, monthLabel, currentYear, dateFilterPreset, customStartDate, customEndDate]);
+  }, [dateFilterPreset, customStartDate, customEndDate]);
 
   const trendData = React.useMemo(() => {
     return generateMetricTrends(
       documents,
       activeDatePreset,
       customStartDate,
-      customEndDate,
-      selectedDay,
-      currentMonth,
-      currentYear
+      customEndDate
     );
-  }, [documents, activeDatePreset, customStartDate, customEndDate, selectedDay, currentMonth, currentYear]);
+  }, [documents, activeDatePreset, customStartDate, customEndDate]);
 
   // Metric counts dynamically tied to active date filter/selection
   const metricVolume = trendData.total[trendData.total.length - 1] ?? 0;
@@ -331,13 +311,7 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
               </div>
             </div>
 
-            <Button
-              onClick={openModal}
-              className="h-8 px-3.5 text-xs font-semibold bg-[#183028] hover:bg-[#23453a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] text-white rounded-xl gap-1.5 shrink-0 shadow-2xs transition-all cursor-pointer"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>Upload Document</span>
-            </Button>
+
           </div>
 
           {/* Search & Filter Toolbar */}
@@ -436,7 +410,6 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                               setSearchQuery("");
                               setActiveFilter("All");
                               setDateFilterPreset("All");
-                              setSelectedDay(null);
                             }
                             : openModal
                         }
@@ -551,39 +524,24 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                   <h2 className="text-sm sm:text-base font-bold text-[#183028] tracking-tight">
                     Institutional Compliance Analytics
                   </h2>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#C5E86C]/30 text-[#183028] border border-[#C5E86C]/60">
-                    Live Velocity
-                  </span>
+
                 </div>
                 <p className="text-xs text-[#183028]/65 mt-0.5">
                   Filing velocity, regulatory turnaround, and document classification trends
                 </p>
               </div>
 
-              {/* Date Filter Presets & Controls */}
-              <div className="flex flex-wrap items-center gap-2">
-                {/* Active calendar day badge if selected */}
-                {selectedDay !== null && (
-                  <button
-                    onClick={() => setSelectedDay(null)}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-lg bg-orange-100 text-orange-900 border border-orange-300 hover:bg-orange-200 transition-colors cursor-pointer"
-                    title="Clear selected day"
-                  >
-                    <span>📅 {monthLabel.split(" ")[0]} {selectedDay}</span>
-                    <span className="text-orange-950 font-black ml-0.5">✕</span>
-                  </button>
-                )}
-
+              {/* Date Filter Presets & Controls + Upload Document Action */}
+              <div className="flex flex-wrap items-center gap-2.5">
                 {/* Date presets selector */}
                 <div className="flex items-center bg-[#FAFBFB] p-1 rounded-xl border border-[#E6E8E7] gap-0.5">
                   {(["All", "Today", "Past 7 Days", "This Month", "Past 90 Days"] as const).map((preset) => {
-                    const isSelected = selectedDay === null && (dateFilterPreset === preset || (preset === "All" && dateFilterPreset === "All"));
+                    const isSelected = dateFilterPreset === preset || (preset === "All" && dateFilterPreset === "All");
                     return (
                       <button
                         key={preset}
                         type="button"
                         onClick={() => {
-                          setSelectedDay(null);
                           setDateFilterPreset(preset as DateFilterPreset);
                           setDateFilter(preset);
                         }}
@@ -613,62 +571,18 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                   </button>
                 </div>
 
-                {/* View toggle between Cards / Line Chart / Both */}
-                <div className="flex items-center bg-[#FAFBFB] p-1 rounded-xl border border-[#E6E8E7] gap-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setAnalyticsView("cards")}
-                    className={cn(
-                      "p-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer",
-                      analyticsView === "cards"
-                        ? "bg-[#183028] text-white shadow-2xs"
-                        : "text-[#183028]/60 hover:text-[#183028] hover:bg-[#C5E86C]/25"
-                    )}
-                    title="View Metric Cards"
-                  >
-                    <BarChart2 className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAnalyticsView("chart")}
-                    className={cn(
-                      "p-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer",
-                      analyticsView === "chart"
-                        ? "bg-[#183028] text-white shadow-2xs"
-                        : "text-[#183028]/60 hover:text-[#183028] hover:bg-[#C5E86C]/25"
-                    )}
-                    title="View Full Line Chart"
-                  >
-                    <LineChart className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAnalyticsView("both")}
-                    className={cn(
-                      "px-2 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer",
-                      analyticsView === "both"
-                        ? "bg-[#183028] text-white shadow-2xs"
-                        : "text-[#183028]/60 hover:text-[#183028] hover:bg-[#C5E86C]/25"
-                    )}
-                    title="View Both Cards and Line Chart"
-                  >
-                    Both
-                  </button>
-                </div>
-
-                {/* Upload Button */}
+                {/* Upload Document Button */}
                 <Button
                   onClick={openModal}
-                  className="h-8 px-3 text-xs font-semibold bg-[#183028] hover:bg-[#23453a] text-white rounded-xl gap-1.5 shrink-0 shadow-2xs transition-all cursor-pointer"
+                  size="sm"
+                  className="h-8 px-3.5 rounded-xl bg-[#183028] text-white hover:bg-[#183028]/90 font-semibold text-xs gap-1.5 shadow-2xs transition-all cursor-pointer border border-[#183028]"
                 >
-                  <Plus className="h-3.5 w-3.5" />
+                  <Plus className="h-3.5 w-3.5 text-[#C5E86C]" />
                   <span>Upload Document</span>
                 </Button>
               </div>
             </div>
 
-            {/* 5 Metric KPI Cards with Real Date-Reactive Line Charts */}
-            {(analyticsView === "cards" || analyticsView === "both") && (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 pt-5">
                 {/* Total Submissions */}
                 <div className="rounded-xl p-4 border border-border bg-card shadow-xs flex flex-col justify-between group hover:border-[#183028]/30 transition-all">
@@ -798,17 +712,8 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                   </div>
                 </div>
               </div>
-            )}
 
-            {/* Expanded Multi-Series Line Chart (Visible on 'chart' or 'both') */}
-            {(analyticsView === "chart" || analyticsView === "both") && (
-              <div className="pt-4">
-                <ComplianceTrendChart
-                  trendData={trendData}
-                  activePresetTitle={activePresetTitle}
-                />
-              </div>
-            )}
+
           </div>
 
           {/* Elevated Recent Document Uploads (Left 8) + Sidebar (Right 4: Calendar & Workspace Tools) */}
@@ -822,9 +727,7 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                       Document Uploads
                     </h3>
                     <p className="text-xs text-[#183028]/65 mt-0.5">
-                      {selectedDay !== null
-                        ? `Displaying uploads for ${monthLabel.split(" ")[0]} ${selectedDay}, ${currentYear} (${filteredDocuments.length} files)`
-                        : "Direct document uploads and real-time compliance review tracking"}
+                      Direct document uploads and real-time compliance review tracking
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -967,24 +870,13 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                           <TableCell colSpan={6} className="py-10 text-center text-xs text-[#183028]/60">
                             <div className="flex flex-col items-center justify-center gap-2">
                               <p className="font-semibold text-[#183028]">
-                                {selectedDay !== null
-                                  ? `No uploaded files found for ${monthLabel.split(" ")[0]} ${selectedDay}, ${currentYear}.`
-                                  : searchQuery
-                                    ? `No documents matching "${searchQuery}".`
-                                    : activeFilter !== "All"
-                                      ? `No ${activeFilter.toLowerCase()} documents found.`
-                                      : "No documents uploaded yet."}
+                                {searchQuery
+                                  ? `No documents matching "${searchQuery}".`
+                                  : activeFilter !== "All"
+                                    ? `No ${activeFilter.toLowerCase()} documents found.`
+                                    : "No documents uploaded yet."}
                               </p>
-                              {selectedDay !== null ? (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => setSelectedDay(null)}
-                                  className="h-7.5 text-xs rounded-xl border-[#E6E8E7] text-[#183028] hover:bg-[#C5E86C]/20 cursor-pointer"
-                                >
-                                  View All Uploads
-                                </Button>
-                              ) : searchQuery ? (
+                              {searchQuery ? (
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -1002,15 +894,7 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                                 >
                                   Clear Filter
                                 </Button>
-                              ) : (
-                                <Button
-                                  size="sm"
-                                  onClick={openModal}
-                                  className="h-7.5 text-xs rounded-xl bg-[#183028] text-white hover:bg-[#23453a] cursor-pointer"
-                                >
-                                  Upload Document
-                                </Button>
-                              )}
+                              ) : null}
                             </div>
                           </TableCell>
                         </TableRow>
@@ -1023,7 +907,6 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
               <div className="pt-3 mt-4 border-t border-[#E6E8E7] text-xs text-[#183028]/60 flex items-center justify-between">
                 <span>
                   Showing {Math.min(filteredDocuments.length, 6)} of {filteredDocuments.length} uploads
-                  {selectedDay !== null && ` on ${monthLabel.split(" ")[0]} ${selectedDay}`}
                   {activeFilter !== "All" && ` • ${activeFilter}`}
                 </span>
               </div>
@@ -1043,10 +926,7 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                   <div className="flex items-center gap-1">
                     {calendarMonthOffset !== 0 && (
                       <button
-                        onClick={() => {
-                          setCalendarMonthOffset(0);
-                          setSelectedDay(null);
-                        }}
+                        onClick={() => setCalendarMonthOffset(0)}
                         className="px-1.5 py-0.5 text-[10px] font-semibold text-[#183028] bg-[#E6E8E7]/60 hover:bg-[#C5E86C]/20 rounded-md cursor-pointer transition-colors"
                         title="Return to Current Month"
                       >
@@ -1054,20 +934,14 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                       </button>
                     )}
                     <button
-                      onClick={() => {
-                        setCalendarMonthOffset((p) => p - 1);
-                        setSelectedDay(null);
-                      }}
+                      onClick={() => setCalendarMonthOffset((p) => p - 1)}
                       className="p-1 rounded text-[#183028]/50 hover:text-[#183028] hover:bg-[#C5E86C]/20 cursor-pointer transition-colors"
                       title="Previous Month"
                     >
                       <ChevronLeft className="h-3.5 w-3.5" />
                     </button>
                     <button
-                      onClick={() => {
-                        setCalendarMonthOffset((p) => p + 1);
-                        setSelectedDay(null);
-                      }}
+                      onClick={() => setCalendarMonthOffset((p) => p + 1)}
                       className="p-1 rounded text-[#183028]/50 hover:text-[#183028] hover:bg-[#C5E86C]/20 cursor-pointer transition-colors"
                       title="Next Month"
                     >
@@ -1103,28 +977,20 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
 
                     const dayDocs = docsByDay.get(day) || [];
                     const hasDocs = dayDocs.length > 0;
-                    const isSelected = selectedDay === day;
                     const isToday =
                       baseDate.getDate() === day &&
                       baseDate.getMonth() === currentMonth &&
                       baseDate.getFullYear() === currentYear;
 
                     return (
-                      <button
+                      <div
                         key={`day-${day}`}
-                        type="button"
-                        onClick={() => {
-                          setSelectedDay((prev) => (prev === day ? null : day));
-                          setCurrentPage(1);
-                        }}
                         className={cn(
-                          "h-7 w-full flex flex-col items-center justify-center rounded-lg text-xs font-medium cursor-pointer transition-all relative",
-                          isSelected
-                            ? "bg-[#183028] text-white font-bold shadow-xs scale-105 ring-2 ring-[#C5E86C]"
-                            : hasDocs
-                              ? "bg-[#C5E86C]/25 text-[#183028] font-bold border border-[#C5E86C] hover:bg-[#C5E86C]/45"
-                              : "text-[#183028]/75 hover:bg-[#E6E8E7]/40",
-                          isToday && !isSelected && "ring-1 ring-[#183028]/40"
+                          "h-7 w-full flex flex-col items-center justify-center rounded-lg text-xs font-medium transition-all relative select-none",
+                          hasDocs
+                            ? "bg-[#C5E86C]/25 text-[#183028] font-bold border border-[#C5E86C]"
+                            : "text-[#183028]/75",
+                          isToday && "ring-1 ring-[#183028]/40"
                         )}
                         title={
                           hasDocs
@@ -1134,14 +1000,9 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                       >
                         <span>{day}</span>
                         {hasDocs && (
-                          <span
-                            className={cn(
-                              "h-1 w-1 rounded-full absolute bottom-0.5",
-                              isSelected ? "bg-[#C5E86C]" : "bg-[#183028]"
-                            )}
-                          />
+                          <span className="h-1 w-1 rounded-full absolute bottom-0.5 bg-[#183028]" />
                         )}
-                      </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -1182,7 +1043,6 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
           setDateFilterPreset(preset);
           setCustomStartDate(start);
           setCustomEndDate(end);
-          setSelectedDay(null);
           setCurrentPage(1);
         }}
         onReset={() => {
@@ -1190,7 +1050,6 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
           setDateFilter("All");
           setCustomStartDate("");
           setCustomEndDate("");
-          setSelectedDay(null);
           setCurrentPage(1);
         }}
         currentPreset={dateFilterPreset}

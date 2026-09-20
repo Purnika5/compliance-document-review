@@ -1147,7 +1147,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                           onClick={() => {
                             const url =
                               currentDocItem.fileUrl ||
-                              `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"}/uploads/documents/${currentDocItem.fileName}`;
+                              `${process.env.NEXT_PUBLIC_API_URL || "https://compliance-document-review-494m.onrender.com"}/uploads/documents/${currentDocItem.fileName}`;
                             if (url) {
                               window.open(url, "_blank");
                             } else {

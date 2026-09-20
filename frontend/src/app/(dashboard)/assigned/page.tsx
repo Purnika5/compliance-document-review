@@ -1,3 +1,5 @@
+"use client";
+
 import { Suspense } from "react";
 import { RoleGuard } from "@/features/auth/components/role-guard";
 import { AssignedReviewsView } from "@/features/documents/components/assigned-reviews-view";

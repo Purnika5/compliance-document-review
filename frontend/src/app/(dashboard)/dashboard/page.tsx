@@ -1,3 +1,5 @@
+"use client";
+
 import { Suspense } from "react";
 import { RoleGuard } from "@/features/auth/components/role-guard";
 import { MyDocumentsTable } from "@/features/documents/components/my-documents-table";
