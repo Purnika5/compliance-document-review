@@ -27,6 +27,8 @@ services:
         value: 7d
       - key: PII_MASKER_URL
         value: http://compliance-pii-masker:8002
+      - key: AI_SERVICE_URL
+        value: http://compliance-mock-ai:8001
       - key: RETRIEVAL_SERVICE_URL
         value: http://compliance-mock-ai:8001
       - key: CORS_ORIGIN
@@ -63,6 +65,22 @@ services:
         fromDatabase:
           name: compliance-postgres
           property: connectionString
+
+  # ----------------------------------------------------------------------------
+  # 4. Gemini Live AI Review Engine (Private Microservice)
+  # ----------------------------------------------------------------------------
+  - type: pserv
+    name: compliance-ai-service
+    runtime: docker
+    dockerfilePath: ./ai/Dockerfile
+    dockerContext: .
+    region: oregon
+    plan: starter
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: GEMINI_API_KEY
+        sync: false
 
 databases:
   # ----------------------------------------------------------------------------
