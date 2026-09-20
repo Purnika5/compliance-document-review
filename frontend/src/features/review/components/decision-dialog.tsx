@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckCircle2, AlertCircle, XCircle, ShieldCheck, Loader2 } from "lucide-react";
+import { CheckCircle2, AlertCircle, XCircle, Loader2 } from "lucide-react";
 import type { DocumentStatusType } from "@/lib/validation/document";
 import { cn } from "@/lib/utils";
 
@@ -171,13 +171,6 @@ export function DecisionDialog({
             {validationError && (
               <p className="text-[11px] text-rose-600 font-medium animate-fade-in">{validationError}</p>
             )}
-          </div>
-
-          <div className="bg-[#E6E8E7]/20 border border-[#E6E8E7] p-2.5 rounded-xl flex items-center gap-2 text-[11px] text-[#183028]/70">
-            <ShieldCheck className="h-4 w-4 text-[#183028] shrink-0" />
-            <span>
-              Decision execution is immutably logged with officer credential and timestamp.
-            </span>
           </div>
         </div>
 

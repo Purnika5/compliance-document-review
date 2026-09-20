@@ -591,3 +591,96 @@ samp,
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
 }
+
+/* ==========================================================================
+   Print Styles: Print Data Table Only
+   ========================================================================== */
+@media print {
+  @page {
+    margin: 10mm;
+    size: auto;
+  }
+
+  /* Force background colors and remove default browser print shifts */
+  html,
+  body {
+    background: #ffffff !important;
+    color: #183028 !important;
+    font-size: 10pt !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Completely hide shell UI: navigation, header, sidebar, copilot widget, filters, and action buttons */
+  header,
+  aside,
+  nav,
+  [role="banner"],
+  [role="navigation"],
+  .print\:hidden,
+  button,
+  input,
+  select,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Reset layout constraints and offsets */
+  .lg\:pl-64,
+  div[class*="lg:pl-64"] {
+    padding-left: 0 !important;
+    margin-left: 0 !important;
+  }
+
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  /* Prevent card clipping and ensure table fills printable width */
+  .overflow-x-auto,
+  .overflow-hidden {
+    overflow: visible !important;
+  }
+
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    page-break-inside: auto !important;
+  }
+
+  tr {
+    page-break-inside: avoid !important;
+    page-break-after: auto !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
+  tfoot {
+    display: table-footer-group !important;
+  }
+
+  th {
+    background-color: #f3f4f6 !important;
+    color: #111827 !important;
+    border-bottom: 2px solid #9ca3af !important;
+    font-weight: 700 !important;
+    padding: 6px 8px !important;
+  }
+
+  td {
+    padding: 6px 8px !important;
+    border-bottom: 1px solid #e5e7eb !important;
+  }
+
+  /* Remove extraneous web shadows and glow rings */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+}

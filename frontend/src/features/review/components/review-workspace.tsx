@@ -32,8 +32,6 @@ import {
   Search,
   ExternalLink,
   Eye,
-  EyeOff,
-  MessageSquare,
   UploadCloud,
 } from "lucide-react";
 import { buildPiiMap, unmaskText } from "@/utils/pii-unmasker";
@@ -175,18 +173,6 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
       (e) => (e.entryType === "decision" || e.authorRole === "Officer") && e.documentId === activeVersion.id
     );
   }, [lineageEntries, activeVersion]);
-
-  const previousVersion = useMemo(() => {
-    if (!activeVersion) return undefined;
-    return sortedVersions.find((v) => v.version === (activeVersion.version || 1) - 1);
-  }, [sortedVersions, activeVersion]);
-
-  const previousOfficerRemarks = useMemo(() => {
-    if (!previousVersion) return [];
-    return lineageEntries.filter(
-      (e) => (e.entryType === "decision" || e.authorRole === "Officer") && e.documentId === previousVersion.id
-    );
-  }, [lineageEntries, previousVersion]);
 
   const advisorSubmissionNote = useMemo(() => {
     if (!activeVersion) return undefined;
@@ -855,36 +841,6 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                   <Printer className="h-3.5 w-3.5" />
                 </button>
 
-                {isOfficer && (
-                  <>
-                    <div className="h-4 w-px bg-[#E6E8E7] mx-1" />
-                    <button
-                      type="button"
-                      onClick={() => setIsUnmasked((prev) => !prev)}
-                      title={isUnmasked ? "Switch to Masked PII view" : "Switch to Raw Unmasked PII view (Officer Only)"}
-                      className={cn(
-                        "flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-lg border transition-all cursor-pointer shadow-2xs",
-                        isUnmasked
-                          ? "bg-amber-100 text-amber-950 border-amber-300 font-bold"
-                          : "bg-white text-[#183028] border-[#E6E8E7] hover:bg-[#E6E8E7]/40"
-                      )}
-                    >
-                      {isUnmasked ? (
-                        <>
-                          <EyeOff className="h-3.5 w-3.5 text-amber-800" />
-                          <span className="hidden sm:inline">Raw PII Active</span>
-                          <span className="sm:hidden">Raw</span>
-                        </>
-                      ) : (
-                        <>
-                          <Eye className="h-3.5 w-3.5 text-[#183028]/70" />
-                          <span className="hidden sm:inline">Show Raw PII</span>
-                          <span className="sm:hidden">Masked</span>
-                        </>
-                      )}
-                    </button>
-                  </>
-                )}
               </div>
             </div>
 
@@ -995,11 +951,6 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                     <div className="flex items-center gap-2 flex-wrap">
                       <FileText className="h-4 w-4 text-[#183028]" />
                       <span className="font-semibold text-xs text-[#183028]">Extracted Document Text</span>
-                      {isOfficer && isUnmasked && (
-                        <span className="px-2 py-0.5 text-[9px] font-bold rounded bg-amber-100 text-amber-900 border border-amber-300">
-
-                        </span>
-                      )}
                     </div>
                   </div>
 
@@ -1193,8 +1144,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
               isLoading={isLoadingAnalysis}
               isDegraded={isAiDegraded}
               onRefresh={handleRefreshAnalysis}
-              isUnmasked={isUnmasked}
-              onToggleUnmask={() => setIsUnmasked((prev) => !prev)}
+              isUnmasked={false}
               piiMap={piiMap}
               isOfficer={isOfficer}
             />
@@ -1229,27 +1179,6 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                   </p>
                   <p className="text-[10px] text-amber-800/80">
                     Recorded by {activeVersionRemarks[activeVersionRemarks.length - 1].authorName} ({activeVersionRemarks[activeVersionRemarks.length - 1].authorRole})
-                  </p>
-                </div>
-              )}
-
-              {/* Preceding Officer Revision Feedback (from previous version) */}
-              {activeVersion && activeVersion.version > 1 && previousOfficerRemarks.length > 0 && activeVersionRemarks.length === 0 && (
-                <div className="p-3.5 bg-amber-50/90 border border-amber-200 rounded-xl space-y-2 shadow-2xs">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 text-amber-900 font-bold text-xs">
-                      <MessageSquare className="h-4 w-4 text-amber-700 shrink-0" />
-                      <span>Preceding Officer Revision Feedback (from v{previousVersion?.version})</span>
-                    </div>
-                    <span className="text-[10px] text-amber-700 font-mono">
-                      {new Date(previousOfficerRemarks[previousOfficerRemarks.length - 1].createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <p className="text-amber-950 font-medium leading-relaxed text-xs italic bg-white/70 p-2.5 rounded-lg border border-amber-200/60">
-                    &ldquo;{previousOfficerRemarks[previousOfficerRemarks.length - 1].message}&rdquo;
-                  </p>
-                  <p className="text-[10px] text-amber-800/80">
-                    Feedback issued by {previousOfficerRemarks[previousOfficerRemarks.length - 1].authorName} ({previousOfficerRemarks[previousOfficerRemarks.length - 1].authorRole})
                   </p>
                 </div>
               )}

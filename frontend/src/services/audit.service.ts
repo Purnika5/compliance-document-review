@@ -27,6 +27,40 @@ export class AuditService {
    */
   public async getDocumentAuditTrail(documentId: string): Promise<AuditLogEntry[]> {
     try {
+      // 1. Attempt official immutable audit-trail endpoint first
+      try {
+        const auditRes = await this.client.get<ApiResponseEnvelope<any[]>>(
+          `/documents/${documentId}/audit-trail`
+        );
+        const auditData = auditRes?.data;
+        if (Array.isArray(auditData) && auditData.length > 0) {
+          return auditData.map((item: any) => {
+            const who = item.who || {};
+            const what = item.what || {};
+            const details = what.details || {};
+            const roleStr = String(who.user_role || item.actor_role || "").toUpperCase();
+            const actorRole: RoleType = roleStr === "OFFICER" ? "Officer" : "Advisor";
+
+            return {
+              id: String(item.id || item.documentId),
+              document_id: String(item.document_id || item.documentId || documentId),
+              action: (what.action || item.action || AuditAction.STATUS_CHANGED) as AuditAction,
+              actor_name: String(who.user_name || item.actor_name || (actorRole === "Officer" ? "Compliance Officer" : "Advisor")),
+              actor_role: actorRole,
+              actor_email: who.user_email || item.actor_email,
+              previous_status: details.previous_status || item.previous_status,
+              new_status: details.new_status || item.new_status,
+              notes: details.reason || item.notes || item.reason || (what.action ? String(what.action) : "Audit event recorded."),
+              timestamp: String(item.when || item.createdAt || item.timestamp || new Date().toISOString()),
+              document_title: String(item.document_title || ""),
+            };
+          }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        }
+      } catch {
+        // Fall back to versions and thread entries endpoint
+      }
+
+      // 2. Fallback to versions endpoint
       const response = await this.client.get<
         ApiResponseEnvelope<{ versions?: Record<string, unknown>[]; thread_entries?: Record<string, unknown>[] } | AuditLogEntry[]>
       >(API_ENDPOINTS.DOCUMENTS.VERSIONS(documentId));
@@ -50,6 +84,21 @@ export class AuditService {
 
           const roleStr = String(entry.author_role || "").toUpperCase();
           const actorRole: RoleType = roleStr === "OFFICER" ? "Officer" : "Advisor";
+          const msg = String(entry.message || "Action recorded.");
+
+          let resolvedStatus: string | undefined = undefined;
+          if (entryType === "decision") {
+            const msgLower = msg.toLowerCase();
+            if (msgLower.includes("needs revision") || msgLower.includes("revision")) {
+              resolvedStatus = "Needs Revision";
+            } else if (msgLower.includes("approved") || msgLower.includes("approv")) {
+              resolvedStatus = "Approved";
+            } else if (msgLower.includes("rejected") || msgLower.includes("reject")) {
+              resolvedStatus = "Rejected";
+            } else if (actorRole === "Officer") {
+              resolvedStatus = "Needs Revision";
+            }
+          }
 
           mapped.push({
             id: String(entry.id || `entry-${mapped.length + 1}`),
@@ -57,9 +106,10 @@ export class AuditService {
             action,
             actor_name: String(entry.author_name || (actorRole === "Officer" ? "Compliance Officer" : "Advisor")),
             actor_role: actorRole,
-            notes: String(entry.message || "Action recorded."),
+            notes: msg,
             timestamp: String(entry.created_at || new Date().toISOString()),
             document_title: "",
+            new_status: resolvedStatus || (entry.new_status as string),
           });
         }
 
@@ -83,14 +133,7 @@ export class AuditService {
       }
       return [];
     } catch {
-      try {
-        const fallback = await this.client.get<ApiResponseEnvelope<AuditLogEntry[]>>(
-          `/documents/${documentId}/audit`
-        );
-        return Array.isArray(fallback?.data) ? fallback.data : [];
-      } catch {
-        return [];
-      }
+      return [];
     }
   }
 }

@@ -58,6 +58,7 @@ export function AuditHistoryView() {
   const [entries, setEntries] = useState<AuditLedgerEntry[]>([]);
   const [isLoadingAudit, setIsLoadingAudit] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("All");
   const [categoryFilter, setCategoryFilter] = useState<string>("All");
   const [verifiedMessage, setVerifiedMessage] = useState<string | null>(null);
 
@@ -82,15 +83,36 @@ export function AuditHistoryView() {
               const auditLogs = await auditService.getDocumentAuditTrail(doc.id);
               return auditLogs.map((log, index) => {
                 const actionLower = (log.action || "").toLowerCase();
-                const category: AuditLedgerEntry["actionCategory"] = actionLower.includes("approv")
-                  ? "Approval"
-                  : actionLower.includes("revis")
-                  ? "Revision"
-                  : actionLower.includes("scan") || actionLower.includes("flag")
-                  ? "AI_Scan"
-                  : actionLower.includes("submit")
-                  ? "Submission"
-                  : "Metadata";
+                const notesLower = (log.notes || "").toLowerCase();
+                const newStatusStr = (log.new_status || "").toLowerCase();
+
+                // Accurately resolve entry regulatory status
+                let statusResult: AuditLedgerEntry["statusResult"] = "Pending";
+                if (newStatusStr.includes("approv") || actionLower.includes("approv")) {
+                  statusResult = "Approved";
+                } else if (newStatusStr.includes("revis") || actionLower.includes("revis") || notesLower.includes("needs revision")) {
+                  statusResult = "Needs Revision";
+                } else if (newStatusStr.includes("reject") || actionLower.includes("reject")) {
+                  statusResult = "Rejected";
+                } else if (log.actor_role === "Officer") {
+                  if (notesLower.includes("approv")) statusResult = "Approved";
+                  else if (notesLower.includes("reject")) statusResult = "Rejected";
+                  else statusResult = "Needs Revision";
+                } else {
+                  statusResult = "Pending";
+                }
+
+                // Accurately resolve action category
+                const category: AuditLedgerEntry["actionCategory"] =
+                  statusResult === "Approved" || actionLower.includes("approv")
+                    ? "Approval"
+                    : statusResult === "Needs Revision" || actionLower.includes("revis") || notesLower.includes("revision")
+                    ? "Revision"
+                    : actionLower.includes("scan") || actionLower.includes("flag")
+                    ? "AI_Scan"
+                    : actionLower.includes("submit") || log.actor_role === "Advisor"
+                    ? "Submission"
+                    : "Metadata";
 
                 return {
                   id: log.id || `${doc.id}-${index + 1}`,
@@ -104,7 +126,7 @@ export function AuditHistoryView() {
                   actionCategory: category,
                   version: "v1.0",
                   details: log.notes || `Regulatory action ${log.action} recorded on ${doc.title}.`,
-                  statusResult: doc.status,
+                  statusResult,
                 } as AuditLedgerEntry;
               });
             } catch {
@@ -132,8 +154,13 @@ export function AuditHistoryView() {
 
   const filteredEntries = useMemo(() => {
     return entries.filter((entry) => {
+      // 1. Filter by Status
+      if (statusFilter !== "All" && entry.statusResult !== statusFilter) return false;
+
+      // 2. Filter by Action Category
       if (categoryFilter !== "All" && entry.actionCategory !== categoryFilter) return false;
 
+      // 3. Search Query matching
       if (!searchQuery.trim()) return true;
       const q = searchQuery.toLowerCase();
       return (
@@ -143,10 +170,12 @@ export function AuditHistoryView() {
         entry.user.toLowerCase().includes(q) ||
         entry.action.toLowerCase().includes(q) ||
         entry.details.toLowerCase().includes(q) ||
+        entry.statusResult.toLowerCase().includes(q) ||
+        entry.role.toLowerCase().includes(q) ||
         (entry.hash?.toLowerCase().includes(q) ?? false)
       );
     });
-  }, [entries, searchQuery, categoryFilter]);
+  }, [entries, searchQuery, statusFilter, categoryFilter]);
 
   const handleVerifyIntegrity = () => {
     const msg = `Cryptographic SHA-256 verification complete: All ${entries.length} recorded ledger blocks valid.`;
@@ -192,9 +221,9 @@ export function AuditHistoryView() {
   }
 
   return (
-    <div className="space-y-4 max-w-[1600px] mx-auto pb-16">
+    <div className="space-y-4 max-w-[1600px] mx-auto pb-16 print:space-y-0 print:pb-0 print:max-w-none print:w-full">
       {/* Header Actions */}
-      <div className="flex items-center justify-end gap-2">
+      <div className="flex items-center justify-end gap-2 print:hidden">
         <Button
           variant="outline"
           size="sm"
@@ -217,18 +246,20 @@ export function AuditHistoryView() {
 
       {/* Verification Message */}
       {verifiedMessage && (
-        <Alert
-          variant="success"
-          title="Audit Ledger Verified"
-          message={verifiedMessage}
-          onClose={() => setVerifiedMessage(null)}
-        />
+        <div className="print:hidden">
+          <Alert
+            variant="success"
+            title="Audit Ledger Verified"
+            message={verifiedMessage}
+            onClose={() => setVerifiedMessage(null)}
+          />
+        </div>
       )}
 
       {/* Main Ledger Table Card */}
-      <div className="border border-[#E6E8E7] bg-white rounded-xl overflow-hidden shadow-2xs">
+      <div className="border border-[#E6E8E7] bg-white rounded-xl overflow-hidden shadow-2xs print:border-none print:shadow-none print:rounded-none">
         {/* Filter and Search Bar */}
-        <div className="p-3 border-b border-[#E6E8E7] bg-[#FAFBFB] flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
+        <div className="p-3 border-b border-[#E6E8E7] bg-[#FAFBFB] flex flex-col md:flex-row items-start md:items-center justify-between gap-2 print:hidden">
           <div className="relative w-full md:w-80">
             <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-[#183028]/50" />
             <Input
@@ -240,24 +271,39 @@ export function AuditHistoryView() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+            {/* Status Filter select */}
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="h-8 px-2.5 text-xs rounded-xl border border-[#E6E8E7] bg-white text-[#183028] focus:outline-hidden focus:ring-1 focus:ring-[#183028] cursor-pointer shadow-2xs font-medium"
+              title="Filter by status"
+            >
+              <option value="All">All Statuses</option>
+              <option value="Pending">Pending</option>
+              <option value="Needs Revision">Needs Revision</option>
+              <option value="Approved">Approved</option>
+              <option value="Rejected">Rejected</option>
+            </select>
+
             {/* Action category select */}
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="h-8 px-2.5 text-xs rounded-xl border border-[#E6E8E7] bg-white text-[#183028] focus:outline-hidden focus:ring-1 focus:ring-[#183028] cursor-pointer shadow-2xs"
+              className="h-8 px-2.5 text-xs rounded-xl border border-[#E6E8E7] bg-white text-[#183028] focus:outline-hidden focus:ring-1 focus:ring-[#183028] cursor-pointer shadow-2xs font-medium"
+              title="Filter by action category"
             >
               <option value="All">All Action Categories</option>
               <option value="Approval">Approvals &amp; Sign-offs</option>
               <option value="Revision">Revision Requests</option>
-              <option value="AI_Scan">AI Rule Scans</option>
               <option value="Submission">Advisor Submissions</option>
+              <option value="AI_Scan">AI Rule Scans</option>
               <option value="Metadata">Metadata Updates</option>
             </select>
           </div>
         </div>
 
         {/* Ledger Table */}
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto print:overflow-visible">
           {!isLoaded ? (
             <div className="p-4">
               <LoadingState variant="table" rows={6} />
