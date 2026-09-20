@@ -10,55 +10,65 @@ from google import genai
 
 
 # --------------------------------------------------
-# Find the project root
+# Find the prompt directory and project root
 # --------------------------------------------------
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+CURRENT_DIR = Path(__file__).resolve().parent
+AI_DIR = CURRENT_DIR.parent
+PROJECT_ROOT = Path(__file__).resolve().parents[2] if len(Path(__file__).resolve().parents) > 2 else AI_DIR
 
-
-# --------------------------------------------------
-# Load .env from project root
-# --------------------------------------------------
-
+# Load .env from project root or AI directory
 load_dotenv(PROJECT_ROOT / ".env")
+load_dotenv(AI_DIR / ".env")
+load_dotenv()
 
 
 # --------------------------------------------------
-# Get Gemini API key
+# Gemini client initialization
 # --------------------------------------------------
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+client = None
+if GEMINI_API_KEY:
+    try:
+        client = genai.Client(api_key=GEMINI_API_KEY)
+    except Exception as e:
+        print(f"Warning: Failed to initialize Gemini client on startup: {e}")
 
-if not GEMINI_API_KEY:
-    raise RuntimeError("GEMINI_API_KEY is not set in .env")
+def get_client():
+    global client
+    if client is not None:
+        return client
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        raise HTTPException(
+            status_code=500,
+            detail="GEMINI_API_KEY is not configured in environment or .env."
+        )
+    client = genai.Client(api_key=api_key)
+    return client
 
 
 # --------------------------------------------------
-# Create Gemini client
+# Load prompts (supporting container & local paths)
 # --------------------------------------------------
 
-client = genai.Client(api_key=GEMINI_API_KEY)
+PROMPTS_DIR = AI_DIR / "prompts"
+if not PROMPTS_DIR.exists():
+    PROMPTS_DIR = PROJECT_ROOT / "ai" / "prompts"
 
+SUMMARY_PROMPT_PATH = PROMPTS_DIR / "summary_prompt.txt"
+ISSUE_FLAGGING_PROMPT_PATH = PROMPTS_DIR / "issue_flagging_prompt.txt"
 
-# --------------------------------------------------
-# Load prompts
-# --------------------------------------------------
+SUMMARY_PROMPT = ""
+if SUMMARY_PROMPT_PATH.exists():
+    with open(SUMMARY_PROMPT_PATH, "r", encoding="utf-8") as file:
+        SUMMARY_PROMPT = file.read()
 
-SUMMARY_PROMPT_PATH = (
-    PROJECT_ROOT / "ai" / "prompts" / "summary_prompt.txt"
-)
-
-ISSUE_FLAGGING_PROMPT_PATH = (
-    PROJECT_ROOT / "ai" / "prompts" / "issue_flagging_prompt.txt"
-)
-
-
-with open(SUMMARY_PROMPT_PATH, "r", encoding="utf-8") as file:
-    SUMMARY_PROMPT = file.read()
-
-
-with open(ISSUE_FLAGGING_PROMPT_PATH, "r", encoding="utf-8") as file:
-    ISSUE_FLAGGING_PROMPT = file.read()
+ISSUE_FLAGGING_PROMPT = ""
+if ISSUE_FLAGGING_PROMPT_PATH.exists():
+    with open(ISSUE_FLAGGING_PROMPT_PATH, "r", encoding="utf-8") as file:
+        ISSUE_FLAGGING_PROMPT = file.read()
 
 
 # --------------------------------------------------
@@ -227,7 +237,9 @@ def analyze_document(request: AnalyzeRequest):
         # Generate compliance summary
         # --------------------------------------------------
 
-        summary_response = client.models.generate_content(
+        active_client = get_client()
+
+        summary_response = active_client.models.generate_content(
             model="gemini-3.6-flash",
             contents=summary_prompt
         )
@@ -256,7 +268,7 @@ def analyze_document(request: AnalyzeRequest):
         # Generate potential compliance issues
         # --------------------------------------------------
 
-        issue_response = client.models.generate_content(
+        issue_response = active_client.models.generate_content(
             model="gemini-3.6-flash",
             contents=issue_prompt,
             config={
@@ -406,5 +418,16 @@ def analyze_document(request: AnalyzeRequest):
 def root():
 
     return {
+        "status": "healthy",
+        "service": "compliance-ai-service",
         "message": "Compliance AI Service is running"
+    }
+
+
+@app.get("/health")
+def health():
+
+    return {
+        "status": "healthy",
+        "service": "compliance-ai-service"
     }

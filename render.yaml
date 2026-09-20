@@ -77,7 +77,7 @@ services:
     name: compliance-ai-service
     runtime: docker
     dockerfilePath: ./ai/Dockerfile
-    dockerContext: .
+    dockerContext: ./ai
     region: oregon
     plan: starter
     envVars:
