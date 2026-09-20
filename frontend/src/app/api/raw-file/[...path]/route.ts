@@ -29,7 +29,7 @@ export async function GET(
   const targetUrl = `${backendOrigin}/${cleanPath}`;
 
   try {
-    let response = await fetch(targetUrl);
+    const response = await fetch(targetUrl);
 
     // If file missing or returns error on backend, attempt fallback sample file matching extension
     if (!response.ok) {
