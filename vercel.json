@@ -1,8 +1,6 @@
 {
   "name": "springer-capital-compliance",
   "framework": "nextjs",
-  "rootDirectory": "frontend",
-  "buildCommand": "npm run build",
-  "devCommand": "npm run dev",
-  "installCommand": "npm install"
+  "buildCommand": "cd frontend && npm run build",
+  "outputDirectory": "frontend/.next"
 }
