@@ -51,7 +51,7 @@ export const config = {
 
   services: {
     piiMaskerUrl: process.env.PII_MASKER_URL || 'http://compliance-pii-masker:8002',
-    aiServiceUrl: process.env.AI_SERVICE_URL || process.env.RETRIEVAL_SERVICE_URL || process.env.MOCK_AI_URL || 'http://compliance-mock-ai:8001',
+    aiServiceUrl: process.env.AI_SERVICE_URL || 'https://compliance-document-review-1.onrender.com',
   },
 
   retrieval: {

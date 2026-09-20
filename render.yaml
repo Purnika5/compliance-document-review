@@ -24,7 +24,7 @@ services:
       - key: PII_MASKER_URL
         value: http://compliance-pii-masker:8002
       - key: AI_SERVICE_URL
-        value: http://compliance-ai-service:8000
+        value: https://compliance-document-review-1.onrender.com
       - key: RETRIEVAL_SERVICE_URL
         value: http://compliance-mock-ai:8001
       - key: CORS_ORIGIN

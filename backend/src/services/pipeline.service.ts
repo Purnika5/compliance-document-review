@@ -243,8 +243,21 @@ export class PipelineService {
             document_id: documentId,
             version,
             masked_text: maskedText,
-            retrieved_rules: retrievedRules,
-            precedents: precedents,
+            retrieved_rules: (retrievedRules || []).map(r => ({
+              id: r.id,
+              rule_code: r.rule_code,
+              title: r.title,
+              description: r.description,
+              similarity_score: (r as any).similarity_score ?? 0.85,
+            })),
+            precedents: (precedents || []).map(p => ({
+              id: p.id,
+              document_id: p.document_id,
+              passage: p.passage,
+              outcome: p.outcome,
+              explanation: p.explanation,
+              similarity_score: (p as any).similarity_score ?? 0.85,
+            })),
           }),
           signal,
         });
