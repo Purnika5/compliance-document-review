@@ -273,12 +273,9 @@ export function NotificationCenter() {
           <Info className="h-3.5 w-3.5 text-sky-600 shrink-0" />
           <div className="flex items-center gap-1.5 min-w-0">
             <span className="font-bold text-sky-950 hidden sm:inline">
-              Revision Notice:
+              Revision:
             </span>
-            <span className="text-sky-800 hidden md:inline">
-              Officer feedback appears in Revision tab for
-            </span>
-            <span className="font-semibold text-sky-950 truncate max-w-[110px] sm:max-w-[160px] md:max-w-[210px]">
+            <span className="font-semibold text-sky-950 truncate max-w-[120px] sm:max-w-[180px]">
               {displayedRevisionItem.title}
             </span>
           </div>
@@ -289,9 +286,9 @@ export function NotificationCenter() {
               onClick={() => {
                 triggerFadeAndDismiss(displayedRevisionItem.notifId);
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold rounded-full bg-orange-600 hover:bg-orange-700 text-white shadow-2xs transition-all shrink-0 cursor-pointer ml-1"
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-bold rounded-full bg-orange-600 hover:bg-orange-700 text-white shadow-2xs transition-all shrink-0 cursor-pointer ml-1"
             >
-              <span>Inspect &amp; Respond</span>
+              <span>Inspect</span>
               <ArrowRight className="h-3 w-3" />
             </Link>
           )}
@@ -320,9 +317,9 @@ export function NotificationCenter() {
           <Info className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
           <div className="flex items-center gap-1.5 min-w-0">
             <span className="font-bold text-emerald-950 hidden sm:inline">
-              Review Notice:
+              Review:
             </span>
-            <span className="text-emerald-800 truncate max-w-[120px] sm:max-w-[180px] md:max-w-[220px]">
+            <span className="text-emerald-800 truncate max-w-[120px] sm:max-w-[180px]">
               {displayedOfficerItem.title}
             </span>
           </div>
@@ -333,9 +330,9 @@ export function NotificationCenter() {
               onClick={() => {
                 triggerFadeAndDismiss(displayedOfficerItem.notifId);
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold rounded-full bg-[#183028] hover:bg-[#23453a] text-white shadow-2xs transition-all shrink-0 cursor-pointer ml-1"
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-bold rounded-full bg-[#183028] hover:bg-[#23453a] text-white shadow-2xs transition-all shrink-0 cursor-pointer ml-1"
             >
-              <span>Review Document</span>
+              <span>Review</span>
               <ArrowRight className="h-3 w-3" />
             </Link>
           )}
