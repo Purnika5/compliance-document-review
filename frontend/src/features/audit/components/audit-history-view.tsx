@@ -192,9 +192,9 @@ export function AuditHistoryView() {
   }
 
   return (
-    <div className="space-y-4 max-w-[1600px] mx-auto pb-16">
+    <div className="space-y-4 max-w-[1600px] mx-auto pb-16 print:space-y-0 print:pb-0 print:max-w-none print:w-full">
       {/* Header Actions */}
-      <div className="flex items-center justify-end gap-2">
+      <div className="flex items-center justify-end gap-2 print:hidden">
         <Button
           variant="outline"
           size="sm"
@@ -217,18 +217,20 @@ export function AuditHistoryView() {
 
       {/* Verification Message */}
       {verifiedMessage && (
-        <Alert
-          variant="success"
-          title="Audit Ledger Verified"
-          message={verifiedMessage}
-          onClose={() => setVerifiedMessage(null)}
-        />
+        <div className="print:hidden">
+          <Alert
+            variant="success"
+            title="Audit Ledger Verified"
+            message={verifiedMessage}
+            onClose={() => setVerifiedMessage(null)}
+          />
+        </div>
       )}
 
       {/* Main Ledger Table Card */}
-      <div className="border border-[#E6E8E7] bg-white rounded-xl overflow-hidden shadow-2xs">
+      <div className="border border-[#E6E8E7] bg-white rounded-xl overflow-hidden shadow-2xs print:border-none print:shadow-none print:rounded-none">
         {/* Filter and Search Bar */}
-        <div className="p-3 border-b border-[#E6E8E7] bg-[#FAFBFB] flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
+        <div className="p-3 border-b border-[#E6E8E7] bg-[#FAFBFB] flex flex-col md:flex-row items-start md:items-center justify-between gap-2 print:hidden">
           <div className="relative w-full md:w-80">
             <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-[#183028]/50" />
             <Input
@@ -257,7 +259,7 @@ export function AuditHistoryView() {
         </div>
 
         {/* Ledger Table */}
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto print:overflow-visible">
           {!isLoaded ? (
             <div className="p-4">
               <LoadingState variant="table" rows={6} />
