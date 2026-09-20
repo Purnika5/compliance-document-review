@@ -40,6 +40,37 @@ import { showInfoToast } from "@/components/ui/toast";
 
 export type { INotificationItem };
 
+/**
+ * DOCU: Filters submissions to only those document lineages whose LATEST version
+ * is currently in "Needs Revision" status. Lineages that have already been resubmitted
+ * (latest version is Pending, Approved, or Rejected) are excluded from revision alerts.
+ */
+function getActiveRevisionDocuments(docs: DocumentItem[]): DocumentItem[] {
+  const lineageMap = new Map<string, DocumentItem[]>();
+  for (const doc of docs) {
+    const rootId = doc.originalDocumentId || doc.id;
+    const list = lineageMap.get(rootId) || [];
+    list.push(doc);
+    lineageMap.set(rootId, list);
+  }
+
+  const activeRevisions: DocumentItem[] = [];
+  lineageMap.forEach((lineageDocs) => {
+    const sorted = [...lineageDocs].sort((a, b) => {
+      const verA = a.version || 1;
+      const verB = b.version || 1;
+      if (verA !== verB) return verA - verB;
+      return new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime();
+    });
+    const latestDoc = sorted[sorted.length - 1];
+    if (latestDoc && latestDoc.status === "Needs Revision") {
+      activeRevisions.push(latestDoc);
+    }
+  });
+
+  return activeRevisions;
+}
+
 export function NotificationCenter() {
   const [notifications, setNotifications] = useState<INotificationItem[]>([]);
   const [revisionItems, setRevisionItems] = useState<DocumentItem[]>([]);
@@ -83,7 +114,7 @@ export function NotificationCenter() {
     if (role === "Advisor") {
       try {
         const myDocs = await getMySubmissionsAction();
-        setRevisionItems(myDocs.filter((d) => d.status === "Needs Revision"));
+        setRevisionItems(getActiveRevisionDocuments(myDocs));
       } catch (err) {
         console.error("[NotificationCenter] Failed to fetch revision submissions:", err);
       }
@@ -125,7 +156,7 @@ export function NotificationCenter() {
           if (role === "Advisor") {
             getMySubmissionsAction()
               .then((myDocs) => {
-                setRevisionItems(myDocs.filter((d) => d.status === "Needs Revision"));
+                setRevisionItems(getActiveRevisionDocuments(myDocs));
               })
               .catch(() => {});
           }
@@ -137,6 +168,13 @@ export function NotificationCenter() {
     };
 
     initialize();
+
+    const handleRefresh = () => {
+      loadNotifications();
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("compliance-notification-refresh", handleRefresh);
+    }
 
     const unsubscribeAuth = authStore.subscribe(() => {
       if (disconnectSSE) {
@@ -151,6 +189,9 @@ export function NotificationCenter() {
         disconnectSSE();
       }
       unsubscribeAuth();
+      if (typeof window !== "undefined") {
+        window.removeEventListener("compliance-notification-refresh", handleRefresh);
+      }
     };
   }, [loadNotifications]);
 
@@ -195,11 +236,7 @@ export function NotificationCenter() {
       !n.read
   );
 
-  const activeRevisionCount = isAdvisor
-    ? revisionItems.length > 0
-      ? revisionItems.length
-      : revisionNotifs.length
-    : 0;
+  const activeRevisionCount = isAdvisor ? revisionItems.length : 0;
 
   const cleanNoticeTitle = (rawTitle: string) => {
     return rawTitle
@@ -221,12 +258,6 @@ export function NotificationCenter() {
           id: revisionItems[0].id,
           title: cleanNoticeTitle(revisionItems[0].title),
           notifId: undefined as string | undefined,
-        }
-      : isAdvisor && revisionNotifs.length > 0
-      ? {
-          id: revisionNotifs[0].documentId,
-          title: cleanNoticeTitle(revisionNotifs[0].title),
-          notifId: revisionNotifs[0].id,
         }
       : null;
 

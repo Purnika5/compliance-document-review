@@ -444,6 +444,17 @@ export class DocumentService {
         );
       }
 
+      // Mark past revision notifications for this document lineage as read for this advisor
+      await client.query(
+        `UPDATE notifications 
+         SET is_read = true 
+         WHERE user_id = $1 
+           AND document_id IN (
+             SELECT id FROM documents WHERE id = $2 OR original_document_id = $2
+           )`,
+        [user.id, rootDocumentId]
+      );
+
       await client.query('COMMIT');
     } catch (error) {
       await client.query('ROLLBACK').catch(() => {});
