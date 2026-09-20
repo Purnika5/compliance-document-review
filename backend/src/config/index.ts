@@ -8,18 +8,23 @@ export const config = {
   port: parseInt(process.env.PORT || '5000', 10),
 
   db: {
-    connectionString: process.env.DATABASE_URL,
+    connectionString: process.env.DATABASE_URL || process.env.SUPABASE_DB_URL,
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT || '5432', 10),
-    database: process.env.DB_NAME || 'compliance_doc_review',
+    database: process.env.DB_NAME || 'postgres',
     user: process.env.DB_USER || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
-    ssl: (process.env.DB_SSL === 'true' || Boolean(process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('localhost')))
+    ssl: (
+      process.env.DB_SSL === 'true' ||
+      Boolean(
+        process.env.DATABASE_URL || process.env.SUPABASE_DB_URL
+      )
+    )
       ? { rejectUnauthorized: false }
       : false,
     max: parseInt(process.env.DB_POOL_MAX || '20', 10),
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 5000,
+    connectionTimeoutMillis: 10000,
   },
 
   jwt: {
@@ -46,7 +51,7 @@ export const config = {
 
   services: {
     piiMaskerUrl: process.env.PII_MASKER_URL || 'http://compliance-pii-masker:8002',
-    aiServiceUrl: process.env.AI_SERVICE_URL || process.env.RETRIEVAL_SERVICE_URL || process.env.MOCK_AI_URL || 'http://compliance-mock-ai:8001',
+    aiServiceUrl: process.env.AI_SERVICE_URL || 'https://compliance-document-review-1.onrender.com',
   },
 
   retrieval: {

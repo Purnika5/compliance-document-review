@@ -6,8 +6,13 @@
  */
 import { authStore } from "@/lib/auth/auth-store";
 
-const BASE_API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-
+export const getBaseBackendUrl = (): string => {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (envUrl && !envUrl.includes("localhost") && !envUrl.includes("127.0.0.1")) {
+    return envUrl.replace(/\/api\/?$/, "").replace(/\/$/, "");
+  }
+  return "https://compliance-document-review-494m.onrender.com";
+};
 
 export class ApiError extends Error {
   constructor(public status: number, message: string, public data?: unknown) {
@@ -32,7 +37,9 @@ export const client = {
       headers["Authorization"] = `Bearer ${token}`;
     }
 
-    const url = endpoint.startsWith("http") ? endpoint : `${BASE_API_URL}${endpoint}`;
+    const base = getBaseBackendUrl();
+    const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+    const url = endpoint.startsWith("http") ? endpoint : `${base}${cleanEndpoint}`;
 
     try {
       const response = await fetch(url, { ...options, headers });

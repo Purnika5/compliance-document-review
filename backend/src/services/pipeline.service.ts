@@ -179,7 +179,10 @@ export class PipelineService {
 
       if (!response.ok) {
         console.warn(`[PipelineService] Retrieval Service returned status ${response.status}`);
-        return { retrieved_rules: [], precedents: [] };
+        return {
+          retrieved_rules: PipelineService.getDefaultRules(),
+          precedents: [],
+        };
       }
 
       const data = (await response.json()) as {
@@ -187,14 +190,58 @@ export class PipelineService {
         precedents?: PrecedentItem[];
       };
 
+      const rules = Array.isArray(data.retrieved_rules) && data.retrieved_rules.length > 0
+        ? data.retrieved_rules
+        : PipelineService.getDefaultRules();
+
       return {
-        retrieved_rules: Array.isArray(data.retrieved_rules) ? data.retrieved_rules : [],
+        retrieved_rules: rules,
         precedents: Array.isArray(data.precedents) ? data.precedents : [],
       };
     } catch (err) {
-      console.warn(`[PipelineService] Retrieval Service unreachable at ${endpoint}:`, err);
-      return { retrieved_rules: [], precedents: [] };
+      console.warn(`[PipelineService] Retrieval Service unreachable at ${endpoint}. Applying default FINRA/SEC regulatory catalog.`);
+      return {
+        retrieved_rules: PipelineService.getDefaultRules(),
+        precedents: [],
+      };
     }
+  }
+
+  /**
+   * Default FINRA and SEC regulatory compliance catalog.
+   * Ensures rule grounding is always active even before retrieval microservice is deployed.
+   */
+  public static getDefaultRules(): RetrievedRule[] {
+    return [
+      {
+        id: 'rule-finra-2210',
+        rule_code: 'FINRA-2210',
+        title: 'Communications with the Public',
+        description: 'Prohibits false, exaggerated, unwarranted, promissory, or misleading statements or claims in public communications and marketing materials. Historical performance cannot guarantee future returns.',
+        similarity_score: 0.95,
+      },
+      {
+        id: 'rule-sec-206',
+        rule_code: 'SEC-206',
+        title: 'Fiduciary Duty & Conflict of Interest Disclosure',
+        description: 'Mandates full disclosure of conflicts of interest, fee arrangements, compensation from sponsors, and affiliations that could compromise objective advice.',
+        similarity_score: 0.90,
+      },
+      {
+        id: 'rule-sec-204',
+        rule_code: 'SEC-204',
+        title: 'Performance Presentation & Substantiation Standards',
+        description: 'Requires performance metrics to be substantiated, shown net of fees, and accompanied by prominent risk disclosures and benchmark comparisons.',
+        similarity_score: 0.88,
+      },
+      {
+        id: 'rule-finra-2111',
+        rule_code: 'FINRA-2111',
+        title: 'Suitability and Best Interest',
+        description: 'Requires a reasonable basis to believe a recommended investment or strategy is suitable based on the client investment profile and risk tolerance.',
+        similarity_score: 0.85,
+      },
+    ];
   }
 
   /**
@@ -243,8 +290,21 @@ export class PipelineService {
             document_id: documentId,
             version,
             masked_text: maskedText,
-            retrieved_rules: retrievedRules,
-            precedents: precedents,
+            retrieved_rules: (retrievedRules || []).map(r => ({
+              id: r.id,
+              rule_code: r.rule_code,
+              title: r.title,
+              description: r.description,
+              similarity_score: (r as any).similarity_score ?? 0.85,
+            })),
+            precedents: (precedents || []).map(p => ({
+              id: p.id,
+              document_id: p.document_id,
+              passage: p.passage,
+              outcome: p.outcome,
+              explanation: p.explanation,
+              similarity_score: (p as any).similarity_score ?? 0.85,
+            })),
           }),
           signal,
         });

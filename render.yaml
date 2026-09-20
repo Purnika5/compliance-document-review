@@ -1,6 +1,6 @@
 # Render Infrastructure-as-Code Blueprint
 # Springer Capital Compliance Document Review Platform
-# Backend REST API, Microservices, and PostgreSQL Database
+# Render Services: Express Backend REST API, AI Engines, Vector Data, & PII Microservices
 services:
   # ----------------------------------------------------------------------------
   # 1. Express Backend REST API
@@ -17,10 +17,6 @@ services:
         value: production
       - key: PORT
         value: 5000
-      - key: DATABASE_URL
-        fromDatabase:
-          name: compliance-postgres
-          property: connectionString
       - key: JWT_SECRET
         generateValue: true
       - key: JWT_EXPIRES_IN
@@ -28,11 +24,21 @@ services:
       - key: PII_MASKER_URL
         value: http://compliance-pii-masker:8002
       - key: AI_SERVICE_URL
-        value: http://compliance-mock-ai:8001
+        value: https://compliance-document-review-1.onrender.com
       - key: RETRIEVAL_SERVICE_URL
         value: http://compliance-mock-ai:8001
       - key: CORS_ORIGIN
         value: "*"
+      - key: SUPABASE_URL
+        value: https://wpvchfdjirdxtcxorzjb.supabase.co
+      - key: SUPABASE_PUBLISHABLE_KEY
+        value: sb_publishable_j4I8KlfXzwTBzrz1RiX7SA_acZDfM2o
+      - key: SUPABASE_SECRET_KEY
+        value: sb_secret_Ovwel5u9oBp5SC985OZaxw_A0rsPrQw
+      - key: SUPABASE_JWKS_URL
+        value: https://wpvchfdjirdxtcxorzjb.supabase.co/auth/v1/.well-known/jwks.json
+      - key: GEMINI_API_KEY
+        value: AQ.Ab8RN6K25AMITEVj7ZHf0vuU86-YQzdmYfj6uRfe7q-1EqEW9w
 
   # ----------------------------------------------------------------------------
   # 2. PII Masking Engine (Private Microservice)
@@ -49,7 +55,7 @@ services:
         value: 8002
 
   # ----------------------------------------------------------------------------
-  # 3. Mock AI & Vector Search Service (Private Microservice)
+  # 3. Vector Data & Rule Search Engine (Private Microservice)
   # ----------------------------------------------------------------------------
   - type: pserv
     name: compliance-mock-ai
@@ -61,10 +67,8 @@ services:
     envVars:
       - key: PORT
         value: 8001
-      - key: DATABASE_URL
-        fromDatabase:
-          name: compliance-postgres
-          property: connectionString
+      - key: SUPABASE_URL
+        value: https://wpvchfdjirdxtcxorzjb.supabase.co
 
   # ----------------------------------------------------------------------------
   # 4. Gemini Live AI Review Engine (Private Microservice)
@@ -73,21 +77,11 @@ services:
     name: compliance-ai-service
     runtime: docker
     dockerfilePath: ./ai/Dockerfile
-    dockerContext: .
+    dockerContext: ./ai
     region: oregon
     plan: starter
     envVars:
       - key: PORT
         value: 8000
       - key: GEMINI_API_KEY
-        sync: false
-
-databases:
-  # ----------------------------------------------------------------------------
-  # PostgreSQL Database (pg15 with pgvector extension)
-  # ----------------------------------------------------------------------------
-  - name: compliance-postgres
-    databaseName: compliance_doc_review
-    user: postgres
-    region: oregon
-    plan: starter
+        value: AQ.Ab8RN6K25AMITEVj7ZHf0vuU86-YQzdmYfj6uRfe7q-1EqEW9w

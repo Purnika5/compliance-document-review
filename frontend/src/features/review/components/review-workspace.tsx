@@ -206,7 +206,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
   const isNeedsRevision = status === "Needs Revision" || activeVersion?.status === "Needs Revision";
   const isVersion2OrHigher = (activeVersion?.version || 1) >= 2 || sortedVersions.length > 1;
   const canResubmit = isNeedsRevision;
-  const canShowUploadVersion = (!isOfficer && (isNeedsRevision || isVersion2OrHigher)) || isNeedsRevision || isVersion2OrHigher;
+  const canShowUploadVersion = !isOfficer && (isNeedsRevision || isVersion2OrHigher);
 
   const handleRefreshAnalysis = () => {
     setIsLoadingAnalysis(true);
@@ -494,7 +494,9 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
           >
             <Link href={isOfficer ? "/queue" : "/dashboard"}>
               <ArrowLeft className="h-3.5 w-3.5 text-black" />
-              <span className="text-black font-semibold">Back to Dashboard</span>
+              <span className="text-black font-semibold">
+                {isOfficer ? "Back to Review Queue" : "Back to Dashboard"}
+              </span>
             </Link>
           </Button>
 
@@ -561,14 +563,6 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
 
       {documentError && (
         <ErrorState title="Unable to load document" message={documentError} />
-      )}
-      {actionSuccess && (
-        <Alert
-          variant="success"
-          title="Regulatory Action Executed"
-          message={actionSuccess}
-          onClose={() => setActionSuccess(null)}
-        />
       )}
 
       {/* Mobile/Tablet Zone Switcher Tabs */}

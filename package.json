@@ -1,14 +1,18 @@
 {
   "name": "springer-capital-compliance-monorepo",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
-  "workspaces": [
-    "frontend"
-  ],
+  "description": "Springer Capital Institutional Compliance Document Review Monorepo",
   "scripts": {
     "build": "cd frontend && npm install && npm run build",
+    "start": "cd frontend && npm run start",
     "dev": "cd frontend && npm run dev",
-    "start": "cd frontend && npm start"
+    "build:backend": "cd backend && npm install && npm run build",
+    "start:backend": "cd backend && npm run start",
+    "dev:backend": "cd backend && npm run dev",
+    "build:frontend": "cd frontend && npm install && npm run build",
+    "start:frontend": "cd frontend && npm run start",
+    "dev:frontend": "cd frontend && npm run dev"
   },
   "dependencies": {
     "next": "16.3.4",

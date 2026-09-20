@@ -1,12 +1,8 @@
 import fs from 'fs';
 import path from 'path';
-import { pool, query, resetMemDb } from './pool';
+import { pool, query, isMemFallbackActive } from './pool';
 
 export const runMigrations = async (): Promise<void> => {
-  if (process.env.NODE_ENV === 'test') {
-    resetMemDb();
-  }
-
   let migrationsDir = path.join(__dirname, 'migrations');
   if (!fs.existsSync(migrationsDir)) {
     migrationsDir = path.join(process.cwd(), 'src', 'db', 'migrations');
@@ -40,7 +36,7 @@ export const runMigrations = async (): Promise<void> => {
       try {
         await client.query('BEGIN');
         
-        // Split statements and skip CREATE EXTENSION statements in test environment if unsupported by pg-mem
+        // Split statements and skip CREATE EXTENSION statements if unsupported by pg-mem
         const statements = sql
           .split(';')
           .map((s) => s.trim())
@@ -50,21 +46,20 @@ export const runMigrations = async (): Promise<void> => {
           try {
             await client.query(stmt);
           } catch (stmtErr) {
-            if (process.env.NODE_ENV === 'test') {
-              // In test mode (pg-mem), fallback for vector types/indexes/extensions
+            if (process.env.NODE_ENV === 'test' || isMemFallbackActive()) {
+              // In test mode / pg-mem fallback, ignore unsupported vector types & extension statements
               const lower = stmt.toLowerCase();
               if (
                 lower.includes('create extension') ||
                 lower.includes('using ivfflat') ||
                 lower.includes('vector(')
               ) {
-                // If VECTOR type table creation failed in pg-mem, attempt sanitized schema replacing VECTOR(128) with TEXT
                 if (lower.includes('create table') && lower.includes('vector(')) {
                   try {
                     const sanitizedStmt = stmt.replace(/VECTOR\(\d+\)/gi, 'TEXT');
                     await client.query(sanitizedStmt);
                   } catch (fallbackErr) {
-                    // Ignore fallback failure in pg-mem test mode
+                    // Ignore fallback failure in pg-mem
                   }
                 }
                 continue;
