@@ -41,6 +41,8 @@ services:
         value: sb_secret_Ovwel5u9oBp5SC985OZaxw_A0rsPrQw
       - key: SUPABASE_JWKS_URL
         value: https://wpvchfdjirdxtcxorzjb.supabase.co/auth/v1/.well-known/jwks.json
+      - key: GEMINI_API_KEY
+        value: AQ.Ab8RN6K25AMITEVj7ZHf0vuU86-YQzdmYfj6uRfe7q-1EqEW9w
 
   # ----------------------------------------------------------------------------
   # 2. PII Masking Engine (Private Microservice)
@@ -88,7 +90,7 @@ services:
       - key: PORT
         value: 8000
       - key: GEMINI_API_KEY
-        sync: false
+        value: AQ.Ab8RN6K25AMITEVj7ZHf0vuU86-YQzdmYfj6uRfe7q-1EqEW9w
 
 databases:
   # ----------------------------------------------------------------------------
