@@ -7,13 +7,14 @@ export async function GET(
   const resolvedParams = await params;
   const rawPath = resolvedParams.path.join("/");
 
-  let backendOrigin =
-    process.env.INTERNAL_BACKEND_URL ||
-    process.env.NEXT_PUBLIC_API_URL ||
-    "https://compliance-document-review-494m.onrender.com";
+  let backendOrigin = "https://compliance-document-review-494m.onrender.com";
+  const envBackend = process.env.INTERNAL_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL;
+  if (envBackend && !envBackend.includes("localhost") && !envBackend.includes("127.0.0.1")) {
+    backendOrigin = envBackend;
+  }
 
   // Clean trailing /api/v1 or trailing slash to get backend root URL
-  backendOrigin = backendOrigin.replace(/\/api\/v1\/?$/, "").replace(/\/$/, "");
+  backendOrigin = backendOrigin.replace(/\/api\/v1\/?$/, "").replace(/\/api\/?$/, "").replace(/\/$/, "");
 
   // Strip leading app/ or /app/ if present from container absolute paths
   const normalizedPath = rawPath.replace(/^app\//, "").replace(/^\/app\//, "");
