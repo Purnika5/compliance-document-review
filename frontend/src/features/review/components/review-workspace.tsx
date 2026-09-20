@@ -211,7 +211,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
   const handleRefreshAnalysis = () => {
     setIsLoadingAnalysis(true);
     documentService
-      .getAnalysis(documentId)
+      .getAnalysis(activeDocId)
       .then((res) => {
         setAnalysisFlags(res.flags);
         setIsAiDegraded(res.isDegraded);
@@ -269,7 +269,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
     // 3. Fetch automated AI analysis flags for current version
     setIsLoadingAnalysis(true);
     documentService
-      .getAnalysis(documentId)
+      .getAnalysis(activeDocId)
       .then((res) => {
         if (!isActive) return;
         setAnalysisFlags(res.flags);

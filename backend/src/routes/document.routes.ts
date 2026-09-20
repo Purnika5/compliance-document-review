@@ -105,6 +105,7 @@ router.get(
 // Stream document file content (inline view / download)
 router.get(
   '/:id/file',
+  authenticateToken,
   validate({ params: documentIdParamSchema }),
   DocumentController.downloadFile
 );
