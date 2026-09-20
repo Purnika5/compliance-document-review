@@ -34,49 +34,39 @@ export const runMigrations = async (): Promise<void> => {
       
       const client = await pool.connect();
       try {
+        let hasVector = false;
+        try {
+          const extRes = await client.query("SELECT 1 FROM pg_available_extensions WHERE name = 'vector'");
+          hasVector = extRes.rows.length > 0;
+        } catch {
+          hasVector = false;
+        }
+
         await client.query('BEGIN');
         
-        // Split statements and skip CREATE EXTENSION statements if unsupported by pg-mem
-        const statements = sql
+        let processedSql = sql;
+        if (!hasVector || process.env.NODE_ENV === 'test' || isMemFallbackActive()) {
+          // Remove vector extension creation and fallback VECTOR(dim) to TEXT
+          processedSql = processedSql
+            .replace(/CREATE\s+EXTENSION\s+IF\s+NOT\s+EXISTS\s+vector\s*;/gi, '')
+            .replace(/VECTOR\(\d+\)/gi, 'TEXT');
+        }
+
+        // Split statements and execute
+        const statements = processedSql
           .split(';')
           .map((s) => s.trim())
           .filter((s) => s.length > 0);
 
         for (const stmt of statements) {
-          try {
-            await client.query(stmt);
-          } catch (stmtErr: any) {
-            const lower = stmt.toLowerCase();
-            const isVectorRelated =
-              lower.includes('create extension') ||
-              lower.includes('using ivfflat') ||
-              lower.includes('vector(');
-
-            const isVectorUnavailable =
-              stmtErr?.code === '0A000' ||
-              stmtErr?.code === '42704' ||
-              stmtErr?.message?.includes('extension "vector" is not available') ||
-              stmtErr?.message?.includes('type "vector" does not exist') ||
-              stmtErr?.message?.includes('access method "ivfflat" does not exist');
-
-            if (
-              process.env.NODE_ENV === 'test' ||
-              isMemFallbackActive() ||
-              (isVectorRelated && isVectorUnavailable)
-            ) {
-              // In test mode, pg-mem, or vanilla Postgres lacking pgvector, gracefully fall back
-              if (lower.includes('create table') && lower.includes('vector(')) {
-                try {
-                  const sanitizedStmt = stmt.replace(/VECTOR\(\d+\)/gi, 'TEXT');
-                  await client.query(sanitizedStmt);
-                } catch (fallbackErr) {
-                  // Ignore fallback failure
-                }
-              }
-              continue;
-            }
-            throw stmtErr;
+          const lower = stmt.toLowerCase();
+          if ((!hasVector || process.env.NODE_ENV === 'test' || isMemFallbackActive()) && lower.includes('using ivfflat')) {
+            continue;
           }
+          if ((process.env.NODE_ENV === 'test' || isMemFallbackActive()) && lower.includes('create extension')) {
+            continue;
+          }
+          await client.query(stmt);
         }
 
         await client.query('INSERT INTO schema_migrations (migration_name) VALUES ($1)', [file]);
