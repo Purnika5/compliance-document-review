@@ -5,7 +5,20 @@
  */
 import { authStore } from "@/lib/auth/auth-store";
 
-const BASE_API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+const getBaseApiUrl = () => {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  if (
+    process.env.NODE_ENV === "production" ||
+    (typeof window !== "undefined" && window.location.hostname !== "localhost")
+  ) {
+    return "https://compliance-document-review-494m.onrender.com/api";
+  }
+  return "http://localhost:5000/api";
+};
+
+const BASE_API_URL = getBaseApiUrl();
 
 /**
  * DOCU: Custom error class wrapping HTTP response errors and structured API error data.

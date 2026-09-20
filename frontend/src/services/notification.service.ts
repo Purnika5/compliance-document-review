@@ -172,7 +172,12 @@ export class NotificationService {
     const token = authStore.getToken();
     if (!token) return () => {};
 
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+    const baseUrl =
+      process.env.NEXT_PUBLIC_API_URL
+        ? process.env.NEXT_PUBLIC_API_URL.replace(/\/api\/?$/, "")
+        : typeof window !== "undefined" && window.location.hostname !== "localhost"
+        ? "https://compliance-document-review-494m.onrender.com"
+        : "http://localhost:5000";
     const streamUrl = `${baseUrl}/notifications/stream?token=${encodeURIComponent(token)}`;
 
     let eventSource: EventSource | null = null;
