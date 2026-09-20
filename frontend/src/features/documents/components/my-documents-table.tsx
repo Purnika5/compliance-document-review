@@ -613,48 +613,7 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                   </button>
                 </div>
 
-                {/* View toggle between Cards / Line Chart / Both */}
-                <div className="flex items-center bg-[#FAFBFB] p-1 rounded-xl border border-[#E6E8E7] gap-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setAnalyticsView("cards")}
-                    className={cn(
-                      "p-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer",
-                      analyticsView === "cards"
-                        ? "bg-[#183028] text-white shadow-2xs"
-                        : "text-[#183028]/60 hover:text-[#183028] hover:bg-[#C5E86C]/25"
-                    )}
-                    title="View Metric Cards"
-                  >
-                    <BarChart2 className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAnalyticsView("chart")}
-                    className={cn(
-                      "p-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer",
-                      analyticsView === "chart"
-                        ? "bg-[#183028] text-white shadow-2xs"
-                        : "text-[#183028]/60 hover:text-[#183028] hover:bg-[#C5E86C]/25"
-                    )}
-                    title="View Full Line Chart"
-                  >
-                    <LineChart className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAnalyticsView("both")}
-                    className={cn(
-                      "px-2 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer",
-                      analyticsView === "both"
-                        ? "bg-[#183028] text-white shadow-2xs"
-                        : "text-[#183028]/60 hover:text-[#183028] hover:bg-[#C5E86C]/25"
-                    )}
-                    title="View Both Cards and Line Chart"
-                  >
-                    Both
-                  </button>
-                </div>
+
 
                 {/* Upload Button */}
                 <Button
@@ -800,15 +759,7 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
               </div>
             )}
 
-            {/* Expanded Multi-Series Line Chart (Visible on 'chart' or 'both') */}
-            {(analyticsView === "chart" || analyticsView === "both") && (
-              <div className="pt-4">
-                <ComplianceTrendChart
-                  trendData={trendData}
-                  activePresetTitle={activePresetTitle}
-                />
-              </div>
-            )}
+
           </div>
 
           {/* Elevated Recent Document Uploads (Left 8) + Sidebar (Right 4: Calendar & Workspace Tools) */}
