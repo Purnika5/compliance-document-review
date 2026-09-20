@@ -1,9 +1,10 @@
 {
-  "name": "springer-capital-compliance",
-  "version": "0.1.0",
+  "name": "springer-capital-compliance-frontend",
+  "version": "1.0.0",
   "private": true,
+  "description": "Frontend UI for Compliance Document Review Platform (Vercel Host)",
   "scripts": {
-    "dev": "next dev -p 3003",
+    "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
