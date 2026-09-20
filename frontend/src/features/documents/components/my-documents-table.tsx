@@ -531,8 +531,8 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                 </p>
               </div>
 
-              {/* Date Filter Presets & Controls */}
-              <div className="flex flex-wrap items-center gap-2">
+              {/* Date Filter Presets & Controls + Upload Document Action */}
+              <div className="flex flex-wrap items-center gap-2.5">
                 {/* Date presets selector */}
                 <div className="flex items-center bg-[#FAFBFB] p-1 rounded-xl border border-[#E6E8E7] gap-0.5">
                   {(["All", "Today", "Past 7 Days", "This Month", "Past 90 Days"] as const).map((preset) => {
@@ -571,9 +571,15 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                   </button>
                 </div>
 
-
-
-
+                {/* Upload Document Button */}
+                <Button
+                  onClick={openModal}
+                  size="sm"
+                  className="h-8 px-3.5 rounded-xl bg-[#183028] text-white hover:bg-[#183028]/90 font-semibold text-xs gap-1.5 shadow-2xs transition-all cursor-pointer border border-[#183028]"
+                >
+                  <Plus className="h-3.5 w-3.5 text-[#C5E86C]" />
+                  <span>Upload Document</span>
+                </Button>
               </div>
             </div>
 
@@ -725,6 +731,14 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
+                    <Button
+                      onClick={openModal}
+                      size="sm"
+                      className="h-7 px-2.5 rounded-lg bg-[#183028] text-white hover:bg-[#183028]/90 font-semibold text-xs gap-1 shadow-2xs transition-all cursor-pointer"
+                    >
+                      <Plus className="h-3 w-3 text-[#C5E86C]" />
+                      <span>Upload</span>
+                    </Button>
                     <button
                       onClick={() => router.push("/submissions")}
                       className="inline-flex items-center gap-1 text-xs font-semibold text-[#183028] hover:text-[#183028]/80 cursor-pointer transition-colors"
