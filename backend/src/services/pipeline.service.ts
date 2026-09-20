@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import zlib from 'zlib';
 import pdfParse from 'pdf-parse';
 import { query } from '../db/pool';
 import { config } from '../config';
@@ -7,6 +8,55 @@ import { ComplianceFlag, DocumentAnalysis, RetrievedRule, PrecedentItem } from '
 import { aiCircuitBreaker } from '../utils/circuitBreaker';
 
 export class PipelineService {
+  /**
+   * Extract plain text directly from Microsoft Word (.docx) OpenXML container without external dependencies.
+   */
+  public static extractDocxText(filePath: string): string {
+    try {
+      const buf = fs.readFileSync(filePath);
+      let pos = 0;
+      while (pos < buf.length - 30) {
+        if (buf.readUInt32LE(pos) === 0x04034b50) { // PK\x03\x04
+          const compMethod = buf.readUInt16LE(pos + 8);
+          const compSize = buf.readUInt32LE(pos + 18);
+          const uncompSize = buf.readUInt32LE(pos + 22);
+          const nameLen = buf.readUInt16LE(pos + 26);
+          const extraLen = buf.readUInt16LE(pos + 28);
+          const fileName = buf.toString('utf8', pos + 30, pos + 30 + nameLen);
+          const dataStart = pos + 30 + nameLen + extraLen;
+
+          if (fileName === 'word/document.xml') {
+            let xml: string | null = null;
+            if (compMethod === 0) {
+              xml = buf.toString('utf8', dataStart, dataStart + uncompSize);
+            } else if (compMethod === 8) {
+              const compressed = buf.subarray(dataStart, dataStart + compSize);
+              xml = zlib.inflateRawSync(compressed).toString('utf8');
+            }
+            if (xml) {
+              return xml
+                .replace(/<\/w:p>/g, '\n')
+                .replace(/<[^>]+>/g, ' ')
+                .replace(/&amp;/g, '&')
+                .replace(/&lt;/g, '<')
+                .replace(/&gt;/g, '>')
+                .replace(/&quot;/g, '"')
+                .replace(/&apos;/g, "'")
+                .replace(/[ \t]+/g, ' ')
+                .trim();
+            }
+          }
+          pos = dataStart + compSize;
+        } else {
+          pos++;
+        }
+      }
+    } catch (e) {
+      console.warn(`[PipelineService] DOCX OpenXML parse warning for ${filePath}:`, e);
+    }
+    return '';
+  }
+
   /**
    * Extract plain text from the uploaded file on disk.
    */
@@ -23,6 +73,18 @@ export class PipelineService {
         const fileBuffer = fs.readFileSync(filePath);
         const parsed = await pdfParse(fileBuffer);
         return parsed.text ? parsed.text.trim() : '';
+      }
+
+      if (
+        mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+        mimeType === 'application/msword' ||
+        ext === '.docx' ||
+        ext === '.doc'
+      ) {
+        const docxText = PipelineService.extractDocxText(filePath);
+        if (docxText && docxText.trim().length > 0) {
+          return docxText.trim();
+        }
       }
 
       if (mimeType === 'text/plain' || ext === '.txt') {
@@ -427,6 +489,9 @@ export class PipelineService {
       }
     }
 
+    // 2. DevOps PII Masking
+    const maskedText = await this.maskPii(documentId, version, rawText || 'Empty document');
+
     // If in unit/integration test environment without live AI flag, record fast test analysis
     if (process.env.NODE_ENV === 'test' && !process.env.ENABLE_LIVE_AI_TEST) {
       const sql = `
@@ -449,7 +514,7 @@ export class PipelineService {
         const res = await query<DocumentAnalysis>(sql, [
           documentId,
           version,
-          rawText || 'Test document content',
+          maskedText,
           'Automated compliance summary generated.',
           JSON.stringify([]),
         ]);
@@ -458,9 +523,6 @@ export class PipelineService {
         return null;
       }
     }
-
-    // 2. DevOps PII Masking
-    const maskedText = await this.maskPii(documentId, version, rawText || 'Empty document');
 
     // 3. Week 3 Data Engineering: Rule Retrieval and Precedent Search
     const { retrieved_rules, precedents } = await this.retrieveRulesAndPrecedents(maskedText);
