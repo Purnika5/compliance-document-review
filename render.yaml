@@ -33,6 +33,14 @@ services:
         value: http://compliance-mock-ai:8001
       - key: CORS_ORIGIN
         value: "*"
+      - key: SUPABASE_URL
+        value: https://wpvchfdjirdxtcxorzjb.supabase.co
+      - key: SUPABASE_PUBLISHABLE_KEY
+        value: sb_publishable_j4I8KlfXzwTBzrz1RiX7SA_acZDfM2o
+      - key: SUPABASE_SECRET_KEY
+        value: sb_secret_Ovwel5u9oBp5SC985OZaxw_A0rsPrQw
+      - key: SUPABASE_JWKS_URL
+        value: https://wpvchfdjirdxtcxorzjb.supabase.co/auth/v1/.well-known/jwks.json
 
   # ----------------------------------------------------------------------------
   # 2. PII Masking Engine (Private Microservice)
