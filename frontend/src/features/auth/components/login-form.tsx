@@ -156,19 +156,11 @@ export function LoginForm() {
           )}
         </div>
 
-        {/* Password Field with Forgot Password Link */}
+        {/* Password Field */}
         <div className="space-y-1.5 text-left">
-          <div className="flex items-center justify-between">
-            <label className="text-[11px] font-bold tracking-wider text-slate-700 uppercase">
-              Password
-            </label>
-            <button
-              type="button"
-              className="text-xs text-slate-600 hover:text-slate-900 hover:underline cursor-pointer"
-            >
-              Forgot password?
-            </button>
-          </div>
+          <label className="text-[11px] font-bold tracking-wider text-slate-700 uppercase">
+            Password
+          </label>
           <div className="relative">
             <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
             <input
