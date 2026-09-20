@@ -4,9 +4,9 @@
   "private": true,
   "description": "Springer Capital Institutional Compliance Document Review Monorepo",
   "scripts": {
-    "build": "cd backend && npm install && npm run build",
-    "start": "cd backend && npm run start",
-    "dev": "cd backend && npm run dev",
+    "build": "cd frontend && npm install && npm run build",
+    "start": "cd frontend && npm run start",
+    "dev": "cd frontend && npm run dev",
     "build:backend": "cd backend && npm install && npm run build",
     "start:backend": "cd backend && npm run start",
     "dev:backend": "cd backend && npm run dev",
