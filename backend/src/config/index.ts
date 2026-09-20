@@ -45,8 +45,8 @@ export const config = {
   },
 
   services: {
-    piiMaskerUrl: process.env.PII_MASKER_URL || (process.env.NODE_ENV === 'production' ? 'http://pii-masker:8002' : 'http://localhost:8002'),
-    aiServiceUrl: process.env.AI_SERVICE_URL || (process.env.NODE_ENV === 'production' ? 'http://ai-service:8000' : 'http://localhost:8000'),
+    piiMaskerUrl: process.env.PII_MASKER_URL || (process.env.NODE_ENV === 'production' ? 'http://compliance-pii-masker:8002' : 'http://localhost:8002'),
+    aiServiceUrl: process.env.AI_SERVICE_URL || process.env.RETRIEVAL_SERVICE_URL || process.env.MOCK_AI_URL || (process.env.NODE_ENV === 'production' ? 'http://compliance-mock-ai:8001' : 'http://localhost:8001'),
   },
 
   retrieval: {

@@ -15,12 +15,15 @@ export async function GET(
   // Clean trailing /api/v1 or trailing slash to get backend root URL
   backendOrigin = backendOrigin.replace(/\/api\/v1\/?$/, "").replace(/\/$/, "");
 
+  // Strip leading app/ or /app/ if present from container absolute paths
+  const normalizedPath = rawPath.replace(/^app\//, "").replace(/^\/app\//, "");
+
   // Build target URL under /uploads/
-  const cleanPath = rawPath.startsWith("uploads/")
-    ? rawPath
-    : rawPath.startsWith("documents/")
-    ? `uploads/${rawPath}`
-    : `uploads/documents/${rawPath}`;
+  const cleanPath = normalizedPath.startsWith("uploads/")
+    ? normalizedPath
+    : normalizedPath.startsWith("documents/")
+    ? `uploads/${normalizedPath}`
+    : `uploads/documents/${normalizedPath}`;
 
   const targetUrl = `${backendOrigin}/${cleanPath}`;
 
