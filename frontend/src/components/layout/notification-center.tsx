@@ -201,20 +201,28 @@ export function NotificationCenter() {
       : revisionNotifs.length
     : 0;
 
+  const cleanNoticeTitle = (rawTitle: string) => {
+    return rawTitle
+      .replace(/^New Document Submitted:\s*/i, "")
+      .replace(/^Document Status Updated:\s*/i, "")
+      .replace(/^New Revision Comment Added:?\s*/i, "")
+      .replace(/^Advisor Revision Comment.*?:?\s*/i, "")
+      .replace(/^Document Updated:\s*/i, "")
+      .replace(/^Revision Submitted:\s*/i, "")
+      .trim();
+  };
+
   const topRevisionItem =
     isAdvisor && revisionItems.length > 0
       ? {
           id: revisionItems[0].id,
-          title: revisionItems[0].title,
+          title: cleanNoticeTitle(revisionItems[0].title),
           notifId: undefined as string | undefined,
         }
       : isAdvisor && revisionNotifs.length > 0
       ? {
           id: revisionNotifs[0].documentId,
-          title: revisionNotifs[0].title
-            .replace(/^Document Status Updated:\s*/i, "")
-            .replace(/^New Revision Comment Added:?\s*/i, "")
-            .replace(/^Advisor Revision Comment.*?:?\s*/i, ""),
+          title: cleanNoticeTitle(revisionNotifs[0].title),
           notifId: revisionNotifs[0].id,
         }
       : null;
@@ -232,7 +240,7 @@ export function NotificationCenter() {
     isOfficer && officerUnreadNotifs.length > 0
       ? {
           id: officerUnreadNotifs[0].documentId,
-          title: officerUnreadNotifs[0].title,
+          title: cleanNoticeTitle(officerUnreadNotifs[0].title),
           description: officerUnreadNotifs[0].description,
           notifId: officerUnreadNotifs[0].id,
         }
