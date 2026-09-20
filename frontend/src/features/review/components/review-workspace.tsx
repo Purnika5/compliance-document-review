@@ -32,8 +32,6 @@ import {
   Search,
   ExternalLink,
   Eye,
-  EyeOff,
-  MessageSquare,
   UploadCloud,
 } from "lucide-react";
 import { buildPiiMap, unmaskText } from "@/utils/pii-unmasker";
@@ -175,18 +173,6 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
       (e) => (e.entryType === "decision" || e.authorRole === "Officer") && e.documentId === activeVersion.id
     );
   }, [lineageEntries, activeVersion]);
-
-  const previousVersion = useMemo(() => {
-    if (!activeVersion) return undefined;
-    return sortedVersions.find((v) => v.version === (activeVersion.version || 1) - 1);
-  }, [sortedVersions, activeVersion]);
-
-  const previousOfficerRemarks = useMemo(() => {
-    if (!previousVersion) return [];
-    return lineageEntries.filter(
-      (e) => (e.entryType === "decision" || e.authorRole === "Officer") && e.documentId === previousVersion.id
-    );
-  }, [lineageEntries, previousVersion]);
 
   const advisorSubmissionNote = useMemo(() => {
     if (!activeVersion) return undefined;
@@ -1193,27 +1179,6 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                   </p>
                   <p className="text-[10px] text-amber-800/80">
                     Recorded by {activeVersionRemarks[activeVersionRemarks.length - 1].authorName} ({activeVersionRemarks[activeVersionRemarks.length - 1].authorRole})
-                  </p>
-                </div>
-              )}
-
-              {/* Preceding Officer Revision Feedback (from previous version) */}
-              {activeVersion && activeVersion.version > 1 && previousOfficerRemarks.length > 0 && activeVersionRemarks.length === 0 && (
-                <div className="p-3.5 bg-amber-50/90 border border-amber-200 rounded-xl space-y-2 shadow-2xs">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 text-amber-900 font-bold text-xs">
-                      <MessageSquare className="h-4 w-4 text-amber-700 shrink-0" />
-                      <span>Preceding Officer Revision Feedback (from v{previousVersion?.version})</span>
-                    </div>
-                    <span className="text-[10px] text-amber-700 font-mono">
-                      {new Date(previousOfficerRemarks[previousOfficerRemarks.length - 1].createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <p className="text-amber-950 font-medium leading-relaxed text-xs italic bg-white/70 p-2.5 rounded-lg border border-amber-200/60">
-                    &ldquo;{previousOfficerRemarks[previousOfficerRemarks.length - 1].message}&rdquo;
-                  </p>
-                  <p className="text-[10px] text-amber-800/80">
-                    Feedback issued by {previousOfficerRemarks[previousOfficerRemarks.length - 1].authorName} ({previousOfficerRemarks[previousOfficerRemarks.length - 1].authorRole})
                   </p>
                 </div>
               )}
