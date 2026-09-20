@@ -995,11 +995,6 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                     <div className="flex items-center gap-2 flex-wrap">
                       <FileText className="h-4 w-4 text-[#183028]" />
                       <span className="font-semibold text-xs text-[#183028]">Extracted Document Text</span>
-                      {isOfficer && isUnmasked && (
-                        <span className="px-2 py-0.5 text-[9px] font-bold rounded bg-amber-100 text-amber-900 border border-amber-300">
-
-                        </span>
-                      )}
                     </div>
                   </div>
 
