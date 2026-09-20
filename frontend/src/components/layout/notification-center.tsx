@@ -492,19 +492,6 @@ export function NotificationCenter() {
               ))
             )}
           </div>
-
-          {notifications.length > 0 && unreadCount > 0 && (
-            <div className="p-2 border-t border-[#E6E8E7] bg-[#FAFBFB]">
-              <button
-                type="button"
-                onClick={markAllAsRead}
-                className="w-full py-1.5 text-xs font-bold text-[#183028] hover:bg-[#b4db53] bg-[#C5E86C] border border-[#a8ce4a] rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
-              >
-                <CheckCheck className="h-3.5 w-3.5" />
-                <span>Mark all notifications as read</span>
-              </button>
-            </div>
-          )}
         </PopoverContent>
       </Popover>
     </div>
