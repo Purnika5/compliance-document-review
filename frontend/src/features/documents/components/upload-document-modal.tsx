@@ -169,14 +169,14 @@ export function UploadDocumentModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleCloseAndReset()}>
-      <DialogContent className="max-w-xl p-6 sm:p-7 bg-white border border-slate-200/90 text-slate-900 shadow-2xl rounded-2xl">
+      <DialogContent className="sm:max-w-xl w-[calc(100vw-2rem)] p-5 sm:p-6 bg-white border border-[#E6E8E7] text-[#183028] shadow-2xl rounded-2xl max-h-[90vh] overflow-y-auto min-w-0 flex flex-col box-border">
         <DialogHeader className="space-y-1 pb-2">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="h-9 w-9 rounded-xl bg-emerald-50 border border-emerald-200/70 text-emerald-800 flex items-center justify-center shrink-0">
               <UploadCloud className="h-5 w-5" />
             </div>
-            <div>
-              <DialogTitle className="text-base font-bold text-slate-900">
+            <div className="min-w-0 flex-1">
+              <DialogTitle className="text-base font-bold text-slate-900 truncate">
                 {step === "details"
                   ? "Submit Compliance Document"
                   : step === "validation"
@@ -215,8 +215,8 @@ export function UploadDocumentModal({
         {error && <Alert variant="error" title="Submission Failed" message={error} />}
 
         {step === "details" && (
-          <form onSubmit={handleProceedToValidation} noValidate className="space-y-3.5 pt-1">
-            <div className="space-y-1.5">
+          <form onSubmit={handleProceedToValidation} noValidate className="space-y-3.5 pt-1 min-w-0">
+            <div className="space-y-1.5 min-w-0">
               <label className="block text-xs font-semibold text-[#183028]">
                 Document Title <span className="text-rose-500">*</span>
               </label>
@@ -230,7 +230,7 @@ export function UploadDocumentModal({
                   }
                 }}
                 className={cn(
-                  "h-9 text-xs rounded-xl bg-[#FFFFFF] border-[#E6E8E7] text-[#183028] focus:border-[#183028] focus:ring-1 focus:ring-[#183028] transition-colors shadow-2xs",
+                  "h-9 text-xs rounded-xl bg-[#FFFFFF] border-[#E6E8E7] text-[#183028] focus:border-[#183028] focus:ring-1 focus:ring-[#183028] transition-colors shadow-2xs w-full min-w-0",
                   formErrors.title && "border-rose-500 ring-1 ring-rose-500"
                 )}
               />
@@ -239,12 +239,12 @@ export function UploadDocumentModal({
               )}
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 min-w-0">
               <label className="block text-xs font-semibold text-[#183028]">
                 Classification Category <span className="text-rose-500">*</span>
               </label>
               <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger className="h-9 w-full text-xs rounded-xl bg-white border border-[#E6E8E7] text-[#183028] focus:border-[#183028] focus:ring-1 focus:ring-[#183028] shadow-2xs cursor-pointer">
+                <SelectTrigger className="h-9 w-full text-xs rounded-xl bg-white border border-[#E6E8E7] text-[#183028] focus:border-[#183028] focus:ring-1 focus:ring-[#183028] shadow-2xs cursor-pointer min-w-0">
                   <SelectValue placeholder="Select Category" />
                 </SelectTrigger>
                 <SelectContent className="bg-white rounded-xl border border-[#E6E8E7] shadow-xl text-[#183028]">
@@ -267,7 +267,7 @@ export function UploadDocumentModal({
               </Select>
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 min-w-0">
               <label className="block text-xs font-semibold text-[#183028]">
                 Advisor Overview Notes (Optional)
               </label>
@@ -275,7 +275,7 @@ export function UploadDocumentModal({
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Include document scope, filing reference, or specific notes for the compliance officer..."
-                className="min-h-[70px] w-full text-xs rounded-xl bg-white border border-[#E6E8E7] text-[#183028] placeholder:text-[#183028]/45 focus:border-[#183028] focus:ring-1 focus:ring-[#183028] shadow-2xs resize-none"
+                className="min-h-[70px] w-full text-xs rounded-xl bg-white border border-[#E6E8E7] text-[#183028] placeholder:text-[#183028]/45 focus:border-[#183028] focus:ring-1 focus:ring-[#183028] shadow-2xs resize-none min-w-0"
               />
             </div>
 
@@ -289,7 +289,7 @@ export function UploadDocumentModal({
               onDrop={handleFileDrop}
               onClick={() => fileInputRef.current?.click()}
               className={cn(
-                "border border-dashed rounded-xl p-5 flex flex-col items-center justify-center transition-all cursor-pointer text-center shadow-2xs",
+                "border border-dashed rounded-xl p-5 flex flex-col items-center justify-center transition-all cursor-pointer text-center shadow-2xs min-w-0 w-full box-border",
                 isDragOver
                   ? "border-[#183028] bg-[#C5E86C]/10 scale-[1.01]"
                   : "border-[#E6E8E7] bg-[#FFFFFF] hover:bg-[#C5E86C]/10 hover:border-[#183028]"
@@ -302,10 +302,10 @@ export function UploadDocumentModal({
                 accept=".pdf,.docx,.xlsx"
                 onChange={handleFileSelect}
               />
-              <div className="h-8 w-8 rounded-lg bg-[#FFFFFF] border border-[#E6E8E7] flex items-center justify-center text-[#183028] mb-1.5 shadow-2xs">
+              <div className="h-8 w-8 rounded-lg bg-[#FFFFFF] border border-[#E6E8E7] flex items-center justify-center text-[#183028] mb-1.5 shadow-2xs shrink-0">
                 <Paperclip className="h-4 w-4" />
               </div>
-              <p className="text-xs font-semibold text-[#183028]">
+              <p className="text-xs font-semibold text-[#183028] truncate max-w-full">
                 Click to browse <span className="font-normal text-[#183028]/60">or drag and drop document</span>
               </p>
               <p className="text-[10px] text-[#183028]/50 font-mono mt-0.5">
@@ -315,20 +315,22 @@ export function UploadDocumentModal({
 
             {/* Attached file summary */}
             {files.length > 0 && (
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 min-w-0">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-[#183028]/50 block">
                   Attached Payload ({files.length})
                 </span>
-                <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                <div className="space-y-1.5 max-h-32 overflow-y-auto min-w-0">
                   {files.map((f) => (
                     <div
                       key={f.id}
-                      className="p-2.5 rounded-xl flex items-center justify-between text-xs bg-[#FFFFFF] border border-[#E6E8E7]"
+                      className="p-2.5 rounded-xl flex items-center justify-between text-xs bg-[#FFFFFF] border border-[#E6E8E7] gap-2 min-w-0 w-full box-border"
                     >
-                      <div className="flex items-center gap-2 min-w-0">
+                      <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
                         <FileText className="h-3.5 w-3.5 text-[#183028]/60 shrink-0" />
-                        <span className="font-medium text-[#183028] truncate">{f.name}</span>
-                        <span className="text-[10px] font-mono text-[#183028]/60">({f.size})</span>
+                        <span className="font-medium text-[#183028] truncate min-w-0 flex-1" title={f.name}>
+                          {f.name}
+                        </span>
+                        <span className="text-[10px] font-mono text-[#183028]/60 shrink-0">({f.size})</span>
                       </div>
                       <button
                         type="button"
@@ -336,7 +338,7 @@ export function UploadDocumentModal({
                           e.stopPropagation();
                           removeFile(f.id);
                         }}
-                        className="p-1 rounded-lg text-[#183028]/40 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                        className="p-1 rounded-lg text-[#183028]/40 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer shrink-0"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>

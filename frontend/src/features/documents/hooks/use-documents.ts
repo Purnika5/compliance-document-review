@@ -34,8 +34,8 @@ export function useDocuments(mode: "my-submissions" | "queue" = "queue", statusF
   });
   const [isPending, setIsPending] = useState(true);
 
-  const loadDocuments = useCallback(async () => {
-    setIsPending(true);
+  const loadDocuments = useCallback(async (showSkeleton = false) => {
+    if (showSkeleton) setIsPending(true);
     try {
       let data: DocumentItem[] = [];
       if (mode === "my-submissions") {
@@ -73,14 +73,18 @@ export function useDocuments(mode: "my-submissions" | "queue" = "queue", statusF
         }
       }
     } catch {
-      setDocuments([]);
+      // keep existing state on transient error
     } finally {
-      setIsPending(false);
+      if (showSkeleton) setIsPending(false);
     }
   }, [mode, statusFilter]);
 
   useEffect(() => {
-    loadDocuments();
+    loadDocuments(true);
+    const interval = setInterval(() => {
+      loadDocuments(false);
+    }, 4000);
+    return () => clearInterval(interval);
   }, [loadDocuments]);
 
   return {
@@ -90,6 +94,6 @@ export function useDocuments(mode: "my-submissions" | "queue" = "queue", statusF
     setActiveStatus: () => {},
     isPending,
     counts: statusCounts,
-    refetch: loadDocuments,
+    refetch: () => loadDocuments(false),
   };
 }
