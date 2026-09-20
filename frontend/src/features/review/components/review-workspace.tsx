@@ -564,14 +564,6 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
       {documentError && (
         <ErrorState title="Unable to load document" message={documentError} />
       )}
-      {actionSuccess && (
-        <Alert
-          variant="success"
-          title="Regulatory Action Executed"
-          message={actionSuccess}
-          onClose={() => setActionSuccess(null)}
-        />
-      )}
 
       {/* Mobile/Tablet Zone Switcher Tabs */}
       <div className="border border-[#E6E8E7] bg-white flex lg:hidden p-1.5 rounded-xl shadow-2xs gap-1.5">
