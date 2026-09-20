@@ -94,7 +94,7 @@ export function DocumentQueueTable() {
     comment: string
   ) => {
     if (!decisionDoc) return;
-    const docDisplayId = `DOC-${decisionDoc.id.slice(-4).toUpperCase()}`;
+    const docDisplayId = `DOC-${(decisionDoc.id || "0000").slice(-4).toUpperCase()}`;
     try {
       await updateDocumentStatusAction(decisionDoc.id, status, comment);
       const target = documents.find((d) => d.id === decisionDoc.id);
@@ -496,7 +496,7 @@ export function DocumentQueueTable() {
                     className="hover:bg-muted/40 transition-colors cursor-pointer group"
                   >
                     <TableCell className="pl-4 font-mono text-xs font-semibold text-[#183028]">
-                      DOC-{doc.id.slice(-4).toUpperCase()}
+                      DOC-{(doc.id || "0000").slice(-4).toUpperCase()}
                     </TableCell>
 
                     <TableCell>

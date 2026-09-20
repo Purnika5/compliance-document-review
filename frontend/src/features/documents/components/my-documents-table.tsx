@@ -437,7 +437,7 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                         </div>
                       </TableCell>
                       <TableCell className="py-3.5 px-3 font-mono font-medium text-[#183028]/70 text-xs whitespace-nowrap">
-                        DOC-{doc.id.slice(-4).toUpperCase()}
+                        DOC-{(doc.id || "0000").slice(-4).toUpperCase()}
                       </TableCell>
                       <TableCell className="py-3.5 px-3 text-[#183028]/70 text-xs whitespace-nowrap">
                         {new Date(doc.submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
@@ -823,7 +823,7 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                               </div>
                             </TableCell>
                             <TableCell className="py-3.5 px-3 font-mono font-medium text-[#183028]/70 text-xs whitespace-nowrap">
-                              DOC-{doc.id.slice(-4).toUpperCase()}
+                              DOC-{(doc.id || "0000").slice(-4).toUpperCase()}
                             </TableCell>
                             <TableCell className="py-3.5 px-3 text-[#183028]/70 text-xs whitespace-nowrap">
                               {new Date(doc.submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}

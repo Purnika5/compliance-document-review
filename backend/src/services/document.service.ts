@@ -289,10 +289,10 @@ export class DocumentService {
         d.advisor_id,
         d.created_at,
         d.updated_at,
-        u.name AS advisor_name,
-        u.email AS advisor_email
+        COALESCE(u.name, 'Advisor') AS advisor_name,
+        COALESCE(u.email, '') AS advisor_email
       FROM documents d
-      JOIN users u ON d.advisor_id = u.id
+      LEFT JOIN users u ON d.advisor_id = u.id
       ${whereClause}
       ORDER BY d.created_at DESC
     `;
@@ -444,6 +444,17 @@ export class DocumentService {
         );
       }
 
+      // Mark past revision notifications for this document lineage as read for this advisor
+      await client.query(
+        `UPDATE notifications 
+         SET is_read = true 
+         WHERE user_id = $1 
+           AND document_id IN (
+             SELECT id FROM documents WHERE id = $2 OR original_document_id = $2
+           )`,
+        [user.id, rootDocumentId]
+      );
+
       await client.query('COMMIT');
     } catch (error) {
       await client.query('ROLLBACK').catch(() => {});
@@ -497,9 +508,10 @@ export class DocumentService {
     documentId: string,
     user: AuthTokenPayload
   ): Promise<DocumentLineage> {
+    const cleanId = documentId ? documentId.trim() : documentId;
     const existing = await query<DocumentRecord>(
       'SELECT id, advisor_id, original_document_id FROM documents WHERE id = $1',
-      [documentId]
+      [cleanId]
     );
 
     if (existing.rows.length === 0) {
@@ -508,7 +520,7 @@ export class DocumentService {
 
     const doc = existing.rows[0];
 
-    if (user.role === 'Advisor' && doc.advisor_id !== user.id) {
+    if (user.role === 'Advisor' && doc.advisor_id && doc.advisor_id.toLowerCase() !== user.id.toLowerCase()) {
       throw new AppError('Forbidden: You do not have permission to view this document lineage', 403, 'FORBIDDEN');
     }
 
@@ -529,10 +541,10 @@ export class DocumentService {
         d.advisor_id,
         d.created_at,
         d.updated_at,
-        u.name AS advisor_name,
-        u.email AS advisor_email
+        COALESCE(u.name, 'Advisor') AS advisor_name,
+        COALESCE(u.email, '') AS advisor_email
       FROM documents d
-      JOIN users u ON d.advisor_id = u.id
+      LEFT JOIN users u ON d.advisor_id = u.id
       WHERE d.id = $1 OR d.original_document_id = $1
       ORDER BY d.version ASC, d.created_at ASC
     `;
@@ -602,10 +614,10 @@ export class DocumentService {
         d.advisor_id,
         d.created_at,
         d.updated_at,
-        u.name AS advisor_name,
-        u.email AS advisor_email
+        COALESCE(u.name, 'Advisor') AS advisor_name,
+        COALESCE(u.email, '') AS advisor_email
       FROM documents d
-      JOIN users u ON d.advisor_id = u.id
+      LEFT JOIN users u ON d.advisor_id = u.id
       ${whereClause}
       ORDER BY d.created_at DESC
     `;
@@ -618,6 +630,7 @@ export class DocumentService {
     documentId: string,
     user: AuthTokenPayload
   ): Promise<DocumentWithAdvisor> {
+    const cleanId = documentId ? documentId.trim() : documentId;
     const sql = `
       SELECT 
         d.id,
@@ -633,18 +646,18 @@ export class DocumentService {
         d.advisor_id,
         d.created_at,
         d.updated_at,
-        u.name AS advisor_name,
-        u.email AS advisor_email,
+        COALESCE(u.name, 'Advisor') AS advisor_name,
+        COALESCE(u.email, '') AS advisor_email,
         da.summary AS ai_summary,
         da.flags AS ai_flags,
         da.masked_text
       FROM documents d
-      JOIN users u ON d.advisor_id = u.id
+      LEFT JOIN users u ON d.advisor_id = u.id
       LEFT JOIN document_analyses da ON da.document_id = d.id AND da.version = d.version
       WHERE d.id = $1
     `;
 
-    const result = await query<DocumentWithAdvisor>(sql, [documentId]);
+    const result = await query<DocumentWithAdvisor>(sql, [cleanId]);
 
     if (result.rows.length === 0) {
       throw new AppError('Document not found', 404, 'DOCUMENT_NOT_FOUND');
@@ -652,7 +665,7 @@ export class DocumentService {
 
     const doc = result.rows[0];
 
-    if (user.role === 'Advisor' && doc.advisor_id !== user.id) {
+    if (user.role === 'Advisor' && doc.advisor_id && doc.advisor_id.toLowerCase() !== user.id.toLowerCase()) {
       throw new AppError('Forbidden: You do not have permission to view this document', 403, 'FORBIDDEN');
     }
 

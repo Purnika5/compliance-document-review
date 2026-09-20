@@ -17,9 +17,10 @@ interface DocumentDetailPageProps {
  */
 export default async function DocumentDetailPage({ params }: DocumentDetailPageProps) {
   const resolvedParams = await params;
+  const docId = resolvedParams?.id ? decodeURIComponent(resolvedParams.id).trim() : "";
   return (
     <Suspense fallback={<ReviewWorkspaceSkeleton />}>
-      <ReviewWorkspace documentId={resolvedParams.id} />
+      <ReviewWorkspace documentId={docId} />
     </Suspense>
   );
 }

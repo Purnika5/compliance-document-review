@@ -124,9 +124,9 @@ export function AssignedReviewsView() {
     comment: string
   ) => {
     if (!decisionDoc) return;
-    const docDisplayId = `DOC-${decisionDoc.id.slice(-4).toUpperCase()}`;
+    const docDisplayId = `DOC-${(decisionDoc.id || "0000").slice(-4).toUpperCase()}`;
     try {
-      await updateDocumentStatusAction(decisionDoc.id, status);
+      await updateDocumentStatusAction(decisionDoc.id, status, comment);
       const msg = `Successfully updated ${docDisplayId} to ${status}. Regulatory record updated.`;
       setActionSuccess(msg);
       if (status === "Approved") {
