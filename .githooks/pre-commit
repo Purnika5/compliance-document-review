@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Springer Capital — Pre-Commit Secret Scanner Hook
+# Blocks any commit containing API keys, private keys, or credentials.
+# ==============================================================================
+
+echo "[Pre-Commit Hook] Scanning staged changes for credentials & API keys..."
+
+# 1. Run Python Secrets Scanner on staged diff
+if command -v python3 &> /dev/null; then
+    python3 scripts/scan_secrets.py staged
+    SCAN_STATUS=$?
+elif command -v python &> /dev/null; then
+    python scripts/scan_secrets.py staged
+    SCAN_STATUS=$?
+else
+    echo "[!] Warning: Python not found in PATH. Skipping secret scan."
+    exit 0
+fi
+
+if [ $SCAN_STATUS -ne 0 ]; then
+    echo ""
+    echo "=================================================================="
+    echo "  COMMIT REJECTED: Potential API Key or Secret Detected!"
+    echo "=================================================================="
+    echo "  Git detected potential secrets in your staged changes."
+    echo "  Please unstage the secret, move it to .env, and try again."
+    echo ""
+    echo "  If this is a false-positive template or test value, update"
+    echo "  scripts/scan_secrets.py to exclude the placeholder."
+    echo "=================================================================="
+    exit 1
+fi
+
+echo "[Pre-Commit Hook] Clean! No secrets detected in staged changes."
+exit 0

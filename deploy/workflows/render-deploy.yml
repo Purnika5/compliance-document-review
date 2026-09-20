@@ -1,0 +1,55 @@
+name: Render Continuous Deployment
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+
+jobs:
+  quality-gate:
+    name: Run Quality & Security Gates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install Dependencies
+        run: |
+          cd backend
+          npm ci
+
+      - name: Run Unit & Security Tests
+        run: |
+          cd backend
+          npm test
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run Secrets Scanner
+        run: |
+          python scripts/scan_secrets.py working-tree
+
+      - name: Run Masking Security Audit
+        run: |
+          python scripts/audit_masking_security.py --ci
+
+  deploy-render:
+    name: Trigger Render Deployment
+    needs: quality-gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render Deploy Hook
+        if: ${{ secrets.RENDER_DEPLOY_HOOK_URL != '' }}
+        run: |
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"

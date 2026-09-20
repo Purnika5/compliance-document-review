@@ -220,9 +220,26 @@ __marimo__/
 # Node / Backend
 node_modules/
 dist/
-.env
-.env.local
-.env.*.local
 *.log
 backend/uploads/*
 !backend/uploads/.gitkeep
+
+# Environment & Secrets Exclusions
+.env
+.env.*
+*.env
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.test
+*.pem
+*.key
+*.pfx
+*.p12
+*.crt
+credentials.json
+service-account*.json
+service_account*.json
+secrets.json
+*.secret
+railway.env

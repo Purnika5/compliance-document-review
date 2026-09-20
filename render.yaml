@@ -1,0 +1,95 @@
+# Render Infrastructure-as-Code Blueprint
+# Springer Capital Compliance Document Review Platform
+services:
+  # ----------------------------------------------------------------------------
+  # 1. Express Backend REST API
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: compliance-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    region: oregon
+    plan: starter
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: compliance-postgres
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: PII_MASKER_URL
+        value: http://compliance-pii-masker:8002
+      - key: RETRIEVAL_SERVICE_URL
+        value: http://compliance-mock-ai:8001
+      - key: CORS_ORIGIN
+        value: "*"
+
+  # ----------------------------------------------------------------------------
+  # 2. Next.js 16 Web App
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: compliance-frontend
+    runtime: docker
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    region: oregon
+    plan: starter
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          type: web
+          name: compliance-backend
+          property: url
+
+  # ----------------------------------------------------------------------------
+  # 3. PII Masking Engine (Private Microservice)
+  # ----------------------------------------------------------------------------
+  - type: pserv
+    name: compliance-pii-masker
+    runtime: docker
+    dockerfilePath: ./devops/pii-masker/Dockerfile
+    dockerContext: ./devops/pii-masker
+    region: oregon
+    plan: starter
+    envVars:
+      - key: PORT
+        value: 8002
+
+  # ----------------------------------------------------------------------------
+  # 4. Mock AI & Vector Search Service (Private Microservice)
+  # ----------------------------------------------------------------------------
+  - type: pserv
+    name: compliance-mock-ai
+    runtime: docker
+    dockerfilePath: ./devops/mock-ai-api/Dockerfile
+    dockerContext: ./devops/mock-ai-api
+    region: oregon
+    plan: starter
+    envVars:
+      - key: PORT
+        value: 8001
+      - key: DATABASE_URL
+        fromDatabase:
+          name: compliance-postgres
+          property: connectionString
+
+databases:
+  # ----------------------------------------------------------------------------
+  # PostgreSQL Database (pg15 with pgvector extension)
+  # ----------------------------------------------------------------------------
+  - name: compliance-postgres
+    databaseName: compliance_doc_review
+    user: postgres
+    region: oregon
+    plan: starter

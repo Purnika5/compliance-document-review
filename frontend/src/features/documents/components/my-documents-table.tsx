@@ -53,6 +53,8 @@ import {
   RefreshCw,
   ArrowUpRight,
   Lock,
+  LineChart,
+  BarChart2,
 } from "lucide-react";
 import type { DocumentItem } from "@/lib/validation/document";
 import { cn } from "@/lib/utils";
@@ -60,6 +62,8 @@ import { MetricLineChart } from "@/components/shared/metric-line-chart";
 import { showInfoToast } from "@/components/ui/toast";
 import { FileTypeIcon } from "@/components/shared/file-type-icon";
 import { DateFilterModal, type DateFilterPreset } from "./date-filter-modal";
+import { generateMetricTrends } from "../utils/metric-trend.util";
+import { ComplianceTrendChart } from "./compliance-trend-chart";
 import { SubmissionsSkeleton } from "./submissions-skeleton";
 import { DashboardSkeleton } from "./dashboard-skeleton";
 
@@ -123,6 +127,7 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
   const [calendarMonthOffset, setCalendarMonthOffset] = useState(0);
+  const [analyticsView, setAnalyticsView] = useState<"cards" | "chart" | "both">("both");
 
   const baseDate = new Date();
   const viewedCalendarDate = new Date(baseDate.getFullYear(), baseDate.getMonth() + calendarMonthOffset, 1);
@@ -237,15 +242,48 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
     currentPage * pageSize
   );
 
-  const pendingCount = documents.filter((d) => d.status === "Pending").length;
-  const approvedCount = documents.filter((d) => d.status === "Approved").length;
-  const needsRevisionItems = documents.filter((d) => d.status === "Needs Revision");
-  const needsRevisionCount = needsRevisionItems.length;
-  const rejectedCount = documents.filter((d) => d.status === "Rejected").length;
-  const completionRate = documents.length ? Math.round((approvedCount / documents.length) * 100) : 0;
-  const revisionRate = documents.length ? Math.round((needsRevisionCount / documents.length) * 100) : 0;
+  // Active date preset and dynamic time-series calculation
+  const activeDatePreset = dateFilterPreset !== "All" ? dateFilterPreset : (dateFilter as DateFilterPreset);
+
+  const activePresetTitle = React.useMemo(() => {
+    if (selectedDay !== null) {
+      return `${monthLabel.split(" ")[0]} ${selectedDay}, ${currentYear}`;
+    }
+    if (dateFilterPreset === "Custom" && (customStartDate || customEndDate)) {
+      return `${customStartDate || "Start"} to ${customEndDate || "Now"}`;
+    }
+    return dateFilterPreset !== "All" ? dateFilterPreset : "All Time";
+  }, [selectedDay, monthLabel, currentYear, dateFilterPreset, customStartDate, customEndDate]);
+
+  const trendData = React.useMemo(() => {
+    return generateMetricTrends(
+      documents,
+      activeDatePreset,
+      customStartDate,
+      customEndDate,
+      selectedDay,
+      currentMonth,
+      currentYear
+    );
+  }, [documents, activeDatePreset, customStartDate, customEndDate, selectedDay, currentMonth, currentYear]);
+
+  // Metric counts dynamically tied to active date filter/selection
+  const metricVolume = trendData.total[trendData.total.length - 1] ?? 0;
+  const metricPending = trendData.pending[trendData.pending.length - 1] ?? 0;
+  const metricRevision = trendData.needsRevision[trendData.needsRevision.length - 1] ?? 0;
+  const metricApproved = trendData.approved[trendData.approved.length - 1] ?? 0;
+  const metricRejected = trendData.rejected[trendData.rejected.length - 1] ?? 0;
+  const metricThroughput = trendData.throughput[trendData.throughput.length - 1] ?? 0;
+
+  // Fallback counts for other calculations
+  const pendingCount = metricPending;
+  const approvedCount = metricApproved;
+  const needsRevisionCount = metricRevision;
+  const rejectedCount = metricRejected;
+  const completionRate = metricVolume ? Math.round((approvedCount / metricVolume) * 100) : 0;
+  const revisionRate = metricVolume ? Math.round((needsRevisionCount / metricVolume) * 100) : 0;
   const reviewedCount = approvedCount + rejectedCount;
-  const reviewRate = documents.length ? Math.round((reviewedCount / documents.length) * 100) : 0;
+  const reviewRate = metricThroughput;
 
   const handleSaveEdit = (updated: Partial<DocumentItem> & { id: string }) => {
     const target = documents.find((d) => d.id === updated.id);
@@ -268,43 +306,7 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
         <Alert variant="success" title="Action Completed" message={actionMessage} />
       )}
 
-      {/* Revision Request Banner */}
-      {needsRevisionCount > 0 && (
-        <div className="p-4 rounded-2xl border border-orange-200 bg-orange-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
-          <div className="flex items-start gap-3">
-            <div className="h-8 w-8 rounded-lg bg-orange-100 border border-orange-300 text-orange-700 flex items-center justify-center shrink-0 mt-0.5">
-              <AlertTriangle className="h-4 w-4" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h4 className="text-xs font-bold text-orange-900">
-                  {needsRevisionCount} Submission Requires Revision Attention
-                </h4>
-                <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-orange-200 text-orange-900">
-                  Action Required
-                </span>
-              </div>
-              <p className="text-[11px] text-orange-800/80 mt-0.5 leading-snug">
-                Compliance requested revisions on{" "}
-                <span className="font-semibold text-orange-950">{needsRevisionItems[0]?.title}</span>.
-              </p>
-            </div>
-          </div>
 
-          <Button
-            size="sm"
-            onClick={() => {
-              if (needsRevisionItems[0]?.id) {
-                router.push(`/documents/${needsRevisionItems[0].id}`);
-              }
-            }}
-            className="h-8 px-3 text-xs font-semibold bg-orange-600 hover:bg-orange-700 text-white rounded-xl gap-1 shrink-0 shadow-2xs cursor-pointer"
-          >
-            <span>Inspect &amp; Respond</span>
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-      )}
 
 
 
@@ -543,150 +545,270 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
         <div className="space-y-4">
           {/* Institutional Compliance Analytics Section */}
           <div className="bg-[#FFFFFF] rounded-2xl p-5 sm:p-6 border border-[#E6E8E7] shadow-2xs">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-5 border-b border-[#E6E8E7]">
-              <div className="flex items-center gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-sm sm:text-base font-bold text-[#183028] tracking-tight">
-                      Institutional Compliance Analytics
-                    </h2>
-                  </div>
-                  <p className="text-xs text-[#183028]/65 mt-0.5">
-                    Filing velocity, regulatory turnaround, and document classification trends
-                  </p>
+            <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 pb-5 border-b border-[#E6E8E7]">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm sm:text-base font-bold text-[#183028] tracking-tight">
+                    Institutional Compliance Analytics
+                  </h2>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#C5E86C]/30 text-[#183028] border border-[#C5E86C]/60">
+                    Live Velocity
+                  </span>
                 </div>
+                <p className="text-xs text-[#183028]/65 mt-0.5">
+                  Filing velocity, regulatory turnaround, and document classification trends
+                </p>
               </div>
-              <div className="flex items-center gap-2">
+
+              {/* Date Filter Presets & Controls */}
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Active calendar day badge if selected */}
+                {selectedDay !== null && (
+                  <button
+                    onClick={() => setSelectedDay(null)}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-lg bg-orange-100 text-orange-900 border border-orange-300 hover:bg-orange-200 transition-colors cursor-pointer"
+                    title="Clear selected day"
+                  >
+                    <span>📅 {monthLabel.split(" ")[0]} {selectedDay}</span>
+                    <span className="text-orange-950 font-black ml-0.5">✕</span>
+                  </button>
+                )}
+
+                {/* Date presets selector */}
+                <div className="flex items-center bg-[#FAFBFB] p-1 rounded-xl border border-[#E6E8E7] gap-0.5">
+                  {(["All", "Today", "Past 7 Days", "This Month", "Past 90 Days"] as const).map((preset) => {
+                    const isSelected = selectedDay === null && (dateFilterPreset === preset || (preset === "All" && dateFilterPreset === "All"));
+                    return (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => {
+                          setSelectedDay(null);
+                          setDateFilterPreset(preset as DateFilterPreset);
+                          setDateFilter(preset);
+                        }}
+                        className={cn(
+                          "px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-all cursor-pointer whitespace-nowrap",
+                          isSelected
+                            ? "bg-[#183028] text-white shadow-2xs"
+                            : "text-[#183028]/70 hover:text-[#183028] hover:bg-[#C5E86C]/25"
+                        )}
+                      >
+                        {preset === "All" ? "All Time" : preset}
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => setIsDateModalOpen(true)}
+                    className={cn(
+                      "px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-all cursor-pointer whitespace-nowrap flex items-center gap-1",
+                      dateFilterPreset === "Custom" || (dateFilterPreset !== "All" && !["Today", "Past 7 Days", "This Month", "Past 90 Days"].includes(dateFilterPreset))
+                        ? "bg-[#183028] text-white shadow-2xs"
+                        : "text-[#183028]/70 hover:text-[#183028] hover:bg-[#C5E86C]/25"
+                    )}
+                  >
+                    <Filter className="h-3 w-3" />
+                    <span>Custom</span>
+                  </button>
+                </div>
+
+                {/* View toggle between Cards / Line Chart / Both */}
+                <div className="flex items-center bg-[#FAFBFB] p-1 rounded-xl border border-[#E6E8E7] gap-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setAnalyticsView("cards")}
+                    className={cn(
+                      "p-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer",
+                      analyticsView === "cards"
+                        ? "bg-[#183028] text-white shadow-2xs"
+                        : "text-[#183028]/60 hover:text-[#183028] hover:bg-[#C5E86C]/25"
+                    )}
+                    title="View Metric Cards"
+                  >
+                    <BarChart2 className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAnalyticsView("chart")}
+                    className={cn(
+                      "p-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer",
+                      analyticsView === "chart"
+                        ? "bg-[#183028] text-white shadow-2xs"
+                        : "text-[#183028]/60 hover:text-[#183028] hover:bg-[#C5E86C]/25"
+                    )}
+                    title="View Full Line Chart"
+                  >
+                    <LineChart className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAnalyticsView("both")}
+                    className={cn(
+                      "px-2 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer",
+                      analyticsView === "both"
+                        ? "bg-[#183028] text-white shadow-2xs"
+                        : "text-[#183028]/60 hover:text-[#183028] hover:bg-[#C5E86C]/25"
+                    )}
+                    title="View Both Cards and Line Chart"
+                  >
+                    Both
+                  </button>
+                </div>
+
+                {/* Upload Button */}
                 <Button
                   onClick={openModal}
-                  className="h-9 px-4 text-xs font-semibold bg-[#183028] hover:bg-[#23453a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] text-white rounded-xl gap-2 shrink-0 shadow-2xs transition-all cursor-pointer"
+                  className="h-8 px-3 text-xs font-semibold bg-[#183028] hover:bg-[#23453a] text-white rounded-xl gap-1.5 shrink-0 shadow-2xs transition-all cursor-pointer"
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus className="h-3.5 w-3.5" />
                   <span>Upload Document</span>
                 </Button>
               </div>
             </div>
 
-            {/* 5 Metric KPI Cards matching Officer Review Queue (Balanced 5-Column Grid) */}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 pt-5">
-              {/* Total Submissions */}
-              <div className="rounded-xl p-4 border border-border bg-card shadow-xs flex flex-col justify-between group">
-                <div>
-                  <div className="flex items-center justify-between gap-1">
-                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider truncate">
-                      Review Queue Volume
-                    </p>
+            {/* 5 Metric KPI Cards with Real Date-Reactive Line Charts */}
+            {(analyticsView === "cards" || analyticsView === "both") && (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 pt-5">
+                {/* Total Submissions */}
+                <div className="rounded-xl p-4 border border-border bg-card shadow-xs flex flex-col justify-between group hover:border-[#183028]/30 transition-all">
+                  <div>
+                    <div className="flex items-center justify-between gap-1">
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider truncate">
+                        Review Queue Volume
+                      </p>
+                    </div>
+                    <div className="mt-2 flex items-baseline justify-between gap-2">
+                      <h3 className="text-3xl font-bold text-foreground tracking-tight">{metricVolume}</h3>
+                      <span className="text-[11px] text-muted-foreground font-medium truncate">Total submissions</span>
+                    </div>
                   </div>
-                  <div className="mt-2 flex items-baseline justify-between gap-2">
-                    <h3 className="text-3xl font-bold text-foreground tracking-tight">{documents.length}</h3>
-                    <span className="text-[11px] text-muted-foreground font-medium truncate">Total submissions</span>
+                  <div className="mt-3 w-full">
+                    <MetricLineChart
+                      value={metricVolume}
+                      data={trendData.total}
+                      labels={trendData.labels}
+                      color="#0284c7"
+                      height={36}
+                    />
                   </div>
                 </div>
-                <div className="mt-3 w-full">
-                  <MetricLineChart
-                    value={documents.length}
-                    color="#0284c7"
-                    height={36}
-                  />
-                </div>
-              </div>
 
-              {/* Pending Review */}
-              <div className="rounded-xl p-4 border border-border bg-card shadow-xs flex flex-col justify-between group">
-                <div>
-                  <div className="flex items-center justify-between gap-1">
-                    <p className="text-[10px] font-semibold text-amber-700 uppercase tracking-wider truncate">
-                      Pending Evaluation
-                    </p>
-                    {pendingCount > 0 && (
-                      <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0 animate-pulse" />
-                    )}
+                {/* Pending Review */}
+                <div className="rounded-xl p-4 border border-border bg-card shadow-xs flex flex-col justify-between group hover:border-amber-400/50 transition-all">
+                  <div>
+                    <div className="flex items-center justify-between gap-1">
+                      <p className="text-[10px] font-semibold text-amber-700 uppercase tracking-wider truncate">
+                        Pending Evaluation
+                      </p>
+                      {metricPending > 0 && (
+                        <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0 animate-pulse" />
+                      )}
+                    </div>
+                    <div className="mt-2 flex items-baseline justify-between gap-2">
+                      <h3 className="text-3xl font-bold text-foreground tracking-tight">{metricPending}</h3>
+                      <span className="text-[11px] text-muted-foreground font-medium truncate">Needs action</span>
+                    </div>
                   </div>
-                  <div className="mt-2 flex items-baseline justify-between gap-2">
-                    <h3 className="text-3xl font-bold text-foreground tracking-tight">{pendingCount}</h3>
-                    <span className="text-[11px] text-muted-foreground font-medium truncate">Needs action</span>
+                  <div className="mt-3 w-full">
+                    <MetricLineChart
+                      value={metricPending}
+                      data={trendData.pending}
+                      labels={trendData.labels}
+                      color="#d97706"
+                      height={36}
+                    />
                   </div>
                 </div>
-                <div className="mt-3 w-full">
-                  <MetricLineChart
-                    value={pendingCount}
-                    color="#d97706"
-                    height={36}
-                  />
-                </div>
-              </div>
 
-              {/* Needs Revision / High Priority */}
-              <div className="rounded-xl p-4 border border-border bg-card shadow-xs flex flex-col justify-between group">
-                <div>
-                  <div className="flex items-center justify-between gap-1">
-                    <p className="text-[10px] font-semibold text-orange-500 uppercase tracking-wider truncate">
-                      Action Required (Revisions)
-                    </p>
-                    {needsRevisionCount > 0 && (
-                      <span className="h-1.5 w-1.5 rounded-full bg-orange-400 shrink-0 animate-pulse" />
-                    )}
+                {/* Needs Revision / High Priority */}
+                <div className="rounded-xl p-4 border border-border bg-card shadow-xs flex flex-col justify-between group hover:border-orange-400/50 transition-all">
+                  <div>
+                    <div className="flex items-center justify-between gap-1">
+                      <p className="text-[10px] font-semibold text-orange-500 uppercase tracking-wider truncate">
+                        Action Required (Revisions)
+                      </p>
+                      {metricRevision > 0 && (
+                        <span className="h-1.5 w-1.5 rounded-full bg-orange-400 shrink-0 animate-pulse" />
+                      )}
+                    </div>
+                    <div className="mt-2 flex items-baseline justify-between gap-2">
+                      <h3 className="text-3xl font-bold text-foreground tracking-tight">{metricRevision}</h3>
+                      <span className="text-[11px] text-muted-foreground font-medium truncate">Awaiting advisor</span>
+                    </div>
                   </div>
-                  <div className="mt-2 flex items-baseline justify-between gap-2">
-                    <h3 className="text-3xl font-bold text-foreground tracking-tight">{needsRevisionCount}</h3>
-                    <span className="text-[11px] text-muted-foreground font-medium truncate">Awaiting advisor</span>
+                  <div className="mt-3 w-full">
+                    <MetricLineChart
+                      value={metricRevision}
+                      data={trendData.needsRevision}
+                      labels={trendData.labels}
+                      color="#ea580c"
+                      height={36}
+                    />
                   </div>
                 </div>
-                <div className="mt-3 w-full">
-                  <MetricLineChart
-                    value={needsRevisionCount}
-                    color="#ea580c"
-                    height={36}
-                  />
-                </div>
-              </div>
 
-              {/* Approved Records */}
-              <div className="rounded-xl p-4 border border-border bg-card shadow-xs flex flex-col justify-between group">
-                <div>
-                  <div className="flex items-center justify-between gap-1">
-                    <p className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wider truncate">
-                      Approved &amp; Verified
-                    </p>
+                {/* Approved Records */}
+                <div className="rounded-xl p-4 border border-border bg-card shadow-xs flex flex-col justify-between group hover:border-emerald-400/50 transition-all">
+                  <div>
+                    <div className="flex items-center justify-between gap-1">
+                      <p className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wider truncate">
+                        Approved &amp; Verified
+                      </p>
+                    </div>
+                    <div className="mt-2 flex items-baseline justify-between gap-2">
+                      <h3 className="text-3xl font-bold text-foreground tracking-tight">{metricApproved}</h3>
+                      <span className="text-[11px] text-muted-foreground font-medium truncate">Audit compliant</span>
+                    </div>
                   </div>
-                  <div className="mt-2 flex items-baseline justify-between gap-2">
-                    <h3 className="text-3xl font-bold text-foreground tracking-tight">{approvedCount}</h3>
-                    <span className="text-[11px] text-muted-foreground font-medium truncate">Audit compliant</span>
+                  <div className="mt-3 w-full">
+                    <MetricLineChart
+                      value={metricApproved}
+                      data={trendData.approved}
+                      labels={trendData.labels}
+                      color="#16a34a"
+                      height={36}
+                    />
                   </div>
                 </div>
-                <div className="mt-3 w-full">
-                  <MetricLineChart
-                    value={approvedCount}
-                    color="#16a34a"
-                    height={36}
-                  />
-                </div>
-              </div>
 
-              {/* Review Throughput */}
-              <div className="rounded-xl p-4 border border-border bg-card shadow-xs flex flex-col justify-between group">
-                <div>
-                  <div className="flex items-center justify-between gap-1">
-                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider truncate">
-                      Review throughput
-                    </p>
-                    <Percent className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                {/* Review Throughput */}
+                <div className="rounded-xl p-4 border border-border bg-card shadow-xs flex flex-col justify-between group hover:border-emerald-400/50 transition-all">
+                  <div>
+                    <div className="flex items-center justify-between gap-1">
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider truncate">
+                        Review throughput
+                      </p>
+                      <Percent className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                    </div>
+                    <div className="mt-2 flex items-baseline justify-between gap-2">
+                      <h3 className="text-3xl font-bold text-foreground tracking-tight">{metricThroughput}%</h3>
+                      <span className="text-[11px] text-muted-foreground font-medium truncate">Processed</span>
+                    </div>
                   </div>
-                  <div className="mt-2 flex items-baseline justify-between gap-2">
-                    <h3 className="text-3xl font-bold text-foreground tracking-tight">{reviewRate}%</h3>
-                    <span className="text-[11px] text-muted-foreground font-medium truncate">Processed</span>
+                  <div className="mt-3 w-full">
+                    <MetricLineChart
+                      value={metricThroughput}
+                      data={trendData.throughput}
+                      labels={trendData.labels}
+                      type="percent"
+                      color="#10b981"
+                      height={36}
+                    />
                   </div>
-                </div>
-                <div className="mt-3 w-full">
-                  <MetricLineChart
-                    value={reviewRate}
-                    type="percent"
-                    color="#10b981"
-                    height={36}
-                  />
                 </div>
               </div>
-            </div>
+            )}
+
+            {/* Expanded Multi-Series Line Chart (Visible on 'chart' or 'both') */}
+            {(analyticsView === "chart" || analyticsView === "both") && (
+              <div className="pt-4">
+                <ComplianceTrendChart
+                  trendData={trendData}
+                  activePresetTitle={activePresetTitle}
+                />
+              </div>
+            )}
           </div>
 
           {/* Elevated Recent Document Uploads (Left 8) + Sidebar (Right 4: Calendar & Workspace Tools) */}

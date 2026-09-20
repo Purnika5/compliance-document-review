@@ -41,7 +41,75 @@ export class PipelineService {
   }
 
   /**
+   * Comprehensive PII Leakage Detector.
+   * Verifies that outgoing text strings do not contain raw SSNs, emails, credit cards, or phones.
+   * Complies with Definition of Done: "No unmasked PII ever reaches the third-party API."
+   */
+  public static detectPiiLeakage(text: string): { hasLeakage: boolean; detectedEntities: string[] } {
+    if (!text || !text.trim()) {
+      return { hasLeakage: false, detectedEntities: [] };
+    }
+
+    // Strip out valid platform placeholders like [NAME_1], [SSN_1], [EMAIL_1], [PHONE_1], etc.
+    const stripped = text.replace(/\[(?:NAME|EMAIL|SSN|PHONE|ACCOUNT|CARD|ADDRESS|ZIP|DATE)_[0-9A-Za-z_-]+\]/g, '');
+
+    const detected: string[] = [];
+
+    // 1. Unmasked Email (RFC subset)
+    const emailMatch = stripped.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/i);
+    if (emailMatch) {
+      detected.push(`EMAIL (${emailMatch[0].slice(0, 3)}...${emailMatch[0].slice(-6)})`);
+    }
+
+    // 2. Unmasked SSN (000-00-0000, 000 00 0000, 000.00.0000, or labeled 9 digits)
+    const ssnMatch = stripped.match(/(?:\b\d{3}[-\s.]\d{2}[-\s.]\d{4}\b)|(?:(?:ssn|social\s+security)[\s:]*\b\d{9}\b)/i);
+    if (ssnMatch) {
+      detected.push('SSN (***-**-****)');
+    }
+
+    // 3. Unmasked Credit Card (13-19 digits formatted or raw)
+    const cardMatch = stripped.match(/\b(?:\d{4}[-\s]?){3}\d{4}\b/);
+    if (cardMatch) {
+      detected.push('CARD (****-****-****-****)');
+    }
+
+    // 4. Unmasked Phone Number
+    const phoneMatch = stripped.match(/(?:\+?1[-.\s]?)?(?:\([0-9]{3}\)|[0-9]{3})[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}\b/);
+    if (phoneMatch) {
+      detected.push('PHONE (***-***-****)');
+    }
+
+    return {
+      hasLeakage: detected.length > 0,
+      detectedEntities: detected
+    };
+  }
+
+  /**
+   * In-process fallback regex sanitizer used if the external PII masker service is offline.
+   * Guarantees fail-safe privacy so raw PII is NEVER leaked if microservice network fails.
+   */
+  public static localFallbackMask(rawText: string): string {
+    if (!rawText) return '';
+    let sanitized = rawText;
+
+    // Emails
+    sanitized = sanitized.replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/gi, '[EMAIL_FALLBACK]');
+    // SSNs
+    sanitized = sanitized.replace(/(?:\b\d{3}[-\s.]\d{2}[-\s.]\d{4}\b)|(?:(?:ssn|social\s+security)[\s:]*\b\d{9}\b)/gi, '[SSN_FALLBACK]');
+    // Credit Cards
+    sanitized = sanitized.replace(/\b(?:\d{4}[-\s]?){3}\d{4}\b/g, '[CARD_FALLBACK]');
+    // Phones
+    sanitized = sanitized.replace(/(?:\+?1[-.\s]?)?(?:\([0-9]{3}\)|[0-9]{3})[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}\b/g, '[PHONE_FALLBACK]');
+    // Contextual Salutations
+    sanitized = sanitized.replace(/(?:\b(?:dear|advisor:|client:|customer:)\s+)([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})/gi, (m, name) => m.replace(name, '[NAME_FALLBACK]'));
+
+    return sanitized;
+  }
+
+  /**
    * Send extracted raw text to the DevOps PII Masking service.
+   * If service is unavailable, applies fail-safe local fallback masking.
    */
   public static async maskPii(documentId: string, version: number, rawText: string): Promise<string> {
     if (!rawText || !rawText.trim()) {
@@ -63,15 +131,15 @@ export class PipelineService {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.warn(`[PipelineService] PII Masker returned status ${response.status}: ${errorText}`);
-        return rawText;
+        console.warn(`[PipelineService] PII Masker returned status ${response.status}: ${errorText}. Applying local fallback sanitizer.`);
+        return this.localFallbackMask(rawText);
       }
 
       const result = await response.json() as { masked_text?: string };
-      return result.masked_text || rawText;
+      return result.masked_text || this.localFallbackMask(rawText);
     } catch (err) {
-      console.warn(`[PipelineService] PII Masker unreachable at ${endpoint}:`, err);
-      return rawText;
+      console.warn(`[PipelineService] PII Masker unreachable at ${endpoint}. Applying local fallback sanitizer:`, err);
+      return this.localFallbackMask(rawText);
     }
   }
 
@@ -82,6 +150,15 @@ export class PipelineService {
     maskedText: string
   ): Promise<{ retrieved_rules: RetrievedRule[]; precedents: PrecedentItem[] }> {
     if (!maskedText || !maskedText.trim()) {
+      return { retrieved_rules: [], precedents: [] };
+    }
+
+    // Security Gate: Ensure no unmasked PII reaches retrieval engine
+    const piiLeakCheck = PipelineService.detectPiiLeakage(maskedText);
+    if (piiLeakCheck.hasLeakage) {
+      console.error(
+        `[SECURITY_GATE_VIOLATION] Blocked outgoing retrieval request! Detected unmasked PII: ${piiLeakCheck.detectedEntities.join(', ')}`
+      );
       return { retrieved_rules: [], precedents: [] };
     }
 
@@ -138,6 +215,14 @@ export class PipelineService {
         isDegraded: false,
         circuitState: aiCircuitBreaker.getState(),
       };
+    }
+
+    // Outgoing AI Security Gate: Ensure no unmasked PII ever reaches the third-party API
+    const leakCheck = PipelineService.detectPiiLeakage(maskedText);
+    if (leakCheck.hasLeakage) {
+      const errMsg = `[SECURITY_GATE_VIOLATION] Blocked outgoing AI payload: detected unmasked PII entities (${leakCheck.detectedEntities.join(', ')}). Aborting third-party API transmission.`;
+      console.error(errMsg);
+      throw new Error(errMsg);
     }
 
     const endpoint = `${config.services.aiServiceUrl}/analyze`;

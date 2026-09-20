@@ -7,7 +7,7 @@
  * Last Updated Date: September 19, 2026
  * @author Keith
  */
-import React, { useId } from "react";
+import React, { useId, useState } from "react";
 import { cn } from "@/lib/utils";
 
 export interface MetricLineChartProps {
@@ -15,6 +15,8 @@ export interface MetricLineChartProps {
   value: number;
   /** Optional historical data points */
   data?: number[];
+  /** Optional date/interval labels corresponding to data points */
+  labels?: string[];
   /** Metric type for generating proportional historical context */
   type?: "count" | "percent";
   /** Hex or Tailwind color for line, points, and gradient */
@@ -80,6 +82,7 @@ function getHistoricalTrend(value: number, type: "count" | "percent" = "count"):
 export function MetricLineChart({
   value,
   data,
+  labels,
   type = "count",
   color,
   className,
@@ -90,6 +93,7 @@ export function MetricLineChart({
 }: MetricLineChartProps) {
   const reactId = useId().replace(/:/g, "_");
   const gradientId = `metric-chart-grad-${reactId}`;
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
   const rawData = data && data.length >= 2 ? data : getHistoricalTrend(value, type);
 
@@ -131,18 +135,19 @@ export function MetricLineChart({
 
   return (
     <div
-      className={cn("w-full pointer-events-none relative overflow-hidden", className)}
+      className={cn("w-full relative overflow-visible group/chart select-none", className)}
       style={{ height }}
+      onMouseLeave={() => setHoveredIdx(null)}
     >
       <svg
         viewBox={`0 0 ${width} ${chartHeight}`}
         preserveAspectRatio="none"
-        className="w-full h-full"
+        className="w-full h-full overflow-visible"
       >
         <defs>
           <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity="0.20" />
-            <stop offset="70%" stopColor={color} stopOpacity="0.04" />
+            <stop offset="0%" stopColor={color} stopOpacity="0.22" />
+            <stop offset="70%" stopColor={color} stopOpacity="0.05" />
             <stop offset="100%" stopColor={color} stopOpacity="0.0" />
           </linearGradient>
         </defs>
@@ -174,6 +179,7 @@ export function MetricLineChart({
           strokeLinecap="round"
           strokeLinejoin="round"
           vectorEffect="non-scaling-stroke"
+          className="transition-all duration-300"
         />
 
         {/* Vertex Data Points */}
@@ -183,10 +189,13 @@ export function MetricLineChart({
               key={idx}
               cx={p.x}
               cy={p.y}
-              r="2"
+              r={hoveredIdx === idx ? "3.2" : "2"}
               fill={color}
-              fillOpacity="0.75"
+              fillOpacity={hoveredIdx === idx ? 1 : 0.75}
+              stroke={hoveredIdx === idx ? "#FFFFFF" : "none"}
+              strokeWidth={hoveredIdx === idx ? "1" : "0"}
               vectorEffect="non-scaling-stroke"
+              className="transition-all duration-150"
             />
           ))}
 
@@ -204,15 +213,53 @@ export function MetricLineChart({
             <circle
               cx={lastPoint.x}
               cy={lastPoint.y}
-              r="2.8"
+              r={hoveredIdx === points.length - 1 ? "3.5" : "2.8"}
               fill={color}
               stroke="#FFFFFF"
               strokeWidth="1.2"
               vectorEffect="non-scaling-stroke"
+              className="transition-all duration-150"
             />
           </g>
         )}
+
+        {/* Interactive Hover Hitboxes across X divisions */}
+        {points.map((p, idx) => {
+          const colWidth = usableWidth / (points.length - 1);
+          const hitboxX = idx === 0 ? padLeft - 6 : p.x - colWidth / 2;
+          const hitboxW = idx === 0 || idx === points.length - 1 ? colWidth / 2 + 6 : colWidth;
+          return (
+            <rect
+              key={`hitbox-${idx}`}
+              x={hitboxX}
+              y={0}
+              width={hitboxW}
+              height={chartHeight}
+              fill="transparent"
+              className="cursor-crosshair pointer-events-auto"
+              onMouseEnter={() => setHoveredIdx(idx)}
+            />
+          );
+        })}
       </svg>
+
+      {/* Floating Tooltip when hovered */}
+      {hoveredIdx !== null && (
+        <div
+          className="absolute z-30 pointer-events-none px-2 py-0.5 rounded-md bg-[#183028] text-white text-[10px] font-medium shadow-md flex items-center gap-1.5 whitespace-nowrap transform -translate-x-1/2 -translate-y-full -top-1"
+          style={{
+            left: `${((points[hoveredIdx].x / width) * 100).toFixed(1)}%`,
+          }}
+        >
+          {labels && labels[hoveredIdx] && (
+            <span className="text-white/60 font-mono text-[9px]">{labels[hoveredIdx]}:</span>
+          )}
+          <span className="font-bold">
+            {points[hoveredIdx].val}
+            {type === "percent" ? "%" : ""}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

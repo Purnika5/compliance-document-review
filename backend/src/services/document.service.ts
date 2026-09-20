@@ -112,6 +112,20 @@ export class DocumentService {
         console.error('[DocumentService] Failed pipeline processing for submission:', err);
       });
 
+      // Automated In-App Notification Triggers for Compliance Officers (v1 submission)
+      try {
+        const advisorRes = await query<{ name: string }>('SELECT name FROM users WHERE id = $1', [advisorId]);
+        const advisorName = advisorRes.rows[0]?.name || 'An Advisor';
+        await NotificationService.notifyOfficers(
+          newDoc.id,
+          `New Document Submitted: ${newDoc.title} (v1)`,
+          `${advisorName} submitted "${newDoc.title}" (v1) for compliance review.`,
+          'STATUS_CHANGE'
+        );
+      } catch (err) {
+        console.error('[DocumentService] Failed to notify officers about new document submission:', err);
+      }
+
       return newDoc;
     } catch (error) {
       if (file && file.path) {
@@ -449,6 +463,32 @@ export class DocumentService {
     PipelineService.processDocument(newDoc.id, newDoc.version, newDoc.file_path, newDoc.mime_type).catch((err) => {
       console.error('[DocumentService] Pipeline processing failed for resubmission:', err);
     });
+
+    // Automated In-App Notification Triggers for Compliance Officers (revision uploads & comments)
+    try {
+      const advisorRes = await query<{ name: string }>('SELECT name FROM users WHERE id = $1', [user.id]);
+      const advisorName = advisorRes.rows[0]?.name || user.email || 'An Advisor';
+
+      // 1. Notify Officers of revision upload (v2, v3, etc.)
+      await NotificationService.notifyOfficers(
+        newDoc.id,
+        `New Revision Uploaded: ${newDoc.title} (v${newDoc.version})`,
+        `${advisorName} uploaded revision v${newDoc.version} for "${newDoc.title}".`,
+        'STATUS_CHANGE'
+      );
+
+      // 2. Notify Officers of revision comment/notes if provided by advisor
+      if (input.notes && input.notes.trim()) {
+        await NotificationService.notifyOfficers(
+          newDoc.id,
+          `Advisor Revision Comment (v${newDoc.version})`,
+          `${advisorName}: "${input.notes.trim()}"`,
+          'REVISION_COMMENT'
+        );
+      }
+    } catch (err) {
+      console.error('[DocumentService] Failed to notify officers of revision resubmission:', err);
+    }
 
     return newDoc;
   }

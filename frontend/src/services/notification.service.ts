@@ -37,9 +37,18 @@ export interface RawBackendNotification {
 
 export function mapBackendNotificationToItem(raw: RawBackendNotification): INotificationItem {
   const type = String(raw.type || "").toUpperCase();
+  const title = String(raw.title || "");
   let category: INotificationItem["category"] = "document";
   if (type === "STATUS_CHANGE") {
-    category = String(raw.title || "").includes("Approved") ? "approval" : "revision";
+    if (title.includes("Approved")) {
+      category = "approval";
+    } else if (title.toLowerCase().includes("revision")) {
+      category = "revision";
+    } else if (title.toLowerCase().includes("submitted") || title.toLowerCase().includes("new document")) {
+      category = "document";
+    } else {
+      category = "revision";
+    }
   } else if (type === "REVISION_COMMENT") {
     category = "revision";
   } else if (type === "COMPLIANCE_ALERT") {

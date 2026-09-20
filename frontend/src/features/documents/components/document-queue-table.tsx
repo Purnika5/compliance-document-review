@@ -49,6 +49,7 @@ import type { DocumentItem } from "@/lib/validation/document";
 import { updateDocumentStatusAction } from "@/lib/actions/document-actions";
 import { cn } from "@/lib/utils";
 import { MetricLineChart } from "@/components/shared/metric-line-chart";
+import { generateMetricTrends } from "../utils/metric-trend.util";
 
 import { QueueSkeleton } from "./queue-skeleton";
 
@@ -203,17 +204,30 @@ export function DocumentQueueTable() {
         : b.status.localeCompare(a.status);
     });
 
-  const counts = queueCounts || {
-    All: documents.length,
-    Pending: documents.filter((d) => d.status === "Pending").length,
-    "Needs Revision": documents.filter((d) => d.status === "Needs Revision").length,
-    Approved: documents.filter((d) => d.status === "Approved").length,
-    Rejected: documents.filter((d) => d.status === "Rejected").length,
-  };
+  const trendData = React.useMemo(() => {
+    return generateMetricTrends(
+      documents,
+      dateFilterPreset,
+      customStartDate,
+      customEndDate
+    );
+  }, [documents, dateFilterPreset, customStartDate, customEndDate]);
 
-  const rejectedRate = counts.All ? Math.round((counts.Rejected / counts.All) * 100) : 0;
-  const reviewedCount = counts.Approved + counts.Rejected;
-  const reviewRate = counts.All ? Math.round((reviewedCount / counts.All) * 100) : 0;
+  const queueVolume = dateFilterPreset !== "All" ? (trendData.total[trendData.total.length - 1] ?? 0) : (queueCounts?.All ?? documents.length);
+  const queuePending = dateFilterPreset !== "All" ? (trendData.pending[trendData.pending.length - 1] ?? 0) : (queueCounts?.Pending ?? documents.filter((d) => d.status === "Pending").length);
+  const queueRevision = dateFilterPreset !== "All" ? (trendData.needsRevision[trendData.needsRevision.length - 1] ?? 0) : (queueCounts?.["Needs Revision"] ?? documents.filter((d) => d.status === "Needs Revision").length);
+  const queueApproved = dateFilterPreset !== "All" ? (trendData.approved[trendData.approved.length - 1] ?? 0) : (queueCounts?.Approved ?? documents.filter((d) => d.status === "Approved").length);
+  const queueThroughput = dateFilterPreset !== "All" ? (trendData.throughput[trendData.throughput.length - 1] ?? 0) : (queueVolume ? Math.round(((queueApproved + (queueCounts?.Rejected ?? documents.filter((d) => d.status === "Rejected").length)) / queueVolume) * 100) : 0);
+
+  const counts: Record<FilterTab, number> = {
+    All: queueVolume,
+    Pending: queuePending,
+    "Needs Revision": queueRevision,
+    Approved: queueApproved,
+    Rejected: dateFilterPreset !== "All"
+      ? (trendData.rejected[trendData.rejected.length - 1] ?? 0)
+      : (queueCounts?.Rejected ?? documents.filter((d) => d.status === "Rejected").length),
+  };
 
   return (
     <div className="space-y-4 max-w-[1600px] mx-auto pb-16">
@@ -239,13 +253,15 @@ export function DocumentQueueTable() {
               </p>
             </div>
             <div className="mt-2 flex items-baseline justify-between gap-2">
-              <h3 className="text-3xl font-bold text-foreground tracking-tight">{counts.All}</h3>
+              <h3 className="text-3xl font-bold text-foreground tracking-tight">{queueVolume}</h3>
               <span className="text-[11px] text-muted-foreground font-medium truncate">Total in queue</span>
             </div>
           </div>
           <div className="mt-3 w-full">
             <MetricLineChart
-              value={counts.All}
+              value={queueVolume}
+              data={trendData.total}
+              labels={trendData.labels}
               color="#0284c7"
               height={36}
             />
@@ -259,18 +275,20 @@ export function DocumentQueueTable() {
               <p className="text-[10px] font-semibold text-amber-700 uppercase tracking-wider truncate">
                 Pending Evaluation
               </p>
-              {counts.Pending > 0 && (
+              {queuePending > 0 && (
                 <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0 animate-pulse" />
               )}
             </div>
             <div className="mt-2 flex items-baseline justify-between gap-2">
-              <h3 className="text-3xl font-bold text-foreground tracking-tight">{counts.Pending}</h3>
+              <h3 className="text-3xl font-bold text-foreground tracking-tight">{queuePending}</h3>
               <span className="text-[11px] text-muted-foreground font-medium truncate">Needs action</span>
             </div>
           </div>
           <div className="mt-3 w-full">
             <MetricLineChart
-              value={counts.Pending}
+              value={queuePending}
+              data={trendData.pending}
+              labels={trendData.labels}
               color="#d97706"
               height={36}
             />
@@ -284,18 +302,20 @@ export function DocumentQueueTable() {
               <p className="text-[10px] font-semibold text-orange-500 uppercase tracking-wider truncate">
                 Action Required (Revisions)
               </p>
-              {counts["Needs Revision"] > 0 && (
+              {queueRevision > 0 && (
                 <span className="h-1.5 w-1.5 rounded-full bg-orange-400 shrink-0 animate-pulse" />
               )}
             </div>
             <div className="mt-2 flex items-baseline justify-between gap-2">
-              <h3 className="text-3xl font-bold text-foreground tracking-tight">{counts["Needs Revision"]}</h3>
+              <h3 className="text-3xl font-bold text-foreground tracking-tight">{queueRevision}</h3>
               <span className="text-[11px] text-muted-foreground font-medium truncate">Awaiting advisor</span>
             </div>
           </div>
           <div className="mt-3 w-full">
             <MetricLineChart
-              value={counts["Needs Revision"]}
+              value={queueRevision}
+              data={trendData.needsRevision}
+              labels={trendData.labels}
               color="#ea580c"
               height={36}
             />
@@ -311,13 +331,15 @@ export function DocumentQueueTable() {
               </p>
             </div>
             <div className="mt-2 flex items-baseline justify-between gap-2">
-              <h3 className="text-3xl font-bold text-foreground tracking-tight">{counts.Approved}</h3>
+              <h3 className="text-3xl font-bold text-foreground tracking-tight">{queueApproved}</h3>
               <span className="text-[11px] text-muted-foreground font-medium truncate">Audit compliant</span>
             </div>
           </div>
           <div className="mt-3 w-full">
             <MetricLineChart
-              value={counts.Approved}
+              value={queueApproved}
+              data={trendData.approved}
+              labels={trendData.labels}
               color="#16a34a"
               height={36}
             />
@@ -334,13 +356,15 @@ export function DocumentQueueTable() {
               <Percent className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
             </div>
             <div className="mt-2 flex items-baseline justify-between gap-2">
-              <h3 className="text-3xl font-bold text-foreground tracking-tight">{reviewRate}%</h3>
+              <h3 className="text-3xl font-bold text-foreground tracking-tight">{queueThroughput}%</h3>
               <span className="text-[11px] text-muted-foreground font-medium truncate">Processed</span>
             </div>
           </div>
           <div className="mt-3 w-full">
             <MetricLineChart
-              value={reviewRate}
+              value={queueThroughput}
+              data={trendData.throughput}
+              labels={trendData.labels}
               type="percent"
               color="#10b981"
               height={36}

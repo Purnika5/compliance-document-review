@@ -8,8 +8,7 @@
  * @author Keith
  */
 import React from "react";
-import { GitBranch, Clock, AlertCircle, CheckCircle2, User, MessageSquare } from "lucide-react";
-import { StatusBadge } from "@/components/shared/status-badge";
+import { GitBranch } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { DocumentItem } from "@/lib/validation/document";
 
@@ -156,105 +155,6 @@ export function VersionLineageSelector({
           })}
         </div>
       </div>
-
-      {/* Selected Version Metadata & Timestamps */}
-      {activeVersion && (
-        <div className="space-y-2.5 text-xs">
-          <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#183028]/80 bg-[#E6E8E7]/30 px-3 py-2 rounded-xl border border-[#E6E8E7]">
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="flex items-center gap-1.5">
-                <Clock className="h-3.5 w-3.5 text-[#183028]/60" />
-                <span className="font-semibold text-[#183028]">
-                  Created / Submitted:
-                </span>
-                <span className="font-mono font-medium">
-                  {activeVersion.submittedAt
-                    ? new Date(activeVersion.submittedAt).toLocaleString("en-US", {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })
-                    : "Recently"}
-                </span>
-              </div>
-
-              <div className="h-3 w-px bg-[#E6E8E7] hidden sm:block" />
-
-              <div className="flex items-center gap-1.5">
-                <User className="h-3.5 w-3.5 text-[#183028]/60" />
-                <span className="font-semibold text-[#183028]">Advisor:</span>
-                <span>{activeVersion.submittedBy || "Advisor"}</span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] text-[#183028]/60 uppercase tracking-wider font-semibold">
-                Lifecycle Status:
-              </span>
-              <StatusBadge status={activeVersion.status} />
-            </div>
-          </div>
-
-          {/* Previous Officer Revision Remarks (Critical for compliance review) */}
-          {activeVersionRemarks.length > 0 && (
-            <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-xl space-y-1.5 shadow-2xs">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-amber-900 font-bold text-[11px]">
-                  <AlertCircle className="h-3.5 w-3.5 text-amber-700" />
-                  <span>Officer Revision Remarks for v{activeVersion.version}</span>
-                </div>
-                <span className="text-[10px] text-amber-700 font-mono">
-                  {new Date(activeVersionRemarks[activeVersionRemarks.length - 1].createdAt).toLocaleDateString()}
-                </span>
-              </div>
-              <p className="text-amber-950 font-medium leading-relaxed pl-5 text-[11px] italic">
-                &ldquo;{activeVersionRemarks[activeVersionRemarks.length - 1].message}&rdquo;
-              </p>
-              <p className="text-[10px] text-amber-800/80 pl-5">
-                Recorded by {activeVersionRemarks[activeVersionRemarks.length - 1].authorName} (
-                {activeVersionRemarks[activeVersionRemarks.length - 1].authorRole})
-              </p>
-            </div>
-          )}
-
-          {/* If viewing v2 and v1 had remarks, show the preceding feedback that prompted this version */}
-          {activeVersion.version > 1 && previousOfficerRemarks.length > 0 && activeVersionRemarks.length === 0 && (
-            <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-xl space-y-1.5 shadow-2xs">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-amber-900 font-bold text-[11px]">
-                  <MessageSquare className="h-3.5 w-3.5 text-amber-700" />
-                  <span>Preceding Officer Revision Feedback (from v{previousVersion?.version})</span>
-                </div>
-                <span className="text-[10px] text-amber-700 font-mono">
-                  {new Date(previousOfficerRemarks[previousOfficerRemarks.length - 1].createdAt).toLocaleDateString()}
-                </span>
-              </div>
-              <p className="text-amber-950 font-medium leading-relaxed pl-5 text-[11px] italic">
-                &ldquo;{previousOfficerRemarks[previousOfficerRemarks.length - 1].message}&rdquo;
-              </p>
-              <p className="text-[10px] text-amber-800/80 pl-5">
-                Feedback issued by {previousOfficerRemarks[previousOfficerRemarks.length - 1].authorName} (
-                {previousOfficerRemarks[previousOfficerRemarks.length - 1].authorRole})
-              </p>
-            </div>
-          )}
-
-          {/* Advisor Resubmission Response Note */}
-          {advisorSubmissionNote && activeVersion.version > 1 && (
-            <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-1 shadow-2xs">
-              <div className="flex items-center gap-1.5 text-emerald-900 font-bold text-[11px]">
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-700" />
-                <span>Advisor Resubmission Remarks (v{activeVersion.version})</span>
-              </div>
-              <p className="text-emerald-950 font-medium leading-relaxed pl-5 text-[11px]">
-                {advisorSubmissionNote.message}
-              </p>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
