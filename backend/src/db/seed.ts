@@ -12,13 +12,28 @@ export const seedDatabase = async (): Promise<void> => {
     fs.mkdirSync(config.uploads.dir, { recursive: true });
   }
 
-  // Create a dummy sample document on disk for seeded records
+  // Create dummy sample documents (PDF and DOCX) on disk for seeded records
   const sampleDocPath = path.join(config.uploads.dir, 'sample_compliance_filing.pdf');
   if (!fs.existsSync(sampleDocPath)) {
     const minimalPdf = Buffer.from(
       '%PDF-1.4\n1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >> endobj\n4 0 obj << /Length 40 >> stream\nBT /F1 12 Tf 72 712 Td (Springer Capital Compliance Document) Tj ET\nendstream endobj\nxref\n0 5\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \n0000000214 00000 n \ntrailer << /Size 5 /Root 1 0 R >>\nstartxref\n303\n%%EOF'
     );
     fs.writeFileSync(sampleDocPath, minimalPdf);
+  }
+
+  const sampleDocxPath = path.join(config.uploads.dir, 'sample_compliance_filing.docx');
+  if (!fs.existsSync(sampleDocxPath)) {
+    const minimalDocxBase64 =
+      "UEsDBBQAAAAIAAAAIQCS74NsbwEAAFoDAAATAAAAW2NvbnRlbnRfVHlwZXNdLnhtbKyTT0/C" +
+      "MAzF70j8DlrurQNhCSG2Ew4mHiTqgTvg15a2tGvXDvLtzaYLxIQ/wNte+vzyevW+vj42LlgP" +
+      "1rmU5yKNIsCora+tLfLL+ml5ikIErcHajDnJEZydlTfX9bZ7xZgmbvA5SYW4xJCS71hLgbf9" +
+      "1QZ8w111h/x8ZzP4x+E1O3v+w0+jR+790e0c1fJEp3tFz2bWoxK8D6eFkU08yAUpYV1T8T13" +
+      "WlsrY28gTlh7m10L01wBwZ1wP31QfBspCqIe7kH689a+A1BLAQIUABQAAAAIAAAAIQCS74Ns" +
+      "bwEAAFoDAAATAAAAAAAAAAAAAAAAAAAAAABbY29udGVudF9UeXBlc10ueG1sUEsBAhQA" +
+      "FAAAAAgAAAAhAG+VbI85AQAAaQIAAAsAAAAAAAAAAAAAAAAAWQEAAF9yZWxzLy5yZWxz" +
+      "UEsBAhQAFAAAAAgAAAAhAHQ3/gBmAQAAoAIAABEAAAAAAAAAAAAAAAAA6AIAAHdvcmQv" +
+      "ZG9jdW1lbnQueG1sUEsFBgAAAAADAAMArgEAAJ4DAAAAAA==";
+    fs.writeFileSync(sampleDocxPath, Buffer.from(minimalDocxBase64, 'base64'));
   }
 
   const saltRounds = 10;

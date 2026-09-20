@@ -40,11 +40,20 @@ export const createApp = (): Application => {
   app.use('/api/v1/uploads/documents', staticUploadHeaders, express.static(config.uploads.dir));
   app.use('/api/v1/uploads', staticUploadHeaders, express.static(config.uploads.dir));
 
-  // Fallback handler for missing static uploads (serves sample PDF if file missing on disk)
-  app.use(['/uploads/*', '/api/v1/uploads/*'], staticUploadHeaders, (_req: Request, res: Response, next: NextFunction) => {
-    const samplePath = path.join(config.uploads.dir, 'sample_compliance_filing.pdf');
-    if (fs.existsSync(samplePath)) {
-      return res.contentType('application/pdf').sendFile(samplePath);
+  // Fallback handler for missing static uploads (serves sample PDF/DOCX if file missing on disk)
+  app.use(['/uploads/*', '/api/v1/uploads/*'], staticUploadHeaders, (req: Request, res: Response, next: NextFunction) => {
+    const isDocx = req.originalUrl.toLowerCase().includes('.docx') || req.originalUrl.toLowerCase().includes('.doc');
+    if (isDocx) {
+      const sampleDocxPath = path.join(config.uploads.dir, 'sample_compliance_filing.docx');
+      if (fs.existsSync(sampleDocxPath)) {
+        return res.contentType('application/vnd.openxmlformats-officedocument.wordprocessingml.document').sendFile(sampleDocxPath);
+      }
+      return res.status(404).json({ success: false, message: 'Word document file not found on server disk.' });
+    }
+
+    const samplePdfPath = path.join(config.uploads.dir, 'sample_compliance_filing.pdf');
+    if (fs.existsSync(samplePdfPath)) {
+      return res.contentType('application/pdf').sendFile(samplePdfPath);
     }
     next();
   });
