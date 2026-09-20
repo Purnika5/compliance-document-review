@@ -53,8 +53,6 @@ import {
   RefreshCw,
   ArrowUpRight,
   Lock,
-  LineChart,
-  BarChart2,
 } from "lucide-react";
 import type { DocumentItem } from "@/lib/validation/document";
 import { cn } from "@/lib/utils";
@@ -63,7 +61,6 @@ import { showInfoToast } from "@/components/ui/toast";
 import { FileTypeIcon } from "@/components/shared/file-type-icon";
 import { DateFilterModal, type DateFilterPreset } from "./date-filter-modal";
 import { generateMetricTrends } from "../utils/metric-trend.util";
-import { ComplianceTrendChart } from "./compliance-trend-chart";
 import { SubmissionsSkeleton } from "./submissions-skeleton";
 import { DashboardSkeleton } from "./dashboard-skeleton";
 
@@ -127,7 +124,6 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
   const [calendarMonthOffset, setCalendarMonthOffset] = useState(0);
-  const [analyticsView, setAnalyticsView] = useState<"cards" | "chart" | "both">("both");
 
   const baseDate = new Date();
   const viewedCalendarDate = new Date(baseDate.getFullYear(), baseDate.getMonth() + calendarMonthOffset, 1);
@@ -613,8 +609,6 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
               </div>
             </div>
 
-            {/* 5 Metric KPI Cards with Real Date-Reactive Line Charts */}
-            {(analyticsView === "cards" || analyticsView === "both") && (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 pt-5">
                 {/* Total Submissions */}
                 <div className="rounded-xl p-4 border border-border bg-card shadow-xs flex flex-col justify-between group hover:border-[#183028]/30 transition-all">
@@ -744,7 +738,6 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                   </div>
                 </div>
               </div>
-            )}
 
 
           </div>
