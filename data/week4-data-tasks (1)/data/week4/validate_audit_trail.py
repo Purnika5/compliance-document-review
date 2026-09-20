@@ -167,6 +167,17 @@ def run_validation(document_ids: set, audit_rows: list) -> dict:
     }
 
 
+BASE_DIR = os.path.realpath(os.getcwd())
+
+
+def _get_safe_path(user_path: str, base_dir: str = BASE_DIR) -> str:
+    base = os.path.realpath(base_dir)
+    requested = os.path.realpath(os.path.join(base, user_path))
+    if not (requested == base or requested.startswith(base + os.sep)):
+        raise ValueError(f"Path traversal detected: {user_path} is outside {base}")
+    return requested
+
+
 def main():
     parser = argparse.ArgumentParser(description="Validate the Audit Trail for gaps and orphaned entries.")
     parser.add_argument("--json", type=str, default=None, help="Optional path to also write a JSON report")
@@ -196,9 +207,10 @@ def main():
             print(f"  - {g}")
 
     if args.json:
-        with open(args.json, "w", encoding="utf-8") as f:
+        safe_json_path = _get_safe_path(args.json)
+        with open(safe_json_path, "w", encoding="utf-8") as f:
             json.dump(report, f, indent=2, default=str)
-        print(f"\nJSON report written to {args.json}")
+        print(f"\nJSON report written to {safe_json_path}")
 
     if report["clean"]:
         print("\nResult: CLEAN — every state change was correctly recorded, no gaps, no orphaned entries.")

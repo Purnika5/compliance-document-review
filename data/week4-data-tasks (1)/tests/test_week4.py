@@ -98,3 +98,21 @@ def test_generate_precedents_valid_outcomes_and_fk_stubs():
     doc_ids_in_precedents = {p["document_id"] for p in precedents}
     doc_ids_stubbed = {d["id"] for d in documents}
     assert doc_ids_in_precedents == doc_ids_stubbed  # every referenced document_id has a stub
+
+
+def test_safe_path_traversal_prevention():
+    import pytest
+    from validate_audit_trail import _get_safe_path as validate_safe_path
+    from generate_seed_corpus import _get_safe_path as generate_safe_path
+    from load_seed_corpus import _get_safe_path as load_safe_path
+
+    # Legitimate relative paths should succeed
+    assert validate_safe_path("report.json")
+    assert generate_safe_path("data")
+    assert load_safe_path("data/rules_seed.json")
+
+    # Traversal attempts should raise ValueError
+    for fn in (validate_safe_path, generate_safe_path, load_safe_path):
+        with pytest.raises(ValueError, match="Path traversal detected"):
+            fn("../../../../../etc/passwd")
+

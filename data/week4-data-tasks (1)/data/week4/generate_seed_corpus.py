@@ -27,15 +27,11 @@ Output (in data/week4/data/):
 
 import argparse
 import json
-import random
+import os
+import secrets
 import uuid
 from pathlib import Path
 
-from faker import Faker
-
-fake = Faker()
-Faker.seed(42)
-random.seed(42)
 
 # Real-world FINRA/SEC rule families, following the same rule_code
 # convention as data/week3/data/rules_sample.json.
@@ -80,14 +76,14 @@ def _variant_description(base_description: str) -> str:
         " Advisors must document their compliance with this requirement in the client file.",
         " This requirement applies at account opening and on an ongoing basis.",
     ]
-    return base_description + random.choice(suffixes)
+    return base_description + secrets.choice(suffixes)
 
 
 def generate_rules(n: int) -> list[dict]:
     rules = []
     used_codes = set()
     for i in range(n):
-        code, title, description = random.choice(RULE_CATALOG)
+        code, title, description = secrets.choice(RULE_CATALOG)
         # rule_code is UNIQUE in the schema — suffix duplicates to keep them unique
         variant_code = code if code not in used_codes else f"{code}-v{i}"
         used_codes.add(variant_code)
@@ -102,7 +98,7 @@ def generate_rules(n: int) -> list[dict]:
     return rules
 
 
-def generate_precedents(n: int) -> list[dict]:
+def generate_precedents(n: int) -> tuple[list[dict], list[dict]]:
     """
     Returns (precedents, documents) — documents is the deduped list of
     {id: document_id} rows needed to satisfy the FK, one per unique
@@ -136,8 +132,8 @@ def generate_precedents(n: int) -> list[dict]:
     precedents = []
     documents = {}
     for _ in range(n):
-        outcome = random.choice(outcomes_weighted)
-        passage, explanation = random.choice(flagged_examples if outcome == "flagged" else cleared_examples)
+        outcome = secrets.choice(outcomes_weighted)
+        passage, explanation = secrets.choice(flagged_examples if outcome == "flagged" else cleared_examples)
         document_id = str(uuid.uuid4())
         documents[document_id] = {"id": document_id}
         precedents.append(
@@ -152,26 +148,41 @@ def generate_precedents(n: int) -> list[dict]:
     return precedents, list(documents.values())
 
 
+BASE_DIR = os.path.realpath(os.path.dirname(__file__))
+
+
+def _get_safe_path(user_path: str, base_dir: str = BASE_DIR) -> Path:
+    base = os.path.realpath(base_dir)
+    requested = os.path.realpath(os.path.join(base, user_path))
+    if not (requested == base or requested.startswith(base + os.sep)):
+        raise ValueError(f"Path traversal detected: {user_path} is outside {base}")
+    return Path(requested)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Generate the KAN-102 seed corpus.")
     parser.add_argument("--rules", type=int, default=50)
     parser.add_argument("--precedents", type=int, default=100)
-    parser.add_argument("--out-dir", type=str, default=str(Path(__file__).parent / "data"))
+    parser.add_argument("--out-dir", type=str, default="data")
     args = parser.parse_args()
 
-    out_dir = Path(args.out_dir)
+    out_dir = _get_safe_path(args.out_dir, BASE_DIR)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     rules = generate_rules(args.rules)
     precedents, documents = generate_precedents(args.precedents)
 
-    (out_dir / "rules_seed.json").write_text(json.dumps(rules, indent=2), encoding="utf-8")
-    (out_dir / "precedents_seed.json").write_text(json.dumps(precedents, indent=2), encoding="utf-8")
-    (out_dir / "documents_seed.json").write_text(json.dumps(documents, indent=2), encoding="utf-8")
+    rules_file = _get_safe_path("rules_seed.json", str(out_dir))
+    precedents_file = _get_safe_path("precedents_seed.json", str(out_dir))
+    documents_file = _get_safe_path("documents_seed.json", str(out_dir))
 
-    print(f"Generated {len(rules)} rules -> {out_dir / 'rules_seed.json'}")
-    print(f"Generated {len(precedents)} precedents -> {out_dir / 'precedents_seed.json'}")
-    print(f"Generated {len(documents)} document stubs -> {out_dir / 'documents_seed.json'}")
+    rules_file.write_text(json.dumps(rules, indent=2), encoding="utf-8")
+    precedents_file.write_text(json.dumps(precedents, indent=2), encoding="utf-8")
+    documents_file.write_text(json.dumps(documents, indent=2), encoding="utf-8")
+
+    print(f"Generated {len(rules)} rules -> {rules_file}")
+    print(f"Generated {len(precedents)} precedents -> {precedents_file}")
+    print(f"Generated {len(documents)} document stubs -> {documents_file}")
 
 
 if __name__ == "__main__":

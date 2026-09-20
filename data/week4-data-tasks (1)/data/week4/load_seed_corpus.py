@@ -45,11 +45,25 @@ import sys
 from pathlib import Path
 
 # Make the repo root importable regardless of where this script is run from.
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+for _parent in Path(__file__).resolve().parents:
+    if (_parent / "data" / "week3").exists():
+        sys.path.insert(0, str(_parent))
+        break
 
 from data.week3.src.vector_store import get_vector_store, PgVectorStore
 from data.week3.src.rule_retrieval import index_rule
 from data.week3.src.precedent_search import index_precedent
+
+
+BASE_DIR = os.path.realpath(os.path.dirname(__file__))
+
+
+def _get_safe_path(user_path: str, base_dir: str = BASE_DIR) -> Path:
+    base = os.path.realpath(base_dir)
+    requested = os.path.realpath(os.path.join(base, user_path))
+    if not (requested == base or requested.startswith(base + os.sep)):
+        raise ValueError(f"Path traversal detected: {user_path} is outside {base}")
+    return Path(requested)
 
 
 def ensure_documents_exist(vector_store, documents: list[dict]) -> tuple[int, list[str]]:
@@ -107,13 +121,13 @@ def main():
     parser.add_argument("--documents", type=str, default="data/documents_seed.json")
     args = parser.parse_args()
 
-    base = Path(__file__).parent
-    rules = json.loads((base / args.rules).read_text(encoding="utf-8")) \
-        if not Path(args.rules).is_absolute() else json.loads(Path(args.rules).read_text(encoding="utf-8"))
-    precedents = json.loads((base / args.precedents).read_text(encoding="utf-8")) \
-        if not Path(args.precedents).is_absolute() else json.loads(Path(args.precedents).read_text(encoding="utf-8"))
-    documents = json.loads((base / args.documents).read_text(encoding="utf-8")) \
-        if not Path(args.documents).is_absolute() else json.loads(Path(args.documents).read_text(encoding="utf-8"))
+    rules_path = _get_safe_path(args.rules, BASE_DIR)
+    precedents_path = _get_safe_path(args.precedents, BASE_DIR)
+    documents_path = _get_safe_path(args.documents, BASE_DIR)
+
+    rules = json.loads(rules_path.read_text(encoding="utf-8"))
+    precedents = json.loads(precedents_path.read_text(encoding="utf-8"))
+    documents = json.loads(documents_path.read_text(encoding="utf-8"))
 
     vector_store = get_vector_store()
 
