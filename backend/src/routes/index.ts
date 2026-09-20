@@ -20,9 +20,14 @@ router.get('/', (req, res) => {
 });
 
 router.use('/health', healthRoutes);
+router.use('/api/health', healthRoutes);
+
 router.use('/auth', authRoutes);
+router.use('/api/auth', authRoutes);
+
 router.use('/documents', documentRoutes);
 router.use('/api/documents', documentRoutes);
+
 router.use('/notifications', notificationRoutes);
 router.use('/api/notifications', notificationRoutes);
 
