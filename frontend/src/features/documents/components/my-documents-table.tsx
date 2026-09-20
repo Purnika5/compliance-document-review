@@ -731,14 +731,6 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button
-                      onClick={openModal}
-                      size="sm"
-                      className="h-7 px-2.5 rounded-lg bg-[#183028] text-white hover:bg-[#183028]/90 font-semibold text-xs gap-1 shadow-2xs transition-all cursor-pointer"
-                    >
-                      <Plus className="h-3 w-3 text-[#C5E86C]" />
-                      <span>Upload</span>
-                    </Button>
                     <button
                       onClick={() => router.push("/submissions")}
                       className="inline-flex items-center gap-1 text-xs font-semibold text-[#183028] hover:text-[#183028]/80 cursor-pointer transition-colors"
