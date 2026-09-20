@@ -203,12 +203,15 @@ export function NotificationCenter() {
 
   const cleanNoticeTitle = (rawTitle: string) => {
     return rawTitle
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
       .replace(/^New Document Submitted:\s*/i, "")
       .replace(/^Document Status Updated:\s*/i, "")
       .replace(/^New Revision Comment Added:?\s*/i, "")
       .replace(/^Advisor Revision Comment.*?:?\s*/i, "")
       .replace(/^Document Updated:\s*/i, "")
       .replace(/^Revision Submitted:\s*/i, "")
+      .replace(/["'`´]/g, "")
       .trim();
   };
 
@@ -457,7 +460,7 @@ export function NotificationCenter() {
                   <div className="flex-1 min-w-0 space-y-0.5">
                     <div className="flex items-center justify-between gap-1">
                       <p className="text-xs font-semibold text-[#183028] truncate">
-                        {notif.title}
+                        {cleanNoticeTitle(notif.title)}
                       </p>
                       <span className="text-[10px] text-[#183028]/50 shrink-0 font-mono">
                         {notif.timestamp}

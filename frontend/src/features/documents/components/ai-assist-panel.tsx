@@ -76,7 +76,7 @@ export function AIAssistPanel({
           <div>
             <h3 className="font-bold text-[#183028] flex items-center gap-1.5">
               <span>AI Compliance Guidance</span>
-              <span className="font-mono text-[10px] text-[#183028]/60">({documentId})</span>
+              <span className="font-mono text-[10px] text-[#183028]/60">(DOC-{(documentId || "0000").slice(-4).toUpperCase()})</span>
             </h3>
           </div>
         </div>

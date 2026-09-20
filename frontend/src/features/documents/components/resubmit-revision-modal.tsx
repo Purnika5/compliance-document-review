@@ -76,7 +76,7 @@ export function ResubmitRevisionModal({
       await documentService.resubmitDocument(documentItem.id, selectedFile, revisionNotes);
       showSuccessToast(
         "Revision Submitted",
-        `New version for document ${documentItem.id} uploaded successfully.`
+        `New version for "${documentItem.title || 'document'}" uploaded successfully.`
       );
       if (onSuccess) onSuccess();
       handleReset();
