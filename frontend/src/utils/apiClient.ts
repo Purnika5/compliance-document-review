@@ -6,25 +6,11 @@
 import { authStore } from "@/lib/auth/auth-store";
 
 export const resolveBaseApiUrl = (): string => {
-  const isBrowser = typeof window !== "undefined";
-  const isNonLocalhost =
-    isBrowser &&
-    window.location.hostname !== "localhost" &&
-    window.location.hostname !== "127.0.0.1";
-
   const envUrl = process.env.NEXT_PUBLIC_API_URL;
-
-  if (isNonLocalhost) {
-    if (envUrl && !envUrl.includes("localhost") && !envUrl.includes("127.0.0.1")) {
-      return envUrl.endsWith("/api") ? envUrl : `${envUrl.replace(/\/$/, "")}/api`;
-    }
-    return "https://compliance-document-review-494m.onrender.com/api";
-  }
-
-  if (envUrl) {
+  if (envUrl && !envUrl.includes("localhost") && !envUrl.includes("127.0.0.1")) {
     return envUrl.endsWith("/api") ? envUrl : `${envUrl.replace(/\/$/, "")}/api`;
   }
-  return "http://localhost:5000/api";
+  return "https://compliance-document-review-494m.onrender.com/api";
 };
 
 /**
