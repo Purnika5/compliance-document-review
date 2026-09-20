@@ -13,5 +13,10 @@
     "build:frontend": "cd frontend && npm install && npm run build",
     "start:frontend": "cd frontend && npm run start",
     "dev:frontend": "cd frontend && npm run dev"
+  },
+  "dependencies": {
+    "next": "16.3.4",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
   }
 }
