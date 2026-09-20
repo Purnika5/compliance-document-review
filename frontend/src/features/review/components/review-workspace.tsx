@@ -206,7 +206,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
   const isNeedsRevision = status === "Needs Revision" || activeVersion?.status === "Needs Revision";
   const isVersion2OrHigher = (activeVersion?.version || 1) >= 2 || sortedVersions.length > 1;
   const canResubmit = isNeedsRevision;
-  const canShowUploadVersion = (!isOfficer && (isNeedsRevision || isVersion2OrHigher)) || isNeedsRevision || isVersion2OrHigher;
+  const canShowUploadVersion = !isOfficer && (isNeedsRevision || isVersion2OrHigher);
 
   const handleRefreshAnalysis = () => {
     setIsLoadingAnalysis(true);
