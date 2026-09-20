@@ -46,6 +46,20 @@ export function NotificationCenter() {
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isDismissed, setIsDismissed] = useState<boolean>(false);
+  const [isFading, setIsFading] = useState<boolean>(false);
+  const [activeNoticeItem, setActiveNoticeItem] = useState<{ id?: string; title: string; notifId?: string } | null>(null);
+
+  const triggerFadeAndDismiss = (notifId?: string) => {
+    setIsFading(true);
+    if (notifId) {
+      markAsRead(notifId);
+    }
+    setTimeout(() => {
+      setIsDismissed(true);
+      setIsFading(false);
+      setActiveNoticeItem(null);
+    }, 300);
+  };
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -104,6 +118,7 @@ export function NotificationCenter() {
             return [newItem, ...prev];
           });
           setIsDismissed(false);
+          setIsFading(false);
           showInfoToast(newItem.title, newItem.description);
 
           const role = authStore.getRole();
@@ -228,14 +243,32 @@ export function NotificationCenter() {
       ? Math.max(unreadCount, activeRevisionCount)
       : unreadCount;
 
+  useEffect(() => {
+    if (!isFading && !isDismissed) {
+      if (isAdvisor && topRevisionItem) {
+        setActiveNoticeItem(topRevisionItem);
+      } else if (isOfficer && topOfficerItem) {
+        setActiveNoticeItem(topOfficerItem);
+      } else {
+        setActiveNoticeItem(null);
+      }
+    }
+  }, [isAdvisor, isOfficer, topRevisionItem, topOfficerItem, isFading, isDismissed]);
+
+  const displayedRevisionItem = isFading && activeNoticeItem ? activeNoticeItem : topRevisionItem;
+  const displayedOfficerItem = isFading && activeNoticeItem ? activeNoticeItem : topOfficerItem;
+
   return (
     <div className="flex items-center gap-2 sm:gap-2.5">
       {/* Information Alert (Outside notification, beside notification bell) */}
-      {isAdvisor && activeRevisionCount > 0 && topRevisionItem && !isDismissed && (
+      {isAdvisor && activeRevisionCount > 0 && displayedRevisionItem && !isDismissed && (
         <div
           role="status"
           aria-live="polite"
-          className="flex items-center gap-2 pl-3 pr-1.5 py-1 rounded-full border border-sky-200 bg-sky-50/95 text-sky-950 shadow-2xs animate-fade-in text-xs"
+          className={cn(
+            "flex items-center gap-2 pl-3 pr-1.5 py-1 rounded-full border border-sky-200 bg-sky-50/95 text-sky-950 shadow-2xs text-xs transition-all duration-300 ease-out",
+            isFading ? "opacity-0 scale-95 -translate-y-1 pointer-events-none" : "opacity-100 scale-100 animate-fade-in"
+          )}
         >
           <Info className="h-3.5 w-3.5 text-sky-600 shrink-0" />
           <div className="flex items-center gap-1.5 min-w-0">
@@ -246,17 +279,15 @@ export function NotificationCenter() {
               Officer feedback appears in Revision tab for
             </span>
             <span className="font-semibold text-sky-950 truncate max-w-[110px] sm:max-w-[160px] md:max-w-[210px]">
-              {topRevisionItem.title}
+              {displayedRevisionItem.title}
             </span>
           </div>
 
-          {topRevisionItem.id && (
+          {displayedRevisionItem.id && (
             <Link
-              href={`/documents/${topRevisionItem.id}`}
+              href={`/documents/${displayedRevisionItem.id}`}
               onClick={() => {
-                if (topRevisionItem.notifId) {
-                  markAsRead(topRevisionItem.notifId);
-                }
+                triggerFadeAndDismiss(displayedRevisionItem.notifId);
               }}
               className="inline-flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold rounded-full bg-orange-600 hover:bg-orange-700 text-white shadow-2xs transition-all shrink-0 cursor-pointer ml-1"
             >
@@ -267,7 +298,7 @@ export function NotificationCenter() {
 
           <button
             type="button"
-            onClick={() => setIsDismissed(true)}
+            onClick={() => triggerFadeAndDismiss(displayedRevisionItem.notifId)}
             className="text-sky-500 hover:text-sky-800 p-0.5 rounded-full hover:bg-sky-100 transition-colors cursor-pointer ml-0.5"
             title="Dismiss notice"
             aria-label="Dismiss notice"
@@ -277,11 +308,14 @@ export function NotificationCenter() {
         </div>
       )}
 
-      {isOfficer && topOfficerItem && !isDismissed && (
+      {isOfficer && displayedOfficerItem && !isDismissed && (
         <div
           role="status"
           aria-live="polite"
-          className="flex items-center gap-2 pl-3 pr-1.5 py-1 rounded-full border border-emerald-200 bg-emerald-50/95 text-emerald-950 shadow-2xs animate-fade-in text-xs"
+          className={cn(
+            "flex items-center gap-2 pl-3 pr-1.5 py-1 rounded-full border border-emerald-200 bg-emerald-50/95 text-emerald-950 shadow-2xs text-xs transition-all duration-300 ease-out",
+            isFading ? "opacity-0 scale-95 -translate-y-1 pointer-events-none" : "opacity-100 scale-100 animate-fade-in"
+          )}
         >
           <Info className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
           <div className="flex items-center gap-1.5 min-w-0">
@@ -289,17 +323,15 @@ export function NotificationCenter() {
               Review Notice:
             </span>
             <span className="text-emerald-800 truncate max-w-[120px] sm:max-w-[180px] md:max-w-[220px]">
-              {topOfficerItem.title}
+              {displayedOfficerItem.title}
             </span>
           </div>
 
-          {topOfficerItem.id && (
+          {displayedOfficerItem.id && (
             <Link
-              href={`/documents/${topOfficerItem.id}`}
+              href={`/documents/${displayedOfficerItem.id}`}
               onClick={() => {
-                if (topOfficerItem.notifId) {
-                  markAsRead(topOfficerItem.notifId);
-                }
+                triggerFadeAndDismiss(displayedOfficerItem.notifId);
               }}
               className="inline-flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold rounded-full bg-[#183028] hover:bg-[#23453a] text-white shadow-2xs transition-all shrink-0 cursor-pointer ml-1"
             >
@@ -310,7 +342,7 @@ export function NotificationCenter() {
 
           <button
             type="button"
-            onClick={() => setIsDismissed(true)}
+            onClick={() => triggerFadeAndDismiss(displayedOfficerItem.notifId)}
             className="text-emerald-500 hover:text-emerald-800 p-0.5 rounded-full hover:bg-emerald-100 transition-colors cursor-pointer ml-0.5"
             title="Dismiss notice"
             aria-label="Dismiss notice"
