@@ -45,25 +45,35 @@ export const runMigrations = async (): Promise<void> => {
         for (const stmt of statements) {
           try {
             await client.query(stmt);
-          } catch (stmtErr) {
-            if (process.env.NODE_ENV === 'test' || isMemFallbackActive()) {
-              // In test mode / pg-mem fallback, ignore unsupported vector types & extension statements
-              const lower = stmt.toLowerCase();
-              if (
-                lower.includes('create extension') ||
-                lower.includes('using ivfflat') ||
-                lower.includes('vector(')
-              ) {
-                if (lower.includes('create table') && lower.includes('vector(')) {
-                  try {
-                    const sanitizedStmt = stmt.replace(/VECTOR\(\d+\)/gi, 'TEXT');
-                    await client.query(sanitizedStmt);
-                  } catch (fallbackErr) {
-                    // Ignore fallback failure in pg-mem
-                  }
+          } catch (stmtErr: any) {
+            const lower = stmt.toLowerCase();
+            const isVectorRelated =
+              lower.includes('create extension') ||
+              lower.includes('using ivfflat') ||
+              lower.includes('vector(');
+
+            const isVectorUnavailable =
+              stmtErr?.code === '0A000' ||
+              stmtErr?.code === '42704' ||
+              stmtErr?.message?.includes('extension "vector" is not available') ||
+              stmtErr?.message?.includes('type "vector" does not exist') ||
+              stmtErr?.message?.includes('access method "ivfflat" does not exist');
+
+            if (
+              process.env.NODE_ENV === 'test' ||
+              isMemFallbackActive() ||
+              (isVectorRelated && isVectorUnavailable)
+            ) {
+              // In test mode, pg-mem, or vanilla Postgres lacking pgvector, gracefully fall back
+              if (lower.includes('create table') && lower.includes('vector(')) {
+                try {
+                  const sanitizedStmt = stmt.replace(/VECTOR\(\d+\)/gi, 'TEXT');
+                  await client.query(sanitizedStmt);
+                } catch (fallbackErr) {
+                  // Ignore fallback failure
                 }
-                continue;
               }
+              continue;
             }
             throw stmtErr;
           }
