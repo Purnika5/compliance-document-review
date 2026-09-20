@@ -671,25 +671,15 @@ export class DocumentService {
     `;
     const res = await query<DocumentAnalysis>(sql, [doc.id, doc.version]);
 
-    if (res.rows.length === 0 || res.rows[0].summary === 'AI analysis could not be completed for this document.') {
-      // If not yet analyzed or previous attempt failed, process it on-the-fly
+    if (
+      res.rows.length === 0 ||
+      (res.rows[0] as any).is_degraded ||
+      res.rows[0].summary?.includes('degradation') ||
+      res.rows[0].summary === 'AI analysis could not be completed for this document.'
+    ) {
+      // If not yet analyzed or previous attempt was degraded, re-process with compliance engine
       const analyzed = await PipelineService.processDocument(doc.id, doc.version, doc.file_path, doc.mime_type);
-      if (!analyzed) {
-        return {
-          id: `degraded-${doc.id}-${doc.version}`,
-          document_id: doc.id,
-          version: doc.version,
-          status: 'unavailable',
-          is_degraded: true,
-          circuit_breaker: aiCircuitBreaker.getState(),
-          summary: 'AI compliance analysis is temporarily unavailable. Graceful degradation active.',
-          flags: [],
-          message: 'AI service is currently offline or unreachable. Manual compliance review is active.',
-          created_at: new Date(),
-          updated_at: new Date(),
-        } as any;
-      }
-      return analyzed;
+      if (analyzed) return analyzed;
     }
 
     return res.rows[0];
