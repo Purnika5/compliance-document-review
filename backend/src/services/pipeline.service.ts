@@ -163,6 +163,8 @@ export class PipelineService {
     sanitized = sanitized.replace(/\b(?:\d{4}[-\s]?){3}\d{4}\b/g, '[CARD_FALLBACK]');
     // Phones
     sanitized = sanitized.replace(/(?:\+?1[-.\s]?)?(?:\([0-9]{3}\)|[0-9]{3})[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}\b/g, '[PHONE_FALLBACK]');
+    // Accounts
+    sanitized = sanitized.replace(/\b(?:ACCT|ACC|ACCOUNT)[-:\s#]*[0-9A-Za-z]+\b/gi, '[ACCOUNT_FALLBACK]');
     // Contextual Salutations
     sanitized = sanitized.replace(/(?:\b(?:dear|advisor:|client:|customer:)\s+)([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})/gi, (m, name) => m.replace(name, '[NAME_FALLBACK]'));
 
@@ -178,7 +180,7 @@ export class PipelineService {
       return '';
     }
 
-    if (config.services.piiMaskerUrl.includes('compliance-pii-masker')) {
+    if (process.env.NODE_ENV !== 'test' && config.services.piiMaskerUrl.includes('compliance-pii-masker')) {
       return this.localFallbackMask(rawText);
     }
 
