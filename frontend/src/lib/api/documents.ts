@@ -85,8 +85,16 @@ function mapApiDocumentToItem(doc: ApiDocument): DocumentItem {
  * @author Keith
  */
 export async function fetchMySubmissionsRequest(): Promise<DocumentItem[]> {
-  const envelope = await client.get<Envelope<ApiDocument[]>>("/documents");
-  return envelope.data.map(mapApiDocumentToItem);
+  try {
+    const envelope = await client.get<Envelope<ApiDocument[]>>("/documents");
+    if (!envelope || !envelope.data || !Array.isArray(envelope.data)) {
+      return [];
+    }
+    return envelope.data.map(mapApiDocumentToItem);
+  } catch (err) {
+    console.error("[fetchMySubmissionsRequest error]", err);
+    return [];
+  }
 }
 
 /**
@@ -97,9 +105,17 @@ export async function fetchMySubmissionsRequest(): Promise<DocumentItem[]> {
  * @author Keith
  */
 export async function fetchQueueRequest(statusFilter?: string): Promise<DocumentItem[]> {
-  const query = statusFilter ? `?status=${encodeURIComponent(statusFilter)}` : "";
-  const envelope = await client.get<Envelope<ApiDocument[]>>(`/documents/queue${query}`);
-  return envelope.data.map(mapApiDocumentToItem);
+  try {
+    const query = statusFilter && statusFilter !== "All" ? `?status=${encodeURIComponent(statusFilter)}` : "";
+    const envelope = await client.get<Envelope<ApiDocument[]>>(`/documents/queue${query}`);
+    if (!envelope || !envelope.data || !Array.isArray(envelope.data)) {
+      return [];
+    }
+    return envelope.data.map(mapApiDocumentToItem);
+  } catch (err) {
+    console.error("[fetchQueueRequest error]", err);
+    return [];
+  }
 }
 
 /**

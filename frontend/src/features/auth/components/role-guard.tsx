@@ -27,13 +27,16 @@ export interface RoleGuardProps {
  */
 export function RoleGuard({ allowedRole, children }: RoleGuardProps) {
   const router = useRouter();
+  const [isClient, setIsClient] = React.useState(false);
+
   const session = useSyncExternalStore<UserSession | null>(
     authStore.subscribe,
     authStore.getSession,
     authStore.getServerSnapshot
   );
 
-  useEffect(() => {
+  React.useEffect(() => {
+    setIsClient(true);
     if (!session) {
       router.push("/login");
     } else if (session.role !== allowedRole) {
@@ -47,9 +50,13 @@ export function RoleGuard({ allowedRole, children }: RoleGuardProps) {
     }
   }, [session, allowedRole, router]);
 
-  // While verifying authorization or redirecting
-  if (!session || session.role !== allowedRole) {
-    return null;
+  // While verifying authorization, performing hydration, or redirecting
+  if (!isClient || !session || session.role !== allowedRole) {
+    return (
+      <div className="min-h-[400px] w-full flex items-center justify-center p-8">
+        <Loader2 className="h-6 w-6 text-[#183028] animate-spin" />
+      </div>
+    );
   }
 
   return <>{children}</>;
