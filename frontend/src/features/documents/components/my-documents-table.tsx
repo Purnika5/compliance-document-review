@@ -331,13 +331,7 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
               </div>
             </div>
 
-            <Button
-              onClick={openModal}
-              className="h-8 px-3.5 text-xs font-semibold bg-[#183028] hover:bg-[#23453a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] text-white rounded-xl gap-1.5 shrink-0 shadow-2xs transition-all cursor-pointer"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>Upload Document</span>
-            </Button>
+
           </div>
 
           {/* Search & Filter Toolbar */}
@@ -615,14 +609,7 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
 
 
 
-                {/* Upload Button */}
-                <Button
-                  onClick={openModal}
-                  className="h-8 px-3 text-xs font-semibold bg-[#183028] hover:bg-[#23453a] text-white rounded-xl gap-1.5 shrink-0 shadow-2xs transition-all cursor-pointer"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  <span>Upload Document</span>
-                </Button>
+
               </div>
             </div>
 
@@ -953,15 +940,7 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                                 >
                                   Clear Filter
                                 </Button>
-                              ) : (
-                                <Button
-                                  size="sm"
-                                  onClick={openModal}
-                                  className="h-7.5 text-xs rounded-xl bg-[#183028] text-white hover:bg-[#23453a] cursor-pointer"
-                                >
-                                  Upload Document
-                                </Button>
-                              )}
+                              ) : null}
                             </div>
                           </TableCell>
                         </TableRow>
