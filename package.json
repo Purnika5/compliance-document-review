@@ -1,18 +1,10 @@
 {
   "name": "springer-capital-compliance-monorepo",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
-  "workspaces": [
-    "frontend"
-  ],
   "scripts": {
-    "build": "cd frontend && npm install && npm run build",
-    "dev": "cd frontend && npm run dev",
-    "start": "cd frontend && npm start"
-  },
-  "dependencies": {
-    "next": "16.3.4",
-    "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "build": "cd backend && npm install && npm run build",
+    "start": "cd backend && npm run start",
+    "dev": "cd backend && npm run dev"
   }
 }
