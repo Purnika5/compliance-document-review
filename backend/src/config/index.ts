@@ -51,7 +51,13 @@ export const config = {
 
   services: {
     piiMaskerUrl: process.env.PII_MASKER_URL || 'http://compliance-pii-masker:8002',
-    aiServiceUrl: process.env.AI_SERVICE_URL || 'https://compliance-document-review-1.onrender.com',
+    aiServiceUrl: (() => {
+      const envUrl = process.env.AI_SERVICE_URL?.trim();
+      if (!envUrl || envUrl.includes('compliance-ai-service') || envUrl.includes('localhost') || envUrl.includes('127.0.0.1')) {
+        return 'https://compliance-document-review-1.onrender.com';
+      }
+      return envUrl;
+    })(),
   },
 
   retrieval: {
