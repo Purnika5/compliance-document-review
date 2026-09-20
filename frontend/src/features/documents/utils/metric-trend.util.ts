@@ -27,25 +27,13 @@ export function isDocInDateRange(
   doc: DocumentItem,
   preset: DateFilterPreset = "All",
   customStart?: string,
-  customEnd?: string,
-  selectedDay?: number | null,
-  calMonth?: number,
-  calYear?: number
+  customEnd?: string
 ): boolean {
   if (!doc.submittedAt) return true;
   const docDate = new Date(doc.submittedAt);
   if (isNaN(docDate.getTime())) return true;
 
-  // 1. Calendar selected day has highest priority
-  if (selectedDay !== null && selectedDay !== undefined && calMonth !== undefined && calYear !== undefined) {
-    return (
-      docDate.getDate() === selectedDay &&
-      docDate.getMonth() === calMonth &&
-      docDate.getFullYear() === calYear
-    );
-  }
-
-  // 2. Preset filter
+  // Preset filter
   if (preset === "All") return true;
 
   const now = new Date();
@@ -126,28 +114,21 @@ export function generateMetricTrends(
   documents: DocumentItem[],
   preset: DateFilterPreset = "All",
   customStart?: string,
-  customEnd?: string,
-  selectedDay?: number | null,
-  calMonth?: number,
-  calYear?: number
+  customEnd?: string
 ): MetricTrendData {
   const now = new Date();
   const pointsCount = 7;
 
   // Filter documents that belong to this date window
   const matchingDocs = documents.filter((doc) =>
-    isDocInDateRange(doc, preset, customStart, customEnd, selectedDay, calMonth, calYear)
+    isDocInDateRange(doc, preset, customStart, customEnd)
   );
 
   let startDate: Date;
   let endDate: Date;
   let isHourly = false;
 
-  if (selectedDay !== null && selectedDay !== undefined && calMonth !== undefined && calYear !== undefined) {
-    startDate = new Date(calYear, calMonth, selectedDay, 0, 0, 0);
-    endDate = new Date(calYear, calMonth, selectedDay, 23, 59, 59);
-    isHourly = true;
-  } else if (preset === "Today") {
+  if (preset === "Today") {
     startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
     endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
     isHourly = true;

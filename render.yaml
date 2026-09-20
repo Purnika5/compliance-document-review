@@ -1,5 +1,6 @@
 # Render Infrastructure-as-Code Blueprint
 # Springer Capital Compliance Document Review Platform
+# Backend REST API, Microservices, and PostgreSQL Database
 services:
   # ----------------------------------------------------------------------------
   # 1. Express Backend REST API
@@ -32,28 +33,7 @@ services:
         value: "*"
 
   # ----------------------------------------------------------------------------
-  # 2. Next.js 16 Web App
-  # ----------------------------------------------------------------------------
-  - type: web
-    name: compliance-frontend
-    runtime: docker
-    dockerfilePath: ./frontend/Dockerfile
-    dockerContext: ./frontend
-    region: oregon
-    plan: starter
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: PORT
-        value: 3000
-      - key: NEXT_PUBLIC_API_URL
-        fromService:
-          type: web
-          name: compliance-backend
-          property: url
-
-  # ----------------------------------------------------------------------------
-  # 3. PII Masking Engine (Private Microservice)
+  # 2. PII Masking Engine (Private Microservice)
   # ----------------------------------------------------------------------------
   - type: pserv
     name: compliance-pii-masker
@@ -67,7 +47,7 @@ services:
         value: 8002
 
   # ----------------------------------------------------------------------------
-  # 4. Mock AI & Vector Search Service (Private Microservice)
+  # 3. Mock AI & Vector Search Service (Private Microservice)
   # ----------------------------------------------------------------------------
   - type: pserv
     name: compliance-mock-ai
