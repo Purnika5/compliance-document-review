@@ -80,9 +80,14 @@ export function DocumentQueueTable() {
   } | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
-  if (isPending) {
-    return <QueueSkeleton />;
-  }
+  const trendData = React.useMemo(() => {
+    return generateMetricTrends(
+      documents,
+      dateFilterPreset,
+      customStartDate,
+      customEndDate
+    );
+  }, [documents, dateFilterPreset, customStartDate, customEndDate]);
 
   const handleDecisionExecution = async (
     status: "Approved" | "Needs Revision" | "Rejected",
@@ -204,15 +209,6 @@ export function DocumentQueueTable() {
         : b.status.localeCompare(a.status);
     });
 
-  const trendData = React.useMemo(() => {
-    return generateMetricTrends(
-      documents,
-      dateFilterPreset,
-      customStartDate,
-      customEndDate
-    );
-  }, [documents, dateFilterPreset, customStartDate, customEndDate]);
-
   const queueVolume = dateFilterPreset !== "All" ? (trendData.total[trendData.total.length - 1] ?? 0) : (queueCounts?.All ?? documents.length);
   const queuePending = dateFilterPreset !== "All" ? (trendData.pending[trendData.pending.length - 1] ?? 0) : (queueCounts?.Pending ?? documents.filter((d) => d.status === "Pending").length);
   const queueRevision = dateFilterPreset !== "All" ? (trendData.needsRevision[trendData.needsRevision.length - 1] ?? 0) : (queueCounts?.["Needs Revision"] ?? documents.filter((d) => d.status === "Needs Revision").length);
@@ -228,6 +224,10 @@ export function DocumentQueueTable() {
       ? (trendData.rejected[trendData.rejected.length - 1] ?? 0)
       : (queueCounts?.Rejected ?? documents.filter((d) => d.status === "Rejected").length),
   };
+
+  if (isPending) {
+    return <QueueSkeleton />;
+  }
 
   return (
     <div className="space-y-4 max-w-[1600px] mx-auto pb-16">
