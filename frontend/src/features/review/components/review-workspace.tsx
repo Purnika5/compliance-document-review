@@ -855,36 +855,6 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                   <Printer className="h-3.5 w-3.5" />
                 </button>
 
-                {isOfficer && (
-                  <>
-                    <div className="h-4 w-px bg-[#E6E8E7] mx-1" />
-                    <button
-                      type="button"
-                      onClick={() => setIsUnmasked((prev) => !prev)}
-                      title={isUnmasked ? "Switch to Masked PII view" : "Switch to Raw Unmasked PII view (Officer Only)"}
-                      className={cn(
-                        "flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-lg border transition-all cursor-pointer shadow-2xs",
-                        isUnmasked
-                          ? "bg-amber-100 text-amber-950 border-amber-300 font-bold"
-                          : "bg-white text-[#183028] border-[#E6E8E7] hover:bg-[#E6E8E7]/40"
-                      )}
-                    >
-                      {isUnmasked ? (
-                        <>
-                          <EyeOff className="h-3.5 w-3.5 text-amber-800" />
-                          <span className="hidden sm:inline">Raw PII Active</span>
-                          <span className="sm:hidden">Raw</span>
-                        </>
-                      ) : (
-                        <>
-                          <Eye className="h-3.5 w-3.5 text-[#183028]/70" />
-                          <span className="hidden sm:inline">Show Raw PII</span>
-                          <span className="sm:hidden">Masked</span>
-                        </>
-                      )}
-                    </button>
-                  </>
-                )}
               </div>
             </div>
 
@@ -1188,8 +1158,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
               isLoading={isLoadingAnalysis}
               isDegraded={isAiDegraded}
               onRefresh={handleRefreshAnalysis}
-              isUnmasked={isUnmasked}
-              onToggleUnmask={() => setIsUnmasked((prev) => !prev)}
+              isUnmasked={false}
               piiMap={piiMap}
               isOfficer={isOfficer}
             />
