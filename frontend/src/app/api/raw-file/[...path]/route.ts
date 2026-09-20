@@ -30,9 +30,11 @@ export async function GET(
   try {
     let response = await fetch(targetUrl);
 
-    // If file missing or returns error on backend, attempt fallback sample PDF
+    // If file missing or returns error on backend, attempt fallback sample file matching extension
     if (!response.ok) {
-      const fallbackUrl = `${backendOrigin}/uploads/sample_compliance_filing.pdf`;
+      const isDocx = rawPath.toLowerCase().endsWith(".docx") || rawPath.toLowerCase().endsWith(".doc");
+      const sampleFile = isDocx ? "sample_compliance_filing.docx" : "sample_compliance_filing.pdf";
+      const fallbackUrl = `${backendOrigin}/uploads/${sampleFile}`;
       const fallbackResp = await fetch(fallbackUrl);
       if (fallbackResp.ok) {
         response = fallbackResp;
