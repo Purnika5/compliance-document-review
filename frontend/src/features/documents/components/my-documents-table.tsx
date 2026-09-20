@@ -541,9 +541,7 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                   <h2 className="text-sm sm:text-base font-bold text-[#183028] tracking-tight">
                     Institutional Compliance Analytics
                   </h2>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#C5E86C]/30 text-[#183028] border border-[#C5E86C]/60">
-                    Live Velocity
-                  </span>
+
                 </div>
                 <p className="text-xs text-[#183028]/65 mt-0.5">
                   Filing velocity, regulatory turnaround, and document classification trends
