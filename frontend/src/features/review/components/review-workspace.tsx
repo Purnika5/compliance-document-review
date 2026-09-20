@@ -143,14 +143,17 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
   const [isAiDegraded, setIsAiDegraded] = useState<boolean>(false);
   const [isUnmasked, setIsUnmasked] = useState<boolean>(false);
   const [revisionRefreshKey, setRevisionRefreshKey] = useState<number>(0);
-  const [activeDocId, setActiveDocId] = useState<string>(documentId);
+  const [activeDocId, setActiveDocId] = useState<string>(documentId ? documentId.trim() : "");
+  const [reloadTrigger, setReloadTrigger] = useState<number>(0);
   const [lineageVersions, setLineageVersions] = useState<(DocumentItem & { version: number })[]>([]);
   const [lineageEntries, setLineageEntries] = useState<LineageEntry[]>([]);
   const [isLoadingLineage, setIsLoadingLineage] = useState<boolean>(true);
   const [isResubmitModalOpen, setIsResubmitModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
-    setActiveDocId(documentId);
+    if (documentId) {
+      setActiveDocId(documentId.trim());
+    }
   }, [documentId]);
 
   const handleSelectVersion = (version: DocumentItem & { version: number }) => {
@@ -212,6 +215,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
   };
 
   useEffect(() => {
+    if (!activeDocId || activeDocId === "undefined") return;
     let isActive = true;
 
     // 1. Fetch document version history & lineage thread entries (GET /documents/:id/versions)
@@ -222,6 +226,17 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
         if (!isActive) return;
         setLineageVersions(res.versions);
         setLineageEntries(res.threadEntries);
+        // Fallback recovery: If single doc fetch fails or is pending, hydrate metadata from lineage
+        if (res.versions.length > 0) {
+          const match = res.versions.find((v) => v.id === activeDocId) || res.versions[res.versions.length - 1];
+          if (match) {
+            setLoadedDoc((prev) => prev || match);
+            setTitle((prev) => prev || match.title);
+            setCategory((prev) => prev || match.category);
+            setStatus((prev) => prev || match.status);
+            setDocumentError(null);
+          }
+        }
       })
       .catch(() => {
         if (!isActive) {
@@ -246,7 +261,20 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
       })
       .catch((error: unknown) => {
         if (!isActive) return;
-        setDocumentError(error instanceof Error ? error.message : "Unable to load this document.");
+        // Verify if lineage has already populated this document before flagging error
+        setLineageVersions((currentLineage) => {
+          const match = currentLineage.find((v) => v.id === activeDocId);
+          if (match) {
+            setLoadedDoc(match);
+            setTitle(match.title);
+            setCategory(match.category);
+            setStatus(match.status);
+            setDocumentError(null);
+          } else {
+            setDocumentError(error instanceof Error ? error.message : "Unable to load this document.");
+          }
+          return currentLineage;
+        });
       })
       .finally(() => {
         if (isActive) setIsLoadingDocument(false);
@@ -298,7 +326,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
     return () => {
       isActive = false;
     };
-  }, [activeDocId, revisionRefreshKey]);
+  }, [activeDocId, revisionRefreshKey, reloadTrigger]);
 
   const currentDocItem: DocumentItem = loadedDoc || {
     id: activeDocId,
@@ -548,7 +576,14 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
       />
 
       {documentError && (
-        <ErrorState title="Unable to load document" message={documentError} />
+        <ErrorState
+          title="Unable to load document"
+          message={documentError}
+          onRetry={() => {
+            setDocumentError(null);
+            setReloadTrigger((p) => p + 1);
+          }}
+        />
       )}
 
       {/* Mobile/Tablet Zone Switcher Tabs */}
