@@ -149,7 +149,7 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
   const [reloadTrigger, setReloadTrigger] = useState<number>(0);
   const [lineageVersions, setLineageVersions] = useState<(DocumentItem & { version: number })[]>([]);
   const [lineageEntries, setLineageEntries] = useState<LineageEntry[]>([]);
-  const [isLoadingLineage, setIsLoadingLineage] = useState<boolean>(false);
+  const [isLoadingLineage, setIsLoadingLineage] = useState<boolean>(true);
   const [isResubmitModalOpen, setIsResubmitModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
@@ -227,6 +227,7 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
     let isActive = true;
 
     // 1. Fetch document version history & lineage thread entries (GET /documents/:id/versions)
+    setIsLoadingLineage(true);
     documentService
       .getDocumentVersions(activeDocId)
       .then((res) => {
@@ -256,6 +257,7 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
       });
 
     // 2. Fetch document record for current version
+    setIsLoadingDocument(true);
     getDocumentAction(activeDocId)
       .then((document) => {
         if (!isActive) return;
@@ -287,6 +289,7 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
       });
 
     // 3. Fetch automated AI analysis flags for current version
+    setIsLoadingAnalysis(true);
     documentService
       .getAnalysis(activeDocId)
       .then((res) => {
