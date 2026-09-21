@@ -28,8 +28,8 @@ export function useAuthGuard(allowedRole?: RoleType) {
   );
 
   const isAuthorized = useMemo(() => {
-    // If no session exists, allow static presentation view for demo purposes
-    if (!session) return true;
+    // If no session exists, access is not authorized
+    if (!session) return false;
     
     // If role boundary is specified, verify it
     if (allowedRole && session.role !== allowedRole) {
@@ -39,8 +39,14 @@ export function useAuthGuard(allowedRole?: RoleType) {
   }, [session, allowedRole]);
 
   useEffect(() => {
+    // Not authenticated -> Redirect to login
+    if (!session) {
+      router.replace("/login");
+      return;
+    }
+
     // Role boundary violation -> Redirect to appropriate dashboard
-    if (session && allowedRole && session.role !== allowedRole) {
+    if (allowedRole && session.role !== allowedRole) {
       if (session.role === "Advisor") {
         router.replace("/dashboard");
       } else if (session.role === "Officer") {

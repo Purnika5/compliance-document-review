@@ -49,7 +49,7 @@ export function AppHeader({
   };
 
   const getInitials = (name?: string) => {
-    if (!name) return "QE";
+    if (!name) return "U";
     const parts = name.trim().split(/\s+/);
     if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
@@ -91,8 +91,8 @@ export function AppHeader({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-52 bg-[#FFFFFF] shadow-xl rounded-xl border border-[#E6E8E7] p-1 animate-slide-down">
             <DropdownMenuLabel className="px-3 py-2 text-xs font-medium text-[#183028]/60">
-              <div className="font-bold text-[#183028]">{session?.name || "Quintin Evans"}</div>
-              <div className="text-[10px] text-[#183028]/60 font-mono">{session?.email || "ryzyw@springercapital.com"}</div>
+              <div className="font-bold text-[#183028]">{session?.name || "User"}</div>
+              <div className="text-[10px] text-[#183028]/60 font-mono">{session?.email || ""}</div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator className="bg-[#E6E8E7]" />
             <DropdownMenuItem
