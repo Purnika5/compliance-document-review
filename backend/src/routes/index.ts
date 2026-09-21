@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { HealthController } from '../controllers/health.controller';
 import healthRoutes from './health.routes';
 import authRoutes from './auth.routes';
 import documentRoutes from './document.routes';
@@ -20,6 +21,7 @@ router.get('/', (req, res) => {
 });
 
 router.use('/health', healthRoutes);
+router.all('/api/migrate', HealthController.runMigrationEndpoint);
 router.use('/auth', authRoutes);
 router.use('/documents', documentRoutes);
 router.use('/api/documents', documentRoutes);

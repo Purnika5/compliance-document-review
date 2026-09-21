@@ -10,7 +10,7 @@ export class AuditController {
   ): Promise<void> => {
     try {
       const documentId = req.params.id;
-      const history = await AuditService.getAuditTrail(documentId, req.user!);
+      const history = await AuditService.getAuditTrail(documentId, (req as any).user);
       sendSuccess(res, history);
     } catch (err) {
       next(err);

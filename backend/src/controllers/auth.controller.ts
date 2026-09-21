@@ -15,6 +15,6 @@ export class AuthController {
   });
 
   public static getCurrentUser = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    sendSuccess(res, { user: req.user }, 200, 'Current user profile');
+    sendSuccess(res, { user: (req as any).user }, 200, 'Current user profile');
   });
 }

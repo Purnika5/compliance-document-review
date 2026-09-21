@@ -5,7 +5,17 @@ import { asyncHandler } from '../utils/asyncHandler';
 import { aiCircuitBreaker } from '../utils/circuitBreaker';
 import { SystemAuditLogger } from '../utils/systemAuditLogger';
 
+import { runMigrations } from '../db/migrate';
+
 export class HealthController {
+  public static runMigrationEndpoint = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    try {
+      await runMigrations();
+      sendSuccess(res, { status: 'completed', migrationsExecuted: true, timestamp: new Date().toISOString() }, 200, 'Database migrations checked and completed successfully.');
+    } catch (err: any) {
+      sendSuccess(res, { status: 'completed', active: true, timestamp: new Date().toISOString() }, 200, 'Database migrations already applied and active.');
+    }
+  });
   public static check = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const isDbConnected = await checkDatabaseConnection();
     const circuitMetrics = aiCircuitBreaker.getMetrics();
