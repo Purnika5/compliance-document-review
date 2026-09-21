@@ -32,9 +32,6 @@ import {
   ShieldCheck,
   FileSpreadsheet,
   Printer,
-  CheckCircle2,
-  Lock,
-  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AuditSkeleton } from "./audit-skeleton";
@@ -71,11 +68,14 @@ export function AuditHistoryView() {
   const [categoryFilter, setCategoryFilter] = useState<string>("All");
   const [verifiedMessage, setVerifiedMessage] = useState<string | null>(null);
 
-  useEffect(() => {
+  // Adjust search query if documentIdParam changes
+  const [prevDocId, setPrevDocId] = useState(documentIdParam);
+  if (prevDocId !== documentIdParam) {
+    setPrevDocId(documentIdParam);
     if (documentIdParam) {
       setSearchQuery(documentIdParam);
     }
-  }, [documentIdParam]);
+  }
 
   // Fetch audit records across active documents
   useEffect(() => {
@@ -225,10 +225,7 @@ export function AuditHistoryView() {
     document.body.removeChild(link);
   };
 
-  // Metrics dynamically derived from real records
-  const totalAuditEvents = entries.length;
-  const approvalsCount = entries.filter((e) => e.actionCategory === "Approval").length;
-  const revisionsCount = entries.filter((e) => e.actionCategory === "Revision").length;
+
   const isLoaded = !isLoadingDocs && !isLoadingAudit;
 
   if (!isLoaded) {
@@ -240,14 +237,9 @@ export function AuditHistoryView() {
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E6E8E7] pb-4 print:border-none">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-[#183028] tracking-tight">
-              {isAdvisor ? "Submission Audit Trail" : "Regulatory Audit Ledger"}
-            </h1>
-            <span className="text-[10px] bg-[#C5E86C]/45 text-[#183028] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-              {isAdvisor ? "Advisor Portfolio" : "Official Queue"}
-            </span>
-          </div>
+          <h1 className="text-xl font-bold text-[#183028] tracking-tight">
+            {isAdvisor ? "Submission Audit Trail" : "Regulatory Audit Ledger"}
+          </h1>
           <p className="text-xs text-[#183028]/60 mt-1">
             {isAdvisor
               ? "Chronological audit trail and immutable event history for your document submissions."
@@ -257,6 +249,15 @@ export function AuditHistoryView() {
 
         {/* Header Actions */}
         <div className="flex items-center gap-2 print:hidden">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleVerifyIntegrity}
+            className="text-xs border border-[#E6E8E7] bg-white hover:bg-[#C5E86C]/20 hover:border-[#183028] text-[#183028] font-semibold gap-1.5 cursor-pointer rounded-xl shadow-2xs transition-colors"
+          >
+            <ShieldCheck className="h-3.5 w-3.5 text-[#183028]/60" />
+            Verify Integrity
+          </Button>
           <Button
             variant="outline"
             size="sm"
