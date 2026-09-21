@@ -1,19 +1,48 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
+import { authStore, type UserSession } from "@/lib/auth/auth-store";
 import { AppSidebar } from "@/components/layouts/app-sidebar";
 import { AppHeader } from "@/components/layouts/app-header";
 import { ChatbotWidget } from "@/components/ui/chatbot-widget";
+import { Loader2 } from "lucide-react";
 
 /**
  * DOCU: Provides the authenticated dashboard shell with navigation and copilot access.
- * Last Updated Date: September 3, 2026
+ * Enforces session authentication guard across all protected dashboard routes.
+ * Last Updated Date: September 21, 2026
  * @param children - Rendered dashboard route content.
- * @returns The dashboard layout.
+ * @returns The dashboard layout or loading spinner while verifying authentication.
  * @author Keith
  */
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const [isClient, setIsClient] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  const session = useSyncExternalStore<UserSession | null>(
+    authStore.subscribe,
+    authStore.getSession,
+    authStore.getServerSnapshot
+  );
+
+  useEffect(() => {
+    setIsClient(true);
+    if (!authStore.isAuthenticated()) {
+      router.replace("/login");
+    }
+  }, [session, router]);
+
+  // Prevent flashing protected content before authentication is verified
+  if (!isClient || !session) {
+    return (
+      <div className="min-h-screen bg-[#FFFFFF] flex items-center justify-center p-8">
+        <Loader2 className="h-7 w-7 text-[#183028] animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#FFFFFF] text-[#183028] flex print:block">
       {/* Role-aware Navigation Sidebar */}

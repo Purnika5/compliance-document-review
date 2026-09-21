@@ -1,10 +1,24 @@
 import sys
 import os
 import datetime
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "data", "week4"))
+# Ensure sibling data/week4 directory is in sys.path for runtime execution
+_week4_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "week4"))
+if _week4_dir not in sys.path:
+    sys.path.insert(0, _week4_dir)
 
-from validate_audit_trail import find_orphaned_entries, find_gaps, run_validation
-from generate_seed_corpus import generate_rules, generate_precedents
+import importlib
+
+# Dynamic module loading prevents IDE static analysis "Cannot find module" errors
+validate_audit_trail = importlib.import_module("validate_audit_trail")
+generate_seed_corpus = importlib.import_module("generate_seed_corpus")
+load_seed_corpus = importlib.import_module("load_seed_corpus")
+
+find_orphaned_entries = validate_audit_trail.find_orphaned_entries
+find_gaps = validate_audit_trail.find_gaps
+run_validation = validate_audit_trail.run_validation
+
+generate_rules = generate_seed_corpus.generate_rules
+generate_precedents = generate_seed_corpus.generate_precedents
 
 
 def _t(offset_seconds):
@@ -102,9 +116,9 @@ def test_generate_precedents_valid_outcomes_and_fk_stubs():
 
 def test_safe_path_traversal_prevention():
     import pytest
-    from validate_audit_trail import _get_safe_path as validate_safe_path
-    from generate_seed_corpus import _get_safe_path as generate_safe_path
-    from load_seed_corpus import _get_safe_path as load_safe_path
+    validate_safe_path = validate_audit_trail._get_safe_path
+    generate_safe_path = generate_seed_corpus._get_safe_path
+    load_safe_path = load_seed_corpus._get_safe_path
 
     # Legitimate relative paths should succeed
     assert validate_safe_path("report.json")
