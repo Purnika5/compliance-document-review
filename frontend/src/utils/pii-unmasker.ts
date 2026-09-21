@@ -9,7 +9,7 @@
  * Unmasked text must NEVER be transmitted back to AI APIs or external endpoints.
  */
 
-export const PII_PLACEHOLDER_REGEX = /\[(NAME|EMAIL|SSN|PHONE|ACCOUNT|CARD|ADDRESS|ZIP|DATE)_[0-9]+\]/g;
+export const PII_PLACEHOLDER_REGEX = /\[(NAME|EMAIL|SSN|PHONE|ACCOUNT|CARD|ADDRESS|ZIP|DATE)_(?:[0-9]+|FALLBACK)\]/g;
 
 /**
  * Checks whether a given string contains any DevOps PII placeholder tags.

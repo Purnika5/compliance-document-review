@@ -1026,14 +1026,28 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
 
                   <div className="bg-white p-4 rounded-xl border border-[#E6E8E7] font-mono text-[11px] leading-relaxed text-[#183028] whitespace-pre-wrap max-h-[520px] overflow-y-auto">
                     {currentDocItem.maskedText || currentDocItem.originalText ? (
-                      renderHighlightedText(
-                        isOfficer && isUnmasked
-                          ? unmaskText(currentDocItem.maskedText || currentDocItem.originalText || "", piiMap)
-                          : currentDocItem.maskedText || currentDocItem.originalText || "",
-                        isOfficer && isUnmasked && selectedFlag?.passage
-                          ? unmaskText(selectedFlag.passage, piiMap)
-                          : selectedFlag?.passage
-                      )
+                      isOfficer && isUnmasked && currentDocItem.originalText
+                        ? renderHighlightedText(
+                            currentDocItem.originalText,
+                            selectedFlag?.passage
+                          )
+                        : isOfficer && isUnmasked && !currentDocItem.originalText
+                        ? (
+                            <div className="text-[#183028]/60 italic text-xs font-sans space-y-2">
+                              <p className="font-semibold text-[#183028] not-italic">Raw PII Unavailable</p>
+                              <p>The original unmasked document text is not stored for security compliance. PII fields are permanently redacted in the system.</p>
+                              <div className="mt-3 pt-3 border-t border-[#E6E8E7] not-italic">
+                                {renderHighlightedText(
+                                  currentDocItem.maskedText || "",
+                                  selectedFlag?.passage
+                                )}
+                              </div>
+                            </div>
+                          )
+                        : renderHighlightedText(
+                            currentDocItem.maskedText || currentDocItem.originalText || "",
+                            selectedFlag?.passage
+                          )
                     ) : (
                       <div className="text-[#183028]/70 italic space-y-2 font-sans">
                         <p className="font-semibold text-[#183028] not-italic">Extracted Content Preview:</p>
