@@ -1,6 +1,6 @@
 import React, { useSyncExternalStore } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { authStore, type UserSession } from "@/lib/auth/auth-store";
 import { CompanyLogo } from "@/components/ui/brand-logos";
 import { cn } from "@/lib/utils";
@@ -21,6 +21,7 @@ export function AppSidebar({
   isOpenMobile = false,
   onCloseMobile,
 }: AppSidebarProps) {
+  const router = useRouter();
   const pathname = usePathname();
   const session = useSyncExternalStore<UserSession | null>(
     authStore.subscribe,
@@ -141,9 +142,11 @@ export function AppSidebar({
               <Link
                 key={idx}
                 href={item.href || "#"}
-                onClick={onCloseMobile}
+                onClick={() => {
+                  if (onCloseMobile) onCloseMobile();
+                }}
                 className={cn(
-                  "group flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all duration-150 cursor-pointer",
+                  "group flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all duration-150 cursor-pointer select-none",
                   item.active
                     ? "bg-[#C5E86C] text-[#183028] font-bold shadow-xs"
                     : "text-[#183028] font-semibold hover:bg-[#C5E86C]/20"

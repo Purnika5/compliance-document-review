@@ -8,6 +8,7 @@
  */
 import { useState } from "react";
 import { uploadDocumentAction } from "@/lib/actions/document-actions";
+import { showSuccessToast, showErrorToast } from "@/components/ui/toast";
 import type { UploadDocumentInput, DocumentItem } from "@/lib/validation/document";
 
 /**
@@ -39,12 +40,14 @@ export function useUploadDocument(onSuccess?: (doc: DocumentItem) => void) {
       const doc = await uploadDocumentAction(data);
       setIsPending(false);
       setIsOpen(false);
+      showSuccessToast("Document Uploaded", `"${doc.title}" was successfully submitted for review.`);
       if (onSuccess) onSuccess(doc);
       return doc;
     } catch (err) {
       setIsPending(false);
       const msg = err instanceof Error ? err.message : "Document upload failed.";
       setError(msg);
+      showErrorToast("Submission Failed", msg);
       return null;
     }
   };

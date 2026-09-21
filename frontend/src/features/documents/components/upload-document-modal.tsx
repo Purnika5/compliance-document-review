@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Alert } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -214,8 +213,6 @@ export function UploadDocumentModal({
             </React.Fragment>
           ))}
         </div>
-
-        {error && <Alert variant="error" title="Submission Failed" message={error} />}
 
         {step === "details" && (
           <form onSubmit={handleProceedToValidation} noValidate className="space-y-3.5 pt-1 min-w-0">
