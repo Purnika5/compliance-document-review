@@ -53,9 +53,16 @@ function AppSidebarContent({
       href: "/dashboard",
       icon: LayoutDashboard,
       active:
-        pathname === "/dashboard" ||
+        (pathname === "/dashboard" ||
         pathname.startsWith("/submissions") ||
-        pathname.startsWith("/documents"),
+        pathname.startsWith("/documents")) &&
+        pathname !== "/audit",
+    },
+    {
+      label: "Audit Trail",
+      href: "/audit",
+      icon: History,
+      active: pathname === "/audit",
     },
     {
       label: "Account & Preferences",

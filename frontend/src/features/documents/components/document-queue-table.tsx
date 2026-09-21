@@ -40,7 +40,6 @@ import {
   AlertCircle,
   ShieldCheck,
   Filter,
-  Percent,
   Calendar,
 } from "lucide-react";
 import { DateFilterModal, type DateFilterPreset } from "./date-filter-modal";
@@ -353,7 +352,6 @@ export function DocumentQueueTable() {
               <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider truncate">
                 Review throughput
               </p>
-              <Percent className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
             </div>
             <div className="mt-2 flex items-baseline justify-between gap-2">
               <h3 className="text-3xl font-bold text-foreground tracking-tight">{queueThroughput}%</h3>

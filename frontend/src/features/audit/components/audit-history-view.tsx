@@ -6,7 +6,9 @@
  * @returns The institutional audit history view.
  * @author Keith
  */
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useSyncExternalStore } from "react";
+import { useSearchParams } from "next/navigation";
+import { authStore } from "@/lib/auth/auth-store";
 import { useDocuments } from "@/features/documents/hooks/use-documents";
 import { auditService } from "@/services/audit.service";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -54,13 +56,26 @@ export interface AuditLedgerEntry {
 }
 
 export function AuditHistoryView() {
-  const { documents, isPending: isLoadingDocs } = useDocuments("queue");
+  const searchParams = useSearchParams();
+  const documentIdParam = searchParams.get("documentId");
+
+  const session = useSyncExternalStore(authStore.subscribe, authStore.getSession, authStore.getServerSnapshot);
+  const isAdvisor = session?.role === "Advisor";
+  const docMode = isAdvisor ? "my-submissions" : "queue";
+
+  const { documents, isPending: isLoadingDocs } = useDocuments(docMode);
   const [entries, setEntries] = useState<AuditLedgerEntry[]>([]);
   const [isLoadingAudit, setIsLoadingAudit] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(documentIdParam || "");
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [categoryFilter, setCategoryFilter] = useState<string>("All");
   const [verifiedMessage, setVerifiedMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (documentIdParam) {
+      setSearchQuery(documentIdParam);
+    }
+  }, [documentIdParam]);
 
   // Fetch audit records across active documents
   useEffect(() => {
@@ -222,26 +237,45 @@ export function AuditHistoryView() {
 
   return (
     <div className="space-y-4 max-w-[1600px] mx-auto pb-16 print:space-y-0 print:pb-0 print:max-w-none print:w-full">
-      {/* Header Actions */}
-      <div className="flex items-center justify-end gap-2 print:hidden">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleExportCsv}
-          className="text-xs border border-[#E6E8E7] bg-white hover:bg-[#C5E86C]/20 hover:border-[#183028] text-[#183028] font-semibold gap-1.5 cursor-pointer rounded-xl shadow-2xs transition-colors"
-        >
-          <FileSpreadsheet className="h-3.5 w-3.5 text-[#183028]/60" />
-          Export CSV
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => window.print()}
-          className="text-xs border border-[#E6E8E7] bg-white hover:bg-[#C5E86C]/20 hover:border-[#183028] text-[#183028] font-semibold gap-1.5 cursor-pointer rounded-xl shadow-2xs transition-colors"
-        >
-          <Printer className="h-3.5 w-3.5 text-[#183028]/60" />
-          Print Ledger
-        </Button>
+      {/* Header Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E6E8E7] pb-4 print:border-none">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold text-[#183028] tracking-tight">
+              {isAdvisor ? "Submission Audit Trail" : "Regulatory Audit Ledger"}
+            </h1>
+            <span className="text-[10px] bg-[#C5E86C]/45 text-[#183028] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+              {isAdvisor ? "Advisor Portfolio" : "Official Queue"}
+            </span>
+          </div>
+          <p className="text-xs text-[#183028]/60 mt-1">
+            {isAdvisor
+              ? "Chronological audit trail and immutable event history for your document submissions."
+              : "Cryptographically verified, immutable record of all compliance determinations and workflow transitions."}
+          </p>
+        </div>
+
+        {/* Header Actions */}
+        <div className="flex items-center gap-2 print:hidden">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportCsv}
+            className="text-xs border border-[#E6E8E7] bg-white hover:bg-[#C5E86C]/20 hover:border-[#183028] text-[#183028] font-semibold gap-1.5 cursor-pointer rounded-xl shadow-2xs transition-colors"
+          >
+            <FileSpreadsheet className="h-3.5 w-3.5 text-[#183028]/60" />
+            Export CSV
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.print()}
+            className="text-xs border border-[#E6E8E7] bg-white hover:bg-[#C5E86C]/20 hover:border-[#183028] text-[#183028] font-semibold gap-1.5 cursor-pointer rounded-xl shadow-2xs transition-colors"
+          >
+            <Printer className="h-3.5 w-3.5 text-[#183028]/60" />
+            Print Ledger
+          </Button>
+        </div>
       </div>
 
       {/* Verification Message */}

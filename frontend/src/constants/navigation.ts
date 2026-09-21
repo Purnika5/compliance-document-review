@@ -20,6 +20,11 @@ export const NAVIGATION_CONFIG: Record<RoleType, NavItem[]> = {
       iconName: "FileText",
     },
     {
+      title: "Audit Trail",
+      href: "/audit",
+      iconName: "Clock",
+    },
+    {
       title: "Upload Document",
       href: "/dashboard?upload=true",
       iconName: "Upload",
@@ -33,7 +38,7 @@ export const NAVIGATION_CONFIG: Record<RoleType, NavItem[]> = {
     },
     {
       title: "Audit Trail",
-      href: "/queue",
+      href: "/audit",
       iconName: "Clock",
     },
   ],

@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { authStore, type UserSession } from "@/lib/auth/auth-store";
 import { AppSidebar } from "@/components/layouts/app-sidebar";
 import { AppHeader } from "@/components/layouts/app-header";
-import { ChatbotWidget } from "@/components/ui/chatbot-widget";
 import { Loader2 } from "lucide-react";
 
 /**
@@ -64,11 +63,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-[1600px] w-full mx-auto print:p-0 print:m-0 print:max-w-none">
           {children}
         </main>
-      </div>
-
-      {/* Floating Institutional Compliance Copilot */}
-      <div className="print:hidden">
-        <ChatbotWidget />
       </div>
 
     </div>
