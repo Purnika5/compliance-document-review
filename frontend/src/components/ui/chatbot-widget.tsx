@@ -207,15 +207,13 @@ export function ChatbotWidget() {
         let answer = LOGIN_KNOWLEDGE_BASE.default;
 
         if (
-          lower.includes("demo") ||
+          lower.includes("access") ||
           lower.includes("account") ||
-          lower.includes("credential") ||
-          lower.includes("login") ||
-          lower.includes("password") ||
-          lower.includes("alex") ||
-          lower.includes("sarah")
+          lower.includes("permission") ||
+          lower.includes("register") ||
+          lower.includes("role")
         ) {
-          answer = LOGIN_KNOWLEDGE_BASE.credentials;
+          answer = LOGIN_KNOWLEDGE_BASE.access;
         } else if (
           lower.includes("format") ||
           lower.includes("pdf") ||
@@ -311,7 +309,7 @@ export function ChatbotWidget() {
     : DASHBOARD_SUGGESTED_QUESTIONS;
 
   const currentPlaceholder = isLoginMode
-    ? "Ask about demo accounts, guidelines, formats..."
+    ? "Ask about guidelines, classifications, formats..."
     : activeTab === "grammar"
     ? "Paste draft note or text to recheck grammar..."
     : activeTab === "documentation"

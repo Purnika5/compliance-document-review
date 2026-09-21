@@ -13,7 +13,7 @@ export const LOGIN_INITIAL_MESSAGES: IChatMessage[] = [
   {
     id: "login-greeting",
     sender: "bot",
-    text: "Welcome to the Springer Capital Compliance Portal. I can provide platform orientation, demo credentials, supported submission formats, and institutional access guidelines before you sign in.",
+    text: "Welcome to the Springer Capital Compliance Portal. I can provide platform orientation, supported submission formats, and institutional access guidelines before you sign in.",
     timestamp: "Live",
   },
 ];
@@ -22,10 +22,10 @@ export const LOGIN_INITIAL_MESSAGES: IChatMessage[] = [
  * DOCU: Quick-select topics displayed on the login screen.
  */
 export const LOGIN_SUGGESTED_QUESTIONS: string[] = [
-  "What are the demo login accounts?",
   "What is the Springer Capital portal?",
   "What document formats are accepted?",
   "How does compliance review work?",
+  "How do role permissions work?",
 ];
 
 /**
@@ -33,9 +33,9 @@ export const LOGIN_SUGGESTED_QUESTIONS: string[] = [
  */
 export const LOGIN_KNOWLEDGE_BASE: Record<string, string> = {
   default:
-    "Springer Capital Compliance Portal Assistant. Before signing in, you can inquire about platform features, demo login credentials, supported file formats, or institutional security standards.",
-  credentials:
-    "Available Demo Credentials for Institutional Testing:\n\n• Compliance Officer:\n  Email: alex.smith@springercapital.com\n  Role: Reviews pending filings, manages queues, and records official compliance determinations.\n\n• Investment Advisor:\n  Email: sarah.j@springercapital.com\n  Role: Submits proposal documents, tracks review statuses, and responds to revision requests.\n\n• Platform Administrator:\n  Email: admin@springercapital.com\n  Role: System configuration, audit logs, and security oversight.\n\n(Password: Any valid password meeting length requirements or demo standard).",
+    "Springer Capital Compliance Portal Assistant. Before signing in, you can inquire about platform features, supported file formats, or institutional security standards.",
+  access:
+    "System Access & Account Inquiries:\n\nSpringer Capital operates a restricted institutional compliance platform. Accounts are provisioned directly by your compliance administrator.\n\n• Compliance Officers: Authorized compliance personnel with review and determination authority.\n• Investment Advisors: Licensed advisors provisioned for proposal submission and portfolio tracking.\n\nTo request access or reset credentials, contact your enterprise compliance administrator.",
   overview:
     "Springer Capital Compliance Document Review is an enterprise institutional platform designed for financial compliance teams. It automates proposal vetting, verifies regulatory requirements (SEC Rule 206(4)-1 and FINRA Rule 2210), and maintains an immutable audit trail of officer determinations.",
   formats:
