@@ -542,12 +542,6 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
                 {title}
               </h1>
               <StatusBadge status={status} />
-              {isOfficer && isAlreadyDetermined && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#E6E8E7]/60 text-[#183028] border border-[#d4d7d5]">
-                  <Eye className="h-3 w-3" />
-                  View Only
-                </span>
-              )}
             </div>
             <p className="text-[11px] text-[#183028]/60 hidden sm:block">
               Advisor: {currentDocItem?.submittedBy || "System User"} • Submitted {currentDocItem?.submittedAt ? new Date(currentDocItem.submittedAt).toLocaleDateString() : "Recently"} • Category: {currentDocItem?.category || "General"}
