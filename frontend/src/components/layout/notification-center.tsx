@@ -174,12 +174,18 @@ export function NotificationCenter() {
       window.addEventListener("compliance-notification-refresh", handleRefresh);
     }
 
+    const prevToken = { current: authStore.getToken() };
+
     const unsubscribeAuth = authStore.subscribe(() => {
-      if (disconnectSSE) {
-        disconnectSSE();
-        disconnectSSE = null;
+      const currentToken = authStore.getToken();
+      if (currentToken !== prevToken.current) {
+        prevToken.current = currentToken;
+        if (disconnectSSE) {
+          disconnectSSE();
+          disconnectSSE = null;
+        }
+        initialize();
       }
-      initialize();
     });
 
     return () => {
