@@ -40,7 +40,6 @@ import {
   AlertCircle,
   ShieldCheck,
   Filter,
-  Percent,
   Calendar,
 } from "lucide-react";
 import { DateFilterModal, type DateFilterPreset } from "./date-filter-modal";
@@ -80,16 +79,21 @@ export function DocumentQueueTable() {
   } | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
-  if (isPending) {
-    return <QueueSkeleton />;
-  }
+  const trendData = React.useMemo(() => {
+    return generateMetricTrends(
+      documents,
+      dateFilterPreset,
+      customStartDate,
+      customEndDate
+    );
+  }, [documents, dateFilterPreset, customStartDate, customEndDate]);
 
   const handleDecisionExecution = async (
     status: "Approved" | "Needs Revision" | "Rejected",
     comment: string
   ) => {
     if (!decisionDoc) return;
-    const docDisplayId = `DOC-${decisionDoc.id.slice(-4).toUpperCase()}`;
+    const docDisplayId = `DOC-${(decisionDoc.id || "0000").slice(-4).toUpperCase()}`;
     try {
       await updateDocumentStatusAction(decisionDoc.id, status, comment);
       const target = documents.find((d) => d.id === decisionDoc.id);
@@ -204,15 +208,6 @@ export function DocumentQueueTable() {
         : b.status.localeCompare(a.status);
     });
 
-  const trendData = React.useMemo(() => {
-    return generateMetricTrends(
-      documents,
-      dateFilterPreset,
-      customStartDate,
-      customEndDate
-    );
-  }, [documents, dateFilterPreset, customStartDate, customEndDate]);
-
   const queueVolume = dateFilterPreset !== "All" ? (trendData.total[trendData.total.length - 1] ?? 0) : (queueCounts?.All ?? documents.length);
   const queuePending = dateFilterPreset !== "All" ? (trendData.pending[trendData.pending.length - 1] ?? 0) : (queueCounts?.Pending ?? documents.filter((d) => d.status === "Pending").length);
   const queueRevision = dateFilterPreset !== "All" ? (trendData.needsRevision[trendData.needsRevision.length - 1] ?? 0) : (queueCounts?.["Needs Revision"] ?? documents.filter((d) => d.status === "Needs Revision").length);
@@ -228,6 +223,10 @@ export function DocumentQueueTable() {
       ? (trendData.rejected[trendData.rejected.length - 1] ?? 0)
       : (queueCounts?.Rejected ?? documents.filter((d) => d.status === "Rejected").length),
   };
+
+  if (isPending) {
+    return <QueueSkeleton />;
+  }
 
   return (
     <div className="space-y-4 max-w-[1600px] mx-auto pb-16">
@@ -353,7 +352,6 @@ export function DocumentQueueTable() {
               <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider truncate">
                 Review throughput
               </p>
-              <Percent className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
             </div>
             <div className="mt-2 flex items-baseline justify-between gap-2">
               <h3 className="text-3xl font-bold text-foreground tracking-tight">{queueThroughput}%</h3>
@@ -496,7 +494,7 @@ export function DocumentQueueTable() {
                     className="hover:bg-muted/40 transition-colors cursor-pointer group"
                   >
                     <TableCell className="pl-4 font-mono text-xs font-semibold text-[#183028]">
-                      DOC-{doc.id.slice(-4).toUpperCase()}
+                      DOC-{(doc.id || "0000").slice(-4).toUpperCase()}
                     </TableCell>
 
                     <TableCell>
@@ -538,66 +536,78 @@ export function DocumentQueueTable() {
 
                     <TableCell className="text-right pr-4" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1.5">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => router.push(`/documents/${doc.id}`)}
-                          className="h-7 px-2.5 rounded border-border text-xs font-medium text-foreground bg-transparent hover:bg-[#C5E86C]/20 hover:text-[#183028] hover:border-[#183028] transition-colors gap-1"
-                        >
-                          <Eye className="h-3 w-3" />
-                          <span>Review</span>
-                        </Button>
-
-                        {doc.status !== "Approved" && (
-                          <button
-                            title="Quick Approve"
-                            onClick={() =>
-                              setDecisionDoc({
-                                id: doc.id,
-                                title: doc.title,
-                                type: "Approved",
-                              })
-                            }
-                            className="inline-flex h-7 items-center gap-1 rounded bg-[#C5E86C]/30 border border-[#183028] px-2.5 text-xs font-semibold text-[#183028] hover:bg-[#C5E86C] transition-colors cursor-pointer"
+                        {doc.status !== "Pending" ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => router.push(`/documents/${doc.id}`)}
+                            className="h-7 px-2.5 rounded-md border-border text-xs font-semibold text-muted-foreground bg-muted/20 hover:bg-[#C5E86C]/20 hover:text-[#183028] hover:border-[#183028] transition-colors gap-1.5 cursor-pointer shadow-2xs"
                           >
-                            <CheckCircle2 className="h-3 w-3" />
-                            <span>Approve</span>
-                          </button>
-                        )}
+                            <Eye className="h-3.5 w-3.5" />
+                            <span>View Only</span>
+                          </Button>
+                        ) : (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => router.push(`/documents/${doc.id}`)}
+                              className="h-7 px-2.5 rounded border-border text-xs font-medium text-foreground bg-transparent hover:bg-[#C5E86C]/20 hover:text-[#183028] hover:border-[#183028] transition-colors gap-1 shadow-2xs"
+                            >
+                              <Eye className="h-3 w-3" />
+                              <span>Review</span>
+                            </Button>
 
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button className="h-7 w-7 rounded-md bg-transparent hover:bg-[#C5E86C]/20 text-muted-foreground hover:text-[#183028] hover:border-[#183028] flex items-center justify-center transition-colors cursor-pointer border border-border">
-                              <MoreHorizontal className="h-3.5 w-3.5" />
+                            <button
+                              title="Quick Approve"
+                              onClick={() =>
+                                setDecisionDoc({
+                                  id: doc.id,
+                                  title: doc.title,
+                                  type: "Approved",
+                                })
+                              }
+                              className="inline-flex h-7 items-center gap-1 rounded bg-[#C5E86C]/30 border border-[#183028] px-2.5 text-xs font-semibold text-[#183028] hover:bg-[#C5E86C] transition-colors cursor-pointer shadow-2xs"
+                            >
+                              <CheckCircle2 className="h-3 w-3" />
+                              <span>Approve</span>
                             </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48 bg-[#FFFFFF] shadow-xl rounded-xl border-[#E6E8E7] p-1">
-                            <DropdownMenuItem
-                              className="text-xs cursor-pointer gap-2 font-medium text-amber-800 hover:bg-amber-50 rounded-md px-2 py-1.5"
-                              onClick={() =>
-                                setDecisionDoc({
-                                  id: doc.id,
-                                  title: doc.title,
-                                  type: "Needs Revision",
-                                })
-                              }
-                            >
-                              <AlertCircle className="h-3.5 w-3.5" /> Request Revision
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-xs cursor-pointer gap-2 font-medium text-rose-800 hover:bg-rose-50 rounded-md px-2 py-1.5"
-                              onClick={() =>
-                                setDecisionDoc({
-                                  id: doc.id,
-                                  title: doc.title,
-                                  type: "Rejected",
-                                })
-                              }
-                            >
-                              <XCircle className="h-3.5 w-3.5" /> Reject Proposal
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button className="h-7 w-7 rounded-md bg-transparent hover:bg-[#C5E86C]/20 text-muted-foreground hover:text-[#183028] hover:border-[#183028] flex items-center justify-center transition-colors cursor-pointer border border-border shadow-2xs">
+                                  <MoreHorizontal className="h-3.5 w-3.5" />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-48 bg-[#FFFFFF] shadow-xl rounded-xl border-[#E6E8E7] p-1">
+                                <DropdownMenuItem
+                                  className="text-xs cursor-pointer gap-2 font-medium text-amber-800 hover:bg-amber-50 rounded-md px-2 py-1.5"
+                                  onClick={() =>
+                                    setDecisionDoc({
+                                      id: doc.id,
+                                      title: doc.title,
+                                      type: "Needs Revision",
+                                    })
+                                  }
+                                >
+                                  <AlertCircle className="h-3.5 w-3.5" /> Request Revision
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-xs cursor-pointer gap-2 font-medium text-rose-800 hover:bg-rose-50 rounded-md px-2 py-1.5"
+                                  onClick={() =>
+                                    setDecisionDoc({
+                                      id: doc.id,
+                                      title: doc.title,
+                                      type: "Rejected",
+                                    })
+                                  }
+                                >
+                                  <XCircle className="h-3.5 w-3.5" /> Reject Proposal
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

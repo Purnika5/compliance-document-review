@@ -1,0 +1,702 @@
+[
+  {
+    "id": "a8cd140e-6c06-4b40-b3e3-b1f2d7042189",
+    "document_id": "e959d23d-e299-4169-b08d-0e2c3bf6bd52",
+    "passage": "We guarantee you will double your investment within two years.",
+    "outcome": "flagged",
+    "explanation": "Prohibited guaranteed-return claim under FINRA 2210."
+  },
+  {
+    "id": "c02eff2d-eb0e-4e43-8392-70c71495e121",
+    "document_id": "19e1a6ab-a538-46dc-a09a-f2b7ab14ed6f",
+    "passage": "The advisor disclosed the referral fee received from the fund manager prior to recommendation.",
+    "outcome": "cleared",
+    "explanation": "Conflict of interest properly disclosed; satisfies SEC 206."
+  },
+  {
+    "id": "448e6391-c6bf-4b0d-abf7-216d7c861f13",
+    "document_id": "5db95f6e-eada-404c-aec6-4fc4cc67beb7",
+    "passage": "This recommendation was made after reviewing the client's risk tolerance and investment horizon.",
+    "outcome": "cleared",
+    "explanation": "Suitability basis documented; satisfies FINRA 2111."
+  },
+  {
+    "id": "2430001f-a640-4e34-96de-cc82e24b2c57",
+    "document_id": "155c516d-3dee-4acb-a338-0bb8e2e50dfc",
+    "passage": "This recommendation was made after reviewing the client's risk tolerance and investment horizon.",
+    "outcome": "cleared",
+    "explanation": "Suitability basis documented; satisfies FINRA 2111."
+  },
+  {
+    "id": "0cbaa230-2e23-466e-87cb-27793a95174d",
+    "document_id": "5e9746a1-675a-44f2-8ef4-0fe1a61765c5",
+    "passage": "This fund has consistently outperformed the market every single year without exception.",
+    "outcome": "flagged",
+    "explanation": "Exaggerated, unverifiable performance claim; misleading under FINRA 2210."
+  },
+  {
+    "id": "c9892da3-a7c2-4a5d-9685-5d3845c514b9",
+    "document_id": "19512457-93ec-4938-8e9b-bccf1c7fdafa",
+    "passage": "We guarantee you will double your investment within two years.",
+    "outcome": "flagged",
+    "explanation": "Prohibited guaranteed-return claim under FINRA 2210."
+  },
+  {
+    "id": "4bbb04ad-3aea-4dc3-a1e7-6c56d9f697c8",
+    "document_id": "b70a7e5a-a950-451e-82c8-1567e0d41afe",
+    "passage": "Past performance is not indicative of future results, and all investments carry risk of loss.",
+    "outcome": "cleared",
+    "explanation": "Proper risk disclosure present; satisfies SEC risk disclosure requirement."
+  },
+  {
+    "id": "ac402fcd-88b1-42f2-bd1e-4916f75a91af",
+    "document_id": "299f99ae-2e5e-4c10-93b3-e0450a6493fa",
+    "passage": "Historical returns guarantee future fund performance.",
+    "outcome": "flagged",
+    "explanation": "Guaranteed performance statement violates FINRA 2210."
+  },
+  {
+    "id": "84148bbe-f30e-4d01-bbb1-f44eb123bf8a",
+    "document_id": "43504020-9d0d-4274-beb8-a290b164c35a",
+    "passage": "This fund has consistently outperformed the market every single year without exception.",
+    "outcome": "flagged",
+    "explanation": "Exaggerated, unverifiable performance claim; misleading under FINRA 2210."
+  },
+  {
+    "id": "12709eae-c512-4db5-a8a4-7af432128b3f",
+    "document_id": "094b4775-b262-4b95-8c6f-1eb5ca12bbb4",
+    "passage": "Past performance is not indicative of future results, and all investments carry risk of loss.",
+    "outcome": "cleared",
+    "explanation": "Proper risk disclosure present; satisfies SEC risk disclosure requirement."
+  },
+  {
+    "id": "d4229b52-4502-4b7c-8e12-85e72800abce",
+    "document_id": "afb830d2-8aec-4283-84d3-0028adec3526",
+    "passage": "This recommendation was made after reviewing the client's risk tolerance and investment horizon.",
+    "outcome": "cleared",
+    "explanation": "Suitability basis documented; satisfies FINRA 2111."
+  },
+  {
+    "id": "068891b3-2719-4f8d-a90f-01e39f75eef7",
+    "document_id": "dbfaf29b-8449-4aaa-a939-7ec6c10d5324",
+    "passage": "This recommendation was made after reviewing the client's risk tolerance and investment horizon.",
+    "outcome": "cleared",
+    "explanation": "Suitability basis documented; satisfies FINRA 2111."
+  },
+  {
+    "id": "7fd1043d-cc0f-4443-924d-41c94cbfc945",
+    "document_id": "2ed46f99-dd49-411e-93da-6d7b97a20b27",
+    "passage": "The advisor disclosed the referral fee received from the fund manager prior to recommendation.",
+    "outcome": "cleared",
+    "explanation": "Conflict of interest properly disclosed; satisfies SEC 206."
+  },
+  {
+    "id": "4a137c82-bf04-4e90-92bc-dfd7dad45e32",
+    "document_id": "bab57d5d-ec52-4847-9f3f-610d0023ac25",
+    "passage": "Past performance is not indicative of future results, and all investments carry risk of loss.",
+    "outcome": "cleared",
+    "explanation": "Proper risk disclosure present; satisfies SEC risk disclosure requirement."
+  },
+  {
+    "id": "c66263fc-1b42-4464-ad34-c11a7ed1743d",
+    "document_id": "31c48b0c-2e52-4d7b-af8b-45a9c50d545e",
+    "passage": "We guarantee you will double your investment within two years.",
+    "outcome": "flagged",
+    "explanation": "Prohibited guaranteed-return claim under FINRA 2210."
+  },
+  {
+    "id": "505b4c53-cd36-4c1e-8525-0c3f4c078f53",
+    "document_id": "54e0e57b-ec64-4280-9763-5630abb0df67",
+    "passage": "The advisor did not disclose the commission earned from recommending this annuity product.",
+    "outcome": "flagged",
+    "explanation": "Undisclosed conflict of interest violates SEC 206 fiduciary duty rules."
+  },
+  {
+    "id": "820fe3ef-12d0-4595-886f-0f372f9a5e6c",
+    "document_id": "ec556f68-f691-488f-ae93-4b970158743f",
+    "passage": "The advisor did not disclose the commission earned from recommending this annuity product.",
+    "outcome": "flagged",
+    "explanation": "Undisclosed conflict of interest violates SEC 206 fiduciary duty rules."
+  },
+  {
+    "id": "d392a23d-e75f-4cf0-9853-1de422e7e6c5",
+    "document_id": "1748b7d4-03dc-4942-b6fb-1b57519f9395",
+    "passage": "All applicable fees and expenses for this account are itemized in the attached fee schedule.",
+    "outcome": "cleared",
+    "explanation": "Fee disclosure complete; satisfies FINRA 2214."
+  },
+  {
+    "id": "729fa1f9-a454-492e-93cd-628c339569aa",
+    "document_id": "5ad7d2ef-aabd-4888-ac9e-2fe78af4502b",
+    "passage": "Past performance is not indicative of future results, and all investments carry risk of loss.",
+    "outcome": "cleared",
+    "explanation": "Proper risk disclosure present; satisfies SEC risk disclosure requirement."
+  },
+  {
+    "id": "afaf84b6-a8c8-468a-9c60-7dfa3485f75a",
+    "document_id": "a73663e3-cd55-4f2a-a149-89e1ed471861",
+    "passage": "We guarantee you will double your investment within two years.",
+    "outcome": "flagged",
+    "explanation": "Prohibited guaranteed-return claim under FINRA 2210."
+  },
+  {
+    "id": "ea089719-80db-404a-a200-599284bee5e0",
+    "document_id": "1ecc19b9-7b68-4ff0-bd43-288ca9e259ad",
+    "passage": "We guarantee you will double your investment within two years.",
+    "outcome": "flagged",
+    "explanation": "Prohibited guaranteed-return claim under FINRA 2210."
+  },
+  {
+    "id": "831dda6a-d92b-4717-82e0-9d3ac4a57d27",
+    "document_id": "0033b879-1fe1-4c1c-9f7b-503ae735a6f8",
+    "passage": "The advisor did not disclose the commission earned from recommending this annuity product.",
+    "outcome": "flagged",
+    "explanation": "Undisclosed conflict of interest violates SEC 206 fiduciary duty rules."
+  },
+  {
+    "id": "126e286a-0a10-4a98-9bfd-981a2a9a7f7b",
+    "document_id": "d3a24da7-4948-4bdc-a387-8a9718b5adc2",
+    "passage": "All applicable fees and expenses for this account are itemized in the attached fee schedule.",
+    "outcome": "cleared",
+    "explanation": "Fee disclosure complete; satisfies FINRA 2214."
+  },
+  {
+    "id": "b2db505b-e707-497b-be39-151517060024",
+    "document_id": "98dcf721-4c23-4e9c-a293-42525687ea0c",
+    "passage": "The advisor did not disclose the commission earned from recommending this annuity product.",
+    "outcome": "flagged",
+    "explanation": "Undisclosed conflict of interest violates SEC 206 fiduciary duty rules."
+  },
+  {
+    "id": "027d8709-a69b-46fa-87f4-43ff96085f4f",
+    "document_id": "256a2f60-eeaa-414d-986f-722a35a0a187",
+    "passage": "We guarantee you will double your investment within two years.",
+    "outcome": "flagged",
+    "explanation": "Prohibited guaranteed-return claim under FINRA 2210."
+  },
+  {
+    "id": "ba88cf1d-177e-44d2-8282-14f3b6dff902",
+    "document_id": "1eefb790-67c1-4554-9a9f-f26d7cb9f26b",
+    "passage": "Past performance is not indicative of future results, and all investments carry risk of loss.",
+    "outcome": "cleared",
+    "explanation": "Proper risk disclosure present; satisfies SEC risk disclosure requirement."
+  },
+  {
+    "id": "0030e737-7754-48de-80b2-f0191a6a13ed",
+    "document_id": "497985d1-b27f-4551-8aa9-1bc140c06615",
+    "passage": "The advisor disclosed the referral fee received from the fund manager prior to recommendation.",
+    "outcome": "cleared",
+    "explanation": "Conflict of interest properly disclosed; satisfies SEC 206."
+  },
+  {
+    "id": "9f17ee38-38ef-4ed5-83a6-1bf6488e7378",
+    "document_id": "a1713909-3ef0-470e-8191-342e68ce8730",
+    "passage": "Past performance is not indicative of future results, and all investments carry risk of loss.",
+    "outcome": "cleared",
+    "explanation": "Proper risk disclosure present; satisfies SEC risk disclosure requirement."
+  },
+  {
+    "id": "4a7ce331-3126-4c71-a636-4fa62ee1484c",
+    "document_id": "fa134919-d710-4e55-9ea5-e3386274be40",
+    "passage": "The advisor did not disclose the commission earned from recommending this annuity product.",
+    "outcome": "flagged",
+    "explanation": "Undisclosed conflict of interest violates SEC 206 fiduciary duty rules."
+  },
+  {
+    "id": "49f97d67-8705-495e-a16b-cc8442e85a41",
+    "document_id": "62fd7128-9456-4dde-adfc-5ee6945307d7",
+    "passage": "This fund has consistently outperformed the market every single year without exception.",
+    "outcome": "flagged",
+    "explanation": "Exaggerated, unverifiable performance claim; misleading under FINRA 2210."
+  },
+  {
+    "id": "82793cc6-e06e-402e-a08e-9b7f0182b807",
+    "document_id": "d77c92ac-dc31-4a02-b284-66bb43c492e8",
+    "passage": "This fund has consistently outperformed the market every single year without exception.",
+    "outcome": "flagged",
+    "explanation": "Exaggerated, unverifiable performance claim; misleading under FINRA 2210."
+  },
+  {
+    "id": "48760f37-7172-4764-af8b-a474b45938b6",
+    "document_id": "1b43b291-3864-432c-8df4-e0e903cc83ba",
+    "passage": "Past performance is not indicative of future results, and all investments carry risk of loss.",
+    "outcome": "cleared",
+    "explanation": "Proper risk disclosure present; satisfies SEC risk disclosure requirement."
+  },
+  {
+    "id": "8b37752f-eb2e-4d12-8b3b-9f2a16398fb5",
+    "document_id": "5ba8c5a3-e19c-48ef-ab91-59ffad3cca3b",
+    "passage": "This investment carries no risk of principal loss under any market condition.",
+    "outcome": "flagged",
+    "explanation": "False risk-free claim; violates SEC risk disclosure requirement."
+  },
+  {
+    "id": "071c27e7-c8a0-453e-a561-15d19aed4325",
+    "document_id": "2bd7504e-5a92-4287-9718-3a41b2ed7256",
+    "passage": "We guarantee you will double your investment within two years.",
+    "outcome": "flagged",
+    "explanation": "Prohibited guaranteed-return claim under FINRA 2210."
+  },
+  {
+    "id": "9c61617e-24e5-4ad8-83eb-6d0c2215e839",
+    "document_id": "168e59d4-737c-4df5-9d6a-21feb11b613a",
+    "passage": "This fund has consistently outperformed the market every single year without exception.",
+    "outcome": "flagged",
+    "explanation": "Exaggerated, unverifiable performance claim; misleading under FINRA 2210."
+  },
+  {
+    "id": "dc7c549a-ccbf-46f4-88db-8e018264de2f",
+    "document_id": "3a5a3ad4-2fa4-4ccb-9ddd-dfbbebe45fda",
+    "passage": "All applicable fees and expenses for this account are itemized in the attached fee schedule.",
+    "outcome": "cleared",
+    "explanation": "Fee disclosure complete; satisfies FINRA 2214."
+  },
+  {
+    "id": "b64ad3f5-2e48-4aa4-9094-446ba293ae29",
+    "document_id": "dcac53a7-5f21-48c2-bfa8-71b534a2d120",
+    "passage": "We guarantee you will double your investment within two years.",
+    "outcome": "flagged",
+    "explanation": "Prohibited guaranteed-return claim under FINRA 2210."
+  },
+  {
+    "id": "0b89ad39-2a15-4907-9b53-d5d68b1c3f36",
+    "document_id": "49c3392d-fb9b-4402-9801-8736006c5c61",
+    "passage": "This recommendation was made after reviewing the client's risk tolerance and investment horizon.",
+    "outcome": "cleared",
+    "explanation": "Suitability basis documented; satisfies FINRA 2111."
+  },
+  {
+    "id": "e95ea006-9668-4a35-8490-218f9ad515e7",
+    "document_id": "fc023ed5-17db-4eb6-acaa-90eead289a7b",
+    "passage": "We guarantee you will double your investment within two years.",
+    "outcome": "flagged",
+    "explanation": "Prohibited guaranteed-return claim under FINRA 2210."
+  },
+  {
+    "id": "c6a8731d-6f16-431c-9c47-2a30bd1b5297",
+    "document_id": "6c27b852-6ab1-49db-b77a-d631bf219c3f",
+    "passage": "The advisor did not disclose the commission earned from recommending this annuity product.",
+    "outcome": "flagged",
+    "explanation": "Undisclosed conflict of interest violates SEC 206 fiduciary duty rules."
+  },
+  {
+    "id": "f3e82625-1405-43a8-aec4-e375cfc21633",
+    "document_id": "50ebc36e-a93c-4429-b6b9-a355e7e948f9",
+    "passage": "The advisor disclosed the referral fee received from the fund manager prior to recommendation.",
+    "outcome": "cleared",
+    "explanation": "Conflict of interest properly disclosed; satisfies SEC 206."
+  },
+  {
+    "id": "6ee12f6b-4bfa-415d-b5e8-f849ef3a7eed",
+    "document_id": "d753df95-c8cd-4b8c-aebd-6339b944580b",
+    "passage": "This recommendation was made after reviewing the client's risk tolerance and investment horizon.",
+    "outcome": "cleared",
+    "explanation": "Suitability basis documented; satisfies FINRA 2111."
+  },
+  {
+    "id": "a8bac167-ad07-4ed9-8155-d914ff60cc8e",
+    "document_id": "f1049237-7d52-4c80-a189-ef7c3db53ab2",
+    "passage": "This fund has consistently outperformed the market every single year without exception.",
+    "outcome": "flagged",
+    "explanation": "Exaggerated, unverifiable performance claim; misleading under FINRA 2210."
+  },
+  {
+    "id": "528fc08f-30cf-4f19-80cc-fd933772598a",
+    "document_id": "608bc0d6-7d69-46f5-a435-c39e3c92cd53",
+    "passage": "Historical returns guarantee future fund performance.",
+    "outcome": "flagged",
+    "explanation": "Guaranteed performance statement violates FINRA 2210."
+  },
+  {
+    "id": "f8ce9db8-9c23-4135-a245-9d4880f42436",
+    "document_id": "3b2beddb-d892-4e92-b2d4-6f7e884327b7",
+    "passage": "Historical returns guarantee future fund performance.",
+    "outcome": "flagged",
+    "explanation": "Guaranteed performance statement violates FINRA 2210."
+  },
+  {
+    "id": "8cc8163f-0868-4668-907a-fd1dc910afb0",
+    "document_id": "d8b30eb7-e112-4ca6-a163-d7eb70a61999",
+    "passage": "All applicable fees and expenses for this account are itemized in the attached fee schedule.",
+    "outcome": "cleared",
+    "explanation": "Fee disclosure complete; satisfies FINRA 2214."
+  },
+  {
+    "id": "e4554c45-1eda-40b1-9f03-a347489813e0",
+    "document_id": "04c5a8f9-a93b-4ccf-bafa-c6cc833a18e5",
+    "passage": "All applicable fees and expenses for this account are itemized in the attached fee schedule.",
+    "outcome": "cleared",
+    "explanation": "Fee disclosure complete; satisfies FINRA 2214."
+  },
+  {
+    "id": "9c243b96-9977-48c7-acad-014e06b16b6e",
+    "document_id": "c0a4ea93-2003-41c6-af7a-874f5fba46e0",
+    "passage": "Historical returns guarantee future fund performance.",
+    "outcome": "flagged",
+    "explanation": "Guaranteed performance statement violates FINRA 2210."
+  },
+  {
+    "id": "92b58c0c-bc59-4a65-867d-46444bee9783",
+    "document_id": "2593e8ff-9580-4953-ac4f-053594ce2fde",
+    "passage": "This fund has consistently outperformed the market every single year without exception.",
+    "outcome": "flagged",
+    "explanation": "Exaggerated, unverifiable performance claim; misleading under FINRA 2210."
+  },
+  {
+    "id": "cd0acb2c-39fc-4352-8367-b79b34280024",
+    "document_id": "0ee9de03-0f56-49f6-86a6-ae2fef3dfb42",
+    "passage": "Historical returns guarantee future fund performance.",
+    "outcome": "flagged",
+    "explanation": "Guaranteed performance statement violates FINRA 2210."
+  },
+  {
+    "id": "271fa1c3-d3f6-4d66-bbf0-a38bade26ffd",
+    "document_id": "4e64bd98-ca4a-49c0-9287-545ed0640c78",
+    "passage": "Historical returns guarantee future fund performance.",
+    "outcome": "flagged",
+    "explanation": "Guaranteed performance statement violates FINRA 2210."
+  },
+  {
+    "id": "db6f9b4f-5a09-48bd-b124-634ef288a0cc",
+    "document_id": "e98aa3ca-1de4-418a-992d-e7b03d4c1694",
+    "passage": "All applicable fees and expenses for this account are itemized in the attached fee schedule.",
+    "outcome": "cleared",
+    "explanation": "Fee disclosure complete; satisfies FINRA 2214."
+  },
+  {
+    "id": "82b2b997-4b45-4776-a122-8a7984b9784d",
+    "document_id": "c77cd82a-18fa-46f6-92a7-ab56cba26e24",
+    "passage": "This investment carries no risk of principal loss under any market condition.",
+    "outcome": "flagged",
+    "explanation": "False risk-free claim; violates SEC risk disclosure requirement."
+  },
+  {
+    "id": "ba3a6e96-d0dc-45bd-a9ab-a4da26b36d0e",
+    "document_id": "bbc81516-21ec-49f9-877b-b94f90c843f4",
+    "passage": "We guarantee you will double your investment within two years.",
+    "outcome": "flagged",
+    "explanation": "Prohibited guaranteed-return claim under FINRA 2210."
+  },
+  {
+    "id": "6c190ba6-e582-4f29-be55-807542d625c3",
+    "document_id": "8c77158e-fed8-4634-bcc8-6a9d9556a484",
+    "passage": "We guarantee you will double your investment within two years.",
+    "outcome": "flagged",
+    "explanation": "Prohibited guaranteed-return claim under FINRA 2210."
+  },
+  {
+    "id": "f63d9f31-95ed-4ac0-9afa-860742dfec56",
+    "document_id": "169d5c29-9f58-42fa-a552-25d9f5c0f1e4",
+    "passage": "This recommendation was made after reviewing the client's risk tolerance and investment horizon.",
+    "outcome": "cleared",
+    "explanation": "Suitability basis documented; satisfies FINRA 2111."
+  },
+  {
+    "id": "4eaab3be-bf0f-4044-a53e-7dd27037d003",
+    "document_id": "3de6263a-74b4-4ec8-b605-751492347d64",
+    "passage": "This investment carries no risk of principal loss under any market condition.",
+    "outcome": "flagged",
+    "explanation": "False risk-free claim; violates SEC risk disclosure requirement."
+  },
+  {
+    "id": "efb5cf12-59d0-4d00-92af-58c2a9a493dd",
+    "document_id": "739b2cc6-69fa-4123-b9cf-53d21815dc80",
+    "passage": "All applicable fees and expenses for this account are itemized in the attached fee schedule.",
+    "outcome": "cleared",
+    "explanation": "Fee disclosure complete; satisfies FINRA 2214."
+  },
+  {
+    "id": "c2a12cd2-7b0a-4a8f-a595-a73bf8f0d36d",
+    "document_id": "af328b64-372b-4da0-8f57-83f07ed46cb3",
+    "passage": "Historical returns guarantee future fund performance.",
+    "outcome": "flagged",
+    "explanation": "Guaranteed performance statement violates FINRA 2210."
+  },
+  {
+    "id": "631e9c20-51a9-4dfc-b42e-c27e5f5ce214",
+    "document_id": "13328f3b-7cb1-4f4c-8e19-d1decd31b859",
+    "passage": "The advisor disclosed the referral fee received from the fund manager prior to recommendation.",
+    "outcome": "cleared",
+    "explanation": "Conflict of interest properly disclosed; satisfies SEC 206."
+  },
+  {
+    "id": "24e893f7-604e-4c17-a6ff-013d9ccd4b30",
+    "document_id": "ae529555-2a62-4113-8d6d-718ac5afc715",
+    "passage": "This recommendation was made after reviewing the client's risk tolerance and investment horizon.",
+    "outcome": "cleared",
+    "explanation": "Suitability basis documented; satisfies FINRA 2111."
+  },
+  {
+    "id": "70d0122e-e178-4743-8b65-9b19691f9c29",
+    "document_id": "e5846d69-1fae-4e53-bc6a-b5434cd2f56e",
+    "passage": "Past performance is not indicative of future results, and all investments carry risk of loss.",
+    "outcome": "cleared",
+    "explanation": "Proper risk disclosure present; satisfies SEC risk disclosure requirement."
+  },
+  {
+    "id": "71e5ca60-e4e7-494d-a728-661a5dfaf608",
+    "document_id": "d390c3fc-5b35-46c5-bb2a-ace627f57ca4",
+    "passage": "Historical returns guarantee future fund performance.",
+    "outcome": "flagged",
+    "explanation": "Guaranteed performance statement violates FINRA 2210."
+  },
+  {
+    "id": "3d1c40fa-49cb-4eae-9cd9-68bc06783df0",
+    "document_id": "504c67e9-4d46-42f9-af41-1844799bb31c",
+    "passage": "The advisor disclosed the referral fee received from the fund manager prior to recommendation.",
+    "outcome": "cleared",
+    "explanation": "Conflict of interest properly disclosed; satisfies SEC 206."
+  },
+  {
+    "id": "1ff7bcab-8f16-4c74-99cd-6b540221dda0",
+    "document_id": "27d6b217-012d-43d0-8774-bb006ec86b11",
+    "passage": "This fund has consistently outperformed the market every single year without exception.",
+    "outcome": "flagged",
+    "explanation": "Exaggerated, unverifiable performance claim; misleading under FINRA 2210."
+  },
+  {
+    "id": "606ad0b5-50a9-4d6a-be40-631e86a99272",
+    "document_id": "7559c40b-dd0b-4862-b659-7f72d37f435e",
+    "passage": "This fund has consistently outperformed the market every single year without exception.",
+    "outcome": "flagged",
+    "explanation": "Exaggerated, unverifiable performance claim; misleading under FINRA 2210."
+  },
+  {
+    "id": "963e007e-8ba6-4fbc-8ac0-6bd5a8de9539",
+    "document_id": "70fcf2c8-5613-4640-8ce6-155c25c00c50",
+    "passage": "This recommendation was made after reviewing the client's risk tolerance and investment horizon.",
+    "outcome": "cleared",
+    "explanation": "Suitability basis documented; satisfies FINRA 2111."
+  },
+  {
+    "id": "af51814d-df59-45cd-9d61-2b0d81723363",
+    "document_id": "a5517be8-da3b-4b51-9dd5-4f8613514c2e",
+    "passage": "This investment carries no risk of principal loss under any market condition.",
+    "outcome": "flagged",
+    "explanation": "False risk-free claim; violates SEC risk disclosure requirement."
+  },
+  {
+    "id": "2728a692-c3ee-4df9-9663-a3727ede6faf",
+    "document_id": "ba867193-dc5b-48df-82db-16eeec4728ce",
+    "passage": "The advisor did not disclose the commission earned from recommending this annuity product.",
+    "outcome": "flagged",
+    "explanation": "Undisclosed conflict of interest violates SEC 206 fiduciary duty rules."
+  },
+  {
+    "id": "4e483773-4dcf-4b7d-80c5-87d47416e8be",
+    "document_id": "9c853eef-d27f-4e12-bcfb-84e0709a0e33",
+    "passage": "All applicable fees and expenses for this account are itemized in the attached fee schedule.",
+    "outcome": "cleared",
+    "explanation": "Fee disclosure complete; satisfies FINRA 2214."
+  },
+  {
+    "id": "8f948735-42b6-4e94-b6f4-b0f62be3a276",
+    "document_id": "4f316050-db3e-4349-9142-807ba705bcfd",
+    "passage": "This investment carries no risk of principal loss under any market condition.",
+    "outcome": "flagged",
+    "explanation": "False risk-free claim; violates SEC risk disclosure requirement."
+  },
+  {
+    "id": "020fd6f2-b5d5-4141-a515-4d53c38b3218",
+    "document_id": "fbff1aa9-6fb7-4e8a-a8d3-4e62c7cc74c7",
+    "passage": "Past performance is not indicative of future results, and all investments carry risk of loss.",
+    "outcome": "cleared",
+    "explanation": "Proper risk disclosure present; satisfies SEC risk disclosure requirement."
+  },
+  {
+    "id": "6772225c-3579-4125-b9eb-9d1954e812fe",
+    "document_id": "4bb9303b-e329-4bbe-8a79-77feb89b04c8",
+    "passage": "We guarantee you will double your investment within two years.",
+    "outcome": "flagged",
+    "explanation": "Prohibited guaranteed-return claim under FINRA 2210."
+  },
+  {
+    "id": "20b482e1-9539-4dfb-93f6-d9c758fd0337",
+    "document_id": "81cc3328-82b9-4605-9474-fda6842a7a7a",
+    "passage": "Historical returns guarantee future fund performance.",
+    "outcome": "flagged",
+    "explanation": "Guaranteed performance statement violates FINRA 2210."
+  },
+  {
+    "id": "aac7ca6a-9deb-4329-9d2d-63f5c02a78a9",
+    "document_id": "559fd664-9119-4514-b8f7-bf42d3133634",
+    "passage": "This fund has consistently outperformed the market every single year without exception.",
+    "outcome": "flagged",
+    "explanation": "Exaggerated, unverifiable performance claim; misleading under FINRA 2210."
+  },
+  {
+    "id": "f7f55ae0-59a1-424d-9f19-5e4fabef4a7b",
+    "document_id": "e2395641-a444-48d8-a0e5-650fe5e7be87",
+    "passage": "This recommendation was made after reviewing the client's risk tolerance and investment horizon.",
+    "outcome": "cleared",
+    "explanation": "Suitability basis documented; satisfies FINRA 2111."
+  },
+  {
+    "id": "f74dc33e-9620-452b-bb7c-10d70386c03c",
+    "document_id": "d5675a41-fc73-4418-aa5c-bb2da3f427a1",
+    "passage": "All applicable fees and expenses for this account are itemized in the attached fee schedule.",
+    "outcome": "cleared",
+    "explanation": "Fee disclosure complete; satisfies FINRA 2214."
+  },
+  {
+    "id": "a15868b0-0b98-4f92-aa85-b791a9e7c701",
+    "document_id": "378e470a-841e-4e29-9893-c6f547ec8588",
+    "passage": "Past performance is not indicative of future results, and all investments carry risk of loss.",
+    "outcome": "cleared",
+    "explanation": "Proper risk disclosure present; satisfies SEC risk disclosure requirement."
+  },
+  {
+    "id": "ad3c5be1-75a3-4775-9073-e7c2c548b0ce",
+    "document_id": "0f9c05d5-229c-46cb-93b2-dbda4ac27546",
+    "passage": "This investment carries no risk of principal loss under any market condition.",
+    "outcome": "flagged",
+    "explanation": "False risk-free claim; violates SEC risk disclosure requirement."
+  },
+  {
+    "id": "38916f1a-b0b8-41ca-8687-48ac94481776",
+    "document_id": "f5c7434e-bbaa-4900-b6b8-cdbf0f171561",
+    "passage": "This investment carries no risk of principal loss under any market condition.",
+    "outcome": "flagged",
+    "explanation": "False risk-free claim; violates SEC risk disclosure requirement."
+  },
+  {
+    "id": "f87e056f-5160-4ad1-83fd-512b27582760",
+    "document_id": "c6a6bf38-5604-423e-b23d-2bf0e33df42a",
+    "passage": "This investment carries no risk of principal loss under any market condition.",
+    "outcome": "flagged",
+    "explanation": "False risk-free claim; violates SEC risk disclosure requirement."
+  },
+  {
+    "id": "3be9ae7a-4ba4-48f8-a8c8-08f09ed76de0",
+    "document_id": "52ac7d59-6950-4395-be08-cd4ea5cbe16f",
+    "passage": "This investment carries no risk of principal loss under any market condition.",
+    "outcome": "flagged",
+    "explanation": "False risk-free claim; violates SEC risk disclosure requirement."
+  },
+  {
+    "id": "a420baa6-9d26-4210-b516-849b6777ec54",
+    "document_id": "44269ab4-d460-4fe3-a9ee-871cb6b3b75e",
+    "passage": "This recommendation was made after reviewing the client's risk tolerance and investment horizon.",
+    "outcome": "cleared",
+    "explanation": "Suitability basis documented; satisfies FINRA 2111."
+  },
+  {
+    "id": "d9cf0413-6965-4b28-9624-3ce332cecd77",
+    "document_id": "da8180d0-fe48-4f25-820b-4f04592b2363",
+    "passage": "This fund has consistently outperformed the market every single year without exception.",
+    "outcome": "flagged",
+    "explanation": "Exaggerated, unverifiable performance claim; misleading under FINRA 2210."
+  },
+  {
+    "id": "bb6d772a-f910-404a-8686-39bdb310ee1c",
+    "document_id": "4008bbd7-51f7-4d34-870a-ba8b16c0d570",
+    "passage": "This fund has consistently outperformed the market every single year without exception.",
+    "outcome": "flagged",
+    "explanation": "Exaggerated, unverifiable performance claim; misleading under FINRA 2210."
+  },
+  {
+    "id": "a3bb16a3-7d57-4dc1-a9b5-599f72406bc8",
+    "document_id": "8d255436-33e8-4a5f-b0be-1a3afc14130b",
+    "passage": "We guarantee you will double your investment within two years.",
+    "outcome": "flagged",
+    "explanation": "Prohibited guaranteed-return claim under FINRA 2210."
+  },
+  {
+    "id": "5f34524d-7228-4ef0-87b6-b92596bbedc3",
+    "document_id": "9e2d5d95-80a5-4bb8-a690-bfa19320724b",
+    "passage": "Past performance is not indicative of future results, and all investments carry risk of loss.",
+    "outcome": "cleared",
+    "explanation": "Proper risk disclosure present; satisfies SEC risk disclosure requirement."
+  },
+  {
+    "id": "8b9c8631-29cc-4905-b680-f18fa7a7488f",
+    "document_id": "e4dbf53d-098f-406e-a4c7-9402bc93d27d",
+    "passage": "Historical returns guarantee future fund performance.",
+    "outcome": "flagged",
+    "explanation": "Guaranteed performance statement violates FINRA 2210."
+  },
+  {
+    "id": "846927e1-b75e-4144-80d0-8d9f9065cec0",
+    "document_id": "227151dc-0cd3-41ed-a9c2-e253f4b8036d",
+    "passage": "We guarantee you will double your investment within two years.",
+    "outcome": "flagged",
+    "explanation": "Prohibited guaranteed-return claim under FINRA 2210."
+  },
+  {
+    "id": "fdac6c5a-e131-48b3-8421-b0417883728d",
+    "document_id": "20218bb5-b1d6-47c4-a06a-7b3b2e59d8b1",
+    "passage": "All applicable fees and expenses for this account are itemized in the attached fee schedule.",
+    "outcome": "cleared",
+    "explanation": "Fee disclosure complete; satisfies FINRA 2214."
+  },
+  {
+    "id": "dbd9b9b2-a2fc-42db-929b-c8e3f8656205",
+    "document_id": "fc45b7f4-b84d-4167-96d6-8a5cc04ba7fa",
+    "passage": "We guarantee you will double your investment within two years.",
+    "outcome": "flagged",
+    "explanation": "Prohibited guaranteed-return claim under FINRA 2210."
+  },
+  {
+    "id": "36de88fe-0557-4185-a155-121776354793",
+    "document_id": "ad09178b-3b57-4f5c-91c2-c25ff94a61f4",
+    "passage": "This fund has consistently outperformed the market every single year without exception.",
+    "outcome": "flagged",
+    "explanation": "Exaggerated, unverifiable performance claim; misleading under FINRA 2210."
+  },
+  {
+    "id": "240288b5-6212-4850-8e79-476d937669e3",
+    "document_id": "4edbc36c-8e27-4579-9e12-881f010eaade",
+    "passage": "We guarantee you will double your investment within two years.",
+    "outcome": "flagged",
+    "explanation": "Prohibited guaranteed-return claim under FINRA 2210."
+  },
+  {
+    "id": "ab29bb41-f6a2-43c9-9441-74c135ce78e1",
+    "document_id": "7db11385-01c8-45b7-acd7-ba066f1d309e",
+    "passage": "This fund has consistently outperformed the market every single year without exception.",
+    "outcome": "flagged",
+    "explanation": "Exaggerated, unverifiable performance claim; misleading under FINRA 2210."
+  },
+  {
+    "id": "2dedd87a-ade3-4b55-90dc-92a08c9f97aa",
+    "document_id": "9b98ead6-46c3-4ce2-a72c-ce26963dc2aa",
+    "passage": "Past performance is not indicative of future results, and all investments carry risk of loss.",
+    "outcome": "cleared",
+    "explanation": "Proper risk disclosure present; satisfies SEC risk disclosure requirement."
+  },
+  {
+    "id": "54580db5-a176-4e12-8ed0-04e70f5895d3",
+    "document_id": "0e73ec0b-adfb-43e9-b53b-3da0448ff410",
+    "passage": "All applicable fees and expenses for this account are itemized in the attached fee schedule.",
+    "outcome": "cleared",
+    "explanation": "Fee disclosure complete; satisfies FINRA 2214."
+  },
+  {
+    "id": "7d17a028-acd3-4c37-92c5-7ad715e1c172",
+    "document_id": "e94994de-0ffd-43ce-a6e0-39b52f6550b8",
+    "passage": "Past performance is not indicative of future results, and all investments carry risk of loss.",
+    "outcome": "cleared",
+    "explanation": "Proper risk disclosure present; satisfies SEC risk disclosure requirement."
+  },
+  {
+    "id": "76994013-38f7-4490-88e5-e077d9a7ab83",
+    "document_id": "c7053158-cc36-4178-81dd-20a43b5a9e76",
+    "passage": "Past performance is not indicative of future results, and all investments carry risk of loss.",
+    "outcome": "cleared",
+    "explanation": "Proper risk disclosure present; satisfies SEC risk disclosure requirement."
+  },
+  {
+    "id": "94e75b0d-c762-4c31-a4eb-3d25cbea81a5",
+    "document_id": "024468d6-9134-4980-b1e5-18be5a8e3fcb",
+    "passage": "The advisor disclosed the referral fee received from the fund manager prior to recommendation.",
+    "outcome": "cleared",
+    "explanation": "Conflict of interest properly disclosed; satisfies SEC 206."
+  },
+  {
+    "id": "fb2f8fbb-b2c8-472e-b359-39e146b8ab49",
+    "document_id": "b314ff37-91a6-42c1-822d-463c174c8fec",
+    "passage": "This fund has consistently outperformed the market every single year without exception.",
+    "outcome": "flagged",
+    "explanation": "Exaggerated, unverifiable performance claim; misleading under FINRA 2210."
+  }
+]

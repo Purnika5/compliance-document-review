@@ -82,7 +82,7 @@ export function AuditTrailTable({
           </span>
         </div>
 
-        <div className="flex w-full items-center gap-2">
+        <div className="flex w-full items-center gap-2 print:hidden">
           <div className="relative min-w-0 flex-1">
             <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-[#183028]/50" />
             <Input
@@ -106,7 +106,7 @@ export function AuditTrailTable({
       </div>
 
       {/* Read-Only Table */}
-      <div className="hidden rounded-2xl border border-[#E6E8E7] bg-white overflow-hidden text-xs sm:block shadow-2xs">
+      <div className="hidden rounded-2xl border border-[#E6E8E7] bg-white overflow-hidden text-xs sm:block shadow-2xs print:block print:border-none print:shadow-none print:rounded-none print:overflow-visible">
         <Table>
           <TableHeader>
             <TableRow className="bg-[#E6E8E7]/30 border-b border-[#E6E8E7]">

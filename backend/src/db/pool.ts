@@ -7,9 +7,7 @@ export const pool = new Pool(config.db);
 let memAdapterPool: any = null;
 let useMemFallback = process.env.NODE_ENV === 'test';
 
-export const resetMemDb = (): void => {
-  // Retain instance across calls if initialized
-};
+export const isMemFallbackActive = (): boolean => useMemFallback;
 
 const getMemAdapter = () => {
   if (!memAdapterPool) {
@@ -20,6 +18,13 @@ const getMemAdapter = () => {
     // Register gen_random_uuid function for UUID generation
     db.public.registerFunction({
       name: 'gen_random_uuid',
+      returns: DataType.uuid,
+      impure: true,
+      implementation: () => crypto.randomUUID()
+    });
+
+    db.public.registerFunction({
+      name: 'uuid_generate_v4',
       returns: DataType.uuid,
       impure: true,
       implementation: () => crypto.randomUUID()

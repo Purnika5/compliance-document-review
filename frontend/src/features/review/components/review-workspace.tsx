@@ -14,7 +14,6 @@ import { Alert } from "@/components/ui/alert";
 import {
   ArrowLeft,
   Download,
-  Printer,
   ZoomIn,
   ZoomOut,
   FileText,
@@ -31,12 +30,11 @@ import {
   ShieldCheck,
   Search,
   ExternalLink,
+  UploadCloud,
   Eye,
   EyeOff,
-  MessageSquare,
-  UploadCloud,
 } from "lucide-react";
-import { buildPiiMap, unmaskText } from "@/utils/pii-unmasker";
+import { buildPiiMap, unmaskText, hasPiiPlaceholders } from "@/utils/pii-unmasker";
 import type { DocumentStatusType, DocumentItem } from "@/lib/validation/document";
 import { getDocumentAction, updateDocumentStatusAction } from "@/lib/actions/document-actions";
 import { EditDocumentModal } from "@/features/documents/components/edit-document-modal";
@@ -51,12 +49,14 @@ import { DocxViewer } from "./docx-viewer";
 import { ReviewWorkspaceSkeleton } from "./review-workspace-skeleton";
 import { VersionLineageSelector, type LineageEntry } from "./version-lineage-selector";
 import { FileTypeIcon } from "@/components/shared/file-type-icon";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { cn } from "@/lib/utils";
 import { authStore } from "@/lib/auth/auth-store";
 import { showSuccessToast, showErrorToast, showInfoToast } from "@/components/ui/toast";
 
 export interface ReviewWorkspaceProps {
   documentId: string;
+  initialTab?: "metadata" | "history" | "audit";
 }
 
 function renderHighlightedText(text: string, passage?: string) {
@@ -121,7 +121,7 @@ function renderHighlightedText(text: string, passage?: string) {
  * @returns The document review workspace view.
  * @author Keith
  */
-export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
+export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps) {
   const session = useSyncExternalStore(authStore.subscribe, authStore.getSession, authStore.getServerSnapshot);
   const isOfficer = session?.role === "Officer";
   const [status, setStatus] = useState<DocumentStatusType>("Pending");
@@ -135,7 +135,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedFlag, setSelectedFlag] = useState<IAIFlagItem | null>(null);
-  const [activeLeftTab, setActiveLeftTab] = useState<"metadata" | "history" | "audit">("metadata");
+  const [activeLeftTab, setActiveLeftTab] = useState<"metadata" | "history" | "audit">(initialTab || "metadata");
   const [activeDecision, setActiveDecision] = useState<"Approved" | "Needs Revision" | "Rejected" | null>(null);
   const [mobileActiveZone, setMobileActiveZone] = useState<"document" | "ai" | "decision">("document");
   const [isLoadingDocument, setIsLoadingDocument] = useState(true);
@@ -145,15 +145,27 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
   const [isAiDegraded, setIsAiDegraded] = useState<boolean>(false);
   const [isUnmasked, setIsUnmasked] = useState<boolean>(false);
   const [revisionRefreshKey, setRevisionRefreshKey] = useState<number>(0);
-  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
-  const activeDocId = selectedDocId || documentId;
+  const [activeDocId, setActiveDocId] = useState<string>(documentId ? documentId.trim() : "");
+  const [reloadTrigger, setReloadTrigger] = useState<number>(0);
   const [lineageVersions, setLineageVersions] = useState<(DocumentItem & { version: number })[]>([]);
   const [lineageEntries, setLineageEntries] = useState<LineageEntry[]>([]);
   const [isLoadingLineage, setIsLoadingLineage] = useState<boolean>(false);
   const [isResubmitModalOpen, setIsResubmitModalOpen] = useState<boolean>(false);
 
+  useEffect(() => {
+    if (documentId) {
+      setActiveDocId(documentId.trim());
+    }
+  }, [documentId]);
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveLeftTab(initialTab);
+    }
+  }, [initialTab]);
+
   const handleSelectVersion = (version: DocumentItem & { version: number }) => {
-    setSelectedDocId(version.id);
+    setActiveDocId(version.id);
     setSelectedFlag(null);
   };
 
@@ -173,18 +185,6 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
     );
   }, [lineageEntries, activeVersion]);
 
-  const previousVersion = useMemo(() => {
-    if (!activeVersion) return undefined;
-    return sortedVersions.find((v) => v.version === (activeVersion.version || 1) - 1);
-  }, [sortedVersions, activeVersion]);
-
-  const previousOfficerRemarks = useMemo(() => {
-    if (!previousVersion) return [];
-    return lineageEntries.filter(
-      (e) => (e.entryType === "decision" || e.authorRole === "Officer") && e.documentId === previousVersion.id
-    );
-  }, [lineageEntries, previousVersion]);
-
   const advisorSubmissionNote = useMemo(() => {
     if (!activeVersion) return undefined;
     return lineageEntries.find(
@@ -203,12 +203,12 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
   const isNeedsRevision = status === "Needs Revision" || activeVersion?.status === "Needs Revision";
   const isVersion2OrHigher = (activeVersion?.version || 1) >= 2 || sortedVersions.length > 1;
   const canResubmit = isNeedsRevision;
-  const canShowUploadVersion = (!isOfficer && (isNeedsRevision || isVersion2OrHigher)) || isNeedsRevision || isVersion2OrHigher;
+  const canShowUploadVersion = !isOfficer && (isNeedsRevision || isVersion2OrHigher);
 
   const handleRefreshAnalysis = () => {
     setIsLoadingAnalysis(true);
     documentService
-      .getAnalysis(documentId)
+      .getAnalysis(activeDocId)
       .then((res) => {
         setAnalysisFlags(res.flags);
         setIsAiDegraded(res.isDegraded);
@@ -223,6 +223,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
   };
 
   useEffect(() => {
+    if (!activeDocId || activeDocId === "undefined") return;
     let isActive = true;
 
     // 1. Fetch document version history & lineage thread entries (GET /documents/:id/versions)
@@ -232,6 +233,17 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
         if (!isActive) return;
         setLineageVersions(res.versions);
         setLineageEntries(res.threadEntries);
+        // Fallback recovery: If single doc fetch fails or is pending, hydrate metadata from lineage
+        if (res.versions.length > 0) {
+          const match = res.versions.find((v) => v.id === activeDocId) || res.versions[res.versions.length - 1];
+          if (match) {
+            setLoadedDoc((prev) => prev || match);
+            setTitle((prev) => prev || match.title);
+            setCategory((prev) => prev || match.category);
+            setStatus((prev) => prev || match.status);
+            setDocumentError(null);
+          }
+        }
       })
       .catch(() => {
         if (!isActive) {
@@ -255,7 +267,20 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
       })
       .catch((error: unknown) => {
         if (!isActive) return;
-        setDocumentError(error instanceof Error ? error.message : "Unable to load this document.");
+        // Verify if lineage has already populated this document before flagging error
+        setLineageVersions((currentLineage) => {
+          const match = currentLineage.find((v) => v.id === activeDocId);
+          if (match) {
+            setLoadedDoc(match);
+            setTitle(match.title);
+            setCategory(match.category);
+            setStatus(match.status);
+            setDocumentError(null);
+          } else {
+            setDocumentError(error instanceof Error ? error.message : "Unable to load this document.");
+          }
+          return currentLineage;
+        });
       })
       .finally(() => {
         if (isActive) setIsLoadingDocument(false);
@@ -263,7 +288,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
 
     // 3. Fetch automated AI analysis flags for current version
     documentService
-      .getAnalysis(documentId)
+      .getAnalysis(activeDocId)
       .then((res) => {
         if (!isActive) return;
         setAnalysisFlags(res.flags);
@@ -306,7 +331,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
     return () => {
       isActive = false;
     };
-  }, [activeDocId, revisionRefreshKey]);
+  }, [activeDocId, revisionRefreshKey, reloadTrigger]);
 
   const currentDocItem: DocumentItem = loadedDoc || {
     id: activeDocId,
@@ -323,6 +348,17 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
     return buildPiiMap(currentDocItem.originalText, currentDocItem.maskedText);
   }, [isOfficer, currentDocItem.originalText, currentDocItem.maskedText]);
 
+  const displayedExtractedText = useMemo(() => {
+    const baseMasked = currentDocItem.maskedText || currentDocItem.originalText || "";
+    if (!isOfficer || !isUnmasked) {
+      return baseMasked;
+    }
+    if (currentDocItem.originalText && !hasPiiPlaceholders(currentDocItem.originalText)) {
+      return currentDocItem.originalText;
+    }
+    return unmaskText(baseMasked, piiMap);
+  }, [isOfficer, isUnmasked, currentDocItem.maskedText, currentDocItem.originalText, piiMap]);
+
   const isDocx = Boolean(
     currentDocItem.category === "DOCX" ||
     currentDocItem.mimeType?.includes("word") ||
@@ -338,6 +374,8 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
     currentDocItem.fileName?.toLowerCase().endsWith(".pdf") ||
     currentDocItem.fileUrl?.toLowerCase().endsWith(".pdf")
   );
+
+  const isAlreadyDetermined = status === "Approved" || status === "Needs Revision" || status === "Rejected";
 
   /**
    * DOCU: Selects an AI flag, switches page view, and scrolls to flagged passage.
@@ -361,7 +399,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
       }, 150);
       return () => clearTimeout(timer);
     }
-  }, [selectedFlag, viewMode, isUnmasked]);
+  }, [selectedFlag, viewMode]);
 
   /**
    * DOCU: Executes officer status update and updates audit state.
@@ -488,7 +526,9 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
           >
             <Link href={isOfficer ? "/queue" : "/dashboard"}>
               <ArrowLeft className="h-3.5 w-3.5 text-black" />
-              <span className="text-black font-semibold">Back to Dashboard</span>
+              <span className="text-black font-semibold">
+                {isOfficer ? "Back to Review Queue" : "Back to Dashboard"}
+              </span>
             </Link>
           </Button>
 
@@ -497,6 +537,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
               <h1 className="text-xs font-bold text-[#183028] truncate max-w-xs sm:max-w-md">
                 {title}
               </h1>
+              <StatusBadge status={status} />
             </div>
             <p className="text-[11px] text-[#183028]/60 hidden sm:block">
               Advisor: {currentDocItem?.submittedBy || "System User"} • Submitted {currentDocItem?.submittedAt ? new Date(currentDocItem.submittedAt).toLocaleDateString() : "Recently"} • Category: {currentDocItem?.category || "General"}
@@ -554,14 +595,13 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
       />
 
       {documentError && (
-        <ErrorState title="Unable to load document" message={documentError} />
-      )}
-      {actionSuccess && (
-        <Alert
-          variant="success"
-          title="Regulatory Action Executed"
-          message={actionSuccess}
-          onClose={() => setActionSuccess(null)}
+        <ErrorState
+          title="Unable to load document"
+          message={documentError}
+          onRetry={() => {
+            setDocumentError(null);
+            setReloadTrigger((p) => p + 1);
+          }}
         />
       )}
 
@@ -604,7 +644,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
           )}
         >
           <ShieldCheck className="h-3.5 w-3.5" />
-          <span>{isOfficer ? "Decision" : "Metadata"}</span>
+          <span>{isOfficer ? (isAlreadyDetermined ? "View Only" : "Decision") : "Metadata"}</span>
         </button>
       </div>
 
@@ -644,19 +684,17 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
               >
                 Revision
               </button>
-              {isOfficer && (
-                <button
-                  onClick={() => setActiveLeftTab("audit")}
-                  className={cn(
-                    "flex-1 py-1.5 text-xs font-semibold rounded-xl text-center transition-colors cursor-pointer",
-                    activeLeftTab === "audit"
-                      ? "bg-[#C5E86C] text-[#183028] font-bold shadow-2xs"
-                      : "bg-transparent text-[#183028]/70 hover:bg-[#C5E86C]/20 hover:text-[#183028]"
-                  )}
-                >
-                  Audit Log
-                </button>
-              )}
+              <button
+                onClick={() => setActiveLeftTab("audit")}
+                className={cn(
+                  "flex-1 py-1.5 text-xs font-semibold rounded-xl text-center transition-colors cursor-pointer",
+                  activeLeftTab === "audit"
+                    ? "bg-[#C5E86C] text-[#183028] font-bold shadow-2xs"
+                    : "bg-transparent text-[#183028]/70 hover:bg-[#C5E86C]/20 hover:text-[#183028]"
+                )}
+              >
+                Audit Log
+              </button>
             </div>
 
             {/* Left Content Area */}
@@ -719,51 +757,73 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                     )}
                   </div>
 
-                  {/* OFFICER DECISION ACTIONS (User Story 6: Unambiguous human decision) */}
-                  {isOfficer && <div className="space-y-2 pt-1">
-                    <div className="flex items-center justify-between">
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-[#183028]">
-                        Officer Decision Suite
-                      </p>
+                  {/* OFFICER DECISION ACTIONS / VIEW ONLY (User Story 6: Unambiguous human decision) */}
+                  {isOfficer && (
+                    <div className="space-y-2 pt-1">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-[#183028]">
+                          Officer Decision Suite
+                        </p>
+                        {isAlreadyDetermined && (
+                          <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded-md bg-[#E6E8E7] text-[#183028] border border-[#d4d7d5]">
+                            View Only
+                          </span>
+                        )}
+                      </div>
+
+                      {isAlreadyDetermined ? (
+                        <div className="p-3.5 rounded-xl border border-[#E6E8E7] bg-[#FAFBFB] space-y-2 text-xs shadow-2xs">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5">
+                              <Eye className="h-4 w-4 text-[#183028]/70" />
+                              <span className="font-bold text-[#183028]">Determination Recorded</span>
+                            </div>
+                            <StatusBadge status={status} />
+                          </div>
+                          <p className="text-[11px] text-[#183028]/70 leading-relaxed">
+                            This document has already been updated to <strong>{status}</strong>. The request is in <strong>View Only</strong> mode and compliance decision actions have been finalized.
+                          </p>
+                        </div>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            disabled={isUpdating}
+                            onClick={() => setActiveDecision("Approved")}
+                            className="w-full flex items-center justify-start gap-2 h-9 px-3 rounded-xl font-bold text-xs bg-[#C5E86C] text-[#183028] hover:bg-[#b4db53] border border-[#a8ce4a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] cursor-pointer disabled:opacity-50 transition-all shadow-2xs"
+                          >
+                            <CheckCircle2 className="h-4 w-4 text-[#183028]" />
+                            <span>Approve Proposal</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={isUpdating}
+                            onClick={() => setActiveDecision("Needs Revision")}
+                            className="w-full flex items-center justify-start gap-2 h-9 px-3 rounded-xl font-semibold text-xs border border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 cursor-pointer disabled:opacity-50 transition-all shadow-2xs"
+                          >
+                            <AlertCircle className="h-4 w-4 text-amber-700" />
+                            <span>Request Revision</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={isUpdating}
+                            onClick={() => setActiveDecision("Rejected")}
+                            className="w-full flex items-center justify-start gap-2 h-9 px-3 rounded-xl font-semibold text-xs border border-rose-300 bg-rose-50 text-rose-900 hover:bg-rose-100 cursor-pointer disabled:opacity-50 transition-all shadow-2xs"
+                          >
+                            <XCircle className="h-4 w-4 text-rose-700" />
+                            <span>Formal Rejection</span>
+                          </button>
+                        </>
+                      )}
                     </div>
-
-                    <button
-                      type="button"
-                      disabled={isUpdating}
-                      onClick={() => setActiveDecision("Approved")}
-                      className="w-full flex items-center justify-start gap-2 h-9 px-3 rounded-xl font-bold text-xs bg-[#C5E86C] text-[#183028] hover:bg-[#b4db53] border border-[#a8ce4a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] cursor-pointer disabled:opacity-50 transition-all shadow-2xs"
-                    >
-                      <CheckCircle2 className="h-4 w-4 text-[#183028]" />
-                      <span>Approve Proposal</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      disabled={isUpdating}
-                      onClick={() => setActiveDecision("Needs Revision")}
-                      className="w-full flex items-center justify-start gap-2 h-9 px-3 rounded-xl font-semibold text-xs border border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 cursor-pointer disabled:opacity-50 transition-all shadow-2xs"
-                    >
-                      <AlertCircle className="h-4 w-4 text-amber-700" />
-                      <span>Request Revision</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      disabled={isUpdating}
-                      onClick={() => setActiveDecision("Rejected")}
-                      className="w-full flex items-center justify-start gap-2 h-9 px-3 rounded-xl font-semibold text-xs border border-rose-300 bg-rose-50 text-rose-900 hover:bg-rose-100 cursor-pointer disabled:opacity-50 transition-all shadow-2xs"
-                    >
-                      <XCircle className="h-4 w-4 text-rose-700" />
-                      <span>Formal Rejection</span>
-                    </button>
-                  </div>}
+                  )}
                 </div>
               ) : activeLeftTab === "history" ? (
                 <RevisionThread documentId={activeDocId} refreshKey={revisionRefreshKey} />
-              ) : isOfficer ? (
-                <AuditTrailTable documentIdFilter={activeDocId} entries={auditLogs} />
               ) : (
-                <RevisionThread documentId={activeDocId} readOnly refreshKey={revisionRefreshKey} />
+                <AuditTrailTable documentIdFilter={activeDocId} entries={auditLogs} />
               )}
             </div>
           </div>
@@ -847,43 +907,30 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
 
                 <div className="h-4 w-px bg-[#E6E8E7] mx-1" />
 
-                <button
-                  onClick={() => window.print()}
-                  title="Print Document"
-                  className="p-1.5 rounded-lg bg-white border border-[#E6E8E7] text-[#183028] hover:bg-[#C5E86C]/20 transition-colors cursor-pointer shadow-2xs"
-                >
-                  <Printer className="h-3.5 w-3.5" />
-                </button>
-
                 {isOfficer && (
-                  <>
-                    <div className="h-4 w-px bg-[#E6E8E7] mx-1" />
-                    <button
-                      type="button"
-                      onClick={() => setIsUnmasked((prev) => !prev)}
-                      title={isUnmasked ? "Switch to Masked PII view" : "Switch to Raw Unmasked PII view (Officer Only)"}
-                      className={cn(
-                        "flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-lg border transition-all cursor-pointer shadow-2xs",
-                        isUnmasked
-                          ? "bg-amber-100 text-amber-950 border-amber-300 font-bold"
-                          : "bg-white text-[#183028] border-[#E6E8E7] hover:bg-[#E6E8E7]/40"
-                      )}
-                    >
-                      {isUnmasked ? (
-                        <>
-                          <EyeOff className="h-3.5 w-3.5 text-amber-800" />
-                          <span className="hidden sm:inline">Raw PII Active</span>
-                          <span className="sm:hidden">Raw</span>
-                        </>
-                      ) : (
-                        <>
-                          <Eye className="h-3.5 w-3.5 text-[#183028]/70" />
-                          <span className="hidden sm:inline">Show Raw PII</span>
-                          <span className="sm:hidden">Masked</span>
-                        </>
-                      )}
-                    </button>
-                  </>
+                  <button
+                    type="button"
+                    onClick={() => setIsUnmasked((prev) => !prev)}
+                    title={isUnmasked ? "Switch to Masked view" : "Switch to Unmasked view (Officer Only)"}
+                    className={cn(
+                      "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all cursor-pointer shadow-2xs",
+                      isUnmasked
+                        ? "bg-amber-100 text-amber-900 border-amber-300 font-bold"
+                        : "bg-white text-[#183028]/70 border-[#E6E8E7] hover:text-[#183028] hover:bg-[#C5E86C]/20"
+                    )}
+                  >
+                    {isUnmasked ? (
+                      <>
+                        <EyeOff className="h-3.5 w-3.5 text-amber-700" />
+                        <span>Unmasked</span>
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="h-3.5 w-3.5" />
+                        <span>Masked</span>
+                      </>
+                    )}
+                  </button>
                 )}
               </div>
             </div>
@@ -895,11 +942,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                   <span className="font-mono text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-100 border border-amber-300 text-amber-900 shrink-0">
                     {selectedFlag.severity || "MEDIUM"} • Rule {selectedFlag.ruleCode}
                   </span>
-                  {isOfficer && isUnmasked && (
-                    <span className="font-mono text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-200/80 border border-amber-400 text-amber-950 shrink-0">
-                      Raw PII
-                    </span>
-                  )}
+
                   <span className="truncate text-[11px] text-amber-900 font-serif italic max-w-[320px] sm:max-w-[480px]">
                     &quot;{isOfficer && isUnmasked ? unmaskText(selectedFlag.passage, piiMap) : selectedFlag.passage}&quot;
                   </span>
@@ -996,22 +1039,18 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                       <FileText className="h-4 w-4 text-[#183028]" />
                       <span className="font-semibold text-xs text-[#183028]">Extracted Document Text</span>
                       {isOfficer && isUnmasked && (
-                        <span className="px-2 py-0.5 text-[9px] font-bold rounded bg-amber-100 text-amber-900 border border-amber-300">
-
+                        <span className="font-mono text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-200/80 border border-amber-400 text-amber-950">
+                          Raw PII Unmasked
                         </span>
                       )}
                     </div>
                   </div>
 
                   <div className="bg-white p-4 rounded-xl border border-[#E6E8E7] font-mono text-[11px] leading-relaxed text-[#183028] whitespace-pre-wrap max-h-[520px] overflow-y-auto">
-                    {currentDocItem.maskedText || currentDocItem.originalText ? (
+                    {displayedExtractedText ? (
                       renderHighlightedText(
-                        isOfficer && isUnmasked
-                          ? unmaskText(currentDocItem.maskedText || currentDocItem.originalText || "", piiMap)
-                          : currentDocItem.maskedText || currentDocItem.originalText || "",
-                        isOfficer && isUnmasked && selectedFlag?.passage
-                          ? unmaskText(selectedFlag.passage, piiMap)
-                          : selectedFlag?.passage
+                        displayedExtractedText,
+                        selectedFlag?.passage
                       )
                     ) : (
                       <div className="text-[#183028]/70 italic space-y-2 font-sans">
@@ -1141,7 +1180,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                           onClick={() => {
                             const url =
                               currentDocItem.fileUrl ||
-                              `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"}/uploads/documents/${currentDocItem.fileName}`;
+                              `${process.env.NEXT_PUBLIC_API_URL || "https://compliance-document-review-494m.onrender.com"}/uploads/documents/${currentDocItem.fileName}`;
                             if (url) {
                               window.open(url, "_blank");
                             } else {
@@ -1193,9 +1232,6 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
               isLoading={isLoadingAnalysis}
               isDegraded={isAiDegraded}
               onRefresh={handleRefreshAnalysis}
-              isUnmasked={isUnmasked}
-              onToggleUnmask={() => setIsUnmasked((prev) => !prev)}
-              piiMap={piiMap}
               isOfficer={isOfficer}
             />
           ) : (
@@ -1229,27 +1265,6 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                   </p>
                   <p className="text-[10px] text-amber-800/80">
                     Recorded by {activeVersionRemarks[activeVersionRemarks.length - 1].authorName} ({activeVersionRemarks[activeVersionRemarks.length - 1].authorRole})
-                  </p>
-                </div>
-              )}
-
-              {/* Preceding Officer Revision Feedback (from previous version) */}
-              {activeVersion && activeVersion.version > 1 && previousOfficerRemarks.length > 0 && activeVersionRemarks.length === 0 && (
-                <div className="p-3.5 bg-amber-50/90 border border-amber-200 rounded-xl space-y-2 shadow-2xs">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 text-amber-900 font-bold text-xs">
-                      <MessageSquare className="h-4 w-4 text-amber-700 shrink-0" />
-                      <span>Preceding Officer Revision Feedback (from v{previousVersion?.version})</span>
-                    </div>
-                    <span className="text-[10px] text-amber-700 font-mono">
-                      {new Date(previousOfficerRemarks[previousOfficerRemarks.length - 1].createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <p className="text-amber-950 font-medium leading-relaxed text-xs italic bg-white/70 p-2.5 rounded-lg border border-amber-200/60">
-                    &ldquo;{previousOfficerRemarks[previousOfficerRemarks.length - 1].message}&rdquo;
-                  </p>
-                  <p className="text-[10px] text-amber-800/80">
-                    Feedback issued by {previousOfficerRemarks[previousOfficerRemarks.length - 1].authorName} ({previousOfficerRemarks[previousOfficerRemarks.length - 1].authorRole})
                   </p>
                 </div>
               )}

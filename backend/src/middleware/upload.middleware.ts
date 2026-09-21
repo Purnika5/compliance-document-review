@@ -42,7 +42,7 @@ const multerUpload = multer({
 export const uploadDocumentFile = {
   single: (fieldName: string) => {
     return (req: Request, res: Response, next: NextFunction) => {
-      multerUpload.single(fieldName)(req, res, (err: any) => {
+      multerUpload.single(fieldName)(req as any, res as any, (err: any) => {
         if (err) {
           req.on('data', () => {});
           if (!req.complete) {

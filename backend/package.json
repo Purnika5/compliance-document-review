@@ -1,7 +1,7 @@
 {
-  "name": "compliance-backend",
+  "name": "springer-capital-compliance-backend",
   "version": "1.0.0",
-  "description": "Backend API for Compliance Document Review System",
+  "description": "Express REST API Backend for Compliance Document Review Platform (Render Host)",
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",

@@ -5,7 +5,13 @@
  */
 import { authStore } from "@/lib/auth/auth-store";
 
-const BASE_API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+export const resolveBaseApiUrl = (): string => {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (envUrl && !envUrl.includes("localhost") && !envUrl.includes("127.0.0.1")) {
+    return envUrl.endsWith("/api") ? envUrl : `${envUrl.replace(/\/$/, "")}/api`;
+  }
+  return "https://compliance-document-review-494m.onrender.com/api";
+};
 
 /**
  * DOCU: Custom error class wrapping HTTP response errors and structured API error data.
@@ -39,12 +45,10 @@ export interface RequestOptions extends RequestInit {
  * @author Keith
  */
 export class APIClient {
-  private baseUrl: string;
+  private baseEndpoint: string;
 
   constructor(baseEndpoint = "") {
-    this.baseUrl = baseEndpoint.startsWith("http")
-      ? baseEndpoint
-      : `${BASE_API_URL}${baseEndpoint}`;
+    this.baseEndpoint = baseEndpoint;
   }
 
   /**
@@ -54,8 +58,18 @@ export class APIClient {
    * @returns Fully qualified URL string.
    */
   private buildUrl(endpoint: string, params?: Record<string, string | number | boolean | undefined>): string {
+    if (endpoint.startsWith("http")) return endpoint;
+
+    const baseApi = resolveBaseApiUrl();
     const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
-    const fullUrl = endpoint.startsWith("http") ? endpoint : `${this.baseUrl}${cleanEndpoint}`;
+    
+    const prefix = this.baseEndpoint
+      ? this.baseEndpoint.startsWith("http")
+        ? this.baseEndpoint
+        : `${baseApi}${this.baseEndpoint.startsWith("/") ? "" : "/"}${this.baseEndpoint}`
+      : baseApi;
+
+    const fullUrl = `${prefix}${cleanEndpoint}`;
     
     if (!params) return fullUrl;
 

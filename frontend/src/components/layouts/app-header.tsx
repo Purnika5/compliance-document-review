@@ -8,7 +8,6 @@ import React, { useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { authStore, type UserSession } from "@/lib/auth/auth-store";
 import { Breadcrumbs } from "./breadcrumbs";
-import { CompanyLogo } from "@/components/ui/brand-logos";
 import { NotificationCenter } from "@/components/layout/notification-center";
 import {
   DropdownMenu,
@@ -21,11 +20,8 @@ import {
 import {
   Menu,
   ChevronDown,
-  User,
-  Settings,
   LogOut,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 export interface AppHeaderProps {
   onToggleSidebarMobile?: () => void;
@@ -49,7 +45,7 @@ export function AppHeader({
   };
 
   const getInitials = (name?: string) => {
-    if (!name) return "QE";
+    if (!name) return "U";
     const parts = name.trim().split(/\s+/);
     if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
@@ -84,24 +80,18 @@ export function AppHeader({
                 {getInitials(session?.name)}
               </div>
               <span className="text-xs font-semibold text-[#183028] hidden sm:inline">
-                {session?.role || "Advisor"}
+                {role}
               </span>
               <ChevronDown className="h-3.5 w-3.5 text-[#183028]/60" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-52 bg-[#FFFFFF] shadow-xl rounded-xl border border-[#E6E8E7] p-1 animate-slide-down">
             <DropdownMenuLabel className="px-3 py-2 text-xs font-medium text-[#183028]/60">
-              <div className="font-bold text-[#183028]">{session?.name || "Quintin Evans"}</div>
-              <div className="text-[10px] text-[#183028]/60 font-mono">{session?.email || "ryzyw@springercapital.com"}</div>
+              <div className="font-bold text-[#183028]">{session?.name || "User"}</div>
+              <div className="text-[10px] text-[#183028]/60 font-mono">{session?.email || ""}</div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator className="bg-[#E6E8E7]" />
-            <DropdownMenuItem
-              className="text-xs cursor-pointer gap-2 font-medium text-[#183028] rounded-lg px-3 py-2 transition-colors"
-              onClick={() => router.push("/settings")}
-            >
-              <Settings className="h-3.5 w-3.5" /> Account &amp; Preferences
-            </DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-[#E6E8E7]" />
+
             <DropdownMenuItem
               variant="destructive"
               onClick={handleLogout}

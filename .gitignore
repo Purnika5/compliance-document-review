@@ -14,8 +14,9 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
+!frontend/src/lib/
 parts/
 sdist/
 var/
@@ -243,3 +244,6 @@ service_account*.json
 secrets.json
 *.secret
 railway.env
+.vscode/
+pyrightconfig.json
+

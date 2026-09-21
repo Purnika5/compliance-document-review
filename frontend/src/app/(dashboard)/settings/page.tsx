@@ -28,7 +28,6 @@ export default function SettingsPage() {
   );
 
   const role = session?.role || "Advisor";
-  const isOfficer = role === "Officer";
 
   // Form states initialized from authenticated session
   const [fullName, setFullName] = useState(session?.name || "");
@@ -38,11 +37,11 @@ export default function SettingsPage() {
   useEffect(() => {
     setMounted(true);
     if (session?.name && !fullName) setFullName(session.name);
-    if (session?.email && !email) setEmail(session.email);
+    if (session?.email) setEmail(session.email);
   }, [session]);
 
   // Form feedback state
-  const [validationErrors, setValidationErrors] = useState<{ fullName?: string; email?: string }>({});
+  const [validationErrors, setValidationErrors] = useState<{ fullName?: string }>({});
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   if (!mounted) {
@@ -51,16 +50,10 @@ export default function SettingsPage() {
 
   const handleSavePreferences = (e: React.FormEvent) => {
     e.preventDefault();
-    const errors: { fullName?: string; email?: string } = {};
+    const errors: { fullName?: string } = {};
 
     if (!fullName.trim()) {
       errors.fullName = "Full name is required for regulatory audit signatures.";
-    }
-
-    if (!email.trim()) {
-      errors.email = "Institutional email address is required.";
-    } else if (!email.includes("@") || !email.includes(".")) {
-      errors.email = "Please enter a valid corporate email address.";
     }
 
     if (Object.keys(errors).length > 0) {
@@ -73,7 +66,6 @@ export default function SettingsPage() {
       authStore.setSession({
         ...session,
         name: fullName,
-        email: email,
       });
     }
 
@@ -151,32 +143,18 @@ export default function SettingsPage() {
               )}
             </div>
 
-            {/* Corporate Email */}
+            {/* Corporate Email (Read Only) */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-[#183028]">
-                Institutional Email <span className="text-rose-500">*</span>
+                Institutional Email
               </label>
               <Input
                 type="email"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  if (validationErrors.email) {
-                    setValidationErrors((prev) => ({ ...prev, email: undefined }));
-                  }
-                }}
-                className={cn(
-                  "h-9 text-xs bg-[#FFFFFF] border-[#E6E8E7] text-[#183028] rounded-xl focus:border-[#183028] focus:ring-1 focus:ring-[#183028] shadow-2xs",
-                  validationErrors.email && "border-rose-500 focus-visible:ring-rose-500"
-                )}
+                value={session?.email || email}
+                readOnly
+                className="h-9 text-xs bg-[#FAFBFB] border-[#E6E8E7] text-[#183028]/70 rounded-xl shadow-2xs cursor-not-allowed select-none focus-visible:ring-0 focus-visible:border-[#E6E8E7]"
                 placeholder="name@springer.capital"
               />
-              {validationErrors.email && (
-                <div className="flex items-center gap-1 text-[11px] text-rose-600 mt-1">
-                  <AlertCircle className="h-3 w-3 shrink-0" />
-                  <span>{validationErrors.email}</span>
-                </div>
-              )}
             </div>
 
             {/* Role (Read Only) */}
@@ -199,35 +177,6 @@ export default function SettingsPage() {
                 className="h-9 text-xs bg-[#FFFFFF] border-[#E6E8E7] text-[#183028] rounded-xl focus:border-[#183028] focus:ring-1 focus:ring-[#183028] shadow-2xs"
                 placeholder="+1 (212) 555-0190"
               />
-            </div>
-          </div>
-
-          {/* Institutional Badges Card */}
-          <div className="p-4 bg-[#FFFFFF] border border-[#E6E8E7] rounded-xl grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs mt-2">
-            <div>
-              <span className="text-[10px] uppercase font-bold text-[#183028]/50 block tracking-wider">
-                Session Role
-              </span>
-              <span className="font-mono font-bold text-[#183028] mt-0.5 block">
-                {role}
-              </span>
-            </div>
-            <div>
-              <span className="text-[10px] uppercase font-bold text-[#183028]/50 block tracking-wider">
-                Account Status
-              </span>
-              <span className="inline-flex items-center gap-1.5 font-semibold text-[#183028] mt-0.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#C5E86C]" />
-                Active
-              </span>
-            </div>
-            <div>
-              <span className="text-[10px] uppercase font-bold text-[#183028]/50 block tracking-wider">
-                Institutional Email
-              </span>
-              <span className="font-mono text-[#183028]/60 text-[11px] truncate block mt-0.5">
-                {session?.email || "Not provided"}
-              </span>
             </div>
           </div>
         </div>

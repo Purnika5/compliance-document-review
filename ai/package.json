@@ -1,0 +1,11 @@
+{
+  "name": "springer-capital-compliance-ai-service",
+  "version": "1.0.0",
+  "description": "Gemini Live AI Document Review & Regulatory Copilot Microservice (Render Host)",
+  "main": "app/main.py",
+  "scripts": {
+    "start": "uvicorn app.main:app --host 0.0.0.0 --port 8000",
+    "dev": "uvicorn app.main:app --reload --port 8000",
+    "test": "pytest"
+  }
+}

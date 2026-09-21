@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Outfit } from "next/font/google";
 import "@/app/globals.css";
 import { ToastProvider } from "@/components/ui/toast";
+import { ChatbotWidget } from "@/components/ui/chatbot-widget";
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -16,7 +17,7 @@ export const metadata: Metadata = {
 
 /**
  * DOCU: Provides the shared HTML shell, Outfit typography, and metadata for the application.
- * Last Updated Date: September 15, 2026
+ * Last Updated Date: September 21, 2026
  * @param children - Rendered route content.
  * @returns The root document layout.
  * @author Keith
@@ -34,6 +35,7 @@ export default function RootLayout({
       >
         {children}
         <ToastProvider />
+        <ChatbotWidget />
       </body>
     </html>
   );
