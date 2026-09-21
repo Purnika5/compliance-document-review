@@ -14,7 +14,6 @@ import { Alert } from "@/components/ui/alert";
 import {
   ArrowLeft,
   Download,
-  Printer,
   ZoomIn,
   ZoomOut,
   FileText,
@@ -936,15 +935,6 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
                     )}
                   </button>
                 )}
-
-                <button
-                  onClick={() => window.print()}
-                  title="Print Document"
-                  className="p-1.5 rounded-lg bg-white border border-[#E6E8E7] text-[#183028] hover:bg-[#C5E86C]/20 transition-colors cursor-pointer shadow-2xs"
-                >
-                  <Printer className="h-3.5 w-3.5" />
-                </button>
-
               </div>
             </div>
 
