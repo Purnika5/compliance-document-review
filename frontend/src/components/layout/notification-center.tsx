@@ -78,7 +78,6 @@ export function NotificationCenter() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isDismissed, setIsDismissed] = useState<boolean>(false);
   const [isFading, setIsFading] = useState<boolean>(false);
-  const [activeNoticeItem, setActiveNoticeItem] = useState<{ id?: string; title: string; notifId?: string } | null>(null);
 
   const triggerFadeAndDismiss = (notifId?: string) => {
     setIsFading(true);
@@ -88,7 +87,6 @@ export function NotificationCenter() {
     setTimeout(() => {
       setIsDismissed(true);
       setIsFading(false);
-      setActiveNoticeItem(null);
     }, 300);
   };
 
@@ -279,53 +277,43 @@ export function NotificationCenter() {
     return rawTitle.trim() || "Notification";
   };
 
-  const topRevisionItem =
-    isAdvisor && revisionItems.length > 0
-      ? {
-          id: revisionItems[0].id,
-          title: cleanNoticeTitle(revisionItems[0].title),
-          notifId: undefined as string | undefined,
-        }
-      : null;
+  const topRevisionItem = React.useMemo(() => {
+    if (!isAdvisor || revisionItems.length === 0) return null;
+    return {
+      id: revisionItems[0].id,
+      title: cleanNoticeTitle(revisionItems[0].title),
+      notifId: undefined as string | undefined,
+    };
+  }, [isAdvisor, revisionItems]);
 
-  const officerUnreadNotifs = notifications.filter(
-    (n) =>
-      !n.read &&
-      (n.category === "revision" ||
-        n.category === "document" ||
-        n.rawType === "REVISION_COMMENT" ||
-        n.rawType === "STATUS_CHANGE")
-  );
+  const officerUnreadNotifs = React.useMemo(() => {
+    return notifications.filter(
+      (n) =>
+        !n.read &&
+        (n.category === "revision" ||
+          n.category === "document" ||
+          n.rawType === "REVISION_COMMENT" ||
+          n.rawType === "STATUS_CHANGE")
+    );
+  }, [notifications]);
 
-  const topOfficerItem =
-    isOfficer && officerUnreadNotifs.length > 0
-      ? {
-          id: officerUnreadNotifs[0].documentId,
-          title: cleanNoticeTitle(officerUnreadNotifs[0].title),
-          description: officerUnreadNotifs[0].description,
-          notifId: officerUnreadNotifs[0].id,
-        }
-      : null;
+  const topOfficerItem = React.useMemo(() => {
+    if (!isOfficer || officerUnreadNotifs.length === 0) return null;
+    return {
+      id: officerUnreadNotifs[0].documentId,
+      title: cleanNoticeTitle(officerUnreadNotifs[0].title),
+      description: officerUnreadNotifs[0].description,
+      notifId: officerUnreadNotifs[0].id,
+    };
+  }, [isOfficer, officerUnreadNotifs]);
 
   const totalBadgeCount =
     activeRevisionCount > 0
       ? Math.max(unreadCount, activeRevisionCount)
       : unreadCount;
 
-  useEffect(() => {
-    if (!isFading && !isDismissed) {
-      if (isAdvisor && topRevisionItem) {
-        setActiveNoticeItem(topRevisionItem);
-      } else if (isOfficer && topOfficerItem) {
-        setActiveNoticeItem(topOfficerItem);
-      } else {
-        setActiveNoticeItem(null);
-      }
-    }
-  }, [isAdvisor, isOfficer, topRevisionItem, topOfficerItem, isFading, isDismissed]);
-
-  const displayedRevisionItem = isFading && activeNoticeItem ? activeNoticeItem : topRevisionItem;
-  const displayedOfficerItem = isFading && activeNoticeItem ? activeNoticeItem : topOfficerItem;
+  const displayedRevisionItem = topRevisionItem;
+  const displayedOfficerItem = topOfficerItem;
 
   return (
     <div className="flex items-center gap-2 sm:gap-2.5">
