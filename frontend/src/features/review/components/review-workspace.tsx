@@ -31,11 +31,8 @@ import {
   ShieldCheck,
   Search,
   ExternalLink,
-  Eye,
-  EyeOff,
   UploadCloud,
 } from "lucide-react";
-import { buildPiiMap, unmaskText } from "@/utils/pii-unmasker";
 import type { DocumentStatusType, DocumentItem } from "@/lib/validation/document";
 import { getDocumentAction, updateDocumentStatusAction } from "@/lib/actions/document-actions";
 import { EditDocumentModal } from "@/features/documents/components/edit-document-modal";
@@ -143,7 +140,6 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
   const [viewMode, setViewMode] = useState<"iframe" | "paper" | "text">("iframe");
   const [isLoadingAnalysis, setIsLoadingAnalysis] = useState<boolean>(true);
   const [isAiDegraded, setIsAiDegraded] = useState<boolean>(false);
-  const [isUnmasked, setIsUnmasked] = useState<boolean>(false);
   const [revisionRefreshKey, setRevisionRefreshKey] = useState<number>(0);
   const [activeDocId, setActiveDocId] = useState<string>(documentId ? documentId.trim() : "");
   const [reloadTrigger, setReloadTrigger] = useState<number>(0);
@@ -346,11 +342,6 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
     status,
   };
 
-  const piiMap = useMemo(() => {
-    if (!isOfficer || !currentDocItem) return {};
-    return buildPiiMap(currentDocItem.originalText, currentDocItem.maskedText);
-  }, [isOfficer, currentDocItem.originalText, currentDocItem.maskedText]);
-
   const isDocx = Boolean(
     currentDocItem.category === "DOCX" ||
     currentDocItem.mimeType?.includes("word") ||
@@ -389,7 +380,7 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
       }, 150);
       return () => clearTimeout(timer);
     }
-  }, [selectedFlag, viewMode, isUnmasked]);
+  }, [selectedFlag, viewMode]);
 
   /**
    * DOCU: Executes officer status update and updates audit state.
@@ -870,33 +861,7 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
                   <ZoomIn className="h-3.5 w-3.5" />
                 </button>
 
-                <div className="h-4 w-px bg-[#E6E8E7] mx-1" />
 
-                {isOfficer && (
-                  <button
-                    type="button"
-                    onClick={() => setIsUnmasked((prev) => !prev)}
-                    title={isUnmasked ? "Switch to Masked PII view" : "Switch to Raw Unmasked PII view (Officer Only)"}
-                    className={cn(
-                      "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all cursor-pointer shadow-2xs",
-                      isUnmasked
-                        ? "bg-amber-100 text-amber-900 border-amber-300 font-bold"
-                        : "bg-white text-[#183028]/70 border-[#E6E8E7] hover:text-[#183028] hover:bg-[#C5E86C]/20"
-                    )}
-                  >
-                    {isUnmasked ? (
-                      <>
-                        <EyeOff className="h-3.5 w-3.5 text-amber-700" />
-                        <span>Raw PII</span>
-                      </>
-                    ) : (
-                      <>
-                        <Eye className="h-3.5 w-3.5" />
-                        <span>Masked PII</span>
-                      </>
-                    )}
-                  </button>
-                )}
 
                 <button
                   onClick={() => window.print()}
@@ -916,13 +881,9 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
                   <span className="font-mono text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-100 border border-amber-300 text-amber-900 shrink-0">
                     {selectedFlag.severity || "MEDIUM"} • Rule {selectedFlag.ruleCode}
                   </span>
-                  {isOfficer && isUnmasked && (
-                    <span className="font-mono text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-200/80 border border-amber-400 text-amber-950 shrink-0">
-                      Raw PII
-                    </span>
-                  )}
+
                   <span className="truncate text-[11px] text-amber-900 font-serif italic max-w-[320px] sm:max-w-[480px]">
-                    &quot;{isOfficer && isUnmasked ? unmaskText(selectedFlag.passage, piiMap) : selectedFlag.passage}&quot;
+                    &quot;{selectedFlag.passage}&quot;
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
@@ -1016,38 +977,15 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
                     <div className="flex items-center gap-2 flex-wrap">
                       <FileText className="h-4 w-4 text-[#183028]" />
                       <span className="font-semibold text-xs text-[#183028]">Extracted Document Text</span>
-                      {isOfficer && isUnmasked && (
-                        <span className="font-mono text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-200/80 border border-amber-400 text-amber-950">
-                          Raw PII Unmasked
-                        </span>
-                      )}
                     </div>
                   </div>
 
                   <div className="bg-white p-4 rounded-xl border border-[#E6E8E7] font-mono text-[11px] leading-relaxed text-[#183028] whitespace-pre-wrap max-h-[520px] overflow-y-auto">
                     {currentDocItem.maskedText || currentDocItem.originalText ? (
-                      isOfficer && isUnmasked && currentDocItem.originalText
-                        ? renderHighlightedText(
-                            currentDocItem.originalText,
-                            selectedFlag?.passage
-                          )
-                        : isOfficer && isUnmasked && !currentDocItem.originalText
-                        ? (
-                            <div className="text-[#183028]/60 italic text-xs font-sans space-y-2">
-                              <p className="font-semibold text-[#183028] not-italic">Raw PII Unavailable</p>
-                              <p>The original unmasked document text is not stored for security compliance. PII fields are permanently redacted in the system.</p>
-                              <div className="mt-3 pt-3 border-t border-[#E6E8E7] not-italic">
-                                {renderHighlightedText(
-                                  currentDocItem.maskedText || "",
-                                  selectedFlag?.passage
-                                )}
-                              </div>
-                            </div>
-                          )
-                        : renderHighlightedText(
-                            currentDocItem.maskedText || currentDocItem.originalText || "",
-                            selectedFlag?.passage
-                          )
+                      renderHighlightedText(
+                        currentDocItem.maskedText || currentDocItem.originalText || "",
+                        selectedFlag?.passage
+                      )
                     ) : (
                       <div className="text-[#183028]/70 italic space-y-2 font-sans">
                         <p className="font-semibold text-[#183028] not-italic">Extracted Content Preview:</p>
@@ -1228,9 +1166,9 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
               isLoading={isLoadingAnalysis}
               isDegraded={isAiDegraded}
               onRefresh={handleRefreshAnalysis}
-              isUnmasked={isOfficer && isUnmasked}
-              onToggleUnmask={() => setIsUnmasked((prev) => !prev)}
-              piiMap={piiMap}
+              isUnmasked={false}
+              onToggleUnmask={undefined}
+              piiMap={{}}
               isOfficer={isOfficer}
             />
           ) : (
