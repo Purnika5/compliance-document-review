@@ -18,7 +18,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { LoadingState } from "@/components/shared/loading-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Alert } from "@/components/ui/alert";
+import { showSuccessToast, showErrorToast } from "@/components/ui/toast";
 import {
   Table,
   TableHeader,
@@ -107,7 +107,6 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
   const [dateFilter, setDateFilter] = useState<string>("All");
   const [editingDoc, setEditingDoc] = useState<DocumentItem | null>(null);
   const [resubmitDoc, setResubmitDoc] = useState<DocumentItem | null>(null);
-  const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
 
@@ -241,11 +240,11 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
   const trendData = React.useMemo(() => {
     return generateMetricTrends(
       documents,
-      activeDatePreset,
+      dateFilterPreset,
       customStartDate,
       customEndDate
     );
-  }, [documents, activeDatePreset, customStartDate, customEndDate]);
+  }, [documents, dateFilterPreset, customStartDate, customEndDate]);
 
   // Metric counts dynamically tied to active date filter/selection
   const metricVolume = trendData.total[trendData.total.length - 1] ?? 0;
@@ -271,7 +270,7 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
       if (updated.title) target.title = updated.title;
       if (updated.category) target.category = updated.category;
       if (updated.status) target.status = updated.status;
-      setActionMessage(`Updated document ${updated.id} metadata successfully.`);
+      showSuccessToast("Document Updated", "Document metadata updated successfully.");
       refetch();
     }
   };
@@ -282,9 +281,6 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
 
   return (
     <div className="space-y-4 max-w-[1600px] mx-auto pb-16">
-      {actionMessage && (
-        <Alert variant="success" title="Action Completed" message={actionMessage} />
-      )}
 
 
 

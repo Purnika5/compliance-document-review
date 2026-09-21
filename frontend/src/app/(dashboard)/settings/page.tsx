@@ -13,10 +13,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   User,
-  CheckCircle2,
   Save,
-  AlertCircle,
   Loader2,
+  AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SettingsSkeleton } from "@/features/settings/components/settings-skeleton";
@@ -38,7 +37,6 @@ export default function SettingsPage() {
   const [phone, setPhone] = useState("");
 
   const [isSaving, setIsSaving] = useState(false);
-  const [serverError, setServerError] = useState<string | null>(null);
 
   const hasFetchedProfile = React.useRef(false);
 
@@ -73,7 +71,6 @@ export default function SettingsPage() {
 
   // Form feedback state
   const [validationErrors, setValidationErrors] = useState<{ fullName?: string }>({});
-  const [savedSuccess, setSavedSuccess] = useState(false);
 
   if (!mounted) {
     return <SettingsSkeleton />;
@@ -96,7 +93,6 @@ export default function SettingsPage() {
     }
 
     setValidationErrors({});
-    setServerError(null);
     setIsSaving(true);
 
     try {
@@ -104,11 +100,7 @@ export default function SettingsPage() {
       if (updated?.name) {
         setFullName(updated.name);
       }
-      setSavedSuccess(true);
       showSuccessToast("Account settings updated successfully");
-      setTimeout(() => {
-        setSavedSuccess(false);
-      }, 4500);
     } catch (err: any) {
       // Fallback: update local frontend store even if network/mock environment
       if (session) {
@@ -119,14 +111,9 @@ export default function SettingsPage() {
       }
       const message = err?.message || "Profile updated locally.";
       if (err?.status && err.status >= 500) {
-        setServerError(message);
         showErrorToast(message);
       } else {
-        setSavedSuccess(true);
         showSuccessToast("Account settings updated successfully");
-        setTimeout(() => {
-          setSavedSuccess(false);
-        }, 4500);
       }
     } finally {
       setIsSaving(false);
@@ -146,22 +133,6 @@ export default function SettingsPage() {
           </p>
         </div>
       </div>
-
-      {/* Server Error Notification */}
-      {serverError && (
-        <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-900 text-xs rounded-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2 shadow-2xs">
-          <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
-          <span className="font-medium">{serverError}</span>
-        </div>
-      )}
-
-      {/* Success Notification */}
-      {savedSuccess && (
-        <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs rounded-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2 shadow-2xs">
-          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-          <span className="font-medium">Institutional account profile and preferences saved successfully.</span>
-        </div>
-      )}
 
       {/* Main Settings Form */}
       <form onSubmit={handleSavePreferences} noValidate className="space-y-4">
