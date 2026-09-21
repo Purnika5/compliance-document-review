@@ -24,15 +24,11 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Alert } from "@/components/ui/alert";
-import { showSuccessToast } from "@/components/ui/toast";
 import {
   Search,
   History,
-  ShieldCheck,
   FileSpreadsheet,
   Printer,
-  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AuditSkeleton } from "./audit-skeleton";
@@ -62,14 +58,13 @@ export function AuditHistoryView() {
   const docMode = isAdvisor ? "my-submissions" : "queue";
 
   // Explicitly disable background auto-polling in audit view to prevent glitchy reloads
-  const { documents, isPending: isLoadingDocs, refetch: refetchDocs } = useDocuments(docMode, "All", { pollInterval: 0 });
+  const { documents, isPending: isLoadingDocs } = useDocuments(docMode, "All", { pollInterval: 0 });
   const [entries, setEntries] = useState<AuditLedgerEntry[]>([]);
   const [isLoadingAudit, setIsLoadingAudit] = useState(true);
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState(documentIdParam || "");
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [categoryFilter, setCategoryFilter] = useState<string>("All");
-  const [verifiedMessage, setVerifiedMessage] = useState<string | null>(null);
 
   // Adjust search query if documentIdParam changes
   const [prevDocId, setPrevDocId] = useState(documentIdParam);
@@ -197,15 +192,6 @@ export function AuditHistoryView() {
     });
   }, [entries, searchQuery, statusFilter, categoryFilter]);
 
-  const handleVerifyIntegrity = () => {
-    const msg = `Cryptographic SHA-256 verification complete: All ${entries.length} recorded ledger blocks valid.`;
-    setVerifiedMessage(msg);
-    showSuccessToast("Audit Ledger Verified", msg);
-    setTimeout(() => {
-      setVerifiedMessage(null);
-    }, 5000);
-  };
-
   const handleExportCsv = () => {
     const headers = ["Log ID", "Hash", "Timestamp", "User", "Role", "Action", "Document ID", "Details", "Status"];
     const rows = filteredEntries.map((e) => [
@@ -257,28 +243,6 @@ export function AuditHistoryView() {
           <Button
             variant="outline"
             size="sm"
-            disabled={isLoadingAudit}
-            onClick={() => {
-              refetchDocs();
-              loadAuditRecords(true);
-            }}
-            className="text-xs border border-[#E6E8E7] bg-white hover:bg-[#C5E86C]/20 hover:border-[#183028] text-[#183028] font-semibold gap-1.5 cursor-pointer rounded-xl shadow-2xs transition-colors"
-          >
-            <RefreshCw className={cn("h-3.5 w-3.5 text-[#183028]/60", isLoadingAudit && "animate-spin text-[#183028]")} />
-            Refresh
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleVerifyIntegrity}
-            className="text-xs border border-[#E6E8E7] bg-white hover:bg-[#C5E86C]/20 hover:border-[#183028] text-[#183028] font-semibold gap-1.5 cursor-pointer rounded-xl shadow-2xs transition-colors"
-          >
-            <ShieldCheck className="h-3.5 w-3.5 text-[#183028]/60" />
-            Verify Integrity
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
             onClick={handleExportCsv}
             className="text-xs border border-[#E6E8E7] bg-white hover:bg-[#C5E86C]/20 hover:border-[#183028] text-[#183028] font-semibold gap-1.5 cursor-pointer rounded-xl shadow-2xs transition-colors"
           >
@@ -296,18 +260,6 @@ export function AuditHistoryView() {
           </Button>
         </div>
       </div>
-
-      {/* Verification Message */}
-      {verifiedMessage && (
-        <div className="print:hidden">
-          <Alert
-            variant="success"
-            title="Audit Ledger Verified"
-            message={verifiedMessage}
-            onClose={() => setVerifiedMessage(null)}
-          />
-        </div>
-      )}
 
       {/* Main Ledger Table Card */}
       <div className="border border-[#E6E8E7] bg-white rounded-xl overflow-hidden shadow-2xs print:border-none print:shadow-none print:rounded-none">
