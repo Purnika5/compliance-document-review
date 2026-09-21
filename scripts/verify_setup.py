@@ -13,6 +13,9 @@ import time
 import urllib.request
 import urllib.error
 
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+
 BACKEND_URL = "http://localhost:5000"
 FRONTEND_URL = "http://localhost:3000"
 PII_MASKER_URL = "http://localhost:8002"
@@ -63,10 +66,14 @@ def http_post(url, data_dict, headers=None):
             return e.code, body
 
 def test_frontend():
-    status, body = http_get(FRONTEND_URL)
-    if status == 200:
-        return True, "Next.js 16 Web App accessible on port 3000"
-    return False, f"Unexpected status {status}"
+    for port in [3003, 3000]:
+        try:
+            status, body = http_get(f"http://localhost:{port}")
+            if status == 200:
+                return True, f"Next.js 16 Web App accessible on port {port}"
+        except Exception:
+            continue
+    return False, "Frontend not responding on port 3000 or 3003"
 
 def test_backend_health():
     status, body = http_get(f"{BACKEND_URL}/health")
@@ -141,7 +148,7 @@ def test_masking_security_audit():
     import subprocess
     import os
     script_path = os.path.join(os.path.dirname(__file__), "audit_masking_security.py")
-    res = subprocess.run([sys.executable, script_path, "--ci"], capture_output=True, text=True)
+    res = subprocess.run([sys.executable, script_path, "--ci"], capture_output=True, text=True, encoding='utf-8', errors='replace')
     if res.returncode == 0:
         return True, "100% Outgoing AI Payload Masking Audit Passed (0 PII Leaks)"
     return False, f"Masking audit failed:\n{res.stdout}"
@@ -150,7 +157,7 @@ def test_vector_retrieval():
     import subprocess
     import os
     script_path = os.path.join(os.path.dirname(__file__), "test_vector_retrieval.py")
-    res = subprocess.run([sys.executable, script_path], capture_output=True, text=True)
+    res = subprocess.run([sys.executable, script_path], capture_output=True, text=True, encoding='utf-8', errors='replace')
     if res.returncode == 0:
         return True, "PostgreSQL pgvector store returned relevant rules for sample document passage (FINRA-2210 score >= 0.45)"
     return False, f"Vector retrieval check failed:\n{res.stdout}\n{res.stderr}"

@@ -30,7 +30,7 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
       return next(new AppError('Invalid token payload', 401, 'INVALID_TOKEN'));
     }
     
-    req.user = {
+    (req as any).user = {
       id: decoded.id,
       email: decoded.email,
       role: decoded.role
@@ -47,14 +47,15 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
 
 export const requireRole = (allowedRoles: UserRole[]) => {
   return (req: Request, res: Response, next: NextFunction): void => {
-    if (!req.user) {
+    const user = (req as any).user;
+    if (!user) {
       return next(new AppError('Authentication required', 401, 'UNAUTHORIZED'));
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
+    if (!allowedRoles.includes(user.role)) {
       return next(
         new AppError(
-          `Forbidden: User role '${req.user.role}' lacks permission`,
+          `Forbidden: User role '${user.role}' lacks permission`,
           403,
           'FORBIDDEN'
         )
