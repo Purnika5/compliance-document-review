@@ -1,12 +1,6 @@
-/**
- * DOCU: Renders role-aware dashboard navigation adhering to dark mode.
- * Last Updated Date: September 8, 2026
- * @returns The dashboard sidebar view.
- * @author Keith
- */
 import React, { useSyncExternalStore } from "react";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { authStore, type UserSession } from "@/lib/auth/auth-store";
 import { CompanyLogo } from "@/components/ui/brand-logos";
 import { cn } from "@/lib/utils";
@@ -23,12 +17,11 @@ export interface AppSidebarProps {
   onCloseMobile?: () => void;
 }
 
-function AppSidebarContent({
+export function AppSidebar({
   isOpenMobile = false,
   onCloseMobile,
 }: AppSidebarProps) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const session = useSyncExternalStore<UserSession | null>(
     authStore.subscribe,
     authStore.getSession,
@@ -56,7 +49,8 @@ function AppSidebarContent({
         (pathname === "/dashboard" ||
         pathname.startsWith("/submissions") ||
         pathname.startsWith("/documents")) &&
-        pathname !== "/audit",
+        pathname !== "/audit" &&
+        pathname !== "/settings",
     },
     {
       label: "Audit Trail",
@@ -77,7 +71,7 @@ function AppSidebarContent({
       label: "Review Queue",
       href: "/queue",
       icon: ShieldCheck,
-      active: pathname === "/queue",
+      active: pathname === "/queue" || pathname === "/dashboard",
     },
     {
       label: "Audit History",
@@ -95,9 +89,6 @@ function AppSidebarContent({
 
   const navItems = role === "Officer" ? officerNavItems : advisorNavItems;
 
-  const isOfficer = role === "Officer";
-  const roleDotColor = isOfficer ? "bg-cyan-400 shadow-[0_0_6px_#22d3ee]" : "bg-emerald-400 shadow-[0_0_6px_#34d399]";
-
   return (
     <>
       {/* Mobile Backdrop */}
@@ -111,7 +102,7 @@ function AppSidebarContent({
       {/* Sidebar Container */}
       <aside
         className={cn(
-          "fixed top-0 bottom-0 left-0 z-40 w-64 bg-[#FFFFFF] border-r border-[#E6E8E7] flex flex-col shadow-xs transition-transform duration-200 ease-in-out lg:translate-x-0",
+          "fixed top-0 bottom-0 left-0 z-40 w-64 bg-[#FFFFFF] border-r border-[#E6E8E7] flex flex-col shadow-xs transition-transform duration-200 ease-in-out lg:translate-x-0 pointer-events-auto",
           isOpenMobile ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -120,7 +111,6 @@ function AppSidebarContent({
           <Link href="/" className="flex items-center gap-2.5 min-w-0">
             <CompanyLogo inverted={false} />
           </Link>
-
         </div>
 
         {/* Navigation Links */}
@@ -153,7 +143,7 @@ function AppSidebarContent({
                 href={item.href || "#"}
                 onClick={onCloseMobile}
                 className={cn(
-                  "group flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all duration-150",
+                  "group flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all duration-150 cursor-pointer",
                   item.active
                     ? "bg-[#C5E86C] text-[#183028] font-bold shadow-xs"
                     : "text-[#183028] font-semibold hover:bg-[#C5E86C]/20"
@@ -187,16 +177,7 @@ function AppSidebarContent({
             );
           })}
         </div>
-
       </aside>
     </>
-  );
-}
-
-export function AppSidebar(props: AppSidebarProps) {
-  return (
-    <React.Suspense fallback={<aside className="hidden lg:flex w-64 flex-col border-r border-border bg-card fixed inset-y-0 left-0 z-30" />}>
-      <AppSidebarContent {...props} />
-    </React.Suspense>
   );
 }
