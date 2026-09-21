@@ -16,7 +16,6 @@ import {
   Check,
   Copy,
   Sparkles,
-  BookOpen,
   FileCheck2,
   Wand2,
   ArrowRight,
@@ -35,17 +34,12 @@ import {
   PLATFORM_KNOWLEDGE_BASE,
 } from "@/lib/constants/chatbot";
 import {
-  recheckGrammar,
-  enhanceForDocumentation,
-  detectUserIntent,
   type IGrammarResult,
   type IDocumentationResult,
 } from "@/lib/chatbot/documentation-engine";
 
 /** Typing speed in milliseconds per character */
 const TYPING_SPEED_MS = 14;
-
-type ChatMode = "knowledge" | "grammar" | "documentation";
 
 interface IResolvedBotReply {
   text: string;
@@ -88,87 +82,38 @@ function getDashboardBotKnowledgeResponse(rawText: string): string {
   if (["role", "permission", "advisor"].some((k) => lower.includes(k))) {
     return PLATFORM_KNOWLEDGE_BASE.permissions;
   }
-  if (["grammar", "check"].some((k) => lower.includes(k))) {
-    return "To audit grammar, click the 'Recheck Grammar' tab above, or prefix your message with 'Recheck grammar: [your text]'.";
-  }
-  if (["rule", "documentation", "enhance"].some((k) => lower.includes(k))) {
-    return "To polish text for documentation rules, select the 'Documentation Rules' tab above, or prefix your message with 'Make response better: [your draft]'.";
-  }
   return PLATFORM_KNOWLEDGE_BASE.default;
 }
 
 /** Resolves full bot response and attached results based on input and mode */
 function resolveBotReply(
   rawText: string,
-  effectiveMode: ChatMode,
   isLoginMode: boolean
 ): IResolvedBotReply {
   if (isLoginMode) {
     return { text: getLoginBotResponse(rawText) };
   }
 
-  const { intent, targetText } = detectUserIntent(rawText);
-
-  if (effectiveMode === "grammar" || intent === "grammar") {
-    const textToAudit = intent === "grammar" ? targetText : rawText;
-    const grammarRes = recheckGrammar(textToAudit);
-    const replyIntro =
-      grammarRes.issues.length === 0
-        ? "Grammar & Syntax Audit Complete: No grammatical or spelling issues were found. The phrasing adheres to institutional documentation quality."
-        : `Grammar & Syntax Audit Complete: Corrected ${grammarRes.issues.length} item(s) to align with institutional professional standards.`;
-
-    return { text: replyIntro, grammarResult: grammarRes };
-  }
-
-  if (effectiveMode === "documentation" || intent === "documentation") {
-    const textToEnhance = intent === "documentation" ? targetText : rawText;
-    const docRes = enhanceForDocumentation(textToEnhance);
-    const replyIntro =
-      "Institutional Documentation Optimization Complete: Your response has been elevated to meet FINRA Rule 2210 and SEC Rule 206(4)-1 audit-defensible standards.";
-
-    return { text: replyIntro, documentationResult: docRes };
-  }
-
   return { text: getDashboardBotKnowledgeResponse(rawText) };
 }
 
 /** Determines active suggested questions without nested ternaries */
-function getSuggestedQuestions(isLoginMode: boolean, activeTab: ChatMode): string[] {
+function getSuggestedQuestions(isLoginMode: boolean): string[] {
   if (isLoginMode) {
     return LOGIN_SUGGESTED_QUESTIONS;
-  }
-  if (activeTab === "grammar") {
-    return [
-      "Recheck grammar: The advisor have submited the proposal without signed notes",
-      "Recheck grammar: We was reviewing the doc and there is no risks",
-      "Recheck grammar: Its alright to approve untill we recieve the audit",
-    ];
-  }
-  if (activeTab === "documentation") {
-    return [
-      "Make response better: Looks good to me, advisor can proceed",
-      "Make response better: Needs changes, missing fee schedules and conflict statements",
-      "Make response better: This investment guarantees 15% return with zero risk",
-    ];
   }
   return DASHBOARD_SUGGESTED_QUESTIONS;
 }
 
 /** Determines active input placeholder text without nested ternaries */
-function getPlaceholderText(isLoginMode: boolean, activeTab: ChatMode, isTyping: boolean): string {
+function getPlaceholderText(isLoginMode: boolean, isTyping: boolean): string {
   if (isLoginMode) {
     return "Ask about guidelines, classifications, formats...";
-  }
-  if (activeTab === "grammar") {
-    return "Paste draft note or text to recheck grammar...";
-  }
-  if (activeTab === "documentation") {
-    return "Paste response or draft to polish for documentation rules...";
   }
   if (isTyping) {
     return "Springer Help is processing...";
   }
-  return "Ask workflows, or type 'Recheck grammar: ...'";
+  return "Ask about workflows, guidelines, or classifications...";
 }
 
 export function ChatbotWidget() {
@@ -185,10 +130,14 @@ export function ChatbotWidget() {
   const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/signup");
   const isLoginMode = !isAuthenticated || isAuthPage;
 
-  // On login page, the chatbot starts open for informative guidance
-  const [isOpen, setIsOpen] = useState(isLoginMode);
-  const [activeTab, setActiveTab] = useState<ChatMode>("knowledge");
+  // Chatbot is closed by default on initial open and page navigation
+  const [isOpen, setIsOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Automatically close chatbot on route redirection or page navigation
+  useEffect(() => {
+    setIsOpen(false);
+  }, [pathname]);
 
   // Messages state
   const [messages, setMessages] = useState<IChatMessage[]>(
@@ -200,7 +149,7 @@ export function ChatbotWidget() {
   if (prevIsLoginMode !== isLoginMode) {
     setPrevIsLoginMode(isLoginMode);
     setMessages(isLoginMode ? LOGIN_INITIAL_MESSAGES : DASHBOARD_INITIAL_MESSAGES);
-    setActiveTab("knowledge");
+    setIsOpen(false);
   }
 
   const [inputValue, setInputValue] = useState("");
@@ -287,7 +236,7 @@ export function ChatbotWidget() {
     []
   );
 
-  const handleSend = (overrideText?: string, forcedMode?: ChatMode) => {
+  const handleSend = (overrideText?: string) => {
     const rawText = overrideText || inputValue.trim();
     if (!rawText || isTyping) return;
 
@@ -308,10 +257,9 @@ export function ChatbotWidget() {
     if (!overrideText) setInputValue("");
 
     const botMsgId = `bot-${++messageIdRef.current}`;
-    const effectiveMode = forcedMode || activeTab;
 
     setTimeout(() => {
-      const reply = resolveBotReply(rawText, effectiveMode, isLoginMode);
+      const reply = resolveBotReply(rawText, isLoginMode);
       simulateTyping(botMsgId, reply.text, timestamp, {
         grammarResult: reply.grammarResult,
         documentationResult: reply.documentationResult,
@@ -319,8 +267,8 @@ export function ChatbotWidget() {
     }, 300);
   };
 
-  const currentSuggestedQuestions = getSuggestedQuestions(isLoginMode, activeTab);
-  const currentPlaceholder = getPlaceholderText(isLoginMode, activeTab, isTyping);
+  const currentSuggestedQuestions = getSuggestedQuestions(isLoginMode);
+  const currentPlaceholder = getPlaceholderText(isLoginMode, isTyping);
 
   return (
     <div className="fixed bottom-5 right-5 z-40 print:hidden font-sans">
@@ -346,14 +294,6 @@ export function ChatbotWidget() {
             onClose={() => setIsOpen(false)}
           />
 
-          {/* Institutional Mode Tabs (When Authenticated in Dashboard) */}
-          {!isLoginMode && (
-            <ChatTabs
-              activeTab={activeTab}
-              onSelectTab={setActiveTab}
-            />
-          )}
-
           {/* Chat Messages Log */}
           <div className="flex-1 p-3.5 overflow-y-auto space-y-3 bg-white">
             {messages.map((message) => (
@@ -362,10 +302,6 @@ export function ChatbotWidget() {
                 message={message}
                 copiedId={copiedId}
                 onCopy={handleCopy}
-                onElevateToDocumentation={(text) => {
-                  setActiveTab("documentation");
-                  handleSend(`Make response better: ${text}`, "documentation");
-                }}
               />
             ))}
             <div ref={messagesEndRef} />
@@ -459,50 +395,12 @@ function ChatHeader({ isLoginMode, role, onClose }: IChatHeaderProps) {
   );
 }
 
-/** Mode tabs navigation */
-interface IChatTabsProps {
-  activeTab: ChatMode;
-  onSelectTab: (tab: ChatMode) => void;
-}
-
-function ChatTabs({ activeTab, onSelectTab }: IChatTabsProps) {
-  const tabs = [
-    { id: "knowledge" as const, label: "Knowledge", icon: BookOpen },
-    { id: "grammar" as const, label: "Recheck Grammar", icon: FileCheck2 },
-    { id: "documentation" as const, label: "Doc Rules", icon: Wand2 },
-  ];
-
-  return (
-    <div className="bg-white border-b border-[#E6E8E7] px-2 py-1.5 flex items-center gap-1 shrink-0">
-      {tabs.map((tab) => {
-        const Icon = tab.icon;
-        const isActive = activeTab === tab.id;
-        return (
-          <button
-            key={tab.id}
-            onClick={() => onSelectTab(tab.id)}
-            className={cn(
-              "flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg font-semibold text-[11px] transition-all cursor-pointer",
-              isActive
-                ? "bg-[#183028] text-white shadow-xs"
-                : "text-[#183028]/70 hover:bg-[#FAFBFB] hover:text-[#183028]"
-            )}
-          >
-            <Icon className="h-3 w-3" />
-            <span>{tab.label}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 /** Individual Chat Message Bubble */
 interface IChatMessageItemProps {
   message: IChatMessage;
   copiedId: string | null;
   onCopy: (id: string, text: string) => void;
-  onElevateToDocumentation: (text: string) => void;
+  onElevateToDocumentation?: (text: string) => void;
 }
 
 function ChatMessageItem({
@@ -552,7 +450,7 @@ function ChatMessageItem({
             result={message.grammarResult}
             isCopied={copiedId === message.id}
             onCopy={() => onCopy(message.id, message.grammarResult!.correctedText)}
-            onElevate={() => onElevateToDocumentation(message.grammarResult!.correctedText)}
+            onElevate={() => onElevateToDocumentation?.(message.grammarResult!.correctedText)}
           />
         )}
 

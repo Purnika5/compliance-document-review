@@ -6,7 +6,7 @@
  * @returns The institutional audit history view.
  * @author Keith
  */
-import React, { useState, useEffect, useMemo, useSyncExternalStore } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
 import { authStore } from "@/lib/auth/auth-store";
 import { useDocuments } from "@/features/documents/hooks/use-documents";
@@ -32,6 +32,7 @@ import {
   ShieldCheck,
   FileSpreadsheet,
   Printer,
+  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AuditSkeleton } from "./audit-skeleton";
@@ -60,9 +61,11 @@ export function AuditHistoryView() {
   const isAdvisor = session?.role === "Advisor";
   const docMode = isAdvisor ? "my-submissions" : "queue";
 
-  const { documents, isPending: isLoadingDocs } = useDocuments(docMode);
+  // Explicitly disable background auto-polling in audit view to prevent glitchy reloads
+  const { documents, isPending: isLoadingDocs, refetch: refetchDocs } = useDocuments(docMode, "All", { pollInterval: 0 });
   const [entries, setEntries] = useState<AuditLedgerEntry[]>([]);
   const [isLoadingAudit, setIsLoadingAudit] = useState(true);
+  const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState(documentIdParam || "");
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [categoryFilter, setCategoryFilter] = useState<string>("All");
@@ -77,95 +80,97 @@ export function AuditHistoryView() {
     }
   }
 
-  // Fetch audit records across active documents
-  useEffect(() => {
-    let isActive = true;
+  // Stable document key so we only re-query audit records when document composition actually changes
+  const docIdsKey = useMemo(() => documents.map((d) => d.id).sort().join(","), [documents]);
 
-    async function loadAuditRecords() {
-      if (documents.length === 0) {
-        if (isActive) {
-          setEntries([]);
-          setIsLoadingAudit(false);
-        }
-        return;
+  const loadAuditRecords = useCallback(async (isManualRefresh = false) => {
+    if (documents.length === 0) {
+      if (!isLoadingDocs) {
+        setEntries([]);
+        setIsLoadingAudit(false);
+        setHasInitiallyLoaded(true);
       }
-
-      setIsLoadingAudit(true);
-      try {
-        const results = await Promise.all(
-          documents.map(async (doc) => {
-            try {
-              const auditLogs = await auditService.getDocumentAuditTrail(doc.id);
-              return auditLogs.map((log, index) => {
-                const actionLower = (log.action || "").toLowerCase();
-                const notesLower = (log.notes || "").toLowerCase();
-                const newStatusStr = (log.new_status || "").toLowerCase();
-
-                // Accurately resolve entry regulatory status
-                let statusResult: AuditLedgerEntry["statusResult"] = "Pending";
-                if (newStatusStr.includes("approv") || actionLower.includes("approv")) {
-                  statusResult = "Approved";
-                } else if (newStatusStr.includes("revis") || actionLower.includes("revis") || notesLower.includes("needs revision")) {
-                  statusResult = "Needs Revision";
-                } else if (newStatusStr.includes("reject") || actionLower.includes("reject")) {
-                  statusResult = "Rejected";
-                } else if (log.actor_role === "Officer") {
-                  if (notesLower.includes("approv")) statusResult = "Approved";
-                  else if (notesLower.includes("reject")) statusResult = "Rejected";
-                  else statusResult = "Needs Revision";
-                } else {
-                  statusResult = "Pending";
-                }
-
-                // Accurately resolve action category
-                const category: AuditLedgerEntry["actionCategory"] =
-                  statusResult === "Approved" || actionLower.includes("approv")
-                    ? "Approval"
-                    : statusResult === "Needs Revision" || actionLower.includes("revis") || notesLower.includes("revision")
-                    ? "Revision"
-                    : actionLower.includes("scan") || actionLower.includes("flag")
-                    ? "AI_Scan"
-                    : actionLower.includes("submit") || log.actor_role === "Advisor"
-                    ? "Submission"
-                    : "Metadata";
-
-                return {
-                  id: log.id || `${doc.id}-${index + 1}`,
-                  documentId: doc.id,
-                  documentTitle: doc.title,
-                  timestamp: log.timestamp || doc.submittedAt,
-                  relativeTime: new Date(log.timestamp || doc.submittedAt).toLocaleDateString(),
-                  user: log.actor_name || doc.submittedBy,
-                  role: (log.actor_role as "Advisor" | "Officer" | "System") || "Officer",
-                  action: log.action || "STATUS_RECORDED",
-                  actionCategory: category,
-                  version: "v1.0",
-                  details: log.notes || `Regulatory action ${log.action} recorded on ${doc.title}.`,
-                  statusResult,
-                } as AuditLedgerEntry;
-              });
-            } catch {
-              return [];
-            }
-          })
-        );
-
-        if (isActive) {
-          setEntries(results.flat());
-        }
-      } catch {
-        if (isActive) setEntries([]);
-      } finally {
-        if (isActive) setIsLoadingAudit(false);
-      }
+      return;
     }
 
-    loadAuditRecords();
+    if (isManualRefresh || !hasInitiallyLoaded) {
+      setIsLoadingAudit(true);
+    }
 
-    return () => {
-      isActive = false;
-    };
-  }, [documents]);
+    try {
+      const results = await Promise.all(
+        documents.map(async (doc) => {
+          try {
+            const auditLogs = await auditService.getDocumentAuditTrail(doc.id);
+            return auditLogs.map((log, index) => {
+              const actionLower = (log.action || "").toLowerCase();
+              const notesLower = (log.notes || "").toLowerCase();
+              const newStatusStr = (log.new_status || "").toLowerCase();
+
+              // Accurately resolve entry regulatory status
+              let statusResult: AuditLedgerEntry["statusResult"] = "Pending";
+              if (newStatusStr.includes("approv") || actionLower.includes("approv")) {
+                statusResult = "Approved";
+              } else if (newStatusStr.includes("revis") || actionLower.includes("revis") || notesLower.includes("needs revision")) {
+                statusResult = "Needs Revision";
+              } else if (newStatusStr.includes("reject") || actionLower.includes("reject")) {
+                statusResult = "Rejected";
+              } else if (log.actor_role === "Officer") {
+                if (notesLower.includes("approv")) statusResult = "Approved";
+                else if (notesLower.includes("reject")) statusResult = "Rejected";
+                else statusResult = "Needs Revision";
+              } else {
+                statusResult = "Pending";
+              }
+
+              // Accurately resolve action category
+              const category: AuditLedgerEntry["actionCategory"] =
+                statusResult === "Approved" || actionLower.includes("approv")
+                  ? "Approval"
+                  : statusResult === "Needs Revision" || actionLower.includes("revis") || notesLower.includes("revision")
+                  ? "Revision"
+                  : actionLower.includes("scan") || actionLower.includes("flag")
+                  ? "AI_Scan"
+                  : actionLower.includes("submit") || log.actor_role === "Advisor"
+                  ? "Submission"
+                  : "Metadata";
+
+              return {
+                id: log.id || `${doc.id}-${index + 1}`,
+                documentId: doc.id,
+                documentTitle: doc.title,
+                timestamp: log.timestamp || doc.submittedAt,
+                relativeTime: new Date(log.timestamp || doc.submittedAt).toLocaleDateString(),
+                user: log.actor_name || doc.submittedBy,
+                role: (log.actor_role as "Advisor" | "Officer" | "System") || "Officer",
+                action: log.action || "STATUS_RECORDED",
+                actionCategory: category,
+                version: "v1.0",
+                details: log.notes || `Regulatory action ${log.action} recorded on ${doc.title}.`,
+                statusResult,
+              } as AuditLedgerEntry;
+            });
+          } catch {
+            return [];
+          }
+        })
+      );
+
+      setEntries(results.flat());
+    } catch {
+      if (!hasInitiallyLoaded) setEntries([]);
+    } finally {
+      setIsLoadingAudit(false);
+      setHasInitiallyLoaded(true);
+    }
+  }, [documents, isLoadingDocs, hasInitiallyLoaded]);
+
+  // Fetch audit records once documents are loaded without continuous background polling
+  useEffect(() => {
+    if (!isLoadingDocs) {
+      loadAuditRecords(false);
+    }
+  }, [docIdsKey, isLoadingDocs]);
 
   const filteredEntries = useMemo(() => {
     return entries.filter((entry) => {
@@ -226,7 +231,7 @@ export function AuditHistoryView() {
   };
 
 
-  const isLoaded = !isLoadingDocs && !isLoadingAudit;
+  const isLoaded = hasInitiallyLoaded || (!isLoadingDocs && !isLoadingAudit);
 
   if (!isLoaded) {
     return <AuditSkeleton />;
@@ -249,6 +254,19 @@ export function AuditHistoryView() {
 
         {/* Header Actions */}
         <div className="flex items-center gap-2 print:hidden">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={isLoadingAudit}
+            onClick={() => {
+              refetchDocs();
+              loadAuditRecords(true);
+            }}
+            className="text-xs border border-[#E6E8E7] bg-white hover:bg-[#C5E86C]/20 hover:border-[#183028] text-[#183028] font-semibold gap-1.5 cursor-pointer rounded-xl shadow-2xs transition-colors"
+          >
+            <RefreshCw className={cn("h-3.5 w-3.5 text-[#183028]/60", isLoadingAudit && "animate-spin text-[#183028]")} />
+            Refresh
+          </Button>
           <Button
             variant="outline"
             size="sm"

@@ -244,3 +244,6 @@ service_account*.json
 secrets.json
 *.secret
 railway.env
+.vscode/
+pyrightconfig.json
+

@@ -31,11 +31,11 @@ import {
   ShieldCheck,
   Search,
   ExternalLink,
+  UploadCloud,
   Eye,
   EyeOff,
-  UploadCloud,
 } from "lucide-react";
-import { buildPiiMap, unmaskText } from "@/utils/pii-unmasker";
+import { buildPiiMap, unmaskText, hasPiiPlaceholders } from "@/utils/pii-unmasker";
 import type { DocumentStatusType, DocumentItem } from "@/lib/validation/document";
 import { getDocumentAction, updateDocumentStatusAction } from "@/lib/actions/document-actions";
 import { EditDocumentModal } from "@/features/documents/components/edit-document-modal";
@@ -50,6 +50,7 @@ import { DocxViewer } from "./docx-viewer";
 import { ReviewWorkspaceSkeleton } from "./review-workspace-skeleton";
 import { VersionLineageSelector, type LineageEntry } from "./version-lineage-selector";
 import { FileTypeIcon } from "@/components/shared/file-type-icon";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { cn } from "@/lib/utils";
 import { authStore } from "@/lib/auth/auth-store";
 import { showSuccessToast, showErrorToast, showInfoToast } from "@/components/ui/toast";
@@ -351,6 +352,17 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
     return buildPiiMap(currentDocItem.originalText, currentDocItem.maskedText);
   }, [isOfficer, currentDocItem.originalText, currentDocItem.maskedText]);
 
+  const displayedExtractedText = useMemo(() => {
+    const baseMasked = currentDocItem.maskedText || currentDocItem.originalText || "";
+    if (!isOfficer || !isUnmasked) {
+      return baseMasked;
+    }
+    if (currentDocItem.originalText && !hasPiiPlaceholders(currentDocItem.originalText)) {
+      return currentDocItem.originalText;
+    }
+    return unmaskText(baseMasked, piiMap);
+  }, [isOfficer, isUnmasked, currentDocItem.maskedText, currentDocItem.originalText, piiMap]);
+
   const isDocx = Boolean(
     currentDocItem.category === "DOCX" ||
     currentDocItem.mimeType?.includes("word") ||
@@ -366,6 +378,8 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
     currentDocItem.fileName?.toLowerCase().endsWith(".pdf") ||
     currentDocItem.fileUrl?.toLowerCase().endsWith(".pdf")
   );
+
+  const isAlreadyDetermined = status === "Approved" || status === "Needs Revision" || status === "Rejected";
 
   /**
    * DOCU: Selects an AI flag, switches page view, and scrolls to flagged passage.
@@ -389,7 +403,7 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
       }, 150);
       return () => clearTimeout(timer);
     }
-  }, [selectedFlag, viewMode, isUnmasked]);
+  }, [selectedFlag, viewMode]);
 
   /**
    * DOCU: Executes officer status update and updates audit state.
@@ -527,6 +541,13 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
               <h1 className="text-xs font-bold text-[#183028] truncate max-w-xs sm:max-w-md">
                 {title}
               </h1>
+              <StatusBadge status={status} />
+              {isOfficer && isAlreadyDetermined && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#E6E8E7]/60 text-[#183028] border border-[#d4d7d5]">
+                  <Eye className="h-3 w-3" />
+                  View Only
+                </span>
+              )}
             </div>
             <p className="text-[11px] text-[#183028]/60 hidden sm:block">
               Advisor: {currentDocItem?.submittedBy || "System User"} • Submitted {currentDocItem?.submittedAt ? new Date(currentDocItem.submittedAt).toLocaleDateString() : "Recently"} • Category: {currentDocItem?.category || "General"}
@@ -633,7 +654,7 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
           )}
         >
           <ShieldCheck className="h-3.5 w-3.5" />
-          <span>{isOfficer ? "Decision" : "Metadata"}</span>
+          <span>{isOfficer ? (isAlreadyDetermined ? "View Only" : "Decision") : "Metadata"}</span>
         </button>
       </div>
 
@@ -746,44 +767,68 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
                     )}
                   </div>
 
-                  {/* OFFICER DECISION ACTIONS (User Story 6: Unambiguous human decision) */}
-                  {isOfficer && <div className="space-y-2 pt-1">
-                    <div className="flex items-center justify-between">
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-[#183028]">
-                        Officer Decision Suite
-                      </p>
+                  {/* OFFICER DECISION ACTIONS / VIEW ONLY (User Story 6: Unambiguous human decision) */}
+                  {isOfficer && (
+                    <div className="space-y-2 pt-1">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-[#183028]">
+                          Officer Decision Suite
+                        </p>
+                        {isAlreadyDetermined && (
+                          <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded-md bg-[#E6E8E7] text-[#183028] border border-[#d4d7d5]">
+                            View Only
+                          </span>
+                        )}
+                      </div>
+
+                      {isAlreadyDetermined ? (
+                        <div className="p-3.5 rounded-xl border border-[#E6E8E7] bg-[#FAFBFB] space-y-2 text-xs shadow-2xs">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5">
+                              <Eye className="h-4 w-4 text-[#183028]/70" />
+                              <span className="font-bold text-[#183028]">Determination Recorded</span>
+                            </div>
+                            <StatusBadge status={status} />
+                          </div>
+                          <p className="text-[11px] text-[#183028]/70 leading-relaxed">
+                            This document has already been updated to <strong>{status}</strong>. The request is in <strong>View Only</strong> mode and compliance decision actions have been finalized.
+                          </p>
+                        </div>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            disabled={isUpdating}
+                            onClick={() => setActiveDecision("Approved")}
+                            className="w-full flex items-center justify-start gap-2 h-9 px-3 rounded-xl font-bold text-xs bg-[#C5E86C] text-[#183028] hover:bg-[#b4db53] border border-[#a8ce4a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] cursor-pointer disabled:opacity-50 transition-all shadow-2xs"
+                          >
+                            <CheckCircle2 className="h-4 w-4 text-[#183028]" />
+                            <span>Approve Proposal</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={isUpdating}
+                            onClick={() => setActiveDecision("Needs Revision")}
+                            className="w-full flex items-center justify-start gap-2 h-9 px-3 rounded-xl font-semibold text-xs border border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 cursor-pointer disabled:opacity-50 transition-all shadow-2xs"
+                          >
+                            <AlertCircle className="h-4 w-4 text-amber-700" />
+                            <span>Request Revision</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={isUpdating}
+                            onClick={() => setActiveDecision("Rejected")}
+                            className="w-full flex items-center justify-start gap-2 h-9 px-3 rounded-xl font-semibold text-xs border border-rose-300 bg-rose-50 text-rose-900 hover:bg-rose-100 cursor-pointer disabled:opacity-50 transition-all shadow-2xs"
+                          >
+                            <XCircle className="h-4 w-4 text-rose-700" />
+                            <span>Formal Rejection</span>
+                          </button>
+                        </>
+                      )}
                     </div>
-
-                    <button
-                      type="button"
-                      disabled={isUpdating}
-                      onClick={() => setActiveDecision("Approved")}
-                      className="w-full flex items-center justify-start gap-2 h-9 px-3 rounded-xl font-bold text-xs bg-[#C5E86C] text-[#183028] hover:bg-[#b4db53] border border-[#a8ce4a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] cursor-pointer disabled:opacity-50 transition-all shadow-2xs"
-                    >
-                      <CheckCircle2 className="h-4 w-4 text-[#183028]" />
-                      <span>Approve Proposal</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      disabled={isUpdating}
-                      onClick={() => setActiveDecision("Needs Revision")}
-                      className="w-full flex items-center justify-start gap-2 h-9 px-3 rounded-xl font-semibold text-xs border border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 cursor-pointer disabled:opacity-50 transition-all shadow-2xs"
-                    >
-                      <AlertCircle className="h-4 w-4 text-amber-700" />
-                      <span>Request Revision</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      disabled={isUpdating}
-                      onClick={() => setActiveDecision("Rejected")}
-                      className="w-full flex items-center justify-start gap-2 h-9 px-3 rounded-xl font-semibold text-xs border border-rose-300 bg-rose-50 text-rose-900 hover:bg-rose-100 cursor-pointer disabled:opacity-50 transition-all shadow-2xs"
-                    >
-                      <XCircle className="h-4 w-4 text-rose-700" />
-                      <span>Formal Rejection</span>
-                    </button>
-                  </div>}
+                  )}
                 </div>
               ) : activeLeftTab === "history" ? (
                 <RevisionThread documentId={activeDocId} refreshKey={revisionRefreshKey} />
@@ -876,7 +921,7 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
                   <button
                     type="button"
                     onClick={() => setIsUnmasked((prev) => !prev)}
-                    title={isUnmasked ? "Switch to Masked PII view" : "Switch to Raw Unmasked PII view (Officer Only)"}
+                    title={isUnmasked ? "Switch to Masked view" : "Switch to Unmasked view (Officer Only)"}
                     className={cn(
                       "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all cursor-pointer shadow-2xs",
                       isUnmasked
@@ -887,12 +932,12 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
                     {isUnmasked ? (
                       <>
                         <EyeOff className="h-3.5 w-3.5 text-amber-700" />
-                        <span>Raw PII</span>
+                        <span>Unmasked</span>
                       </>
                     ) : (
                       <>
                         <Eye className="h-3.5 w-3.5" />
-                        <span>Masked PII</span>
+                        <span>Masked</span>
                       </>
                     )}
                   </button>
@@ -916,11 +961,7 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
                   <span className="font-mono text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-100 border border-amber-300 text-amber-900 shrink-0">
                     {selectedFlag.severity || "MEDIUM"} • Rule {selectedFlag.ruleCode}
                   </span>
-                  {isOfficer && isUnmasked && (
-                    <span className="font-mono text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-200/80 border border-amber-400 text-amber-950 shrink-0">
-                      Raw PII
-                    </span>
-                  )}
+
                   <span className="truncate text-[11px] text-amber-900 font-serif italic max-w-[320px] sm:max-w-[480px]">
                     &quot;{isOfficer && isUnmasked ? unmaskText(selectedFlag.passage, piiMap) : selectedFlag.passage}&quot;
                   </span>
@@ -1022,42 +1063,13 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
                         </span>
                       )}
                     </div>
-                    {isOfficer && (
-                      <button
-                        type="button"
-                        onClick={() => setIsUnmasked((prev) => !prev)}
-                        title={isUnmasked ? "Switch to Masked PII view" : "Switch to Raw Unmasked PII view (Officer Only)"}
-                        className={cn(
-                          "flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold border transition-all cursor-pointer shadow-2xs",
-                          isUnmasked
-                            ? "bg-amber-100 text-amber-900 border-amber-300 font-bold"
-                            : "bg-white text-[#183028]/70 border-[#E6E8E7] hover:text-[#183028] hover:bg-[#E6E8E7]/40"
-                        )}
-                      >
-                        {isUnmasked ? (
-                          <>
-                            <EyeOff className="h-3 w-3 text-amber-700" />
-                            <span>Raw PII</span>
-                          </>
-                        ) : (
-                          <>
-                            <Eye className="h-3 w-3" />
-                            <span>Masked</span>
-                          </>
-                        )}
-                      </button>
-                    )}
                   </div>
 
                   <div className="bg-white p-4 rounded-xl border border-[#E6E8E7] font-mono text-[11px] leading-relaxed text-[#183028] whitespace-pre-wrap max-h-[520px] overflow-y-auto">
-                    {currentDocItem.maskedText || currentDocItem.originalText ? (
+                    {displayedExtractedText ? (
                       renderHighlightedText(
-                        isOfficer && isUnmasked
-                          ? unmaskText(currentDocItem.maskedText || currentDocItem.originalText || "", piiMap)
-                          : currentDocItem.maskedText || currentDocItem.originalText || "",
-                        isOfficer && isUnmasked && selectedFlag?.passage
-                          ? unmaskText(selectedFlag.passage, piiMap)
-                          : selectedFlag?.passage
+                        displayedExtractedText,
+                        selectedFlag?.passage
                       )
                     ) : (
                       <div className="text-[#183028]/70 italic space-y-2 font-sans">
@@ -1239,9 +1251,6 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
               isLoading={isLoadingAnalysis}
               isDegraded={isAiDegraded}
               onRefresh={handleRefreshAnalysis}
-              isUnmasked={isOfficer && isUnmasked}
-              onToggleUnmask={() => setIsUnmasked((prev) => !prev)}
-              piiMap={piiMap}
               isOfficer={isOfficer}
             />
           ) : (
