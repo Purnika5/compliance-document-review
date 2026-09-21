@@ -10,7 +10,6 @@ import React, { useState } from "react";
 import {
   ChevronRight,
   Bot,
-  ShieldAlert,
   FileCheck,
   RefreshCw,
   Loader2,
@@ -83,14 +82,6 @@ export function AIAssistPanel({
             </button>
           )}
         </div>
-      </div>
-
-      {/* Institutional Framing Notice (Never AI Decision Maker) */}
-      <div className="border-b border-[#E6E8E7] bg-[#E6E8E7]/20 p-2.5 text-[#183028]/70 text-[11px] flex items-start gap-2 shrink-0">
-        <ShieldAlert className="h-3.5 w-3.5 text-[#183028] mt-0.5 shrink-0" />
-        <p className="leading-snug">
-          <strong className="text-[#183028]">Advisory Guidance Only:</strong> AI suggests potential compliance rules and highlights passages. Final determination rests solely with the Compliance Officer.
-        </p>
       </div>
 
       <div className="flex-1 flex flex-col min-h-0">
