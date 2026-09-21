@@ -45,6 +45,8 @@ export const seedDatabase = async (): Promise<void> => {
   const usersToSeed = [
     { name: 'Marcus Vance', email: 'advisor1@springer.capital', role: 'Advisor' },
     { name: 'Elena Rostova', email: 'officer1@springer.capital', role: 'Officer' },
+    { name: 'Sarah Jenkins', email: 'sarah.j@springercapital.com', role: 'Advisor' },
+    { name: 'Alex Smith', email: 'alex.smith@springercapital.com', role: 'Officer' },
   ];
 
   const userIds: Record<string, string> = {};
@@ -66,53 +68,70 @@ export const seedDatabase = async (): Promise<void> => {
     }
   }
 
-  // Seed Initial Documents for Advisor 1
-  const advisorId = userIds['advisor1@springer.capital'];
-  if (advisorId) {
-    const sampleDocs = [
-      {
-        title: 'Q3 Institutional Asset Allocation Model',
-        description: 'Quarterly portfolio review and strategic allocation model for HNW institutional clients.',
-        status: 'Pending',
-        file_name: 'Q3_Asset_Allocation_Model.pdf',
-      },
-      {
-        title: 'Private Wealth Portfolio Disclosure Statement',
-        description: 'Annual disclosure regarding fiduciary management and risk suitability standards.',
-        status: 'Approved',
-        file_name: 'Private_Wealth_Disclosure.pdf',
-      },
-      {
-        title: 'Global Equity ESG Strategy Filing',
-        description: 'Sustainable equity strategy documentation with carbon metrics and exclusionary screening.',
-        status: 'Needs Revision',
-        file_name: 'ESG_Strategy_Filing.pdf',
-      },
-    ];
+  // Seed Initial Documents for Advisors
+  const advisorEmails = ['advisor1@springer.capital', 'sarah.j@springercapital.com'];
+  for (const advEmail of advisorEmails) {
+    const advisorId = userIds[advEmail];
+    if (advisorId) {
+      const sampleDocs = [
+        {
+          title: 'Q3 Institutional Asset Allocation Model',
+          description: 'Quarterly portfolio review and strategic allocation model for HNW institutional clients.',
+          status: 'Pending',
+          file_name: 'Q3_Asset_Allocation_Model.pdf',
+          file_path: sampleDocPath,
+          mime_type: 'application/pdf',
+        },
+        {
+          title: 'Private Wealth Portfolio Disclosure Statement',
+          description: 'Annual disclosure regarding fiduciary management and risk suitability standards.',
+          status: 'Approved',
+          file_name: 'Private_Wealth_Disclosure.pdf',
+          file_path: sampleDocPath,
+          mime_type: 'application/pdf',
+        },
+        {
+          title: 'Global Equity ESG Strategy Filing',
+          description: 'Sustainable equity strategy documentation with carbon metrics and exclusionary screening.',
+          status: 'Needs Revision',
+          file_name: 'ESG_Strategy_Filing.pdf',
+          file_path: sampleDocPath,
+          mime_type: 'application/pdf',
+        },
+        {
+          title: 'Institutional Portfolio Strategy & Risk Brief',
+          description: 'Institutional strategy deck with multi-asset performance projections and standard disclosures.',
+          status: 'Pending',
+          file_name: 'sample_compliance_filing.docx',
+          file_path: sampleDocxPath,
+          mime_type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        },
+      ];
 
-    for (const doc of sampleDocs) {
-      const existingDoc = await query(
-        'SELECT id FROM documents WHERE advisor_id = $1 AND title = $2',
-        [advisorId, doc.title]
-      );
-
-      if (existingDoc.rows.length === 0) {
-        await query(
-          `INSERT INTO documents 
-           (title, description, file_name, file_path, file_size, mime_type, status, advisor_id) 
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          [
-            doc.title,
-            doc.description,
-            doc.file_name,
-            sampleDocPath,
-            fs.statSync(sampleDocPath).size,
-            'application/pdf',
-            doc.status,
-            advisorId,
-          ]
+      for (const doc of sampleDocs) {
+        const existingDoc = await query(
+          'SELECT id FROM documents WHERE advisor_id = $1 AND title = $2',
+          [advisorId, doc.title]
         );
-        console.log(`[Seed] Created document: "${doc.title}" [Status: ${doc.status}]`);
+
+        if (existingDoc.rows.length === 0) {
+          await query(
+            `INSERT INTO documents 
+             (title, description, file_name, file_path, file_size, mime_type, status, advisor_id) 
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+            [
+              doc.title,
+              doc.description,
+              doc.file_name,
+              doc.file_path,
+              fs.existsSync(doc.file_path) ? fs.statSync(doc.file_path).size : 1024,
+              doc.mime_type,
+              doc.status,
+              advisorId,
+            ]
+          );
+          console.log(`[Seed] Created document: "${doc.title}" [Status: ${doc.status}] for ${advEmail}`);
+        }
       }
     }
   }

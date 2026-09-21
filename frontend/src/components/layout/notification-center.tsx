@@ -239,17 +239,44 @@ export function NotificationCenter() {
   const activeRevisionCount = isAdvisor ? revisionItems.length : 0;
 
   const cleanNoticeTitle = (rawTitle: string) => {
-    return rawTitle
+    if (!rawTitle || !rawTitle.trim()) {
+      return "Notification";
+    }
+
+    const stripped = rawTitle
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
       .replace(/^New Document Submitted:\s*/i, "")
       .replace(/^Document Status Updated:\s*/i, "")
-      .replace(/^New Revision Comment Added:?\s*/i, "")
-      .replace(/^Advisor Revision Comment.*?:?\s*/i, "")
+      .replace(/^New Revision Uploaded:\s*/i, "")
+      .replace(/^New Revision Comment Added:\s*/i, "")
+      .replace(/^Advisor Revision Comment:\s*/i, "")
       .replace(/^Document Updated:\s*/i, "")
       .replace(/^Revision Submitted:\s*/i, "")
       .replace(/["'`´]/g, "")
       .trim();
+
+    if (stripped) {
+      if (/^New Revision Comment Added$/i.test(stripped) || /^Revision Comment Added$/i.test(stripped)) {
+        return "Revision Comment";
+      }
+      return stripped;
+    }
+
+    if (/Revision Comment/i.test(rawTitle)) {
+      return "Revision Comment";
+    }
+    if (/Advisor Revision|Advisor Comment/i.test(rawTitle)) {
+      return "Advisor Comment";
+    }
+    if (/Status Updated/i.test(rawTitle)) {
+      return "Status Update";
+    }
+    if (/Document/i.test(rawTitle)) {
+      return "Document Update";
+    }
+
+    return rawTitle.trim() || "Notification";
   };
 
   const topRevisionItem =
@@ -491,7 +518,7 @@ export function NotificationCenter() {
                   <div className="flex-1 min-w-0 space-y-0.5">
                     <div className="flex items-center justify-between gap-1">
                       <p className="text-xs font-semibold text-[#183028] truncate">
-                        {cleanNoticeTitle(notif.title)}
+                        {cleanNoticeTitle(notif.title) || notif.title || "Notification"}
                       </p>
                       <span className="text-[10px] text-[#183028]/50 shrink-0 font-mono">
                         {notif.timestamp}
