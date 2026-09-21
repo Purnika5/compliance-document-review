@@ -289,13 +289,6 @@ export function enhanceForDocumentation(text: string): IDocumentationResult {
   const grammar = recheckGrammar(text);
   const baseText = grammar.correctedText;
 
-  const isApprovalIntent =
-    lower.includes("approve") ||
-    lower.includes("looks good") ||
-    lower.includes("looks fine") ||
-    lower.includes("ok") ||
-    lower.includes("pass") ||
-    lower.includes("acceptable");
 
   const isRevisionIntent =
     lower.includes("revise") ||
