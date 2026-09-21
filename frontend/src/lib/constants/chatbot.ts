@@ -51,7 +51,7 @@ export const DASHBOARD_INITIAL_MESSAGES: IChatMessage[] = [
   {
     id: "dash-greeting",
     sender: "bot",
-    text: "Springer Capital Compliance Copilot active. You can ask workflow questions, use 'Recheck Grammar' to audit drafts, or 'Documentation Rules' to polish responses into audit-defensible institutional records.",
+    text: "Springer Capital Compliance Copilot active. You can ask workflow questions, check regulatory guidelines, or review platform submission and approval procedures.",
     timestamp: "Live",
   },
 ];
@@ -60,10 +60,10 @@ export const DASHBOARD_INITIAL_MESSAGES: IChatMessage[] = [
  * DOCU: Quick-select topics displayed in the authenticated dashboard.
  */
 export const DASHBOARD_SUGGESTED_QUESTIONS: string[] = [
-  "✍️ Recheck grammar of a draft",
-  "📋 Enhance response for documentation",
   "How do I upload a proposal?",
   "What is the review process for Officers?",
+  "What document classifications are supported?",
+  "Who has permission to approve filings?",
 ];
 
 /**
@@ -77,7 +77,7 @@ export const SUGGESTED_QUESTIONS: string[] = DASHBOARD_SUGGESTED_QUESTIONS;
  */
 export const PLATFORM_KNOWLEDGE_BASE: Record<string, string> = {
   default:
-    "Springer Capital Compliance Assistant. Use the tabs above to ask platform questions, audit grammar, or format official compliance records.",
+    "Springer Capital Compliance Assistant. Ask any platform questions regarding submission procedures, review workflows, or regulatory guidelines.",
   upload:
     "To upload a new document as an Advisor:\n1. Navigate to the 'My Submissions' workspace.\n2. Click the '+ Submit Proposal Document' button.\n3. Enter the title, select category, attach your file, and submit.",
   review:

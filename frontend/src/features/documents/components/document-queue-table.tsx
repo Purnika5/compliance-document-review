@@ -536,66 +536,78 @@ export function DocumentQueueTable() {
 
                     <TableCell className="text-right pr-4" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1.5">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => router.push(`/documents/${doc.id}`)}
-                          className="h-7 px-2.5 rounded border-border text-xs font-medium text-foreground bg-transparent hover:bg-[#C5E86C]/20 hover:text-[#183028] hover:border-[#183028] transition-colors gap-1"
-                        >
-                          <Eye className="h-3 w-3" />
-                          <span>Review</span>
-                        </Button>
-
-                        {doc.status !== "Approved" && (
-                          <button
-                            title="Quick Approve"
-                            onClick={() =>
-                              setDecisionDoc({
-                                id: doc.id,
-                                title: doc.title,
-                                type: "Approved",
-                              })
-                            }
-                            className="inline-flex h-7 items-center gap-1 rounded bg-[#C5E86C]/30 border border-[#183028] px-2.5 text-xs font-semibold text-[#183028] hover:bg-[#C5E86C] transition-colors cursor-pointer"
+                        {doc.status !== "Pending" ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => router.push(`/documents/${doc.id}`)}
+                            className="h-7 px-2.5 rounded-md border-border text-xs font-semibold text-muted-foreground bg-muted/20 hover:bg-[#C5E86C]/20 hover:text-[#183028] hover:border-[#183028] transition-colors gap-1.5 cursor-pointer shadow-2xs"
                           >
-                            <CheckCircle2 className="h-3 w-3" />
-                            <span>Approve</span>
-                          </button>
-                        )}
+                            <Eye className="h-3.5 w-3.5" />
+                            <span>View Only</span>
+                          </Button>
+                        ) : (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => router.push(`/documents/${doc.id}`)}
+                              className="h-7 px-2.5 rounded border-border text-xs font-medium text-foreground bg-transparent hover:bg-[#C5E86C]/20 hover:text-[#183028] hover:border-[#183028] transition-colors gap-1 shadow-2xs"
+                            >
+                              <Eye className="h-3 w-3" />
+                              <span>Review</span>
+                            </Button>
 
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button className="h-7 w-7 rounded-md bg-transparent hover:bg-[#C5E86C]/20 text-muted-foreground hover:text-[#183028] hover:border-[#183028] flex items-center justify-center transition-colors cursor-pointer border border-border">
-                              <MoreHorizontal className="h-3.5 w-3.5" />
+                            <button
+                              title="Quick Approve"
+                              onClick={() =>
+                                setDecisionDoc({
+                                  id: doc.id,
+                                  title: doc.title,
+                                  type: "Approved",
+                                })
+                              }
+                              className="inline-flex h-7 items-center gap-1 rounded bg-[#C5E86C]/30 border border-[#183028] px-2.5 text-xs font-semibold text-[#183028] hover:bg-[#C5E86C] transition-colors cursor-pointer shadow-2xs"
+                            >
+                              <CheckCircle2 className="h-3 w-3" />
+                              <span>Approve</span>
                             </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48 bg-[#FFFFFF] shadow-xl rounded-xl border-[#E6E8E7] p-1">
-                            <DropdownMenuItem
-                              className="text-xs cursor-pointer gap-2 font-medium text-amber-800 hover:bg-amber-50 rounded-md px-2 py-1.5"
-                              onClick={() =>
-                                setDecisionDoc({
-                                  id: doc.id,
-                                  title: doc.title,
-                                  type: "Needs Revision",
-                                })
-                              }
-                            >
-                              <AlertCircle className="h-3.5 w-3.5" /> Request Revision
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-xs cursor-pointer gap-2 font-medium text-rose-800 hover:bg-rose-50 rounded-md px-2 py-1.5"
-                              onClick={() =>
-                                setDecisionDoc({
-                                  id: doc.id,
-                                  title: doc.title,
-                                  type: "Rejected",
-                                })
-                              }
-                            >
-                              <XCircle className="h-3.5 w-3.5" /> Reject Proposal
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button className="h-7 w-7 rounded-md bg-transparent hover:bg-[#C5E86C]/20 text-muted-foreground hover:text-[#183028] hover:border-[#183028] flex items-center justify-center transition-colors cursor-pointer border border-border shadow-2xs">
+                                  <MoreHorizontal className="h-3.5 w-3.5" />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-48 bg-[#FFFFFF] shadow-xl rounded-xl border-[#E6E8E7] p-1">
+                                <DropdownMenuItem
+                                  className="text-xs cursor-pointer gap-2 font-medium text-amber-800 hover:bg-amber-50 rounded-md px-2 py-1.5"
+                                  onClick={() =>
+                                    setDecisionDoc({
+                                      id: doc.id,
+                                      title: doc.title,
+                                      type: "Needs Revision",
+                                    })
+                                  }
+                                >
+                                  <AlertCircle className="h-3.5 w-3.5" /> Request Revision
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-xs cursor-pointer gap-2 font-medium text-rose-800 hover:bg-rose-50 rounded-md px-2 py-1.5"
+                                  onClick={() =>
+                                    setDecisionDoc({
+                                      id: doc.id,
+                                      title: doc.title,
+                                      type: "Rejected",
+                                    })
+                                  }
+                                >
+                                  <XCircle className="h-3.5 w-3.5" /> Reject Proposal
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

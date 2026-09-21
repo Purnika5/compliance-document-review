@@ -1,4 +1,5 @@
 import fs from 'fs';
+import path from 'path';
 import { pool, query } from '../db/pool';
 import { AuthTokenPayload, DocumentAnalysis, DocumentRecord, DocumentStatus, DocumentWithAdvisor, RevisionThreadEntry } from '../types/models';
 import { AppError } from '../middleware/error.middleware';
@@ -667,6 +668,25 @@ export class DocumentService {
 
     if (user.role === 'Advisor' && doc.advisor_id && doc.advisor_id.toLowerCase() !== user.id.toLowerCase()) {
       throw new AppError('Forbidden: You do not have permission to view this document', 403, 'FORBIDDEN');
+    }
+
+    // Attach unmasked original text for authorized Compliance Officers if available on disk
+    if (user.role === 'Officer' && doc.file_path) {
+      try {
+        let filePath = doc.file_path;
+        if (!fs.existsSync(filePath)) {
+          const resolved = path.resolve(process.cwd(), filePath);
+          if (fs.existsSync(resolved)) filePath = resolved;
+        }
+        if (fs.existsSync(filePath)) {
+          const raw = await PipelineService.extractText(filePath, doc.mime_type);
+          if (raw) {
+            (doc as any).original_text = raw;
+          }
+        }
+      } catch (err) {
+        console.warn('[DocumentService] Failed to extract raw text for officer view:', err);
+      }
     }
 
     return doc;

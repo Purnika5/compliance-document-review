@@ -46,6 +46,7 @@ import {
   Zap,
   Layers,
   History,
+  Eye,
 } from "lucide-react";
 import type { DocumentItem, DocumentStatusType } from "@/lib/validation/document";
 import { updateDocumentStatusAction } from "@/lib/actions/document-actions";
@@ -332,75 +333,89 @@ export function AssignedReviewsView() {
                     {/* Actions */}
                     <TableCell className="text-right pr-4 py-2">
                       <div className="flex items-center justify-end gap-1.5">
-                        <Button
-                          size="sm"
-                          onClick={() => router.push(`/documents/${doc.id}`)}
-                          className="h-7 px-2.5 text-xs font-semibold bg-[#183028] text-white hover:bg-[#23453a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] gap-1 cursor-pointer transition-all"
-                        >
-                          <ExternalLink className="h-3 w-3" />
-                          Review
-                        </Button>
-
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
+                        {doc.status !== "Pending" ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => router.push(`/documents/${doc.id}`)}
+                            className="h-7 px-2.5 rounded-md border-border text-xs font-semibold text-muted-foreground bg-muted/20 hover:bg-[#C5E86C]/20 hover:text-[#183028] hover:border-[#183028] transition-colors gap-1.5 cursor-pointer shadow-2xs"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            <span>View Only</span>
+                          </Button>
+                        ) : (
+                          <>
                             <Button
                               size="sm"
-                              variant="ghost"
-                              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground cursor-pointer"
-                            >
-                              <MoreHorizontal className="h-3.5 w-3.5" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-44 bg-card border-border">
-                            <DropdownMenuItem
                               onClick={() => router.push(`/documents/${doc.id}`)}
-                              className="text-xs cursor-pointer gap-2 font-medium text-black focus:text-black"
+                              className="h-7 px-2.5 text-xs font-semibold bg-[#183028] text-white hover:bg-[#23453a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] gap-1 cursor-pointer transition-all shadow-2xs"
                             >
-                              <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
-                              Open Workspace
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator className="bg-border" />
-                            <DropdownMenuItem
-                              onClick={() =>
-                                setDecisionDoc({
-                                  id: doc.id,
-                                  title: doc.title,
-                                  type: "Approved",
-                                })
-                              }
-                              className="text-xs cursor-pointer gap-2 font-medium text-black focus:text-black"
-                            >
-                              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                              Sign-off &amp; Approve
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                setDecisionDoc({
-                                  id: doc.id,
-                                  title: doc.title,
-                                  type: "Needs Revision",
-                                })
-                              }
-                              className="text-xs cursor-pointer gap-2 font-medium text-black focus:text-black"
-                            >
-                              <AlertTriangle className="h-3.5 w-3.5 text-orange-600" />
-                              Request Revision
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                setDecisionDoc({
-                                  id: doc.id,
-                                  title: doc.title,
-                                  type: "Rejected",
-                                })
-                              }
-                              className="text-xs cursor-pointer gap-2 font-medium text-black focus:text-black"
-                            >
-                              <XCircle className="h-3.5 w-3.5 text-rose-600" />
-                              Reject Document
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                              <ExternalLink className="h-3 w-3" />
+                              Review
+                            </Button>
+
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground cursor-pointer"
+                                >
+                                  <MoreHorizontal className="h-3.5 w-3.5" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-44 bg-card border-border">
+                                <DropdownMenuItem
+                                  onClick={() => router.push(`/documents/${doc.id}`)}
+                                  className="text-xs cursor-pointer gap-2 font-medium text-black focus:text-black"
+                                >
+                                  <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+                                  Open Workspace
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator className="bg-border" />
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    setDecisionDoc({
+                                      id: doc.id,
+                                      title: doc.title,
+                                      type: "Approved",
+                                    })
+                                  }
+                                  className="text-xs cursor-pointer gap-2 font-medium text-black focus:text-black"
+                                >
+                                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                                  Sign-off &amp; Approve
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    setDecisionDoc({
+                                      id: doc.id,
+                                      title: doc.title,
+                                      type: "Needs Revision",
+                                    })
+                                  }
+                                  className="text-xs cursor-pointer gap-2 font-medium text-black focus:text-black"
+                                >
+                                  <AlertTriangle className="h-3.5 w-3.5 text-orange-600" />
+                                  Request Revision
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    setDecisionDoc({
+                                      id: doc.id,
+                                      title: doc.title,
+                                      type: "Rejected",
+                                    })
+                                  }
+                                  className="text-xs cursor-pointer gap-2 font-medium text-black focus:text-black"
+                                >
+                                  <XCircle className="h-3.5 w-3.5 text-rose-600" />
+                                  Reject Document
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

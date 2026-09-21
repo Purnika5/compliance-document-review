@@ -10,14 +10,24 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { getMySubmissionsAction, getQueueAction } from "@/lib/actions/document-actions";
 import type { DocumentItem, DocumentStatusType } from "@/lib/validation/document";
 
+export interface UseDocumentsOptions {
+  pollInterval?: number;
+}
+
 /**
  * DOCU: Loads and refreshes documents for submissions or the officer queue.
- * Last Updated Date: September 7, 2026
+ * Last Updated Date: September 21, 2026
  * @param mode - Document list source to load.
+ * @param statusFilter - Optional status filter.
+ * @param options - Additional options including pollInterval (0 to disable).
  * @returns Document data, loading state, error state, and refresh function.
  * @author Keith
  */
-export function useDocuments(mode: "my-submissions" | "queue" = "queue", statusFilter: string = "All") {
+export function useDocuments(
+  mode: "my-submissions" | "queue" = "queue",
+  statusFilter: string = "All",
+  options?: UseDocumentsOptions
+) {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [statusCounts, setStatusCounts] = useState<{
     All: number;
@@ -40,7 +50,15 @@ export function useDocuments(mode: "my-submissions" | "queue" = "queue", statusF
       let data: DocumentItem[] = [];
       if (mode === "my-submissions") {
         data = await getMySubmissionsAction();
-        setDocuments(data);
+        setDocuments((prev) => {
+          if (
+            prev.length === data.length &&
+            prev.every((d, i) => d.id === data[i]?.id && d.status === data[i]?.status && d.submittedAt === data[i]?.submittedAt)
+          ) {
+            return prev;
+          }
+          return data;
+        });
         setStatusCounts({
           All: data.length,
           Pending: data.filter((d) => d.status === "Pending").length,
@@ -50,7 +68,15 @@ export function useDocuments(mode: "my-submissions" | "queue" = "queue", statusF
         });
       } else {
         data = await getQueueAction(statusFilter);
-        setDocuments(data);
+        setDocuments((prev) => {
+          if (
+            prev.length === data.length &&
+            prev.every((d, i) => d.id === data[i]?.id && d.status === data[i]?.status && d.submittedAt === data[i]?.submittedAt)
+          ) {
+            return prev;
+          }
+          return data;
+        });
 
         if (statusFilter === "All") {
           setStatusCounts({
@@ -79,13 +105,17 @@ export function useDocuments(mode: "my-submissions" | "queue" = "queue", statusF
     }
   }, [mode, statusFilter]);
 
+  const pollInterval = options?.pollInterval !== undefined ? options.pollInterval : 8000;
+
   useEffect(() => {
     loadDocuments(true);
-    const interval = setInterval(() => {
-      loadDocuments(false);
-    }, 4000);
-    return () => clearInterval(interval);
-  }, [loadDocuments]);
+    if (pollInterval > 0) {
+      const interval = setInterval(() => {
+        loadDocuments(false);
+      }, pollInterval);
+      return () => clearInterval(interval);
+    }
+  }, [loadDocuments, pollInterval]);
 
   return {
     documents,
