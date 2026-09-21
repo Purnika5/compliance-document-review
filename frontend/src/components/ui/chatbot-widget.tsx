@@ -13,7 +13,6 @@ import {
   Send,
   X,
   Bot,
-  ShieldAlert,
   Check,
   Copy,
   Sparkles,
@@ -329,12 +328,7 @@ export function ChatbotWidget() {
         >
           <div className="h-2 w-2 rounded-full bg-[#183028] animate-pulse" />
           <Bot className="h-4 w-4 text-[#183028]" />
-          <span>{isLoginMode ? "Compliance Help & Login Info" : "Compliance Copilot"}</span>
-          {isLoginMode && (
-            <span className="bg-[#183028] text-[#C5E86C] text-[10px] px-1.5 py-0.5 rounded-full uppercase tracking-wider font-semibold">
-              Info
-            </span>
-          )}
+          <span>{isLoginMode ? "Compliance Help" : "Compliance Copilot"}</span>
         </button>
       )}
 
@@ -352,20 +346,15 @@ export function ChatbotWidget() {
                   <h3 className="font-bold text-[#183028] tracking-tight">
                     {isLoginMode ? "Compliance Help" : "Compliance Copilot"}
                   </h3>
-                  <span
-                    className={cn(
-                      "text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider",
-                      isLoginMode
-                        ? "bg-[#183028] text-[#C5E86C]"
-                        : "bg-[#C5E86C]/50 text-[#183028]"
-                    )}
-                  >
-                    {isLoginMode ? "Informative" : session?.role || "Staff"}
-                  </span>
+                  {!isLoginMode && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider bg-[#C5E86C]/50 text-[#183028]">
+                      {session?.role || "Staff"}
+                    </span>
+                  )}
                 </div>
                 <p className="text-[10px] text-[#183028]/60">
                   {isLoginMode
-                    ? "Institutional workflow & login orientation"
+                    ? "Institutional workflow guide"
                     : "Grammar recheck & documentation rules optimizer"}
                 </p>
               </div>
@@ -424,15 +413,6 @@ export function ChatbotWidget() {
             </div>
           )}
 
-          {/* Institutional Compliance Disclaimer Banner */}
-          <div className="border-b border-[#E6E8E7] bg-[#FAFBFB]/70 px-3.5 py-1.5 text-[#183028]/70 text-[10.5px] flex items-center gap-2 shrink-0">
-            <ShieldAlert className="h-3.5 w-3.5 text-[#183028] shrink-0" />
-            <p className="leading-snug truncate">
-              {isLoginMode
-                ? "Pre-login informational assistance • Institutional Springer Capital Portal"
-                : "Official determinations rest solely with authorized compliance personnel."}
-            </p>
-          </div>
 
           {/* Chat Messages Log */}
           <div className="flex-1 p-3.5 overflow-y-auto space-y-3 bg-white">
@@ -451,12 +431,7 @@ export function ChatbotWidget() {
                     {isUser ? (
                       <span className="text-[10px] text-[#183028]/60">You</span>
                     ) : (
-                      <span className="text-[10px] text-[#183028] font-bold flex items-center gap-1">
-                        <span>Springer Help</span>
-                        {isLoginMode && (
-                          <span className="text-[9px] font-normal text-[#183028]/60">• Guide</span>
-                        )}
-                      </span>
+                      <span className="text-[10px] text-[#183028] font-bold">Springer Help</span>
                     )}
                     <span className="text-[9px] text-[#183028]/40">{message.timestamp}</span>
                   </div>
