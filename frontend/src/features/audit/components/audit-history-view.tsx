@@ -193,27 +193,31 @@ export function AuditHistoryView() {
   }, [entries, searchQuery, statusFilter, categoryFilter]);
 
   const handleExportCsv = () => {
+    if (filteredEntries.length === 0) return;
+
     const headers = ["Log ID", "Hash", "Timestamp", "User", "Role", "Action", "Document ID", "Details", "Status"];
     const rows = filteredEntries.map((e) => [
-      e.id,
-      e.hash,
-      `"${e.timestamp}"`,
-      `"${e.user}"`,
-      e.role,
-      e.action,
-      e.documentId,
-      `"${e.details.replace(/"/g, '""')}"`,
-      e.statusResult,
+      `"${e.id || ""}"`,
+      `"${e.hash || ""}"`,
+      `"${e.timestamp || ""}"`,
+      `"${(e.user || "").replace(/"/g, '""')}"`,
+      `"${e.role || ""}"`,
+      `"${(e.action || "").replace(/"/g, '""')}"`,
+      `"${e.documentId || ""}"`,
+      `"${(e.details || "").replace(/"/g, '""')}"`,
+      `"${e.statusResult || ""}"`,
     ]);
 
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-    const encodedUri = encodeURI(csvContent);
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map((r) => r.join(","))].join("\r\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
+    link.setAttribute("href", url);
     link.setAttribute("download", `springer_regulatory_audit_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
 

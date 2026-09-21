@@ -78,7 +78,6 @@ export function NotificationCenter() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isDismissed, setIsDismissed] = useState<boolean>(false);
   const [isFading, setIsFading] = useState<boolean>(false);
-  const [activeNoticeItem, setActiveNoticeItem] = useState<{ id?: string; title: string; notifId?: string } | null>(null);
 
   const triggerFadeAndDismiss = (notifId?: string) => {
     setIsFading(true);
@@ -88,7 +87,6 @@ export function NotificationCenter() {
     setTimeout(() => {
       setIsDismissed(true);
       setIsFading(false);
-      setActiveNoticeItem(null);
     }, 300);
   };
 
@@ -239,66 +237,83 @@ export function NotificationCenter() {
   const activeRevisionCount = isAdvisor ? revisionItems.length : 0;
 
   const cleanNoticeTitle = (rawTitle: string) => {
-    return rawTitle
+    if (!rawTitle || !rawTitle.trim()) {
+      return "Notification";
+    }
+
+    const stripped = rawTitle
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
       .replace(/^New Document Submitted:\s*/i, "")
       .replace(/^Document Status Updated:\s*/i, "")
-      .replace(/^New Revision Comment Added:?\s*/i, "")
-      .replace(/^Advisor Revision Comment.*?:?\s*/i, "")
+      .replace(/^New Revision Uploaded:\s*/i, "")
+      .replace(/^New Revision Comment Added:\s*/i, "")
+      .replace(/^Advisor Revision Comment:\s*/i, "")
       .replace(/^Document Updated:\s*/i, "")
       .replace(/^Revision Submitted:\s*/i, "")
       .replace(/["'`´]/g, "")
       .trim();
+
+    if (stripped) {
+      if (/^New Revision Comment Added$/i.test(stripped) || /^Revision Comment Added$/i.test(stripped)) {
+        return "Revision Comment";
+      }
+      return stripped;
+    }
+
+    if (/Revision Comment/i.test(rawTitle)) {
+      return "Revision Comment";
+    }
+    if (/Advisor Revision|Advisor Comment/i.test(rawTitle)) {
+      return "Advisor Comment";
+    }
+    if (/Status Updated/i.test(rawTitle)) {
+      return "Status Update";
+    }
+    if (/Document/i.test(rawTitle)) {
+      return "Document Update";
+    }
+
+    return rawTitle.trim() || "Notification";
   };
 
-  const topRevisionItem =
-    isAdvisor && revisionItems.length > 0
-      ? {
-          id: revisionItems[0].id,
-          title: cleanNoticeTitle(revisionItems[0].title),
-          notifId: undefined as string | undefined,
-        }
-      : null;
+  const topRevisionItem = React.useMemo(() => {
+    if (!isAdvisor || revisionItems.length === 0) return null;
+    return {
+      id: revisionItems[0].id,
+      title: cleanNoticeTitle(revisionItems[0].title),
+      notifId: undefined as string | undefined,
+    };
+  }, [isAdvisor, revisionItems]);
 
-  const officerUnreadNotifs = notifications.filter(
-    (n) =>
-      !n.read &&
-      (n.category === "revision" ||
-        n.category === "document" ||
-        n.rawType === "REVISION_COMMENT" ||
-        n.rawType === "STATUS_CHANGE")
-  );
+  const officerUnreadNotifs = React.useMemo(() => {
+    return notifications.filter(
+      (n) =>
+        !n.read &&
+        (n.category === "revision" ||
+          n.category === "document" ||
+          n.rawType === "REVISION_COMMENT" ||
+          n.rawType === "STATUS_CHANGE")
+    );
+  }, [notifications]);
 
-  const topOfficerItem =
-    isOfficer && officerUnreadNotifs.length > 0
-      ? {
-          id: officerUnreadNotifs[0].documentId,
-          title: cleanNoticeTitle(officerUnreadNotifs[0].title),
-          description: officerUnreadNotifs[0].description,
-          notifId: officerUnreadNotifs[0].id,
-        }
-      : null;
+  const topOfficerItem = React.useMemo(() => {
+    if (!isOfficer || officerUnreadNotifs.length === 0) return null;
+    return {
+      id: officerUnreadNotifs[0].documentId,
+      title: cleanNoticeTitle(officerUnreadNotifs[0].title),
+      description: officerUnreadNotifs[0].description,
+      notifId: officerUnreadNotifs[0].id,
+    };
+  }, [isOfficer, officerUnreadNotifs]);
 
   const totalBadgeCount =
     activeRevisionCount > 0
       ? Math.max(unreadCount, activeRevisionCount)
       : unreadCount;
 
-  useEffect(() => {
-    if (!isFading && !isDismissed) {
-      if (isAdvisor && topRevisionItem) {
-        setActiveNoticeItem(topRevisionItem);
-      } else if (isOfficer && topOfficerItem) {
-        setActiveNoticeItem(topOfficerItem);
-      } else {
-        setActiveNoticeItem(null);
-      }
-    }
-  }, [isAdvisor, isOfficer, topRevisionItem, topOfficerItem, isFading, isDismissed]);
-
-  const displayedRevisionItem = isFading && activeNoticeItem ? activeNoticeItem : topRevisionItem;
-  const displayedOfficerItem = isFading && activeNoticeItem ? activeNoticeItem : topOfficerItem;
+  const displayedRevisionItem = topRevisionItem;
+  const displayedOfficerItem = topOfficerItem;
 
   return (
     <div className="flex items-center gap-2 sm:gap-2.5">
@@ -491,7 +506,7 @@ export function NotificationCenter() {
                   <div className="flex-1 min-w-0 space-y-0.5">
                     <div className="flex items-center justify-between gap-1">
                       <p className="text-xs font-semibold text-[#183028] truncate">
-                        {cleanNoticeTitle(notif.title)}
+                        {cleanNoticeTitle(notif.title) || notif.title || "Notification"}
                       </p>
                       <span className="text-[10px] text-[#183028]/50 shrink-0 font-mono">
                         {notif.timestamp}

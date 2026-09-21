@@ -34,6 +34,8 @@ import {
   PLATFORM_KNOWLEDGE_BASE,
 } from "@/lib/constants/chatbot";
 import {
+  recheckGrammar,
+  enhanceForDocumentation,
   type IGrammarResult,
   type IDocumentationResult,
 } from "@/lib/chatbot/documentation-engine";
@@ -51,16 +53,22 @@ interface IResolvedBotReply {
 function getLoginBotResponse(rawText: string): string {
   const lower = rawText.toLowerCase();
 
-  if (["access", "account", "permission", "register", "role"].some((k) => lower.includes(k))) {
-    return LOGIN_KNOWLEDGE_BASE.access;
+  if (["regulation", "rule", "finra", "sec", "standard", "2210", "206"].some((k) => lower.includes(k))) {
+    return LOGIN_KNOWLEDGE_BASE.regulations;
   }
-  if (["format", "pdf", "docx", "category", "supported"].some((k) => lower.includes(k))) {
+  if (["privacy", "pii", "mask", "security", "protect", "redact"].some((k) => lower.includes(k))) {
+    return LOGIN_KNOWLEDGE_BASE.privacy;
+  }
+  if (["format", "pdf", "docx", "xlsx", "txt", "size", "limit", "category", "supported"].some((k) => lower.includes(k))) {
     return LOGIN_KNOWLEDGE_BASE.formats;
   }
-  if (["portal", "what is", "springer", "about"].some((k) => lower.includes(k))) {
+  if (["access", "account", "permission", "register", "role", "login", "admin"].some((k) => lower.includes(k))) {
+    return LOGIN_KNOWLEDGE_BASE.access;
+  }
+  if (["portal", "what is", "springer", "about", "overview"].some((k) => lower.includes(k))) {
     return LOGIN_KNOWLEDGE_BASE.overview;
   }
-  if (["review", "workflow", "how does", "officer"].some((k) => lower.includes(k))) {
+  if (["review", "workflow", "how does", "officer", "process"].some((k) => lower.includes(k))) {
     return LOGIN_KNOWLEDGE_BASE.workflow;
   }
   return LOGIN_KNOWLEDGE_BASE.default;
@@ -70,16 +78,37 @@ function getLoginBotResponse(rawText: string): string {
 function getDashboardBotKnowledgeResponse(rawText: string): string {
   const lower = rawText.toLowerCase();
 
-  if (["upload", "submit", "proposal"].some((k) => lower.includes(k))) {
+  if (["version", "revision", "resubmit", "v1", "v2", "lineage"].some((k) => lower.includes(k))) {
+    return PLATFORM_KNOWLEDGE_BASE.versions;
+  }
+  if (["finra", "sec", "rule", "2210", "206", "regulation", "standard", "204", "2111"].some((k) => lower.includes(k))) {
+    return PLATFORM_KNOWLEDGE_BASE.rules;
+  }
+  if (["pii", "mask", "unmask", "redact", "ssn", "privacy", "leak"].some((k) => lower.includes(k))) {
+    return PLATFORM_KNOWLEDGE_BASE.pii;
+  }
+  if (["audit", "trail", "history", "log", "attestation"].some((k) => lower.includes(k))) {
+    return PLATFORM_KNOWLEDGE_BASE.audit;
+  }
+  if (["circuit", "breaker", "degrade", "resilience", "fallback", "outage"].some((k) => lower.includes(k))) {
+    return PLATFORM_KNOWLEDGE_BASE.circuit_breaker;
+  }
+  if (["setting", "profile", "password", "preferences", "signature", "contact"].some((k) => lower.includes(k))) {
+    return PLATFORM_KNOWLEDGE_BASE.settings;
+  }
+  if (["upload", "submit", "proposal", "filing"].some((k) => lower.includes(k))) {
     return PLATFORM_KNOWLEDGE_BASE.upload;
   }
-  if (["review", "approve", "officer"].some((k) => lower.includes(k))) {
+  if (["review", "approve", "reject", "queue", "decision", "officer"].some((k) => lower.includes(k))) {
     return PLATFORM_KNOWLEDGE_BASE.review;
   }
-  if (["category", "type", "format"].some((k) => lower.includes(k))) {
+  if (["category", "classification", "type", "brief", "statement"].some((k) => lower.includes(k))) {
     return PLATFORM_KNOWLEDGE_BASE.categories;
   }
-  if (["role", "permission", "advisor"].some((k) => lower.includes(k))) {
+  if (["format", "size", "limit", "pdf", "docx", "xlsx", "txt"].some((k) => lower.includes(k))) {
+    return PLATFORM_KNOWLEDGE_BASE.formats;
+  }
+  if (["role", "permission", "advisor", "access", "guard"].some((k) => lower.includes(k))) {
     return PLATFORM_KNOWLEDGE_BASE.permissions;
   }
   return PLATFORM_KNOWLEDGE_BASE.default;
@@ -90,6 +119,56 @@ function resolveBotReply(
   rawText: string,
   isLoginMode: boolean
 ): IResolvedBotReply {
+  const lower = rawText.toLowerCase();
+
+  // 1. Documentation Enhancement intent
+  const isEnhanceExplicit =
+    lower.startsWith("enhance:") ||
+    lower.startsWith("enhance documentation:") ||
+    lower.startsWith("enhance note:") ||
+    lower.includes("enhance for documentation") ||
+    lower.includes("format as memo");
+
+  if (isEnhanceExplicit) {
+    const cleanDraft = rawText
+      .replace(/^(enhance\s*(documentation|note)?:\s*)/i, "")
+      .trim();
+    const docResult = enhanceForDocumentation(cleanDraft || rawText);
+    return {
+      text: "I have audited and enhanced your draft according to institutional documentation rules (FINRA 2210 & SEC 206).",
+      documentationResult: docResult,
+    };
+  }
+
+  // 2. Grammar Recheck intent
+  const isGrammarExplicit =
+    lower.startsWith("check grammar:") ||
+    lower.startsWith("grammar:") ||
+    lower.startsWith("check:") ||
+    lower.startsWith("audit note:") ||
+    lower.startsWith("fix:") ||
+    lower.includes("check grammar") ||
+    lower.includes("grammar check") ||
+    lower.includes("proofread") ||
+    lower.includes("audit draft note");
+
+  if (isGrammarExplicit) {
+    const cleanDraft = rawText
+      .replace(/^(check\s*grammar:\s*|grammar:\s*|check:\s*|audit\s*note:\s*|fix:\s*)/i, "")
+      .trim();
+    if (cleanDraft && cleanDraft.length > 5) {
+      const grammarResult = recheckGrammar(cleanDraft);
+      return {
+        text: grammarResult.summary,
+        grammarResult,
+      };
+    }
+    return {
+      text: PLATFORM_KNOWLEDGE_BASE.grammar,
+    };
+  }
+
+  // 3. Fallback to knowledge base
   if (isLoginMode) {
     return { text: getLoginBotResponse(rawText) };
   }
@@ -302,6 +381,7 @@ export function ChatbotWidget() {
                 message={message}
                 copiedId={copiedId}
                 onCopy={handleCopy}
+                onElevateToDocumentation={(txt) => handleSend(`Enhance documentation: ${txt}`)}
               />
             ))}
             <div ref={messagesEndRef} />

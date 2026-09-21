@@ -40,20 +40,21 @@ export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
 
+  const hasFetchedProfile = React.useRef(false);
+
   useEffect(() => {
     setMounted(true);
     if (session?.name) setFullName(session.name);
     if (session?.email) setEmail(session.email);
 
-    // Fetch fresh profile from backend if token exists
-    if (authStore.getToken()) {
+    if (!hasFetchedProfile.current && authStore.getToken()) {
+      hasFetchedProfile.current = true;
       authService
         .getMe()
         .then((profile) => {
           if (profile) {
             if (profile.name) setFullName(profile.name);
             if (profile.email) setEmail(profile.email);
-            // Sync session with fresh name
             const current = authStore.getSession();
             if (current && (current.name !== profile.name || current.email !== profile.email)) {
               authStore.setSession({
@@ -68,7 +69,7 @@ export default function SettingsPage() {
           // Keep local session snapshot if offline
         });
     }
-  }, [session]);
+  }, [session?.name, session?.email]);
 
   // Form feedback state
   const [validationErrors, setValidationErrors] = useState<{ fullName?: string }>({});
