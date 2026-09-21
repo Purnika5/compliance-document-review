@@ -216,69 +216,6 @@ export function UploadDocumentModal({
 
         {step === "details" && (
           <form onSubmit={handleProceedToValidation} noValidate className="space-y-3.5 pt-1 min-w-0">
-            <div className="space-y-1.5 min-w-0">
-              <label className="block text-xs font-semibold text-[#183028]">
-                Document Title <span className="text-rose-500">*</span>
-              </label>
-              <Input
-                placeholder="e.g. Q4 Institutional Compliance Review & Audit"
-                value={title}
-                onChange={(e) => {
-                  setTitle(e.target.value);
-                  if (formErrors.title) {
-                    setFormErrors((prev) => ({ ...prev, title: "" }));
-                  }
-                }}
-                className={cn(
-                  "h-9 text-xs rounded-xl bg-[#FFFFFF] border-[#E6E8E7] text-[#183028] focus:border-[#183028] focus:ring-1 focus:ring-[#183028] transition-colors shadow-2xs w-full min-w-0",
-                  formErrors.title && "border-rose-500 ring-1 ring-rose-500"
-                )}
-              />
-              {formErrors.title && (
-                <p className="text-[11px] text-rose-600 font-medium animate-fade-in">{formErrors.title}</p>
-              )}
-            </div>
-
-            <div className="space-y-1.5 min-w-0">
-              <label className="block text-xs font-semibold text-[#183028]">
-                Classification Category <span className="text-rose-500">*</span>
-              </label>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger className="h-9 w-full text-xs rounded-xl bg-white border border-[#E6E8E7] text-[#183028] focus:border-[#183028] focus:ring-1 focus:ring-[#183028] shadow-2xs cursor-pointer min-w-0">
-                  <SelectValue placeholder="Select Category" />
-                </SelectTrigger>
-                <SelectContent className="bg-white rounded-xl border border-[#E6E8E7] shadow-xl text-[#183028]">
-                  <SelectItem value="Compliance Document" className="text-xs cursor-pointer py-1.5 text-[#183028] hover:bg-[#C5E86C]/20">
-                    Compliance Document
-                  </SelectItem>
-                  <SelectItem value="Audit Report" className="text-xs cursor-pointer py-1.5 text-[#183028] hover:bg-[#C5E86C]/20">
-                    Audit Report
-                  </SelectItem>
-                  <SelectItem value="Regulatory Filing" className="text-xs cursor-pointer py-1.5 text-[#183028] hover:bg-[#C5E86C]/20">
-                    Regulatory Filing
-                  </SelectItem>
-                  <SelectItem value="Policy Agreement" className="text-xs cursor-pointer py-1.5 text-[#183028] hover:bg-[#C5E86C]/20">
-                    Policy Agreement
-                  </SelectItem>
-                  <SelectItem value="Identity & KYC Verification" className="text-xs cursor-pointer py-1.5 text-[#183028] hover:bg-[#C5E86C]/20">
-                    Identity &amp; KYC Verification
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5 min-w-0">
-              <label className="block text-xs font-semibold text-[#183028]">
-                Advisor Overview Notes (Optional)
-              </label>
-              <Textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Include document scope, filing reference, or specific notes for the compliance officer..."
-                className="min-h-[70px] w-full text-xs rounded-xl bg-white border border-[#E6E8E7] text-[#183028] placeholder:text-[#183028]/45 focus:border-[#183028] focus:ring-1 focus:ring-[#183028] shadow-2xs resize-none min-w-0"
-              />
-            </div>
-
             {/* Drag & Drop Upload Canvas */}
             <div
               onDragOver={(e) => {
@@ -347,6 +284,69 @@ export function UploadDocumentModal({
                 </div>
               </div>
             )}
+
+            <div className="space-y-1.5 min-w-0">
+              <label className="block text-xs font-semibold text-[#183028]">
+                Document Title <span className="text-rose-500">*</span>
+              </label>
+              <Input
+                placeholder="e.g. Q4 Institutional Compliance Review & Audit"
+                value={title}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  if (formErrors.title) {
+                    setFormErrors((prev) => ({ ...prev, title: "" }));
+                  }
+                }}
+                className={cn(
+                  "h-9 text-xs rounded-xl bg-[#FFFFFF] border-[#E6E8E7] text-[#183028] focus:border-[#183028] focus:ring-1 focus:ring-[#183028] transition-colors shadow-2xs w-full min-w-0",
+                  formErrors.title && "border-rose-500 ring-1 ring-rose-500"
+                )}
+              />
+              {formErrors.title && (
+                <p className="text-[11px] text-rose-600 font-medium animate-fade-in">{formErrors.title}</p>
+              )}
+            </div>
+
+            <div className="space-y-1.5 min-w-0">
+              <label className="block text-xs font-semibold text-[#183028]">
+                Classification Category <span className="text-rose-500">*</span>
+              </label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger className="h-9 w-full text-xs rounded-xl bg-white border border-[#E6E8E7] text-[#183028] focus:border-[#183028] focus:ring-1 focus:ring-[#183028] shadow-2xs cursor-pointer min-w-0">
+                  <SelectValue placeholder="Select Category" />
+                </SelectTrigger>
+                <SelectContent className="bg-white rounded-xl border border-[#E6E8E7] shadow-xl text-[#183028]">
+                  <SelectItem value="Compliance Document" className="text-xs cursor-pointer py-1.5 text-[#183028] hover:bg-[#C5E86C]/20">
+                    Compliance Document
+                  </SelectItem>
+                  <SelectItem value="Audit Report" className="text-xs cursor-pointer py-1.5 text-[#183028] hover:bg-[#C5E86C]/20">
+                    Audit Report
+                  </SelectItem>
+                  <SelectItem value="Regulatory Filing" className="text-xs cursor-pointer py-1.5 text-[#183028] hover:bg-[#C5E86C]/20">
+                    Regulatory Filing
+                  </SelectItem>
+                  <SelectItem value="Policy Agreement" className="text-xs cursor-pointer py-1.5 text-[#183028] hover:bg-[#C5E86C]/20">
+                    Policy Agreement
+                  </SelectItem>
+                  <SelectItem value="Identity & KYC Verification" className="text-xs cursor-pointer py-1.5 text-[#183028] hover:bg-[#C5E86C]/20">
+                    Identity &amp; KYC Verification
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5 min-w-0">
+              <label className="block text-xs font-semibold text-[#183028]">
+                Advisor Overview Notes (Optional)
+              </label>
+              <Textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Include document scope, filing reference, or specific notes for the compliance officer..."
+                className="min-h-[70px] w-full text-xs rounded-xl bg-white border border-[#E6E8E7] text-[#183028] placeholder:text-[#183028]/45 focus:border-[#183028] focus:ring-1 focus:ring-[#183028] shadow-2xs resize-none min-w-0"
+              />
+            </div>
 
             <DialogFooter className="flex items-center justify-end gap-2 pt-3 border-t border-[#E6E8E7]">
               <Button
