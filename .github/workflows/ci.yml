@@ -16,7 +16,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:15-alpine
+        image: pgvector/pgvector:pg15
         env:
           POSTGRES_DB: compliance_doc_review
           POSTGRES_USER: postgres
