@@ -45,6 +45,8 @@ export function RoleGuard({ allowedRole, allowedRoles, children }: RoleGuardProp
     return role === allowedRole;
   };
 
+  const allowedRolesKey = allowedRoles ? allowedRoles.join(",") : "";
+
   React.useEffect(() => {
     setIsClient(true);
     if (!session) {
@@ -58,7 +60,7 @@ export function RoleGuard({ allowedRole, allowedRoles, children }: RoleGuardProp
         router.push("/login");
       }
     }
-  }, [session, allowedRole, allowedRoles, router]);
+  }, [session, allowedRole, allowedRolesKey, router]);
 
   // While verifying authorization, performing hydration, or redirecting
   if (!isClient || !session || !isRoleAllowed(session.role)) {

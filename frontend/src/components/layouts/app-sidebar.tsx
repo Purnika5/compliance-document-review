@@ -102,7 +102,7 @@ export function AppSidebar({
       {/* Sidebar Container */}
       <aside
         className={cn(
-          "fixed top-0 bottom-0 left-0 z-40 w-64 bg-[#FFFFFF] border-r border-[#E6E8E7] flex flex-col shadow-xs transition-transform duration-200 ease-in-out lg:translate-x-0 pointer-events-auto",
+          "fixed top-0 bottom-0 left-0 z-50 w-64 bg-[#FFFFFF] border-r border-[#E6E8E7] flex flex-col shadow-xs transition-transform duration-200 ease-in-out lg:translate-x-0 pointer-events-auto",
           isOpenMobile ? "translate-x-0" : "-translate-x-full"
         )}
       >
