@@ -329,8 +329,8 @@ export function NotificationCenter() {
           role="status"
           aria-live="polite"
           className={cn(
-            "flex items-center gap-2 pl-3 pr-1.5 py-1 rounded-full border border-sky-200 bg-sky-50/95 text-sky-950 shadow-2xs text-xs transition-all duration-300 ease-out",
-            isFading ? "opacity-0 scale-95 -translate-y-1 pointer-events-none" : "opacity-100 scale-100 animate-fade-in"
+            "flex items-center gap-2 pl-3 pr-1.5 py-1 rounded-full border border-sky-200 bg-sky-50/95 text-sky-950 shadow-2xs text-xs transition-all duration-300 ease-out pointer-events-none",
+            isFading ? "opacity-0 scale-95 -translate-y-1" : "opacity-100 scale-100 animate-fade-in"
           )}
         >
           <Info className="h-3.5 w-3.5 text-sky-600 shrink-0" />
@@ -349,7 +349,7 @@ export function NotificationCenter() {
               onClick={() => {
                 triggerFadeAndDismiss(displayedRevisionItem.notifId);
               }}
-              className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-bold rounded-full bg-orange-600 hover:bg-orange-700 text-white shadow-2xs transition-all shrink-0 cursor-pointer ml-1"
+              className="pointer-events-auto inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-bold rounded-full bg-orange-600 hover:bg-orange-700 text-white shadow-2xs transition-all shrink-0 cursor-pointer ml-1"
             >
               <span>Inspect</span>
               <ArrowRight className="h-3 w-3" />
@@ -359,7 +359,7 @@ export function NotificationCenter() {
           <button
             type="button"
             onClick={() => triggerFadeAndDismiss(displayedRevisionItem.notifId)}
-            className="text-sky-500 hover:text-sky-800 p-0.5 rounded-full hover:bg-sky-100 transition-colors cursor-pointer ml-0.5"
+            className="pointer-events-auto text-sky-500 hover:text-sky-800 p-0.5 rounded-full hover:bg-sky-100 transition-colors cursor-pointer ml-0.5"
             title="Dismiss notice"
             aria-label="Dismiss notice"
           >
@@ -373,8 +373,8 @@ export function NotificationCenter() {
           role="status"
           aria-live="polite"
           className={cn(
-            "flex items-center gap-2 pl-3 pr-1.5 py-1 rounded-full border border-emerald-200 bg-emerald-50/95 text-emerald-950 shadow-2xs text-xs transition-all duration-300 ease-out",
-            isFading ? "opacity-0 scale-95 -translate-y-1 pointer-events-none" : "opacity-100 scale-100 animate-fade-in"
+            "flex items-center gap-2 pl-3 pr-1.5 py-1 rounded-full border border-emerald-200 bg-emerald-50/95 text-emerald-950 shadow-2xs text-xs transition-all duration-300 ease-out pointer-events-none",
+            isFading ? "opacity-0 scale-95 -translate-y-1" : "opacity-100 scale-100 animate-fade-in"
           )}
         >
           <Info className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
@@ -393,7 +393,7 @@ export function NotificationCenter() {
               onClick={() => {
                 triggerFadeAndDismiss(displayedOfficerItem.notifId);
               }}
-              className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-bold rounded-full bg-[#183028] hover:bg-[#23453a] text-white shadow-2xs transition-all shrink-0 cursor-pointer ml-1"
+              className="pointer-events-auto inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-bold rounded-full bg-[#183028] hover:bg-[#23453a] text-white shadow-2xs transition-all shrink-0 cursor-pointer ml-1"
             >
               <span>Review</span>
               <ArrowRight className="h-3 w-3" />
@@ -403,7 +403,7 @@ export function NotificationCenter() {
           <button
             type="button"
             onClick={() => triggerFadeAndDismiss(displayedOfficerItem.notifId)}
-            className="text-emerald-500 hover:text-emerald-800 p-0.5 rounded-full hover:bg-emerald-100 transition-colors cursor-pointer ml-0.5"
+            className="pointer-events-auto text-emerald-500 hover:text-emerald-800 p-0.5 rounded-full hover:bg-emerald-100 transition-colors cursor-pointer ml-0.5"
             title="Dismiss notice"
             aria-label="Dismiss notice"
           >
