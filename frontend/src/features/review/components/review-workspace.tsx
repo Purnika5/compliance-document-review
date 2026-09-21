@@ -1022,31 +1022,6 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
                         </span>
                       )}
                     </div>
-                    {isOfficer && (
-                      <button
-                        type="button"
-                        onClick={() => setIsUnmasked((prev) => !prev)}
-                        title={isUnmasked ? "Switch to Masked PII view" : "Switch to Raw Unmasked PII view (Officer Only)"}
-                        className={cn(
-                          "flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold border transition-all cursor-pointer shadow-2xs",
-                          isUnmasked
-                            ? "bg-amber-100 text-amber-900 border-amber-300 font-bold"
-                            : "bg-white text-[#183028]/70 border-[#E6E8E7] hover:text-[#183028] hover:bg-[#E6E8E7]/40"
-                        )}
-                      >
-                        {isUnmasked ? (
-                          <>
-                            <EyeOff className="h-3 w-3 text-amber-700" />
-                            <span>Raw PII</span>
-                          </>
-                        ) : (
-                          <>
-                            <Eye className="h-3 w-3" />
-                            <span>Masked</span>
-                          </>
-                        )}
-                      </button>
-                    )}
                   </div>
 
                   <div className="bg-white p-4 rounded-xl border border-[#E6E8E7] font-mono text-[11px] leading-relaxed text-[#183028] whitespace-pre-wrap max-h-[520px] overflow-y-auto">

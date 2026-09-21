@@ -15,8 +15,6 @@ import {
   RefreshCw,
   Loader2,
   AlertTriangle,
-  Eye,
-  EyeOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { unmaskText } from "@/utils/pii-unmasker";
@@ -82,32 +80,6 @@ export function AIAssistPanel({
         </div>
 
         <div className="flex items-center gap-1.5">
-          {isOfficer && onToggleUnmask && (
-            <button
-              type="button"
-              onClick={onToggleUnmask}
-              title={isUnmasked ? "Switch to Masked PII view" : "Switch to Raw Unmasked PII view (Officer Only)"}
-              className={cn(
-                "flex items-center gap-1 px-2 py-1 rounded-xl text-[10px] font-semibold border transition-all cursor-pointer",
-                isUnmasked
-                  ? "bg-amber-100 text-amber-900 border-amber-300 shadow-2xs font-bold"
-                  : "bg-white text-[#183028]/70 border-[#E6E8E7] hover:text-[#183028] hover:bg-[#E6E8E7]/40"
-              )}
-            >
-              {isUnmasked ? (
-                <>
-                  <EyeOff className="h-3 w-3 text-amber-700" />
-                  <span>Raw PII</span>
-                </>
-              ) : (
-                <>
-                  <Eye className="h-3 w-3" />
-                  <span>Masked</span>
-                </>
-              )}
-            </button>
-          )}
-
           {onRefresh && (
             <button
               type="button"
