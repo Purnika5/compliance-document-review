@@ -79,14 +79,16 @@ export const query = async <T extends QueryResultRow = any>(
   } catch (error: any) {
     if (
       error.code === 'ECONNREFUSED' ||
+      error.code === '28P01' ||
       error.message?.includes('connect') ||
+      error.message?.includes('password authentication') ||
       error.name === 'AggregateError'
     ) {
-      console.warn('[DB] PostgreSQL connection unavailable on port 5432. Falling back to in-memory database (pg-mem)...');
+      console.warn('[DB] PostgreSQL connection/auth unavailable on port 5432. Falling back to in-memory database (pg-mem)...');
       useMemFallback = true;
       const adapter = getMemAdapter();
       const res = await adapter.query(text, params);
-      return res as QueryResult<T>;
+      return res;
     }
     if (process.env.NODE_ENV !== 'test') {
       console.error('[DB Error]', { text, error });

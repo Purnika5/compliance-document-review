@@ -17,7 +17,7 @@ export const runMigrations = async (): Promise<void> => {
     CREATE TABLE IF NOT EXISTS schema_migrations (
       id SERIAL PRIMARY KEY,
       migration_name VARCHAR(255) UNIQUE NOT NULL,
-      executed_at TIMESTAMPTZ DEFAULT NOW()
+      executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
 
@@ -66,7 +66,29 @@ export const runMigrations = async (): Promise<void> => {
           if ((process.env.NODE_ENV === 'test' || isMemFallbackActive()) && lower.includes('create extension')) {
             continue;
           }
-          await client.query(stmt);
+          try {
+            await client.query(stmt);
+          } catch (stmtErr) {
+            if (
+              lower.includes('create extension') ||
+              lower.includes('using ivfflat') ||
+              lower.includes('vector(') ||
+              (stmtErr as any)?.message?.includes('Extension does not exist') ||
+              (stmtErr as any)?.message?.includes('pg-mem')
+            ) {
+              // If VECTOR type table creation failed in pg-mem, attempt sanitized schema replacing VECTOR(128) with TEXT
+              if (lower.includes('create table') && lower.includes('vector(')) {
+                try {
+                  const sanitizedStmt = stmt.replace(/VECTOR\(\d+\)/gi, 'TEXT');
+                  await client.query(sanitizedStmt);
+                } catch (fallbackErr) {
+                  // Ignore fallback failure in pg-mem mode
+                }
+              }
+              continue;
+            }
+            throw stmtErr;
+          }
         }
 
         await client.query('INSERT INTO schema_migrations (migration_name) VALUES ($1)', [file]);

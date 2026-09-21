@@ -9,7 +9,7 @@ export class NotificationController {
     next: NextFunction
   ): Promise<void> => {
     try {
-      const userId = req.user!.id;
+      const userId = (req as any).user.id;
       const unreadOnly = String(req.query.unread_only) === 'true';
       const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
       const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 20;
@@ -41,7 +41,7 @@ export class NotificationController {
     next: NextFunction
   ): Promise<void> => {
     try {
-      const userId = req.user!.id;
+      const userId = (req as any).user.id;
       const counts = await NotificationService.getUnreadCount(userId);
       sendSuccess(res, counts);
     } catch (err) {
@@ -55,7 +55,7 @@ export class NotificationController {
     next: NextFunction
   ): Promise<void> => {
     try {
-      const userId = req.user!.id;
+      const userId = (req as any).user.id;
       const notificationId = req.params.id;
       const notification = await NotificationService.markAsRead(notificationId, userId);
       sendSuccess(res, notification);
@@ -70,7 +70,7 @@ export class NotificationController {
     next: NextFunction
   ): Promise<void> => {
     try {
-      const userId = req.user!.id;
+      const userId = (req as any).user.id;
       const result = await NotificationService.markAllAsRead(userId);
       sendSuccess(res, result);
     } catch (err) {
@@ -82,7 +82,7 @@ export class NotificationController {
     req: Request,
     res: Response
   ): void => {
-    const userId = req.user!.id;
+    const userId = (req as any).user.id;
 
     // Set SSE headers
     res.setHeader('Content-Type', 'text/event-stream');

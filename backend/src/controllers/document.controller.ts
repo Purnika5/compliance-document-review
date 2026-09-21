@@ -22,7 +22,7 @@ export class DocumentController {
       title: title.trim(),
       description: description ? description.trim() : undefined,
       file: req.file,
-      advisorId: req.user!.id
+      advisorId: (req as any).user.id
     });
 
     sendSuccess(res, document, 201, 'Document submitted successfully');
@@ -36,7 +36,7 @@ export class DocumentController {
       id,
       status as DocumentStatus,
       comment,
-      req.user!.id
+      (req as any).user.id
     );
 
     sendSuccess(res, updatedDoc, 200, `Document status updated to '${status}'`);
@@ -68,7 +68,7 @@ export class DocumentController {
         description: description ? description.trim() : undefined,
         notes: notes ? notes.trim() : undefined
       },
-      req.user!
+      (req as any).user
     );
 
     sendSuccess(res, document, 201, 'Document resubmitted successfully as a new version');
@@ -76,30 +76,30 @@ export class DocumentController {
 
   public static getVersions = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
-    const lineage = await DocumentService.getDocumentVersions(id, req.user!);
+    const lineage = await DocumentService.getDocumentVersions(id, (req as any).user);
     sendSuccess(res, lineage, 200, 'Document version history retrieved successfully');
   });
 
   public static list = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const documents = await DocumentService.listDocuments(req.user!, req.query);
+    const documents = await DocumentService.listDocuments((req as any).user, req.query);
     sendSuccess(res, documents, 200, 'Documents retrieved successfully');
   });
 
   public static getById = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
-    const document = await DocumentService.getDocumentById(id, req.user!);
+    const document = await DocumentService.getDocumentById(id, (req as any).user);
     sendSuccess(res, document, 200, 'Document retrieved successfully');
   });
 
   public static getAnalysis = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
-    const analysis = await DocumentService.getDocumentAnalysis(id, req.user!);
+    const analysis = await DocumentService.getDocumentAnalysis(id, (req as any).user);
     sendSuccess(res, analysis, 200, 'Document analysis retrieved successfully');
   });
 
   public static downloadFile = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
-    const user = req.user || { id: 'public-access', role: 'Officer', email: '', name: 'Officer' };
+    const user = (req as any).user || { id: 'public-access', role: 'Officer', email: '', name: 'Officer' };
     const document = await DocumentService.getDocumentById(id, user as any);
     if (!fs.existsSync(document.file_path)) {
       throw new AppError('File not found on storage disk', 404, 'FILE_NOT_FOUND');

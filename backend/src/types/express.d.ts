@@ -1,3 +1,4 @@
+import 'express';
 import { AuthTokenPayload } from './models';
 
 declare global {
