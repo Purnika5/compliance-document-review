@@ -240,23 +240,14 @@ export class DocumentService {
 
     // Automated In-App Notification Triggers for Advisor
     try {
+      const remarkText = comment && comment.trim() ? ` Remark: ${comment.trim()}` : '';
       await NotificationService.createNotification({
         userId: advisorId,
         documentId,
         title: `Document Status Updated: ${newStatus}`,
-        message: `Your document status has been updated to '${newStatus}'.` + (comment ? ` Remark: ${comment}` : ''),
-        type: 'STATUS_CHANGE'
+        message: `Your document status has been updated to '${newStatus}'.${remarkText}`,
+        type: newStatus === 'Needs Revision' ? 'REVISION_COMMENT' : 'STATUS_CHANGE'
       });
-
-      if (comment && comment.trim()) {
-        await NotificationService.createNotification({
-          userId: advisorId,
-          documentId,
-          title: 'New Revision Comment Added',
-          message: `Officer comment: ${comment.trim()}`,
-          type: 'REVISION_COMMENT'
-        });
-      }
     } catch (err) {
       console.error('[DocumentService] Failed to send automated notification:', err);
     }
@@ -481,23 +472,14 @@ export class DocumentService {
       const advisorRes = await query<{ name: string }>('SELECT name FROM users WHERE id = $1', [user.id]);
       const advisorName = advisorRes.rows[0]?.name || user.email || 'An Advisor';
 
-      // 1. Notify Officers of revision upload (v2, v3, etc.)
+      // Notify Officers of revision upload (v2, v3, etc.)
+      const notesText = input.notes && input.notes.trim() ? ` Notes: "${input.notes.trim()}"` : '';
       await NotificationService.notifyOfficers(
         newDoc.id,
         `New Revision Uploaded: ${newDoc.title} (v${newDoc.version})`,
-        `${advisorName} uploaded revision v${newDoc.version} for "${newDoc.title}".`,
+        `${advisorName} uploaded revision v${newDoc.version} for "${newDoc.title}".${notesText}`,
         'STATUS_CHANGE'
       );
-
-      // 2. Notify Officers of revision comment/notes if provided by advisor
-      if (input.notes && input.notes.trim()) {
-        await NotificationService.notifyOfficers(
-          newDoc.id,
-          `Advisor Revision Comment (v${newDoc.version})`,
-          `${advisorName}: "${input.notes.trim()}"`,
-          'REVISION_COMMENT'
-        );
-      }
     } catch (err) {
       console.error('[DocumentService] Failed to notify officers of revision resubmission:', err);
     }

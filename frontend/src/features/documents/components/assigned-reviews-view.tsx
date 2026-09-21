@@ -24,7 +24,6 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Alert } from "@/components/ui/alert";
 import { showSuccessToast, showErrorToast, showInfoToast } from "@/components/ui/toast";
 import {
   DropdownMenu,
@@ -106,7 +105,6 @@ export function AssignedReviewsView() {
     title: string;
     type: "Approved" | "Needs Revision" | "Rejected";
   } | null>(null);
-  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
   const assignedItems: ComputedAssignedDoc[] = useMemo(() => {
     return documents.map((doc) => {
@@ -129,7 +127,6 @@ export function AssignedReviewsView() {
     try {
       await updateDocumentStatusAction(decisionDoc.id, status, comment);
       const msg = `Successfully updated ${docDisplayId} to ${status}. Regulatory record updated.`;
-      setActionSuccess(msg);
       if (status === "Approved") {
         showSuccessToast("Portfolio Updated", msg);
       } else if (status === "Needs Revision") {
@@ -140,15 +137,11 @@ export function AssignedReviewsView() {
       refetch();
     } catch {
       const msg = `Updated ${docDisplayId} status.`;
-      setActionSuccess(msg);
       showSuccessToast("Portfolio Updated", msg);
       refetch();
     }
 
     setDecisionDoc(null);
-    setTimeout(() => {
-      setActionSuccess(null);
-    }, 5000);
   };
 
   const filteredItems = useMemo(() => {
@@ -181,16 +174,6 @@ export function AssignedReviewsView() {
 
   return (
     <div className="space-y-4 max-w-[1600px] mx-auto pb-16">
-      {/* Success Banner */}
-      {actionSuccess && (
-        <Alert
-          variant="success"
-          title="Review Portfolio Updated"
-          message={actionSuccess}
-          onClose={() => setActionSuccess(null)}
-        />
-      )}
-
       {/* Table Card Container */}
       <div className="border border-border bg-card rounded-xl overflow-hidden shadow-xs">
         {/* Filter Toolbar */}

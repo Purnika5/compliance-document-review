@@ -23,7 +23,6 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Alert } from "@/components/ui/alert";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -77,17 +76,6 @@ export function DocumentQueueTable() {
     title: string;
     type: "Approved" | "Needs Revision" | "Rejected";
   } | null>(null);
-  const [actionMessage, setActionMessage] = useState<string | null>(null);
-
-  const trendData = React.useMemo(() => {
-    return generateMetricTrends(
-      documents,
-      dateFilterPreset,
-      customStartDate,
-      customEndDate
-    );
-  }, [documents, dateFilterPreset, customStartDate, customEndDate]);
-
   const handleDecisionExecution = async (
     status: "Approved" | "Needs Revision" | "Rejected",
     comment: string
@@ -98,8 +86,7 @@ export function DocumentQueueTable() {
       await updateDocumentStatusAction(decisionDoc.id, status, comment);
       const target = documents.find((d) => d.id === decisionDoc.id);
       if (target) target.status = status;
-      const msg = `Document ${docDisplayId} status updated to ${status}. Regulatory record logged.`;
-      setActionMessage(msg);
+      const msg = `Document ${docDisplayId} status updated to ${status}.`;
       if (status === "Approved") {
         showSuccessToast("Queue Updated", msg);
       } else if (status === "Needs Revision") {
@@ -110,14 +97,10 @@ export function DocumentQueueTable() {
       refetch();
     } catch {
       const msg = `Document ${docDisplayId} updated to ${status}.`;
-      setActionMessage(msg);
       showSuccessToast("Queue Updated", msg);
     }
 
     setDecisionDoc(null);
-    setTimeout(() => {
-      setActionMessage(null);
-    }, 5000);
   };
 
   const getPriority = (doc: DocumentItem): "Urgent" | "High" | "Medium" | "Standard" => {
@@ -208,6 +191,25 @@ export function DocumentQueueTable() {
         : b.status.localeCompare(a.status);
     });
 
+  const activeDatePreset = React.useMemo(() => {
+    if (dateFilterPreset === "Custom") {
+      if (customStartDate && customEndDate) return `${customStartDate} to ${customEndDate}`;
+      if (customStartDate) return `From ${customStartDate}`;
+      if (customEndDate) return `Until ${customEndDate}`;
+      return "Custom Range";
+    }
+    return dateFilterPreset !== "All" ? dateFilterPreset : "All Time";
+  }, [dateFilterPreset, customStartDate, customEndDate]);
+
+  const trendData = React.useMemo(() => {
+    return generateMetricTrends(
+      documents,
+      dateFilterPreset,
+      customStartDate,
+      customEndDate
+    );
+  }, [documents, dateFilterPreset, customStartDate, customEndDate]);
+
   const queueVolume = dateFilterPreset !== "All" ? (trendData.total[trendData.total.length - 1] ?? 0) : (queueCounts?.All ?? documents.length);
   const queuePending = dateFilterPreset !== "All" ? (trendData.pending[trendData.pending.length - 1] ?? 0) : (queueCounts?.Pending ?? documents.filter((d) => d.status === "Pending").length);
   const queueRevision = dateFilterPreset !== "All" ? (trendData.needsRevision[trendData.needsRevision.length - 1] ?? 0) : (queueCounts?.["Needs Revision"] ?? documents.filter((d) => d.status === "Needs Revision").length);
@@ -230,17 +232,6 @@ export function DocumentQueueTable() {
 
   return (
     <div className="space-y-4 max-w-[1600px] mx-auto pb-16">
-
-
-      {actionMessage && (
-        <Alert
-          variant="success"
-          title="Queue Updated"
-          message={actionMessage}
-          onClose={() => setActionMessage(null)}
-        />
-      )}
-
       {/* Structured Institutional Back-Office Metric Cards (Balanced 5-Column Grid) */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
         {/* Total in Queue */}
