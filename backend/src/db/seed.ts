@@ -2,10 +2,12 @@ import bcrypt from 'bcrypt';
 import fs from 'fs';
 import path from 'path';
 import { pool, query } from './pool';
+import { runMigrations } from './migrate';
 import { config } from '../config';
 
 export const seedDatabase = async (): Promise<void> => {
   console.log('[Seed] Starting database seeding...');
+  await runMigrations();
 
   // Ensure uploads directory exists
   if (!fs.existsSync(config.uploads.dir)) {

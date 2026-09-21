@@ -145,18 +145,15 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
   const [isAiDegraded, setIsAiDegraded] = useState<boolean>(false);
   const [isUnmasked, setIsUnmasked] = useState<boolean>(false);
   const [revisionRefreshKey, setRevisionRefreshKey] = useState<number>(0);
-  const [activeDocId, setActiveDocId] = useState<string>(documentId);
+  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
+  const activeDocId = selectedDocId || documentId;
   const [lineageVersions, setLineageVersions] = useState<(DocumentItem & { version: number })[]>([]);
   const [lineageEntries, setLineageEntries] = useState<LineageEntry[]>([]);
-  const [isLoadingLineage, setIsLoadingLineage] = useState<boolean>(true);
+  const [isLoadingLineage, setIsLoadingLineage] = useState<boolean>(false);
   const [isResubmitModalOpen, setIsResubmitModalOpen] = useState<boolean>(false);
 
-  useEffect(() => {
-    setActiveDocId(documentId);
-  }, [documentId]);
-
   const handleSelectVersion = (version: DocumentItem & { version: number }) => {
-    setActiveDocId(version.id);
+    setSelectedDocId(version.id);
     setSelectedFlag(null);
   };
 
@@ -229,7 +226,6 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
     let isActive = true;
 
     // 1. Fetch document version history & lineage thread entries (GET /documents/:id/versions)
-    setIsLoadingLineage(true);
     documentService
       .getDocumentVersions(activeDocId)
       .then((res) => {
@@ -248,7 +244,6 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
       });
 
     // 2. Fetch document record for current version
-    setIsLoadingDocument(true);
     getDocumentAction(activeDocId)
       .then((document) => {
         if (!isActive) return;
@@ -267,7 +262,6 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
       });
 
     // 3. Fetch automated AI analysis flags for current version
-    setIsLoadingAnalysis(true);
     documentService
       .getAnalysis(documentId)
       .then((res) => {
