@@ -38,13 +38,13 @@ import {
   Search,
   MoreHorizontal,
   Eye,
+  History,
   Edit3,
   Download,
   AlertTriangle,
   ArrowRight,
   ArrowLeft,
   XCircle,
-  Percent,
   CalendarDays,
   TrendingUp,
   ChevronLeft,
@@ -693,7 +693,6 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                       <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider truncate">
                         Review throughput
                       </p>
-                      <Percent className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
                     </div>
                     <div className="mt-2 flex items-baseline justify-between gap-2">
                       <h3 className="text-3xl font-bold text-foreground tracking-tight">{metricThroughput}%</h3>
@@ -855,13 +854,22 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                               )}
                             </TableCell>
                             <TableCell className="py-3.5 px-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                              <button
-                                onClick={() => router.push(`/documents/${doc.id}`)}
-                                className="p-1.5 rounded-lg text-[#183028]/50 hover:text-[#183028] hover:bg-[#C5E86C]/20 cursor-pointer transition-colors inline-flex items-center justify-center"
-                                title="View Document"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </button>
+                              <div className="inline-flex items-center gap-1 justify-end">
+                                <button
+                                  onClick={() => router.push(`/documents/${doc.id}?tab=audit`)}
+                                  className="p-1.5 rounded-lg text-[#183028]/50 hover:text-[#183028] hover:bg-[#C5E86C]/20 cursor-pointer transition-colors inline-flex items-center justify-center"
+                                  title="View Audit Trail"
+                                >
+                                  <History className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() => router.push(`/documents/${doc.id}`)}
+                                  className="p-1.5 rounded-lg text-[#183028]/50 hover:text-[#183028] hover:bg-[#C5E86C]/20 cursor-pointer transition-colors inline-flex items-center justify-center"
+                                  title="View Document"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))

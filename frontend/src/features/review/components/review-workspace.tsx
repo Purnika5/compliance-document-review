@@ -56,6 +56,7 @@ import { showSuccessToast, showErrorToast, showInfoToast } from "@/components/ui
 
 export interface ReviewWorkspaceProps {
   documentId: string;
+  initialTab?: "metadata" | "history" | "audit";
 }
 
 function renderHighlightedText(text: string, passage?: string) {
@@ -120,7 +121,7 @@ function renderHighlightedText(text: string, passage?: string) {
  * @returns The document review workspace view.
  * @author Keith
  */
-export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
+export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps) {
   const session = useSyncExternalStore(authStore.subscribe, authStore.getSession, authStore.getServerSnapshot);
   const isOfficer = session?.role === "Officer";
   const [status, setStatus] = useState<DocumentStatusType>("Pending");
@@ -134,7 +135,7 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedFlag, setSelectedFlag] = useState<IAIFlagItem | null>(null);
-  const [activeLeftTab, setActiveLeftTab] = useState<"metadata" | "history" | "audit">("metadata");
+  const [activeLeftTab, setActiveLeftTab] = useState<"metadata" | "history" | "audit">(initialTab || "metadata");
   const [activeDecision, setActiveDecision] = useState<"Approved" | "Needs Revision" | "Rejected" | null>(null);
   const [mobileActiveZone, setMobileActiveZone] = useState<"document" | "ai" | "decision">("document");
   const [isLoadingDocument, setIsLoadingDocument] = useState(true);
@@ -156,6 +157,12 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
       setActiveDocId(documentId.trim());
     }
   }, [documentId]);
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveLeftTab(initialTab);
+    }
+  }, [initialTab]);
 
   const handleSelectVersion = (version: DocumentItem & { version: number }) => {
     setActiveDocId(version.id);
@@ -666,19 +673,17 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
               >
                 Revision
               </button>
-              {isOfficer && (
-                <button
-                  onClick={() => setActiveLeftTab("audit")}
-                  className={cn(
-                    "flex-1 py-1.5 text-xs font-semibold rounded-xl text-center transition-colors cursor-pointer",
-                    activeLeftTab === "audit"
-                      ? "bg-[#C5E86C] text-[#183028] font-bold shadow-2xs"
-                      : "bg-transparent text-[#183028]/70 hover:bg-[#C5E86C]/20 hover:text-[#183028]"
-                  )}
-                >
-                  Audit Log
-                </button>
-              )}
+              <button
+                onClick={() => setActiveLeftTab("audit")}
+                className={cn(
+                  "flex-1 py-1.5 text-xs font-semibold rounded-xl text-center transition-colors cursor-pointer",
+                  activeLeftTab === "audit"
+                    ? "bg-[#C5E86C] text-[#183028] font-bold shadow-2xs"
+                    : "bg-transparent text-[#183028]/70 hover:bg-[#C5E86C]/20 hover:text-[#183028]"
+                )}
+              >
+                Audit Log
+              </button>
             </div>
 
             {/* Left Content Area */}
@@ -782,10 +787,8 @@ export function ReviewWorkspace({ documentId }: ReviewWorkspaceProps) {
                 </div>
               ) : activeLeftTab === "history" ? (
                 <RevisionThread documentId={activeDocId} refreshKey={revisionRefreshKey} />
-              ) : isOfficer ? (
-                <AuditTrailTable documentIdFilter={activeDocId} entries={auditLogs} />
               ) : (
-                <RevisionThread documentId={activeDocId} readOnly refreshKey={revisionRefreshKey} />
+                <AuditTrailTable documentIdFilter={activeDocId} entries={auditLogs} />
               )}
             </div>
           </div>

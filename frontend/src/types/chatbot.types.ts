@@ -1,8 +1,10 @@
 /**
  * DOCU: Represents one message displayed in the compliance copilot conversation.
- * Last Updated Date: September 8, 2026
+ * Last Updated Date: September 21, 2026
  * @author Keith
  */
+import type { IGrammarResult, IDocumentationResult } from "@/lib/chatbot/documentation-engine";
+
 export interface IChatMessage {
   /** Stable identifier for the message. */
   id: string;
@@ -14,5 +16,8 @@ export interface IChatMessage {
   timestamp: string;
   /** True while the bot is still streaming characters into this message. */
   isTyping?: boolean;
+  /** Optional structured grammar recheck result for rich rendering. */
+  grammarResult?: IGrammarResult;
+  /** Optional structured documentation enhancement result for rich rendering. */
+  documentationResult?: IDocumentationResult;
 }
-
