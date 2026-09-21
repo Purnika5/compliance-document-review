@@ -102,6 +102,36 @@ export class AuthService {
     return { user: safeUser, token };
   }
 
+  public static async updateProfile(userId: string, input: { name?: string }): Promise<SafeUser> {
+    if (!input.name || !input.name.trim()) {
+      throw new AppError('Full name is required', 400, 'VALIDATION_ERROR');
+    }
+
+    const trimmedName = input.name.trim();
+
+    const result = await query<User>(
+      `UPDATE users
+       SET name = $1, updated_at = NOW()
+       WHERE id = $2
+       RETURNING id, name, email, role, created_at, updated_at`,
+      [trimmedName, userId]
+    );
+
+    if (result.rows.length === 0) {
+      throw new AppError('User account not found', 404, 'USER_NOT_FOUND');
+    }
+
+    const updated = result.rows[0];
+    return {
+      id: updated.id,
+      name: updated.name,
+      email: updated.email,
+      role: updated.role,
+      created_at: updated.created_at,
+      updated_at: updated.updated_at
+    };
+  }
+
   public static generateToken(payload: AuthTokenPayload): string {
     return jwt.sign(payload, config.jwt.secret, {
       expiresIn: config.jwt.expiresIn as any

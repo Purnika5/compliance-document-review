@@ -42,7 +42,9 @@ function getStoredSession(): UserSession | null {
   if (typeof window === "undefined") return null;
 
   try {
-    const storedSession = window.sessionStorage.getItem(SESSION_STORAGE_KEY);
+    const storedSession =
+      window.sessionStorage.getItem(SESSION_STORAGE_KEY) ||
+      window.localStorage.getItem(SESSION_STORAGE_KEY);
     return storedSession ? (JSON.parse(storedSession) as UserSession) : null;
   } catch {
     return null;
@@ -115,9 +117,12 @@ export const authStore = {
     currentSession = session;
     if (typeof window !== "undefined") {
       if (session) {
-        window.sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+        const serialized = JSON.stringify(session);
+        window.sessionStorage.setItem(SESSION_STORAGE_KEY, serialized);
+        window.localStorage.setItem(SESSION_STORAGE_KEY, serialized);
       } else {
         window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
+        window.localStorage.removeItem(SESSION_STORAGE_KEY);
       }
     }
     listeners.forEach((listener) => listener());
@@ -132,6 +137,7 @@ export const authStore = {
     currentSession = null;
     if (typeof window !== "undefined") {
       window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
+      window.localStorage.removeItem(SESSION_STORAGE_KEY);
     }
     listeners.forEach((listener) => listener());
   },

@@ -78,6 +78,30 @@ export class AuthService {
   }
 
   /**
+   * DOCU: Updates the user's institutional profile name on the backend and updates authStore.
+   * Last Updated Date: September 22, 2026
+   * @param payload - Profile fields to update (e.g. name).
+   * @returns Updated UserSession.
+   */
+  public async updateProfile(payload: { name: string }): Promise<UserSession> {
+    const envelope = await this.client.put<ApiResponseEnvelope<{ user: UserProfile }>>(
+      "/auth/profile",
+      payload
+    );
+
+    const current = authStore.getSession();
+    const session: UserSession = {
+      name: envelope.data.user.name,
+      email: envelope.data.user.email,
+      role: envelope.data.user.role,
+      token: current?.token || "",
+    };
+
+    authStore.setSession(session);
+    return session;
+  }
+
+  /**
    * DOCU: Logs out the current user by clearing the authenticated session from authStore.
    * Last Updated Date: September 7, 2026
    * @author Keith

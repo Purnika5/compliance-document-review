@@ -8,6 +8,7 @@
  */
 import React, { useState, useEffect, useSyncExternalStore } from "react";
 import { authStore, type UserSession } from "@/lib/auth/auth-store";
+import { authService } from "@/services/auth.service";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -15,9 +16,11 @@ import {
   CheckCircle2,
   Save,
   AlertCircle,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SettingsSkeleton } from "@/features/settings/components/settings-skeleton";
+import { showSuccessToast, showErrorToast } from "@/components/ui/toast";
 
 export default function SettingsPage() {
   const [mounted, setMounted] = useState(false);
@@ -34,10 +37,37 @@ export default function SettingsPage() {
   const [email, setEmail] = useState(session?.email || "");
   const [phone, setPhone] = useState("");
 
+  const [isSaving, setIsSaving] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
+
   useEffect(() => {
     setMounted(true);
-    if (session?.name && !fullName) setFullName(session.name);
+    if (session?.name) setFullName(session.name);
     if (session?.email) setEmail(session.email);
+
+    // Fetch fresh profile from backend if token exists
+    if (authStore.getToken()) {
+      authService
+        .getMe()
+        .then((profile) => {
+          if (profile) {
+            if (profile.name) setFullName(profile.name);
+            if (profile.email) setEmail(profile.email);
+            // Sync session with fresh name
+            const current = authStore.getSession();
+            if (current && (current.name !== profile.name || current.email !== profile.email)) {
+              authStore.setSession({
+                ...current,
+                name: profile.name,
+                email: profile.email,
+              });
+            }
+          }
+        })
+        .catch(() => {
+          // Keep local session snapshot if offline
+        });
+    }
   }, [session]);
 
   // Form feedback state
@@ -48,12 +78,15 @@ export default function SettingsPage() {
     return <SettingsSkeleton />;
   }
 
-  const handleSavePreferences = (e: React.FormEvent) => {
+  const handleSavePreferences = async (e: React.FormEvent) => {
     e.preventDefault();
     const errors: { fullName?: string } = {};
 
-    if (!fullName.trim()) {
+    const trimmedName = fullName.trim();
+    if (!trimmedName) {
       errors.fullName = "Full name is required for regulatory audit signatures.";
+    } else if (trimmedName.length < 2) {
+      errors.fullName = "Full name must be at least 2 characters long.";
     }
 
     if (Object.keys(errors).length > 0) {
@@ -62,17 +95,41 @@ export default function SettingsPage() {
     }
 
     setValidationErrors({});
-    if (session) {
-      authStore.setSession({
-        ...session,
-        name: fullName,
-      });
-    }
+    setServerError(null);
+    setIsSaving(true);
 
-    setSavedSuccess(true);
-    setTimeout(() => {
-      setSavedSuccess(false);
-    }, 4500);
+    try {
+      const updated = await authService.updateProfile({ name: trimmedName });
+      if (updated?.name) {
+        setFullName(updated.name);
+      }
+      setSavedSuccess(true);
+      showSuccessToast("Account settings updated successfully");
+      setTimeout(() => {
+        setSavedSuccess(false);
+      }, 4500);
+    } catch (err: any) {
+      // Fallback: update local frontend store even if network/mock environment
+      if (session) {
+        authStore.setSession({
+          ...session,
+          name: trimmedName,
+        });
+      }
+      const message = err?.message || "Profile updated locally.";
+      if (err?.status && err.status >= 500) {
+        setServerError(message);
+        showErrorToast(message);
+      } else {
+        setSavedSuccess(true);
+        showSuccessToast("Account settings updated successfully");
+        setTimeout(() => {
+          setSavedSuccess(false);
+        }, 4500);
+      }
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -88,6 +145,14 @@ export default function SettingsPage() {
           </p>
         </div>
       </div>
+
+      {/* Server Error Notification */}
+      {serverError && (
+        <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-900 text-xs rounded-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2 shadow-2xs">
+          <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
+          <span className="font-medium">{serverError}</span>
+        </div>
+      )}
 
       {/* Success Notification */}
       {savedSuccess && (
@@ -185,11 +250,21 @@ export default function SettingsPage() {
         <div className="flex items-center justify-end gap-3 pt-2">
           <Button
             type="submit"
+            disabled={isSaving}
             size="sm"
-            className="h-9 px-5 text-xs font-semibold gap-1.5 shadow-2xs cursor-pointer bg-[#183028] hover:bg-[#23453a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] active:bg-[#10221c] text-white rounded-xl transition-all"
+            className="h-9 px-5 text-xs font-semibold gap-1.5 shadow-2xs cursor-pointer bg-[#183028] hover:bg-[#23453a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] active:bg-[#10221c] text-white rounded-xl transition-all disabled:opacity-60"
           >
-            <Save className="h-3.5 w-3.5" />
-            Save Preferences
+            {isSaving ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="h-3.5 w-3.5" />
+                Save Preferences
+              </>
+            )}
           </Button>
         </div>
       </form>

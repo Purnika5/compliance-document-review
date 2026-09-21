@@ -51,3 +51,28 @@ export async function loginRequest(data: LoginInput): Promise<AuthApiResponse> {
     message: envelope.message,
   };
 }
+
+/**
+ * DOCU: Sends updated user profile settings to the backend endpoint.
+ * Last Updated Date: September 22, 2026
+ * @param data - User profile data to update.
+ * @returns Updated user profile response.
+ */
+export async function updateProfileRequest(data: { name: string }): Promise<{ user: { id: string; name: string; email: string; role: any }; message?: string }> {
+  // PUT /auth/profile — fields: { name }
+  const envelope = await client.put<{ data: { user: { id: string; name: string; email: string; role: any } }; message?: string }>("/auth/profile", data);
+  return {
+    user: envelope.data.user,
+    message: envelope.message,
+  };
+}
+
+/**
+ * DOCU: Fetches the current authenticated user's profile from the backend.
+ * Last Updated Date: September 22, 2026
+ * @returns Current user profile.
+ */
+export async function getMeRequest(): Promise<{ user: { id: string; name: string; email: string; role: any } }> {
+  const envelope = await client.get<{ data: { user: { id: string; name: string; email: string; role: any } } }>("/auth/me");
+  return envelope.data;
+}
