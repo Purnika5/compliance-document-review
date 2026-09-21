@@ -1,12 +1,8 @@
 import fs from 'fs';
 import path from 'path';
-import { pool, query, resetMemDb } from './pool';
+import { pool, query, isMemFallbackActive } from './pool';
 
 export const runMigrations = async (): Promise<void> => {
-  if (process.env.NODE_ENV === 'test') {
-    resetMemDb();
-  }
-
   let migrationsDir = path.join(__dirname, 'migrations');
   if (!fs.existsSync(migrationsDir)) {
     migrationsDir = path.join(process.cwd(), 'src', 'db', 'migrations');
@@ -38,16 +34,38 @@ export const runMigrations = async (): Promise<void> => {
       
       const client = await pool.connect();
       try {
+        let hasVector = false;
+        try {
+          const extRes = await client.query("SELECT 1 FROM pg_available_extensions WHERE name = 'vector'");
+          hasVector = extRes.rows.length > 0;
+        } catch {
+          hasVector = false;
+        }
+
         await client.query('BEGIN');
         
-        // Split statements and skip CREATE EXTENSION statements in test environment if unsupported by pg-mem
-        const statements = sql
+        let processedSql = sql;
+        if (!hasVector || process.env.NODE_ENV === 'test' || isMemFallbackActive()) {
+          // Remove vector extension creation and fallback VECTOR(dim) to TEXT
+          processedSql = processedSql
+            .replace(/CREATE\s+EXTENSION\s+IF\s+NOT\s+EXISTS\s+vector\s*;/gi, '')
+            .replace(/VECTOR\(\d+\)/gi, 'TEXT');
+        }
+
+        // Split statements and execute
+        const statements = processedSql
           .split(';')
           .map((s) => s.trim())
           .filter((s) => s.length > 0);
 
         for (const stmt of statements) {
           const lower = stmt.toLowerCase();
+          if ((!hasVector || process.env.NODE_ENV === 'test' || isMemFallbackActive()) && lower.includes('using ivfflat')) {
+            continue;
+          }
+          if ((process.env.NODE_ENV === 'test' || isMemFallbackActive()) && lower.includes('create extension')) {
+            continue;
+          }
           try {
             await client.query(stmt);
           } catch (stmtErr) {

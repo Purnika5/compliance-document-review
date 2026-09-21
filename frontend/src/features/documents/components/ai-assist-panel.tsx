@@ -10,16 +10,12 @@ import React, { useState } from "react";
 import {
   ChevronRight,
   Bot,
-  ShieldAlert,
   FileCheck,
   RefreshCw,
   Loader2,
   AlertTriangle,
-  Eye,
-  EyeOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { unmaskText } from "@/utils/pii-unmasker";
 
 export interface IAIFlagItem {
   id: string;
@@ -40,9 +36,6 @@ export interface AIAssistPanelProps {
   isLoading?: boolean;
   isDegraded?: boolean;
   onRefresh?: () => void;
-  isUnmasked?: boolean;
-  onToggleUnmask?: () => void;
-  piiMap?: Record<string, string>;
   isOfficer?: boolean;
 }
 
@@ -54,13 +47,8 @@ export function AIAssistPanel({
   isLoading = false,
   isDegraded = false,
   onRefresh,
-  isUnmasked = false,
-  onToggleUnmask,
-  piiMap = {},
   isOfficer = false,
 }: AIAssistPanelProps) {
-  const [activeTab, setActiveTab] = useState<"flags" | "copilot">("flags");
-
   const highSeverityCount = flags.filter((f) => f.severity === "HIGH").length;
   const mediumSeverityCount = flags.filter((f) => f.severity === "MEDIUM").length;
   const lowSeverityCount = flags.filter((f) => f.severity === "LOW").length;
@@ -76,38 +64,12 @@ export function AIAssistPanel({
           <div>
             <h3 className="font-bold text-[#183028] flex items-center gap-1.5">
               <span>AI Compliance Guidance</span>
-              <span className="font-mono text-[10px] text-[#183028]/60">({documentId})</span>
+              <span className="font-mono text-[10px] text-[#183028]/60">(DOC-{(documentId || "0000").slice(-4).toUpperCase()})</span>
             </h3>
           </div>
         </div>
 
         <div className="flex items-center gap-1.5">
-          {isOfficer && onToggleUnmask && (
-            <button
-              type="button"
-              onClick={onToggleUnmask}
-              title={isUnmasked ? "Switch to Masked PII view" : "Switch to Raw Unmasked PII view (Officer Only)"}
-              className={cn(
-                "flex items-center gap-1 px-2 py-1 rounded-xl text-[10px] font-semibold border transition-all cursor-pointer",
-                isUnmasked
-                  ? "bg-amber-100 text-amber-900 border-amber-300 shadow-2xs font-bold"
-                  : "bg-white text-[#183028]/70 border-[#E6E8E7] hover:text-[#183028] hover:bg-[#E6E8E7]/40"
-              )}
-            >
-              {isUnmasked ? (
-                <>
-                  <EyeOff className="h-3 w-3 text-amber-700" />
-                  <span>Raw PII</span>
-                </>
-              ) : (
-                <>
-                  <Eye className="h-3 w-3" />
-                  <span>Masked</span>
-                </>
-              )}
-            </button>
-          )}
-
           {onRefresh && (
             <button
               type="button"
@@ -122,45 +84,8 @@ export function AIAssistPanel({
         </div>
       </div>
 
-      {/* Institutional Framing Notice (Never AI Decision Maker) */}
-      <div className="border-b border-[#E6E8E7] bg-[#E6E8E7]/20 p-2.5 text-[#183028]/70 text-[11px] flex items-start gap-2 shrink-0">
-        <ShieldAlert className="h-3.5 w-3.5 text-[#183028] mt-0.5 shrink-0" />
-        <p className="leading-snug">
-          <strong className="text-[#183028]">Advisory Guidance Only:</strong> AI suggests potential compliance rules and highlights passages. Final determination rests solely with the Compliance Officer.
-        </p>
-      </div>
-
       <div className="flex-1 flex flex-col min-h-0">
-        {/* Tab Switcher */}
-        <div className="flex border-b border-[#E6E8E7] bg-white p-1.5 shrink-0 gap-1.5">
-          <button
-            type="button"
-            onClick={() => setActiveTab("flags")}
-            className={cn(
-              "flex-1 py-1.5 text-xs font-semibold rounded-xl text-center transition-colors cursor-pointer",
-              activeTab === "flags"
-                ? "bg-[#C5E86C] text-[#183028] font-bold shadow-2xs"
-                : "bg-transparent text-[#183028]/70 hover:bg-[#C5E86C]/20 hover:text-[#183028]"
-            )}
-          >
-            Compliance Flags ({flags.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("copilot")}
-            className={cn(
-              "flex-1 py-1.5 text-xs font-semibold rounded-xl text-center transition-colors cursor-pointer",
-              activeTab === "copilot"
-                ? "bg-[#C5E86C] text-[#183028] font-bold shadow-2xs"
-                : "bg-transparent text-[#183028]/70 hover:bg-[#C5E86C]/20 hover:text-[#183028]"
-            )}
-          >
-            Regulatory Copilot
-          </button>
-        </div>
-
-        {activeTab === "flags" ? (
-          <div className="flex-1 overflow-y-auto p-3 space-y-3">
+        <div className="flex-1 overflow-y-auto p-3 space-y-3">
             {isLoading ? (
               <div className="flex flex-col items-center justify-center h-full text-center p-6 space-y-3 animate-fade-in">
                 <div className="h-10 w-10 rounded-full bg-[#E6E8E7]/40 border border-[#E6E8E7] text-[#183028] flex items-center justify-center shrink-0">
@@ -229,9 +154,6 @@ export function AIAssistPanel({
                 <div className="space-y-2">
                   {flags.map((flag) => {
                     const isSelected = selectedFlagId === flag.id;
-                    const displayTitle = isUnmasked ? unmaskText(flag.title, piiMap) : flag.title;
-                    const displayPassage = isUnmasked ? unmaskText(flag.passage, piiMap) : flag.passage;
-                    const displayExplanation = isUnmasked ? unmaskText(flag.explanation, piiMap) : flag.explanation;
 
                     return (
                       <div
@@ -256,38 +178,28 @@ export function AIAssistPanel({
                             >
                               {flag.severity} • Rule {flag.ruleCode}
                             </span>
-                            {isUnmasked && (
-                              <span className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-amber-100 text-amber-900 border border-amber-300">
-                                Raw PII Active
-                              </span>
-                            )}
                           </div>
                           <span className="text-[10px] text-[#183028]/60 font-mono">
                             Page {flag.pageNumber}
                           </span>
                         </div>
 
-                        <h4 className="text-xs font-bold text-[#183028] leading-snug">{displayTitle}</h4>
+                        <h4 className="text-xs font-bold text-[#183028] leading-snug">{flag.title}</h4>
 
-                        {displayPassage && (
+                        {flag.passage && (
                           <div className="border border-[#E6E8E7] bg-[#E6E8E7]/20 rounded-lg mt-1.5 p-2 text-[#183028] text-[11px] space-y-0.5">
                             <div className="flex items-center justify-between">
                               <span className="font-semibold block text-[10px] uppercase tracking-wider text-[#183028]/50">
                                 Flagged Passage
                               </span>
-                              {isUnmasked && (
-                                <span className="text-[9px] font-semibold text-amber-800 italic">
-                                  Display-Layer Unmasked
-                                </span>
-                              )}
                             </div>
-                            <p className="italic font-serif leading-relaxed text-[#183028]/90">{`"${displayPassage}"`}</p>
+                            <p className="italic font-serif leading-relaxed text-[#183028]/90">{`"${flag.passage}"`}</p>
                           </div>
                         )}
 
                         <p className="mt-1.5 text-[11px] text-[#183028]/70 leading-normal">
                           <strong className="text-[#183028]">Rule Rationale: </strong>
-                          {displayExplanation}
+                          {flag.explanation}
                         </p>
 
                         <div className="mt-2 pt-2 border-t border-[#E6E8E7] flex items-center justify-between text-[10px] text-[#183028]/60">
@@ -303,19 +215,6 @@ export function AIAssistPanel({
               </>
             )}
           </div>
-        ) : (
-          <div className="flex-1 flex flex-col min-h-0 bg-white p-6 text-center justify-center items-center space-y-3">
-            <div className="h-10 w-10 rounded-full bg-[#E6E8E7]/30 border border-[#E6E8E7] flex items-center justify-center text-[#183028]">
-              <Bot className="h-5 w-5" />
-            </div>
-            <div className="space-y-1 max-w-xs">
-              <h4 className="text-xs font-bold text-[#183028]">Institutional Copilot Standby</h4>
-              <p className="text-[11px] text-[#183028]/60 leading-normal">
-                Direct compliance Q&amp;A operates in tandem with backend review models. Review decisions and notes can be recorded through the Officer Decision Suite.
-              </p>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

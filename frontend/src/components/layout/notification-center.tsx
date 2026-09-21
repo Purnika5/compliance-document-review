@@ -40,12 +40,55 @@ import { showInfoToast } from "@/components/ui/toast";
 
 export type { INotificationItem };
 
+/**
+ * DOCU: Filters submissions to only those document lineages whose LATEST version
+ * is currently in "Needs Revision" status. Lineages that have already been resubmitted
+ * (latest version is Pending, Approved, or Rejected) are excluded from revision alerts.
+ */
+function getActiveRevisionDocuments(docs: DocumentItem[]): DocumentItem[] {
+  const lineageMap = new Map<string, DocumentItem[]>();
+  for (const doc of docs) {
+    const rootId = doc.originalDocumentId || doc.id;
+    const list = lineageMap.get(rootId) || [];
+    list.push(doc);
+    lineageMap.set(rootId, list);
+  }
+
+  const activeRevisions: DocumentItem[] = [];
+  lineageMap.forEach((lineageDocs) => {
+    const sorted = [...lineageDocs].sort((a, b) => {
+      const verA = a.version || 1;
+      const verB = b.version || 1;
+      if (verA !== verB) return verA - verB;
+      return new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime();
+    });
+    const latestDoc = sorted[sorted.length - 1];
+    if (latestDoc && latestDoc.status === "Needs Revision") {
+      activeRevisions.push(latestDoc);
+    }
+  });
+
+  return activeRevisions;
+}
+
 export function NotificationCenter() {
   const [notifications, setNotifications] = useState<INotificationItem[]>([]);
   const [revisionItems, setRevisionItems] = useState<DocumentItem[]>([]);
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isDismissed, setIsDismissed] = useState<boolean>(false);
+  const [isFading, setIsFading] = useState<boolean>(false);
+
+  const triggerFadeAndDismiss = (notifId?: string) => {
+    setIsFading(true);
+    if (notifId) {
+      markAsRead(notifId);
+    }
+    setTimeout(() => {
+      setIsDismissed(true);
+      setIsFading(false);
+    }, 300);
+  };
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -69,7 +112,7 @@ export function NotificationCenter() {
     if (role === "Advisor") {
       try {
         const myDocs = await getMySubmissionsAction();
-        setRevisionItems(myDocs.filter((d) => d.status === "Needs Revision"));
+        setRevisionItems(getActiveRevisionDocuments(myDocs));
       } catch (err) {
         console.error("[NotificationCenter] Failed to fetch revision submissions:", err);
       }
@@ -104,13 +147,14 @@ export function NotificationCenter() {
             return [newItem, ...prev];
           });
           setIsDismissed(false);
+          setIsFading(false);
           showInfoToast(newItem.title, newItem.description);
 
           const role = authStore.getRole();
           if (role === "Advisor") {
             getMySubmissionsAction()
               .then((myDocs) => {
-                setRevisionItems(myDocs.filter((d) => d.status === "Needs Revision"));
+                setRevisionItems(getActiveRevisionDocuments(myDocs));
               })
               .catch(() => {});
           }
@@ -122,6 +166,13 @@ export function NotificationCenter() {
     };
 
     initialize();
+
+    const handleRefresh = () => {
+      loadNotifications();
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("compliance-notification-refresh", handleRefresh);
+    }
 
     const unsubscribeAuth = authStore.subscribe(() => {
       if (disconnectSSE) {
@@ -136,6 +187,9 @@ export function NotificationCenter() {
         disconnectSSE();
       }
       unsubscribeAuth();
+      if (typeof window !== "undefined") {
+        window.removeEventListener("compliance-notification-refresh", handleRefresh);
+      }
     };
   }, [loadNotifications]);
 
@@ -180,94 +234,125 @@ export function NotificationCenter() {
       !n.read
   );
 
-  const activeRevisionCount = isAdvisor
-    ? revisionItems.length > 0
-      ? revisionItems.length
-      : revisionNotifs.length
-    : 0;
+  const activeRevisionCount = isAdvisor ? revisionItems.length : 0;
 
-  const topRevisionItem =
-    isAdvisor && revisionItems.length > 0
-      ? {
-          id: revisionItems[0].id,
-          title: revisionItems[0].title,
-          notifId: undefined as string | undefined,
-        }
-      : isAdvisor && revisionNotifs.length > 0
-      ? {
-          id: revisionNotifs[0].documentId,
-          title: revisionNotifs[0].title
-            .replace(/^Document Status Updated:\s*/i, "")
-            .replace(/^New Revision Comment Added:?\s*/i, "")
-            .replace(/^Advisor Revision Comment.*?:?\s*/i, ""),
-          notifId: revisionNotifs[0].id,
-        }
-      : null;
+  const cleanNoticeTitle = (rawTitle: string) => {
+    if (!rawTitle || !rawTitle.trim()) {
+      return "Notification";
+    }
 
-  const officerUnreadNotifs = notifications.filter(
-    (n) =>
-      !n.read &&
-      (n.category === "revision" ||
-        n.category === "document" ||
-        n.rawType === "REVISION_COMMENT" ||
-        n.rawType === "STATUS_CHANGE")
-  );
+    const stripped = rawTitle
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/^New Document Submitted:\s*/i, "")
+      .replace(/^Document Status Updated:\s*/i, "")
+      .replace(/^New Revision Uploaded:\s*/i, "")
+      .replace(/^New Revision Comment Added:\s*/i, "")
+      .replace(/^Advisor Revision Comment:\s*/i, "")
+      .replace(/^Document Updated:\s*/i, "")
+      .replace(/^Revision Submitted:\s*/i, "")
+      .replace(/["'`´]/g, "")
+      .trim();
 
-  const topOfficerItem =
-    isOfficer && officerUnreadNotifs.length > 0
-      ? {
-          id: officerUnreadNotifs[0].documentId,
-          title: officerUnreadNotifs[0].title,
-          description: officerUnreadNotifs[0].description,
-          notifId: officerUnreadNotifs[0].id,
-        }
-      : null;
+    if (stripped) {
+      if (/^New Revision Comment Added$/i.test(stripped) || /^Revision Comment Added$/i.test(stripped)) {
+        return "Revision Comment";
+      }
+      return stripped;
+    }
+
+    if (/Revision Comment/i.test(rawTitle)) {
+      return "Revision Comment";
+    }
+    if (/Advisor Revision|Advisor Comment/i.test(rawTitle)) {
+      return "Advisor Comment";
+    }
+    if (/Status Updated/i.test(rawTitle)) {
+      return "Status Update";
+    }
+    if (/Document/i.test(rawTitle)) {
+      return "Document Update";
+    }
+
+    return rawTitle.trim() || "Notification";
+  };
+
+  const topRevisionItem = React.useMemo(() => {
+    if (!isAdvisor || revisionItems.length === 0) return null;
+    return {
+      id: revisionItems[0].id,
+      title: cleanNoticeTitle(revisionItems[0].title),
+      notifId: undefined as string | undefined,
+    };
+  }, [isAdvisor, revisionItems]);
+
+  const officerUnreadNotifs = React.useMemo(() => {
+    return notifications.filter(
+      (n) =>
+        !n.read &&
+        (n.category === "revision" ||
+          n.category === "document" ||
+          n.rawType === "REVISION_COMMENT" ||
+          n.rawType === "STATUS_CHANGE")
+    );
+  }, [notifications]);
+
+  const topOfficerItem = React.useMemo(() => {
+    if (!isOfficer || officerUnreadNotifs.length === 0) return null;
+    return {
+      id: officerUnreadNotifs[0].documentId,
+      title: cleanNoticeTitle(officerUnreadNotifs[0].title),
+      description: officerUnreadNotifs[0].description,
+      notifId: officerUnreadNotifs[0].id,
+    };
+  }, [isOfficer, officerUnreadNotifs]);
 
   const totalBadgeCount =
     activeRevisionCount > 0
       ? Math.max(unreadCount, activeRevisionCount)
       : unreadCount;
 
+  const displayedRevisionItem = topRevisionItem;
+  const displayedOfficerItem = topOfficerItem;
+
   return (
     <div className="flex items-center gap-2 sm:gap-2.5">
       {/* Information Alert (Outside notification, beside notification bell) */}
-      {isAdvisor && activeRevisionCount > 0 && topRevisionItem && !isDismissed && (
+      {isAdvisor && activeRevisionCount > 0 && displayedRevisionItem && !isDismissed && (
         <div
           role="status"
           aria-live="polite"
-          className="flex items-center gap-2 pl-3 pr-1.5 py-1 rounded-full border border-sky-200 bg-sky-50/95 text-sky-950 shadow-2xs animate-fade-in text-xs"
+          className={cn(
+            "flex items-center gap-2 pl-3 pr-1.5 py-1 rounded-full border border-sky-200 bg-sky-50/95 text-sky-950 shadow-2xs text-xs transition-all duration-300 ease-out",
+            isFading ? "opacity-0 scale-95 -translate-y-1 pointer-events-none" : "opacity-100 scale-100 animate-fade-in"
+          )}
         >
           <Info className="h-3.5 w-3.5 text-sky-600 shrink-0" />
           <div className="flex items-center gap-1.5 min-w-0">
             <span className="font-bold text-sky-950 hidden sm:inline">
-              Revision Notice:
+              Revision:
             </span>
-            <span className="text-sky-800 hidden md:inline">
-              Officer feedback appears in Revision tab for
-            </span>
-            <span className="font-semibold text-sky-950 truncate max-w-[110px] sm:max-w-[160px] md:max-w-[210px]">
-              {topRevisionItem.title}
+            <span className="font-semibold text-sky-950 truncate max-w-[120px] sm:max-w-[180px]">
+              {displayedRevisionItem.title}
             </span>
           </div>
 
-          {topRevisionItem.id && (
+          {displayedRevisionItem.id && (
             <Link
-              href={`/documents/${topRevisionItem.id}`}
+              href={`/documents/${displayedRevisionItem.id}`}
               onClick={() => {
-                if (topRevisionItem.notifId) {
-                  markAsRead(topRevisionItem.notifId);
-                }
+                triggerFadeAndDismiss(displayedRevisionItem.notifId);
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold rounded-full bg-orange-600 hover:bg-orange-700 text-white shadow-2xs transition-all shrink-0 cursor-pointer ml-1"
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-bold rounded-full bg-orange-600 hover:bg-orange-700 text-white shadow-2xs transition-all shrink-0 cursor-pointer ml-1"
             >
-              <span>Inspect &amp; Respond</span>
+              <span>Inspect</span>
               <ArrowRight className="h-3 w-3" />
             </Link>
           )}
 
           <button
             type="button"
-            onClick={() => setIsDismissed(true)}
+            onClick={() => triggerFadeAndDismiss(displayedRevisionItem.notifId)}
             className="text-sky-500 hover:text-sky-800 p-0.5 rounded-full hover:bg-sky-100 transition-colors cursor-pointer ml-0.5"
             title="Dismiss notice"
             aria-label="Dismiss notice"
@@ -277,40 +362,41 @@ export function NotificationCenter() {
         </div>
       )}
 
-      {isOfficer && topOfficerItem && !isDismissed && (
+      {isOfficer && displayedOfficerItem && !isDismissed && (
         <div
           role="status"
           aria-live="polite"
-          className="flex items-center gap-2 pl-3 pr-1.5 py-1 rounded-full border border-emerald-200 bg-emerald-50/95 text-emerald-950 shadow-2xs animate-fade-in text-xs"
+          className={cn(
+            "flex items-center gap-2 pl-3 pr-1.5 py-1 rounded-full border border-emerald-200 bg-emerald-50/95 text-emerald-950 shadow-2xs text-xs transition-all duration-300 ease-out",
+            isFading ? "opacity-0 scale-95 -translate-y-1 pointer-events-none" : "opacity-100 scale-100 animate-fade-in"
+          )}
         >
           <Info className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
           <div className="flex items-center gap-1.5 min-w-0">
             <span className="font-bold text-emerald-950 hidden sm:inline">
-              Review Notice:
+              Review:
             </span>
-            <span className="text-emerald-800 truncate max-w-[120px] sm:max-w-[180px] md:max-w-[220px]">
-              {topOfficerItem.title}
+            <span className="text-emerald-800 truncate max-w-[120px] sm:max-w-[180px]">
+              {displayedOfficerItem.title}
             </span>
           </div>
 
-          {topOfficerItem.id && (
+          {displayedOfficerItem.id && (
             <Link
-              href={`/documents/${topOfficerItem.id}`}
+              href={`/documents/${displayedOfficerItem.id}`}
               onClick={() => {
-                if (topOfficerItem.notifId) {
-                  markAsRead(topOfficerItem.notifId);
-                }
+                triggerFadeAndDismiss(displayedOfficerItem.notifId);
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold rounded-full bg-[#183028] hover:bg-[#23453a] text-white shadow-2xs transition-all shrink-0 cursor-pointer ml-1"
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-bold rounded-full bg-[#183028] hover:bg-[#23453a] text-white shadow-2xs transition-all shrink-0 cursor-pointer ml-1"
             >
-              <span>Review Document</span>
+              <span>Review</span>
               <ArrowRight className="h-3 w-3" />
             </Link>
           )}
 
           <button
             type="button"
-            onClick={() => setIsDismissed(true)}
+            onClick={() => triggerFadeAndDismiss(displayedOfficerItem.notifId)}
             className="text-emerald-500 hover:text-emerald-800 p-0.5 rounded-full hover:bg-emerald-100 transition-colors cursor-pointer ml-0.5"
             title="Dismiss notice"
             aria-label="Dismiss notice"
@@ -420,7 +506,7 @@ export function NotificationCenter() {
                   <div className="flex-1 min-w-0 space-y-0.5">
                     <div className="flex items-center justify-between gap-1">
                       <p className="text-xs font-semibold text-[#183028] truncate">
-                        {notif.title}
+                        {cleanNoticeTitle(notif.title) || notif.title || "Notification"}
                       </p>
                       <span className="text-[10px] text-[#183028]/50 shrink-0 font-mono">
                         {notif.timestamp}
@@ -460,19 +546,6 @@ export function NotificationCenter() {
               ))
             )}
           </div>
-
-          {notifications.length > 0 && unreadCount > 0 && (
-            <div className="p-2 border-t border-[#E6E8E7] bg-[#FAFBFB]">
-              <button
-                type="button"
-                onClick={markAllAsRead}
-                className="w-full py-1.5 text-xs font-bold text-[#183028] hover:bg-[#b4db53] bg-[#C5E86C] border border-[#a8ce4a] rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
-              >
-                <CheckCheck className="h-3.5 w-3.5" />
-                <span>Mark all notifications as read</span>
-              </button>
-            </div>
-          )}
         </PopoverContent>
       </Popover>
     </div>

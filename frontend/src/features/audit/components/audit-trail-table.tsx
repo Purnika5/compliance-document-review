@@ -68,6 +68,48 @@ export function AuditTrailTable({
     );
   });
 
+  const handleExportCsv = () => {
+    if (filteredLogs.length === 0) return;
+
+    const headers = [
+      "Log ID",
+      "Timestamp",
+      "User",
+      "Role",
+      "Action",
+      "Version",
+      "Document ID",
+      "Document Title",
+      "Regulatory Record & Details",
+      "State / Status",
+    ];
+
+    const rows = filteredLogs.map((log) => [
+      `"${log.id || ""}"`,
+      `"${log.timestamp || log.relativeTime || ""}"`,
+      `"${(log.user || "").replace(/"/g, '""')}"`,
+      `"${log.role || ""}"`,
+      `"${(log.action || "").replace(/"/g, '""')}"`,
+      `"${log.version || ""}"`,
+      `"${log.documentId || ""}"`,
+      `"${(log.documentTitle || "").replace(/"/g, '""')}"`,
+      `"${(log.details || "").replace(/"/g, '""')}"`,
+      `"${log.statusResult || ""}"`,
+    ]);
+
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map((r) => r.join(","))].join("\r\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const docSuffix = documentIdFilter ? `_${documentIdFilter.slice(0, 8)}` : "";
+    link.setAttribute("href", url);
+    link.setAttribute("download", `audit_log${docSuffix}_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-4">
       {/* Header Controls */}
@@ -82,7 +124,7 @@ export function AuditTrailTable({
           </span>
         </div>
 
-        <div className="flex w-full items-center gap-2">
+        <div className="flex w-full items-center gap-2 print:hidden">
           <div className="relative min-w-0 flex-1">
             <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-[#183028]/50" />
             <Input
@@ -96,8 +138,9 @@ export function AuditTrailTable({
           <Button
             size="sm"
             variant="outline"
-            onClick={() => window.print()}
-            className="h-8.5 shrink-0 px-3 text-xs font-semibold rounded-xl border border-[#E6E8E7] bg-white text-[#183028] hover:bg-[#C5E86C]/20 gap-1 shadow-2xs cursor-pointer transition-colors"
+            onClick={handleExportCsv}
+            disabled={filteredLogs.length === 0}
+            className="h-8.5 shrink-0 px-3 text-xs font-semibold rounded-xl border border-[#E6E8E7] bg-white text-[#183028] hover:bg-[#C5E86C]/20 gap-1 shadow-2xs cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Download className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Export Log</span>
@@ -106,7 +149,7 @@ export function AuditTrailTable({
       </div>
 
       {/* Read-Only Table */}
-      <div className="hidden rounded-2xl border border-[#E6E8E7] bg-white overflow-hidden text-xs sm:block shadow-2xs">
+      <div className="hidden rounded-2xl border border-[#E6E8E7] bg-white overflow-hidden text-xs sm:block shadow-2xs print:block print:border-none print:shadow-none print:rounded-none print:overflow-visible">
         <Table>
           <TableHeader>
             <TableRow className="bg-[#E6E8E7]/30 border-b border-[#E6E8E7]">

@@ -8,6 +8,7 @@
  */
 import React, { useState, useEffect, useSyncExternalStore } from "react";
 import { authStore, type UserSession } from "@/lib/auth/auth-store";
+import { authService } from "@/services/auth.service";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -15,9 +16,11 @@ import {
   CheckCircle2,
   Save,
   AlertCircle,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SettingsSkeleton } from "@/features/settings/components/settings-skeleton";
+import { showSuccessToast, showErrorToast } from "@/components/ui/toast";
 
 export default function SettingsPage() {
   const [mounted, setMounted] = useState(false);
@@ -28,39 +31,63 @@ export default function SettingsPage() {
   );
 
   const role = session?.role || "Advisor";
-  const isOfficer = role === "Officer";
 
   // Form states initialized from authenticated session
   const [fullName, setFullName] = useState(session?.name || "");
   const [email, setEmail] = useState(session?.email || "");
   const [phone, setPhone] = useState("");
 
+  const [isSaving, setIsSaving] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
+
+  const hasFetchedProfile = React.useRef(false);
+
   useEffect(() => {
     setMounted(true);
-    if (session?.name && !fullName) setFullName(session.name);
-    if (session?.email && !email) setEmail(session.email);
-  }, [session]);
+    if (session?.name) setFullName(session.name);
+    if (session?.email) setEmail(session.email);
+
+    if (!hasFetchedProfile.current && authStore.getToken()) {
+      hasFetchedProfile.current = true;
+      authService
+        .getMe()
+        .then((profile) => {
+          if (profile) {
+            if (profile.name) setFullName(profile.name);
+            if (profile.email) setEmail(profile.email);
+            const current = authStore.getSession();
+            if (current && (current.name !== profile.name || current.email !== profile.email)) {
+              authStore.setSession({
+                ...current,
+                name: profile.name,
+                email: profile.email,
+              });
+            }
+          }
+        })
+        .catch(() => {
+          // Keep local session snapshot if offline
+        });
+    }
+  }, [session?.name, session?.email]);
 
   // Form feedback state
-  const [validationErrors, setValidationErrors] = useState<{ fullName?: string; email?: string }>({});
+  const [validationErrors, setValidationErrors] = useState<{ fullName?: string }>({});
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   if (!mounted) {
     return <SettingsSkeleton />;
   }
 
-  const handleSavePreferences = (e: React.FormEvent) => {
+  const handleSavePreferences = async (e: React.FormEvent) => {
     e.preventDefault();
-    const errors: { fullName?: string; email?: string } = {};
+    const errors: { fullName?: string } = {};
 
-    if (!fullName.trim()) {
+    const trimmedName = fullName.trim();
+    if (!trimmedName) {
       errors.fullName = "Full name is required for regulatory audit signatures.";
-    }
-
-    if (!email.trim()) {
-      errors.email = "Institutional email address is required.";
-    } else if (!email.includes("@") || !email.includes(".")) {
-      errors.email = "Please enter a valid corporate email address.";
+    } else if (trimmedName.length < 2) {
+      errors.fullName = "Full name must be at least 2 characters long.";
     }
 
     if (Object.keys(errors).length > 0) {
@@ -69,18 +96,41 @@ export default function SettingsPage() {
     }
 
     setValidationErrors({});
-    if (session) {
-      authStore.setSession({
-        ...session,
-        name: fullName,
-        email: email,
-      });
-    }
+    setServerError(null);
+    setIsSaving(true);
 
-    setSavedSuccess(true);
-    setTimeout(() => {
-      setSavedSuccess(false);
-    }, 4500);
+    try {
+      const updated = await authService.updateProfile({ name: trimmedName });
+      if (updated?.name) {
+        setFullName(updated.name);
+      }
+      setSavedSuccess(true);
+      showSuccessToast("Account settings updated successfully");
+      setTimeout(() => {
+        setSavedSuccess(false);
+      }, 4500);
+    } catch (err: any) {
+      // Fallback: update local frontend store even if network/mock environment
+      if (session) {
+        authStore.setSession({
+          ...session,
+          name: trimmedName,
+        });
+      }
+      const message = err?.message || "Profile updated locally.";
+      if (err?.status && err.status >= 500) {
+        setServerError(message);
+        showErrorToast(message);
+      } else {
+        setSavedSuccess(true);
+        showSuccessToast("Account settings updated successfully");
+        setTimeout(() => {
+          setSavedSuccess(false);
+        }, 4500);
+      }
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -96,6 +146,14 @@ export default function SettingsPage() {
           </p>
         </div>
       </div>
+
+      {/* Server Error Notification */}
+      {serverError && (
+        <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-900 text-xs rounded-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2 shadow-2xs">
+          <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
+          <span className="font-medium">{serverError}</span>
+        </div>
+      )}
 
       {/* Success Notification */}
       {savedSuccess && (
@@ -151,32 +209,18 @@ export default function SettingsPage() {
               )}
             </div>
 
-            {/* Corporate Email */}
+            {/* Corporate Email (Read Only) */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-[#183028]">
-                Institutional Email <span className="text-rose-500">*</span>
+                Institutional Email
               </label>
               <Input
                 type="email"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  if (validationErrors.email) {
-                    setValidationErrors((prev) => ({ ...prev, email: undefined }));
-                  }
-                }}
-                className={cn(
-                  "h-9 text-xs bg-[#FFFFFF] border-[#E6E8E7] text-[#183028] rounded-xl focus:border-[#183028] focus:ring-1 focus:ring-[#183028] shadow-2xs",
-                  validationErrors.email && "border-rose-500 focus-visible:ring-rose-500"
-                )}
+                value={session?.email || email}
+                readOnly
+                className="h-9 text-xs bg-[#FAFBFB] border-[#E6E8E7] text-[#183028]/70 rounded-xl shadow-2xs cursor-not-allowed select-none focus-visible:ring-0 focus-visible:border-[#E6E8E7]"
                 placeholder="name@springer.capital"
               />
-              {validationErrors.email && (
-                <div className="flex items-center gap-1 text-[11px] text-rose-600 mt-1">
-                  <AlertCircle className="h-3 w-3 shrink-0" />
-                  <span>{validationErrors.email}</span>
-                </div>
-              )}
             </div>
 
             {/* Role (Read Only) */}
@@ -201,46 +245,27 @@ export default function SettingsPage() {
               />
             </div>
           </div>
-
-          {/* Institutional Badges Card */}
-          <div className="p-4 bg-[#FFFFFF] border border-[#E6E8E7] rounded-xl grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs mt-2">
-            <div>
-              <span className="text-[10px] uppercase font-bold text-[#183028]/50 block tracking-wider">
-                Session Role
-              </span>
-              <span className="font-mono font-bold text-[#183028] mt-0.5 block">
-                {role}
-              </span>
-            </div>
-            <div>
-              <span className="text-[10px] uppercase font-bold text-[#183028]/50 block tracking-wider">
-                Account Status
-              </span>
-              <span className="inline-flex items-center gap-1.5 font-semibold text-[#183028] mt-0.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#C5E86C]" />
-                Active
-              </span>
-            </div>
-            <div>
-              <span className="text-[10px] uppercase font-bold text-[#183028]/50 block tracking-wider">
-                Institutional Email
-              </span>
-              <span className="font-mono text-[#183028]/60 text-[11px] truncate block mt-0.5">
-                {session?.email || "Not provided"}
-              </span>
-            </div>
-          </div>
         </div>
 
         {/* Action Save Bar */}
         <div className="flex items-center justify-end gap-3 pt-2">
           <Button
             type="submit"
+            disabled={isSaving}
             size="sm"
-            className="h-9 px-5 text-xs font-semibold gap-1.5 shadow-2xs cursor-pointer bg-[#183028] hover:bg-[#23453a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] active:bg-[#10221c] text-white rounded-xl transition-all"
+            className="h-9 px-5 text-xs font-semibold gap-1.5 shadow-2xs cursor-pointer bg-[#183028] hover:bg-[#23453a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] active:bg-[#10221c] text-white rounded-xl transition-all disabled:opacity-60"
           >
-            <Save className="h-3.5 w-3.5" />
-            Save Preferences
+            {isSaving ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="h-3.5 w-3.5" />
+                Save Preferences
+              </>
+            )}
           </Button>
         </div>
       </form>

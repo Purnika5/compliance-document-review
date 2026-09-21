@@ -2,23 +2,40 @@ import bcrypt from 'bcrypt';
 import fs from 'fs';
 import path from 'path';
 import { pool, query } from './pool';
+import { runMigrations } from './migrate';
 import { config } from '../config';
 
 export const seedDatabase = async (): Promise<void> => {
   console.log('[Seed] Starting database seeding...');
+  await runMigrations();
 
   // Ensure uploads directory exists
   if (!fs.existsSync(config.uploads.dir)) {
     fs.mkdirSync(config.uploads.dir, { recursive: true });
   }
 
-  // Create a dummy sample document on disk for seeded records
+  // Create dummy sample documents (PDF and DOCX) on disk for seeded records
   const sampleDocPath = path.join(config.uploads.dir, 'sample_compliance_filing.pdf');
   if (!fs.existsSync(sampleDocPath)) {
     const minimalPdf = Buffer.from(
       '%PDF-1.4\n1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >> endobj\n4 0 obj << /Length 40 >> stream\nBT /F1 12 Tf 72 712 Td (Springer Capital Compliance Document) Tj ET\nendstream endobj\nxref\n0 5\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \n0000000214 00000 n \ntrailer << /Size 5 /Root 1 0 R >>\nstartxref\n303\n%%EOF'
     );
     fs.writeFileSync(sampleDocPath, minimalPdf);
+  }
+
+  const sampleDocxPath = path.join(config.uploads.dir, 'sample_compliance_filing.docx');
+  if (!fs.existsSync(sampleDocxPath)) {
+    const minimalDocxBase64 =
+      "UEsDBBQAAAAIAAAAIQCS74NsbwEAAFoDAAATAAAAW2NvbnRlbnRfVHlwZXNdLnhtbKyTT0/C" +
+      "MAzF70j8DlrurQNhCSG2Ew4mHiTqgTvg15a2tGvXDvLtzaYLxIQ/wNte+vzyevW+vj42LlgP" +
+      "1rmU5yKNIsCora+tLfLL+ml5ikIErcHajDnJEZydlTfX9bZ7xZgmbvA5SYW4xJCS71hLgbf9" +
+      "1QZ8w111h/x8ZzP4x+E1O3v+w0+jR+790e0c1fJEp3tFz2bWoxK8D6eFkU08yAUpYV1T8T13" +
+      "WlsrY28gTlh7m10L01wBwZ1wP31QfBspCqIe7kH689a+A1BLAQIUABQAAAAIAAAAIQCS74Ns" +
+      "bwEAAFoDAAATAAAAAAAAAAAAAAAAAAAAAABbY29udGVudF9UeXBlc10ueG1sUEsBAhQA" +
+      "FAAAAAgAAAAhAG+VbI85AQAAaQIAAAsAAAAAAAAAAAAAAAAAWQEAAF9yZWxzLy5yZWxz" +
+      "UEsBAhQAFAAAAAgAAAAhAHQ3/gBmAQAAoAIAABEAAAAAAAAAAAAAAAAA6AIAAHdvcmQv" +
+      "ZG9jdW1lbnQueG1sUEsFBgAAAAADAAMArgEAAJ4DAAAAAA==";
+    fs.writeFileSync(sampleDocxPath, Buffer.from(minimalDocxBase64, 'base64'));
   }
 
   const saltRounds = 10;
@@ -28,6 +45,8 @@ export const seedDatabase = async (): Promise<void> => {
   const usersToSeed = [
     { name: 'Marcus Vance', email: 'advisor1@springer.capital', role: 'Advisor' },
     { name: 'Elena Rostova', email: 'officer1@springer.capital', role: 'Officer' },
+    { name: 'Sarah Jenkins', email: 'sarah.j@springercapital.com', role: 'Advisor' },
+    { name: 'Alex Smith', email: 'alex.smith@springercapital.com', role: 'Officer' },
   ];
 
   const userIds: Record<string, string> = {};
@@ -49,53 +68,70 @@ export const seedDatabase = async (): Promise<void> => {
     }
   }
 
-  // Seed Initial Documents for Advisor 1
-  const advisorId = userIds['advisor1@springer.capital'];
-  if (advisorId) {
-    const sampleDocs = [
-      {
-        title: 'Q3 Institutional Asset Allocation Model',
-        description: 'Quarterly portfolio review and strategic allocation model for HNW institutional clients.',
-        status: 'Pending',
-        file_name: 'Q3_Asset_Allocation_Model.pdf',
-      },
-      {
-        title: 'Private Wealth Portfolio Disclosure Statement',
-        description: 'Annual disclosure regarding fiduciary management and risk suitability standards.',
-        status: 'Approved',
-        file_name: 'Private_Wealth_Disclosure.pdf',
-      },
-      {
-        title: 'Global Equity ESG Strategy Filing',
-        description: 'Sustainable equity strategy documentation with carbon metrics and exclusionary screening.',
-        status: 'Needs Revision',
-        file_name: 'ESG_Strategy_Filing.pdf',
-      },
-    ];
+  // Seed Initial Documents for Advisors
+  const advisorEmails = ['advisor1@springer.capital', 'sarah.j@springercapital.com'];
+  for (const advEmail of advisorEmails) {
+    const advisorId = userIds[advEmail];
+    if (advisorId) {
+      const sampleDocs = [
+        {
+          title: 'Q3 Institutional Asset Allocation Model',
+          description: 'Quarterly portfolio review and strategic allocation model for HNW institutional clients.',
+          status: 'Pending',
+          file_name: 'Q3_Asset_Allocation_Model.pdf',
+          file_path: sampleDocPath,
+          mime_type: 'application/pdf',
+        },
+        {
+          title: 'Private Wealth Portfolio Disclosure Statement',
+          description: 'Annual disclosure regarding fiduciary management and risk suitability standards.',
+          status: 'Approved',
+          file_name: 'Private_Wealth_Disclosure.pdf',
+          file_path: sampleDocPath,
+          mime_type: 'application/pdf',
+        },
+        {
+          title: 'Global Equity ESG Strategy Filing',
+          description: 'Sustainable equity strategy documentation with carbon metrics and exclusionary screening.',
+          status: 'Needs Revision',
+          file_name: 'ESG_Strategy_Filing.pdf',
+          file_path: sampleDocPath,
+          mime_type: 'application/pdf',
+        },
+        {
+          title: 'Institutional Portfolio Strategy & Risk Brief',
+          description: 'Institutional strategy deck with multi-asset performance projections and standard disclosures.',
+          status: 'Pending',
+          file_name: 'sample_compliance_filing.docx',
+          file_path: sampleDocxPath,
+          mime_type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        },
+      ];
 
-    for (const doc of sampleDocs) {
-      const existingDoc = await query(
-        'SELECT id FROM documents WHERE advisor_id = $1 AND title = $2',
-        [advisorId, doc.title]
-      );
-
-      if (existingDoc.rows.length === 0) {
-        await query(
-          `INSERT INTO documents 
-           (title, description, file_name, file_path, file_size, mime_type, status, advisor_id) 
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          [
-            doc.title,
-            doc.description,
-            doc.file_name,
-            sampleDocPath,
-            fs.statSync(sampleDocPath).size,
-            'application/pdf',
-            doc.status,
-            advisorId,
-          ]
+      for (const doc of sampleDocs) {
+        const existingDoc = await query(
+          'SELECT id FROM documents WHERE advisor_id = $1 AND title = $2',
+          [advisorId, doc.title]
         );
-        console.log(`[Seed] Created document: "${doc.title}" [Status: ${doc.status}]`);
+
+        if (existingDoc.rows.length === 0) {
+          await query(
+            `INSERT INTO documents 
+             (title, description, file_name, file_path, file_size, mime_type, status, advisor_id) 
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+            [
+              doc.title,
+              doc.description,
+              doc.file_name,
+              doc.file_path,
+              fs.existsSync(doc.file_path) ? fs.statSync(doc.file_path).size : 1024,
+              doc.mime_type,
+              doc.status,
+              advisorId,
+            ]
+          );
+          console.log(`[Seed] Created document: "${doc.title}" [Status: ${doc.status}] for ${advEmail}`);
+        }
       }
     }
   }

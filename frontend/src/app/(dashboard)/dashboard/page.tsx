@@ -1,20 +1,39 @@
-import { Suspense } from "react";
-import { RoleGuard } from "@/features/auth/components/role-guard";
+"use client";
+
+import { Suspense, useSyncExternalStore } from "react";
+import { authStore, type UserSession } from "@/lib/auth/auth-store";
 import { MyDocumentsTable } from "@/features/documents/components/my-documents-table";
+import { DocumentQueueTable } from "@/features/documents/components/document-queue-table";
 import { DashboardSkeleton } from "@/features/documents/components/dashboard-skeleton";
+import { QueueSkeleton } from "@/features/documents/components/queue-skeleton";
 
 /**
- * DOCU: Renders the authenticated Advisor dashboard overview with skeleton loading.
- * Last Updated Date: September 18, 2026
- * @returns The guarded advisor dashboard view.
+ * DOCU: Dynamically renders the authenticated workspace overview (Review Queue for Officer, Submissions for Advisor).
+ * Last Updated Date: September 20, 2026
+ * @returns Role-adaptive dashboard view.
  * @author Keith
  */
 export default function DashboardPage() {
-  return (
-    <RoleGuard allowedRole="Advisor">
-      <Suspense fallback={<DashboardSkeleton />}>
-        <MyDocumentsTable view="dashboard" />
+  const session = useSyncExternalStore<UserSession | null>(
+    authStore.subscribe,
+    authStore.getSession,
+    authStore.getServerSnapshot
+  );
+
+  const isOfficer = session?.role === "Officer";
+
+  if (isOfficer) {
+    return (
+      <Suspense fallback={<QueueSkeleton />}>
+        <DocumentQueueTable />
       </Suspense>
-    </RoleGuard>
+    );
+  }
+
+  return (
+    <Suspense fallback={<DashboardSkeleton />}>
+      <MyDocumentsTable view="dashboard" />
+    </Suspense>
   );
 }
+

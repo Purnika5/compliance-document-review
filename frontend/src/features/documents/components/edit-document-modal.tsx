@@ -95,7 +95,7 @@ function EditDocumentForm({
         category,
         status,
       });
-      showSuccessToast("Metadata Updated", `Document "${document.id}" changes saved.`);
+      showSuccessToast("Metadata Updated", `Document "${title.trim()}" changes saved.`);
       onClose();
     } finally {
       setIsSaving(false);
@@ -115,7 +115,7 @@ function EditDocumentForm({
                 Edit Submission Metadata
               </DialogTitle>
               <DialogDescription className="text-xs text-slate-500">
-                Update classification &amp; properties for <span className="font-mono text-slate-900 font-semibold">{document.id}</span>
+                Update classification &amp; properties for <span className="text-slate-900 font-semibold">{document.title}</span>
               </DialogDescription>
             </div>
           </div>

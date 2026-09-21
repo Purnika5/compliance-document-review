@@ -4,10 +4,11 @@
  * @returns The breadcrumb navigation view.
  * @author Keith
  */
-import React from "react";
+import React, { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronRight, Home } from "lucide-react";
+import { authStore, type UserSession } from "@/lib/auth/auth-store";
 
 export interface BreadcrumbsProps {
   customItems?: Array<{ label: string; href?: string }>;
@@ -15,13 +16,20 @@ export interface BreadcrumbsProps {
 
 export function Breadcrumbs({ customItems }: BreadcrumbsProps) {
   const pathname = usePathname();
+  const session = useSyncExternalStore<UserSession | null>(
+    authStore.subscribe,
+    authStore.getSession,
+    authStore.getServerSnapshot
+  );
+  const isOfficer = session?.role === "Officer";
 
   const getBreadcrumbs = () => {
     if (customItems) return [...customItems];
 
     const segments = pathname.split("/").filter(Boolean);
+    const homeHref = isOfficer ? "/queue" : "/dashboard";
     const items: Array<{ label: string; href?: string }> = [
-      { label: "Home", href: "/" },
+      { label: "Home", href: homeHref },
     ];
 
     if (segments.length === 0) {
@@ -29,16 +37,29 @@ export function Breadcrumbs({ customItems }: BreadcrumbsProps) {
     }
 
     if (segments[0] === "dashboard") {
-      items.push({ label: "Advisor Workspace", href: "/dashboard" });
-      items.push({ label: "Dashboard" });
+      if (isOfficer) {
+        items.push({ label: "Compliance Review Queue", href: "/queue" });
+        items.push({ label: "Review Queue" });
+      } else {
+        items.push({ label: "Advisor Workspace", href: "/dashboard" });
+        items.push({ label: "Dashboard" });
+      }
     } else if (segments[0] === "submissions") {
       items.push({ label: "Advisor Workspace", href: "/dashboard" });
       items.push({ label: "My Documents" });
     } else if (segments[0] === "queue") {
       items.push({ label: "Compliance Review Queue", href: "/queue" });
+    } else if (segments[0] === "audit") {
+      items.push({ label: "Compliance Review Queue", href: "/queue" });
+      items.push({ label: "Audit History" });
     } else if (segments[0] === "documents") {
-      items.push({ label: "Advisor Workspace", href: "/dashboard" });
-      items.push({ label: "Documents" });
+      if (isOfficer) {
+        items.push({ label: "Compliance Review Queue", href: "/queue" });
+        items.push({ label: "Document Review" });
+      } else {
+        items.push({ label: "Advisor Workspace", href: "/dashboard" });
+        items.push({ label: "Document Review" });
+      }
     } else {
       segments.forEach((seg, index) => {
         const url = `/${segments.slice(0, index + 1).join("/")}`;

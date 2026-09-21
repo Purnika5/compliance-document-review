@@ -1,0 +1,302 @@
+[
+  {
+    "id": "6129205d-21e6-479d-9a13-b85482c0fe33",
+    "rule_code": "SEC-206",
+    "title": "Fiduciary Duty Disclosure",
+    "description": "Requires advisors to disclose all material conflicts of interest, including compensation received for recommending specific products."
+  },
+  {
+    "id": "5ec9cafa-81e6-4890-8b46-43babf3c03f0",
+    "rule_code": "FINRA-2214",
+    "title": "Fee and Expense Disclosure",
+    "description": "Requires clear and prominent disclosure of all fees, expenses, and charges associated with a recommended product. This applies to all advisory accounts regardless of size."
+  },
+  {
+    "id": "e3e05fee-fc9e-4b1e-81d9-8cdaf47091e1",
+    "rule_code": "SEC-RiskDisclosure",
+    "title": "Risk Factor Disclosure",
+    "description": "Requires clear disclosure of principal risks of loss associated with an investment, including that past performance does not guarantee future results. This applies to all advisory accounts regardless of size."
+  },
+  {
+    "id": "256d1058-5bc5-4eb9-8aa6-b4617afdf64d",
+    "rule_code": "SEC-206-v3",
+    "title": "Fiduciary Duty Disclosure",
+    "description": "Requires advisors to disclose all material conflicts of interest, including compensation received for recommending specific products. This requirement applies at account opening and on an ongoing basis."
+  },
+  {
+    "id": "e6b8a78c-c4ad-4c9c-8970-e0a6c478bd23",
+    "rule_code": "SEC-206-v4",
+    "title": "Fiduciary Duty Disclosure",
+    "description": "Requires advisors to disclose all material conflicts of interest, including compensation received for recommending specific products. This requirement applies at account opening and on an ongoing basis."
+  },
+  {
+    "id": "06add6b8-9db3-4fa0-8664-98eac8e68774",
+    "rule_code": "SEC-204",
+    "title": "Recordkeeping Requirements",
+    "description": "Requires investment advisers to make and keep true, accurate, and current books and records relating to their advisory business."
+  },
+  {
+    "id": "5cb4945e-db94-4f6e-9a78-7bc66b58a0b3",
+    "rule_code": "FINRA-2210",
+    "title": "Communications with the Public",
+    "description": "Prohibits false, exaggerated, unwarranted, or misleading statements in communications with the public, including implying guaranteed investment returns."
+  },
+  {
+    "id": "35113465-851e-4cfa-9767-f517d9ffd280",
+    "rule_code": "SEC-RiskDisclosure-v7",
+    "title": "Risk Factor Disclosure",
+    "description": "Requires clear disclosure of principal risks of loss associated with an investment, including that past performance does not guarantee future results. This applies to all advisory accounts regardless of size."
+  },
+  {
+    "id": "23bbf161-a9b8-49bf-9d65-b5525288dfc7",
+    "rule_code": "SEC-AntiFraud",
+    "title": "Anti-Fraud Provision",
+    "description": "Prohibits any device, scheme, or artifice to defraud any client or prospective client. This requirement applies at account opening and on an ongoing basis."
+  },
+  {
+    "id": "dfc9c0e0-edbc-4404-829b-39712bc328df",
+    "rule_code": "FINRA-2210-v9",
+    "title": "Communications with the Public",
+    "description": "Prohibits false, exaggerated, unwarranted, or misleading statements in communications with the public, including implying guaranteed investment returns. This requirement applies at account opening and on an ongoing basis."
+  },
+  {
+    "id": "6ae36ce9-4cb1-4298-8bf2-ed170cb96fa9",
+    "rule_code": "SEC-RiskDisclosure-v10",
+    "title": "Risk Factor Disclosure",
+    "description": "Requires clear disclosure of principal risks of loss associated with an investment, including that past performance does not guarantee future results. This requirement applies at account opening and on an ongoing basis."
+  },
+  {
+    "id": "ad82711b-f546-493b-9dd7-20d1343aff15",
+    "rule_code": "SEC-204-v11",
+    "title": "Recordkeeping Requirements",
+    "description": "Requires investment advisers to make and keep true, accurate, and current books and records relating to their advisory business. This applies to all advisory accounts regardless of size."
+  },
+  {
+    "id": "351d0224-1b14-4764-b59e-2d868da97818",
+    "rule_code": "FINRA-2090",
+    "title": "Know Your Customer",
+    "description": "Requires reasonable diligence to know and retain essential facts concerning every customer at account opening and throughout the relationship. This requirement applies at account opening and on an ongoing basis."
+  },
+  {
+    "id": "3f953224-0de9-42c3-90bb-75c9a0c34df8",
+    "rule_code": "FINRA-2214-v13",
+    "title": "Fee and Expense Disclosure",
+    "description": "Requires clear and prominent disclosure of all fees, expenses, and charges associated with a recommended product."
+  },
+  {
+    "id": "4b913bc2-893b-4b68-bbb2-3b5df6990976",
+    "rule_code": "FINRA-2111",
+    "title": "Suitability Obligation",
+    "description": "Requires a reasonable basis to believe a recommended transaction or investment strategy is suitable for the customer based on their profile. Advisors must document their compliance with this requirement in the client file."
+  },
+  {
+    "id": "6c31a4c6-e0c7-4894-8148-ed025625438b",
+    "rule_code": "FINRA-3110",
+    "title": "Supervision",
+    "description": "Requires a system to supervise the activities of associated persons reasonably designed to achieve compliance with applicable securities laws. Violations may result in disciplinary action and required remediation."
+  },
+  {
+    "id": "6f6978ce-48fe-40d5-8215-975f07c3435a",
+    "rule_code": "FINRA-2111-v16",
+    "title": "Suitability Obligation",
+    "description": "Requires a reasonable basis to believe a recommended transaction or investment strategy is suitable for the customer based on their profile. This applies to all advisory accounts regardless of size."
+  },
+  {
+    "id": "5e6a0c0d-62ba-4867-a183-b8b237cfb824",
+    "rule_code": "FINRA-3110-v17",
+    "title": "Supervision",
+    "description": "Requires a system to supervise the activities of associated persons reasonably designed to achieve compliance with applicable securities laws."
+  },
+  {
+    "id": "26fae6a4-730f-418d-9acf-42638e49283c",
+    "rule_code": "SEC-206-v18",
+    "title": "Fiduciary Duty Disclosure",
+    "description": "Requires advisors to disclose all material conflicts of interest, including compensation received for recommending specific products. Advisors must document their compliance with this requirement in the client file."
+  },
+  {
+    "id": "95e13cb7-e31b-4909-b21f-0e94d616b180",
+    "rule_code": "SEC-206-v19",
+    "title": "Fiduciary Duty Disclosure",
+    "description": "Requires advisors to disclose all material conflicts of interest, including compensation received for recommending specific products. Violations may result in disciplinary action and required remediation."
+  },
+  {
+    "id": "f29501f5-8ef1-4e66-8b50-86eba679a3c5",
+    "rule_code": "FINRA-3110-v20",
+    "title": "Supervision",
+    "description": "Requires a system to supervise the activities of associated persons reasonably designed to achieve compliance with applicable securities laws. This requirement applies at account opening and on an ongoing basis."
+  },
+  {
+    "id": "b1d0dea2-e9fc-489d-b5a4-08ea906e7619",
+    "rule_code": "FINRA-2214-v21",
+    "title": "Fee and Expense Disclosure",
+    "description": "Requires clear and prominent disclosure of all fees, expenses, and charges associated with a recommended product."
+  },
+  {
+    "id": "eca41573-26bd-4b71-9576-86924ddc10ce",
+    "rule_code": "FINRA-2090-v22",
+    "title": "Know Your Customer",
+    "description": "Requires reasonable diligence to know and retain essential facts concerning every customer at account opening and throughout the relationship. This requirement applies at account opening and on an ongoing basis."
+  },
+  {
+    "id": "b03aa752-0a93-4397-81c6-eb474d6a125f",
+    "rule_code": "SEC-206-v23",
+    "title": "Fiduciary Duty Disclosure",
+    "description": "Requires advisors to disclose all material conflicts of interest, including compensation received for recommending specific products. Advisors must document their compliance with this requirement in the client file."
+  },
+  {
+    "id": "f45d3a38-d6a3-4927-bd9f-c5d58acdcad7",
+    "rule_code": "SEC-206-v24",
+    "title": "Fiduciary Duty Disclosure",
+    "description": "Requires advisors to disclose all material conflicts of interest, including compensation received for recommending specific products. This requirement applies at account opening and on an ongoing basis."
+  },
+  {
+    "id": "66b64dbf-64e7-487c-9042-602436f8703b",
+    "rule_code": "FINRA-2214-v25",
+    "title": "Fee and Expense Disclosure",
+    "description": "Requires clear and prominent disclosure of all fees, expenses, and charges associated with a recommended product. This requirement applies at account opening and on an ongoing basis."
+  },
+  {
+    "id": "c77dd670-c5ad-41e0-984d-765d6c58fa23",
+    "rule_code": "FINRA-3110-v26",
+    "title": "Supervision",
+    "description": "Requires a system to supervise the activities of associated persons reasonably designed to achieve compliance with applicable securities laws. This requirement applies at account opening and on an ongoing basis."
+  },
+  {
+    "id": "498f424f-21c1-4e2a-a591-90634200de8f",
+    "rule_code": "SEC-RiskDisclosure-v27",
+    "title": "Risk Factor Disclosure",
+    "description": "Requires clear disclosure of principal risks of loss associated with an investment, including that past performance does not guarantee future results."
+  },
+  {
+    "id": "9a1438c9-5fb0-447c-b63b-34fff7a7f1d5",
+    "rule_code": "FINRA-2210-v28",
+    "title": "Communications with the Public",
+    "description": "Prohibits false, exaggerated, unwarranted, or misleading statements in communications with the public, including implying guaranteed investment returns. This applies to all advisory accounts regardless of size."
+  },
+  {
+    "id": "e3db087f-88f4-45cc-ac6a-348fa678064d",
+    "rule_code": "FINRA-2214-v29",
+    "title": "Fee and Expense Disclosure",
+    "description": "Requires clear and prominent disclosure of all fees, expenses, and charges associated with a recommended product."
+  },
+  {
+    "id": "65d965b3-9dc1-4bb2-91b3-9431362bf090",
+    "rule_code": "SEC-RiskDisclosure-v30",
+    "title": "Risk Factor Disclosure",
+    "description": "Requires clear disclosure of principal risks of loss associated with an investment, including that past performance does not guarantee future results."
+  },
+  {
+    "id": "3d2750e3-d9b9-45d0-934c-ac519deaba05",
+    "rule_code": "SEC-204-v31",
+    "title": "Recordkeeping Requirements",
+    "description": "Requires investment advisers to make and keep true, accurate, and current books and records relating to their advisory business. Violations may result in disciplinary action and required remediation."
+  },
+  {
+    "id": "5b242966-75c7-4103-a368-c7f2c953ee3b",
+    "rule_code": "FINRA-2090-v32",
+    "title": "Know Your Customer",
+    "description": "Requires reasonable diligence to know and retain essential facts concerning every customer at account opening and throughout the relationship. Violations may result in disciplinary action and required remediation."
+  },
+  {
+    "id": "ff8e7d74-aa2e-4cd2-880d-a5931ee73a59",
+    "rule_code": "FINRA-2111-v33",
+    "title": "Suitability Obligation",
+    "description": "Requires a reasonable basis to believe a recommended transaction or investment strategy is suitable for the customer based on their profile. Violations may result in disciplinary action and required remediation."
+  },
+  {
+    "id": "a2764dac-f39c-493d-b168-ecd3cd41dd3c",
+    "rule_code": "FINRA-3110-v34",
+    "title": "Supervision",
+    "description": "Requires a system to supervise the activities of associated persons reasonably designed to achieve compliance with applicable securities laws. This applies to all advisory accounts regardless of size."
+  },
+  {
+    "id": "3f691524-519c-4c4b-b95a-236bcc26e513",
+    "rule_code": "FINRA-2214-v35",
+    "title": "Fee and Expense Disclosure",
+    "description": "Requires clear and prominent disclosure of all fees, expenses, and charges associated with a recommended product."
+  },
+  {
+    "id": "8c29aa5b-e8ab-4223-bf57-03bb9bfa378c",
+    "rule_code": "FINRA-2150",
+    "title": "Improper Use of Customer Funds",
+    "description": "Prohibits improper use or borrowing of a customer's funds or securities. This applies to all advisory accounts regardless of size."
+  },
+  {
+    "id": "bcd9f749-f3ea-4b67-9129-a44e9c65b00d",
+    "rule_code": "SEC-AntiFraud-v37",
+    "title": "Anti-Fraud Provision",
+    "description": "Prohibits any device, scheme, or artifice to defraud any client or prospective client. This applies to all advisory accounts regardless of size."
+  },
+  {
+    "id": "f675e349-edb9-44c5-88ef-6f275dd85325",
+    "rule_code": "FINRA-2111-v38",
+    "title": "Suitability Obligation",
+    "description": "Requires a reasonable basis to believe a recommended transaction or investment strategy is suitable for the customer based on their profile. Advisors must document their compliance with this requirement in the client file."
+  },
+  {
+    "id": "df0b0d3f-4082-443f-91b5-88ad2d716501",
+    "rule_code": "SEC-204-v39",
+    "title": "Recordkeeping Requirements",
+    "description": "Requires investment advisers to make and keep true, accurate, and current books and records relating to their advisory business. Violations may result in disciplinary action and required remediation."
+  },
+  {
+    "id": "45f8d91a-994f-4b1e-b5a0-cde09a245d3d",
+    "rule_code": "SEC-AntiFraud-v40",
+    "title": "Anti-Fraud Provision",
+    "description": "Prohibits any device, scheme, or artifice to defraud any client or prospective client. This applies to all advisory accounts regardless of size."
+  },
+  {
+    "id": "c2052155-4ed4-4536-bd4a-ea31a5b97f3e",
+    "rule_code": "FINRA-3110-v41",
+    "title": "Supervision",
+    "description": "Requires a system to supervise the activities of associated persons reasonably designed to achieve compliance with applicable securities laws."
+  },
+  {
+    "id": "cd1fa096-1cfb-467c-bb54-cbb7caad43e6",
+    "rule_code": "SEC-RiskDisclosure-v42",
+    "title": "Risk Factor Disclosure",
+    "description": "Requires clear disclosure of principal risks of loss associated with an investment, including that past performance does not guarantee future results."
+  },
+  {
+    "id": "b24254d2-a968-4be3-b9c5-53ef74c09139",
+    "rule_code": "FINRA-3110-v43",
+    "title": "Supervision",
+    "description": "Requires a system to supervise the activities of associated persons reasonably designed to achieve compliance with applicable securities laws. Advisors must document their compliance with this requirement in the client file."
+  },
+  {
+    "id": "bbab760a-4769-4d40-af23-2cd561a8e8fb",
+    "rule_code": "FINRA-2214-v44",
+    "title": "Fee and Expense Disclosure",
+    "description": "Requires clear and prominent disclosure of all fees, expenses, and charges associated with a recommended product."
+  },
+  {
+    "id": "0c3a915b-2011-4838-94c2-66ff2f63b81b",
+    "rule_code": "SEC-RiskDisclosure-v45",
+    "title": "Risk Factor Disclosure",
+    "description": "Requires clear disclosure of principal risks of loss associated with an investment, including that past performance does not guarantee future results. This requirement applies at account opening and on an ongoing basis."
+  },
+  {
+    "id": "dab33811-70f6-47ee-ac61-f42d48141340",
+    "rule_code": "FINRA-3110-v46",
+    "title": "Supervision",
+    "description": "Requires a system to supervise the activities of associated persons reasonably designed to achieve compliance with applicable securities laws. This applies to all advisory accounts regardless of size."
+  },
+  {
+    "id": "87cedb65-565a-42b9-9ee8-b0490061f77b",
+    "rule_code": "FINRA-2090-v47",
+    "title": "Know Your Customer",
+    "description": "Requires reasonable diligence to know and retain essential facts concerning every customer at account opening and throughout the relationship. Advisors must document their compliance with this requirement in the client file."
+  },
+  {
+    "id": "5944dc53-0eaf-40a7-9574-872b033a3475",
+    "rule_code": "FINRA-2090-v48",
+    "title": "Know Your Customer",
+    "description": "Requires reasonable diligence to know and retain essential facts concerning every customer at account opening and throughout the relationship. This applies to all advisory accounts regardless of size."
+  },
+  {
+    "id": "42ab060d-0f8f-4f0b-9599-c994de0e875a",
+    "rule_code": "FINRA-2214-v49",
+    "title": "Fee and Expense Disclosure",
+    "description": "Requires clear and prominent disclosure of all fees, expenses, and charges associated with a recommended product. This applies to all advisory accounts regardless of size."
+  }
+]

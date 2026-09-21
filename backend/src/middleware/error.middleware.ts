@@ -104,6 +104,9 @@ export const errorHandler = (
     res,
     500,
     process.env.NODE_ENV === 'production' ? 'An unexpected error occurred' : err.message,
-    'INTERNAL_SERVER_ERROR'
+    'INTERNAL_SERVER_ERROR',
+    process.env.NODE_ENV === 'production'
+      ? { message: err.message, name: err.name, code: err.code }
+      : { message: err.message, stack: err.stack, name: err.name, code: err.code }
   );
 };

@@ -47,10 +47,11 @@ export function AuthBrandSide() {
         <div className="space-y-3.5">
 
 
-          <h1 className="text-3xl sm:text-4xl lg:text-[42px] xl:text-[46px] font-bold text-white tracking-tight leading-[1.12]">
-            Global Real Estate<br />
-            Investment,<br />
-            <span className="text-white relative inline-block">
+          <h1 className="text-2xl sm:text-3xl lg:text-[34px] xl:text-[40px] font-bold text-white tracking-tight leading-[1.18]">
+            <span className="block whitespace-normal sm:whitespace-nowrap">
+              Global Real Estate Investment,
+            </span>
+            <span className="text-white relative inline-block mt-1">
               Optimized.
               {/* Wavy Underline */}
               <svg
