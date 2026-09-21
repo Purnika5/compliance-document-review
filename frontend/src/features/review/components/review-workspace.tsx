@@ -14,7 +14,6 @@ import { Alert } from "@/components/ui/alert";
 import {
   ArrowLeft,
   Download,
-  Printer,
   ZoomIn,
   ZoomOut,
   FileText,
@@ -542,12 +541,6 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
                 {title}
               </h1>
               <StatusBadge status={status} />
-              {isOfficer && isAlreadyDetermined && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#E6E8E7]/60 text-[#183028] border border-[#d4d7d5]">
-                  <Eye className="h-3 w-3" />
-                  View Only
-                </span>
-              )}
             </div>
             <p className="text-[11px] text-[#183028]/60 hidden sm:block">
               Advisor: {currentDocItem?.submittedBy || "System User"} • Submitted {currentDocItem?.submittedAt ? new Date(currentDocItem.submittedAt).toLocaleDateString() : "Recently"} • Category: {currentDocItem?.category || "General"}
@@ -942,15 +935,6 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
                     )}
                   </button>
                 )}
-
-                <button
-                  onClick={() => window.print()}
-                  title="Print Document"
-                  className="p-1.5 rounded-lg bg-white border border-[#E6E8E7] text-[#183028] hover:bg-[#C5E86C]/20 transition-colors cursor-pointer shadow-2xs"
-                >
-                  <Printer className="h-3.5 w-3.5" />
-                </button>
-
               </div>
             </div>
 

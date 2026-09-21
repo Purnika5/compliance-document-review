@@ -165,6 +165,9 @@ export function UploadDocumentModal({
   const removeFile = (id: string) => {
     setFiles((prev) => prev.filter((f) => f.id !== id));
     setRawFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   return (
@@ -216,6 +219,96 @@ export function UploadDocumentModal({
 
         {step === "details" && (
           <form onSubmit={handleProceedToValidation} noValidate className="space-y-3.5 pt-1 min-w-0">
+            {/* Drag & Drop Upload Canvas / Uploaded File Placeholder */}
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragOver(true);
+              }}
+              onDragLeave={() => setIsDragOver(false)}
+              onDrop={handleFileDrop}
+              onClick={() => {
+                if (files.length === 0) {
+                  fileInputRef.current?.click();
+                }
+              }}
+              className={cn(
+                "border border-dashed rounded-xl transition-all shadow-2xs min-w-0 w-full box-border",
+                files.length === 0
+                  ? "p-5 flex flex-col items-center justify-center cursor-pointer text-center border-[#E6E8E7] bg-[#FFFFFF] hover:bg-[#C5E86C]/10 hover:border-[#183028]"
+                  : "p-3 bg-[#FFFFFF] border-[#183028]/30",
+                isDragOver && "border-[#183028] bg-[#C5E86C]/10 scale-[1.01]"
+              )}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                accept=".pdf,.docx,.xlsx"
+                onChange={handleFileSelect}
+              />
+
+              {files.length === 0 ? (
+                <>
+                  <div className="h-8 w-8 rounded-lg bg-[#FFFFFF] border border-[#E6E8E7] flex items-center justify-center text-[#183028] mb-1.5 shadow-2xs shrink-0">
+                    <Paperclip className="h-4 w-4" />
+                  </div>
+                  <p className="text-xs font-semibold text-[#183028] truncate max-w-full">
+                    Click to browse <span className="font-normal text-[#183028]/60">or drag and drop document</span>
+                  </p>
+                  <p className="text-[10px] text-[#183028]/50 font-mono mt-0.5">
+                    Supported: PDF, DOCX, XLSX (Max 25 MB)
+                  </p>
+                </>
+              ) : (
+                <div className="space-y-1.5 min-w-0">
+                  <div className="flex items-center justify-between px-0.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#183028]/60 block">
+                      Attached Payload ({files.length})
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        fileInputRef.current?.click();
+                      }}
+                      className="text-[10px] font-medium text-[#183028]/60 hover:text-[#183028] underline cursor-pointer"
+                    >
+                      Replace file
+                    </button>
+                  </div>
+
+                  <div className="space-y-1.5 max-h-32 overflow-y-auto min-w-0">
+                    {files.map((f) => (
+                      <div
+                        key={f.id}
+                        className="p-2.5 rounded-xl flex items-center justify-between text-xs bg-[#F7F9F8] border border-[#E6E8E7] gap-2 min-w-0 w-full box-border"
+                      >
+                        <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
+                          <FileText className="h-3.5 w-3.5 text-[#183028]/60 shrink-0" />
+                          <span className="font-medium text-[#183028] truncate min-w-0 flex-1" title={f.name}>
+                            {f.name}
+                          </span>
+                          <span className="text-[10px] font-mono text-[#183028]/60 shrink-0">({f.size})</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeFile(f.id);
+                          }}
+                          className="p-1 rounded-lg text-[#183028]/40 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer shrink-0"
+                          title="Remove file"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="space-y-1.5 min-w-0">
               <label className="block text-xs font-semibold text-[#183028]">
                 Document Title <span className="text-rose-500">*</span>
@@ -278,75 +371,6 @@ export function UploadDocumentModal({
                 className="min-h-[70px] w-full text-xs rounded-xl bg-white border border-[#E6E8E7] text-[#183028] placeholder:text-[#183028]/45 focus:border-[#183028] focus:ring-1 focus:ring-[#183028] shadow-2xs resize-none min-w-0"
               />
             </div>
-
-            {/* Drag & Drop Upload Canvas */}
-            <div
-              onDragOver={(e) => {
-                e.preventDefault();
-                setIsDragOver(true);
-              }}
-              onDragLeave={() => setIsDragOver(false)}
-              onDrop={handleFileDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className={cn(
-                "border border-dashed rounded-xl p-5 flex flex-col items-center justify-center transition-all cursor-pointer text-center shadow-2xs min-w-0 w-full box-border",
-                isDragOver
-                  ? "border-[#183028] bg-[#C5E86C]/10 scale-[1.01]"
-                  : "border-[#E6E8E7] bg-[#FFFFFF] hover:bg-[#C5E86C]/10 hover:border-[#183028]"
-              )}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                accept=".pdf,.docx,.xlsx"
-                onChange={handleFileSelect}
-              />
-              <div className="h-8 w-8 rounded-lg bg-[#FFFFFF] border border-[#E6E8E7] flex items-center justify-center text-[#183028] mb-1.5 shadow-2xs shrink-0">
-                <Paperclip className="h-4 w-4" />
-              </div>
-              <p className="text-xs font-semibold text-[#183028] truncate max-w-full">
-                Click to browse <span className="font-normal text-[#183028]/60">or drag and drop document</span>
-              </p>
-              <p className="text-[10px] text-[#183028]/50 font-mono mt-0.5">
-                Supported: PDF, DOCX, XLSX (Max 25 MB)
-              </p>
-            </div>
-
-            {/* Attached file summary */}
-            {files.length > 0 && (
-              <div className="space-y-1.5 min-w-0">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#183028]/50 block">
-                  Attached Payload ({files.length})
-                </span>
-                <div className="space-y-1.5 max-h-32 overflow-y-auto min-w-0">
-                  {files.map((f) => (
-                    <div
-                      key={f.id}
-                      className="p-2.5 rounded-xl flex items-center justify-between text-xs bg-[#FFFFFF] border border-[#E6E8E7] gap-2 min-w-0 w-full box-border"
-                    >
-                      <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
-                        <FileText className="h-3.5 w-3.5 text-[#183028]/60 shrink-0" />
-                        <span className="font-medium text-[#183028] truncate min-w-0 flex-1" title={f.name}>
-                          {f.name}
-                        </span>
-                        <span className="text-[10px] font-mono text-[#183028]/60 shrink-0">({f.size})</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          removeFile(f.id);
-                        }}
-                        className="p-1 rounded-lg text-[#183028]/40 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer shrink-0"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             <DialogFooter className="flex items-center justify-end gap-2 pt-3 border-t border-[#E6E8E7]">
               <Button

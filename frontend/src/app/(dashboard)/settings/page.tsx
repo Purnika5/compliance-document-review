@@ -28,7 +28,6 @@ export default function SettingsPage() {
   );
 
   const role = session?.role || "Advisor";
-  const isOfficer = role === "Officer";
 
   // Form states initialized from authenticated session
   const [fullName, setFullName] = useState(session?.name || "");
@@ -178,35 +177,6 @@ export default function SettingsPage() {
                 className="h-9 text-xs bg-[#FFFFFF] border-[#E6E8E7] text-[#183028] rounded-xl focus:border-[#183028] focus:ring-1 focus:ring-[#183028] shadow-2xs"
                 placeholder="+1 (212) 555-0190"
               />
-            </div>
-          </div>
-
-          {/* Institutional Badges Card */}
-          <div className="p-4 bg-[#FFFFFF] border border-[#E6E8E7] rounded-xl grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs mt-2">
-            <div>
-              <span className="text-[10px] uppercase font-bold text-[#183028]/50 block tracking-wider">
-                Session Role
-              </span>
-              <span className="font-mono font-bold text-[#183028] mt-0.5 block">
-                {role}
-              </span>
-            </div>
-            <div>
-              <span className="text-[10px] uppercase font-bold text-[#183028]/50 block tracking-wider">
-                Account Status
-              </span>
-              <span className="inline-flex items-center gap-1.5 font-semibold text-[#183028] mt-0.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#C5E86C]" />
-                Active
-              </span>
-            </div>
-            <div>
-              <span className="text-[10px] uppercase font-bold text-[#183028]/50 block tracking-wider">
-                Institutional Email
-              </span>
-              <span className="font-mono text-[#183028]/60 text-[11px] truncate block mt-0.5">
-                {session?.email || "Not provided"}
-              </span>
             </div>
           </div>
         </div>
