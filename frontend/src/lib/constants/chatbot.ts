@@ -1,39 +1,83 @@
 /**
- * DOCU: Defines platform workflow guidelines and quick-reference answers for the help widget.
- * Last Updated Date: September 8, 2026
+ * DOCU: Defines platform workflow guidelines, pre-login guidance, and quick-reference answers for the help widget.
+ * Last Updated Date: September 21, 2026
  * @returns Shared assistant constants used by the widget.
  * @author Keith
  */
 import type { IChatMessage } from "@/types/chatbot.types";
 
 /**
- * DOCU: Initial greeting message loaded when opening the assistant.
+ * DOCU: Initial informative greeting message loaded when visiting the login page.
  */
-export const INITIAL_MESSAGES: IChatMessage[] = [
+export const LOGIN_INITIAL_MESSAGES: IChatMessage[] = [
   {
-    id: "1",
+    id: "login-greeting",
     sender: "bot",
-    text: "Welcome to the Springer Capital Help Assistant. You can reference institutional submission rules, officer evaluation workflows, and supported document formats.",
+    text: "Welcome to the Springer Capital Compliance Portal. I can provide platform orientation, demo credentials, supported submission formats, and institutional access guidelines before you sign in.",
     timestamp: "Live",
   },
 ];
 
 /**
- * DOCU: Quick-select workflow topics displayed in the help panel.
+ * DOCU: Quick-select topics displayed on the login screen.
  */
-export const SUGGESTED_QUESTIONS: string[] = [
+export const LOGIN_SUGGESTED_QUESTIONS: string[] = [
+  "What are the demo login accounts?",
+  "What is the Springer Capital portal?",
+  "What document formats are accepted?",
+  "How does compliance review work?",
+];
+
+/**
+ * DOCU: Informative knowledge base for pre-login inquiries.
+ */
+export const LOGIN_KNOWLEDGE_BASE: Record<string, string> = {
+  default:
+    "Springer Capital Compliance Portal Assistant. Before signing in, you can inquire about platform features, demo login credentials, supported file formats, or institutional security standards.",
+  credentials:
+    "Available Demo Credentials for Institutional Testing:\n\n• Compliance Officer:\n  Email: alex.smith@springercapital.com\n  Role: Reviews pending filings, manages queues, and records official compliance determinations.\n\n• Investment Advisor:\n  Email: sarah.j@springercapital.com\n  Role: Submits proposal documents, tracks review statuses, and responds to revision requests.\n\n• Platform Administrator:\n  Email: admin@springercapital.com\n  Role: System configuration, audit logs, and security oversight.\n\n(Password: Any valid password meeting length requirements or demo standard).",
+  overview:
+    "Springer Capital Compliance Document Review is an enterprise institutional platform designed for financial compliance teams. It automates proposal vetting, verifies regulatory requirements (SEC Rule 206(4)-1 and FINRA Rule 2210), and maintains an immutable audit trail of officer determinations.",
+  formats:
+    "Supported Document Formats & Classifications:\n\n• File Formats: PDF (.pdf) and Microsoft Word (.docx) up to 25MB.\n• Supported Classifications:\n  1. Investment Proposals\n  2. Compliance Statements\n  3. Audit Reports\n  4. Tax Strategy Documents\n  5. Portfolio Briefs",
+  workflow:
+    "Institutional Workflow Overview:\n1. Advisors upload proposal documents with assigned classifications.\n2. Platform performs automated regulatory checks (FINRA 2210 & SEC 206).\n3. Compliance Officers evaluate submissions in the Review Queue.\n4. Decisions (Approve, Request Revision, Reject) are signed with official compliance notes and audit-stamped.",
+};
+
+/**
+ * DOCU: Initial greeting message when authenticated in the dashboard.
+ */
+export const DASHBOARD_INITIAL_MESSAGES: IChatMessage[] = [
+  {
+    id: "dash-greeting",
+    sender: "bot",
+    text: "Springer Capital Compliance Copilot active. You can ask workflow questions, use 'Recheck Grammar' to audit drafts, or 'Documentation Rules' to polish responses into audit-defensible institutional records.",
+    timestamp: "Live",
+  },
+];
+
+/**
+ * DOCU: Quick-select topics displayed in the authenticated dashboard.
+ */
+export const DASHBOARD_SUGGESTED_QUESTIONS: string[] = [
+  "✍️ Recheck grammar of a draft",
+  "📋 Enhance response for documentation",
   "How do I upload a proposal?",
   "What is the review process for Officers?",
-  "What document categories are supported?",
-  "How do role permissions work?",
 ];
+
+/**
+ * DOCU: Legacy INITIAL_MESSAGES export maintained for backward compatibility.
+ */
+export const INITIAL_MESSAGES: IChatMessage[] = DASHBOARD_INITIAL_MESSAGES;
+export const SUGGESTED_QUESTIONS: string[] = DASHBOARD_SUGGESTED_QUESTIONS;
 
 /**
  * DOCU: Institutional knowledge base for application workflows.
  */
 export const PLATFORM_KNOWLEDGE_BASE: Record<string, string> = {
   default:
-    "Springer Capital Compliance Assistant. For assistance, select a workflow topic above or consult the user documentation.",
+    "Springer Capital Compliance Assistant. Use the tabs above to ask platform questions, audit grammar, or format official compliance records.",
   upload:
     "To upload a new document as an Advisor:\n1. Navigate to the 'My Submissions' workspace.\n2. Click the '+ Submit Proposal Document' button.\n3. Enter the title, select category, attach your file, and submit.",
   review:

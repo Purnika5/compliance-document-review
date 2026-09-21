@@ -4,14 +4,14 @@ import { AuditHistoryView } from "@/features/audit/components/audit-history-view
 import { AuditSkeleton } from "@/features/audit/components/audit-skeleton";
 
 /**
- * DOCU: Renders the officer regulatory audit history and cryptographic ledger.
- * Last Updated Date: September 8, 2026
+ * DOCU: Renders the regulatory audit history and cryptographic ledger for Officers and Advisors.
+ * Last Updated Date: September 21, 2026
  * @returns The guarded audit history view.
  * @author Keith
  */
 export default function AuditPage() {
   return (
-    <RoleGuard allowedRole="Officer">
+    <RoleGuard allowedRoles={["Officer", "Advisor", "Admin"]}>
       <Suspense fallback={<AuditSkeleton />}>
         <AuditHistoryView />
       </Suspense>
