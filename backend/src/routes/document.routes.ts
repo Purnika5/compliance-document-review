@@ -138,5 +138,12 @@ router.post(
   DocumentController.submitRemediated
 );
 
+// AI Document Category Classification
+router.post(
+  '/classify',
+  authenticateToken,
+  DocumentController.classify
+);
+
 export default router;
 
