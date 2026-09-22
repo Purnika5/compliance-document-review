@@ -1,105 +1,131 @@
 /**
- * DOCU: Proxies chatbot requests from the frontend to the AI service /chat endpoint.
- * Scopes all responses to Springer Capital Compliance platform topics via Gemini.
- * Last Updated Date: September 22, 2026
+ * DOCU: Proxies chatbot requests from the frontend to Google Gemini and live PostgreSQL data.
+ * Scopes all responses to real database filings and institutional FINRA 2210 & SEC 206 rules.
+ * Last Updated Date: September 23, 2026
  * @author Keith
  */
 import { Router, Request, Response } from 'express';
+import { query } from '../db/pool';
+import { optionalAuth } from '../middleware/auth.middleware';
+import { uploadDocumentFile } from '../middleware/upload.middleware';
+import { DocumentController } from '../controllers/document.controller';
 import { config } from '../config';
 
 const router = Router();
 
-/**
- * Generates an institutional, context-aware regulatory response when remote AI microservice is sleeping or unavailable.
- */
-function generateContextualComplianceReply(message: string, role: string): string {
-  const lower = message.toLowerCase().trim();
-
-  // 1. Greetings & Identity
-  if (/\b(hi|hello|hey|good\s+morning|good\s+afternoon|good\s+evening|greetings|who\s+are\s+you)\b/i.test(lower)) {
-    return `Hello! I am your Springer Capital Neural Compliance Copilot. How can I assist you today? You can ask me platform workflow questions, search repository records by uploader or status, or upload draft documents directly into this chat for automated regulatory audit and remediation.`;
-  }
-
-  // 2. Capabilities & Help
-  if (/\b(what\s+can\s+you\s+do|help|features|capabilities|commands|how\s+to\s+use)\b/i.test(lower)) {
-    return `As your Neural Compliance Copilot, I can assist you across the compliance lifecycle:
-• **In-Chat Compliance Audit & Auto-Fix**: Drag and drop any draft document (PDF, DOCX, TXT) into this chat. I will audit every passage against FINRA 2210 and SEC 206 rules, highlight violations, and generate a 100% compliant file ready for instant download or 1-click submission.
-• **Filterable Document Search**: Query records naturally (e.g., 'Show pending documents from Keith' or 'Find approved proposals from last week').
-• **Regulatory Standards Guidance**: Ask about FINRA Rule 2210 (promissory statements, guaranteed returns), SEC Rule 206(4)-1 (fiduciary marketing rules), SEC 204, or KYC/AML verification.
-• **Review & Versioning Workflows**: Learn about submission steps, Officer review actions, and multi-version revision lineages (v1, v2...).
-• **Grammar & Compliance Memos**: Type 'check grammar: <text>' to polish and institutionalize determination notes.`;
-  }
-
-  // 3. Document Submission / Upload procedures
-  if (/\b(upload|submit|new\s+document|submission|file\s+proposal|how\s+to\s+submit)\b/i.test(lower)) {
-    return `To submit a proposal as an Investment Advisor:
-1. Navigate to 'Dashboard' or 'My Submissions'.
-2. Click the '+ Submit Proposal Document' button.
-3. Enter your proposal title, optional filing remarks, and select your file (PDF, DOCX, XLSX, TXT up to 25MB).
-4. Click Submit — the system automatically sanitizes PII and triggers automated compliance rule evaluation.
-
-*Pro-Tip*: You can also drag and drop your draft directly into this chat to audit and fix any infractions before formal submission!`;
-  }
-
-  // 4. Officer Review Queue & Determinations
-  if (/\b(review|queue|approve|reject|decision|officer|determination)\b/i.test(lower)) {
-    return `Compliance Review Workflow:
-1. Compliance Officers access the 'Review Queue' from the sidebar navigation.
-2. Clicking any pending document opens the 3-Zone Institutional Review Workspace.
-3. The Officer inspects automated AI risk flags, passage highlights, and precedent comparisons.
-4. Available determinations:
-   • **Approve Proposal**: Finalizes compliance approval and stamps the audit trail.
-   • **Request Revision**: Sets status to 'Needs Revision' with actionable feedback for the Advisor.
-   • **Formal Rejection**: Concludes the filing with binding supervisory notes.`;
-  }
-
-  // 5. Versioning & Lineage
-  if (/\b(version|revision|v1|v2|lineage|thread|resubmit)\b/i.test(lower)) {
-    return `Multi-Version Document Lineage:
-• When a Compliance Officer requests a revision, the document status transitions to 'Needs Revision'.
-• The Advisor can click 'Upload Revision' to upload Version 2 (v2) addressing the feedback.
-• The platform maintains an unbroken lineage history (v1, v2, v3...) with audit threads, author notes, and version comparisons.`;
-  }
-
-  // 6. Regulatory Rules (FINRA 2210, SEC 206, etc.)
-  if (/\b(finra|sec|2210|206|rule|rules|regulation|regulatory|standard|promissory|guarantee)\b/i.test(lower)) {
-    return `Key Institutional Regulatory Standards:
-• **FINRA Rule 2210 (Communications with the Public)**: All communications must be fair, balanced, and complete. Promissory language, guaranteed returns (e.g., 'our fund guarantees a 15% return'), and exaggerated claims are strictly prohibited. Historical performance cannot guarantee future returns.
-• **SEC Rule 206(4)-1 (Investment Adviser Marketing Rule)**: Prohibits untrue or misleading statements of material fact. Performance metrics must be substantiated, clear fee deductions shown (net-of-fees), and appropriate risk disclosures included.
-• **SEC Rule 204**: Requires rigorous books and records substantiation for all performance and advisory recommendations.`;
-  }
-
-  // 7. Formats, Sizes, and Technical Limits
-  if (/\b(format|formats|size|limit|limits|pdf|docx|txt|xlsx|excel|word)\b/i.test(lower)) {
-    return `Accepted File Specifications & Limits:
-• **Supported Formats**: PDF (.pdf), Microsoft Word (.docx, .doc), Microsoft Excel (.xlsx, .xls), Plain Text (.txt).
-• **Payload Limit**: Maximum 25MB per document.
-• **Security Protocol**: Real-time MIME and binary magic-byte inspection prevents extension spoofing, and automated PII masking protects confidential client information.`;
-  }
-
-  // 8. PII Sanitization & Privacy
-  if (/\b(pii|privacy|mask|unmask|redact|ssn|confidential)\b/i.test(lower)) {
-    return `PII Sanitization & Privacy Gateway:
-• All uploaded document text undergoes deterministic PII sanitization before AI inspection.
-• Social Security Numbers, Credit Cards, and Personal Emails are masked with tokens like [REDACTED_SSN].
-• Compliance Officers can toggle the 'Unmasked View' in the review workspace to inspect original identity details under strict audit logging.`;
-  }
-
-  // 9. Contextual platform answer for all other queries
-  return `Thank you for your inquiry regarding "${message}".
-
-As your Springer Capital Neural Compliance Copilot, I am here to help ensure your communications and filings adhere strictly to FINRA Rule 2210 and SEC Rule 206 guidelines.
-
-Here are quick actions you can take:
-1. **Upload a file** (PDF, DOCX, TXT) right here to audit and auto-fix compliance infractions.
-2. **Search the repository** by asking me (e.g., 'Show pending documents from Keith').
-3. **Ask about platform workflows** (submissions, reviews, versioning, PII sanitization).
-
-How may I assist you further?`;
+interface LiveTelemetryData {
+  statusCounts: Record<string, number>;
+  recentDocs: Array<{
+    id: string;
+    title: string;
+    status: string;
+    version: number;
+    file_name: string;
+    created_at: string;
+    advisor_name?: string;
+  }>;
+  activeDoc?: {
+    id: string;
+    title: string;
+    status: string;
+    version: number;
+    summary?: string;
+    flags?: any[];
+  } | null;
 }
 
-router.post('/', async (req: Request, res: Response) => {
-  const { message, role } = req.body as { message?: string; role?: string };
+/**
+ * Generates an institutional, data-grounded compliance response when remote AI microservice or Gemini REST times out.
+ * Strictly grounds output in actual database rows instead of generic placeholders.
+ */
+function generateContextualComplianceReply(
+  message: string,
+  role: string,
+  data: LiveTelemetryData
+): string {
+  const lower = message.toLowerCase().trim();
+  const isOfficer = role === 'Officer';
+  const { statusCounts, recentDocs, activeDoc } = data;
+
+  // 1. Specific inquiries about submissions, filings, documents, or queue
+  if (
+    /\b(submission|submissions|filing|filings|document|documents|proposal|proposals|queue|pending|approved|revision|status|my uploads|my files|what documents|show my)\b/i.test(
+      lower
+    )
+  ) {
+    if (recentDocs.length === 0) {
+      return isOfficer
+        ? `There are currently no document submissions in the supervisory review queue. All institutional filings are up-to-date.`
+        : `You do not have any active proposal submissions on file yet. You can submit a new proposal via the **Submit Proposal Document** button or upload a draft right here in this chat to audit and auto-fix it.`;
+    }
+
+    const countList = Object.entries(statusCounts)
+      .map(([s, c]) => `**${c} ${s}**`)
+      .join(', ') || '0 documents';
+
+    const docItems = recentDocs
+      .slice(0, 5)
+      .map(
+        (d) =>
+          `• **${d.title}** — Status: \`${d.status}\` | Version: v${d.version} | File: \`${d.file_name}\`${
+            d.advisor_name ? ` | Advisor: ${d.advisor_name}` : ''
+          }`
+      )
+      .join('\n');
+
+    return isOfficer
+      ? `### 📋 Supervisory Compliance Review Queue\n**Telemetry Summary**: ${countList}\n\n**Recent Institutional Filings**:\n${docItems}\n\nYou can click any document in the **Review Queue** to open the 3-Zone Workspace and issue formal supervisory determinations (Approve, Request Revision, Reject).`
+      : `### 📂 Your Proposal Filings\n**Telemetry Summary**: ${countList}\n\n**Recent Submissions**:\n${docItems}\n\nWould you like me to inspect any of these documents, or drag and drop a draft into this chat to audit and auto-fix infractions before submission?`;
+  }
+
+  // 2. Active document inspection if viewing a specific document
+  if (activeDoc && /\b(this document|this file|current document|infractions?|flags?|violations?|fix)\b/i.test(lower)) {
+    const flagsCount = activeDoc.flags?.length || 0;
+    const flagsList = (activeDoc.flags || [])
+      .map((f: any) => `• **${f.rule || 'FINRA Rule 2210'}**: "${f.passage || 'Flagged passage'}" — *${f.explanation || 'Infraction detected'}*`)
+      .join('\n') || '• No active regulatory risk flags detected on this version.';
+
+    return `### 🛡️ Active Document Review: "${activeDoc.title}" (v${activeDoc.version})\n**Status**: \`${activeDoc.status}\`\n**Executive AI Summary**: ${activeDoc.summary || 'Summary unavailable'}\n\n**Compliance Audit Breakdown (${flagsCount} flags)**:\n${flagsList}\n\n${
+      isOfficer
+        ? 'As a Compliance Officer, you can evaluate these flags in the review workspace and issue an official supervisory determination.'
+        : 'You can upload a revised version addressing these flags using the **Upload Revision** button.'
+    }`;
+  }
+
+  // 3. Greetings & Role Identity
+  if (/\b(hi|hello|hey|good\s+morning|good\s+afternoon|good\s+evening|greetings|who\s+are\s+you)\b/i.test(lower)) {
+    return isOfficer
+      ? `Hello Officer! I am your Springer Capital Neural Compliance Copilot. I monitor the institutional review queue, evaluate filings against FINRA Rule 2210 & SEC Rule 206 standards, and assist with supervisory determinations. How may I assist your review workflow today?`
+      : `Hello! I am your Springer Capital Neural Compliance Copilot. How can I assist you today? You can ask me about your proposal submissions, search platform filings, or upload any draft file (PDF, DOCX, TXT) right here to audit and auto-fix regulatory infractions before submission.`;
+  }
+
+  // 4. Regulatory Rules (FINRA 2210, SEC 206)
+  if (/\b(finra|sec|2210|206|rule|rules|regulation|regulatory|promissory|guarantee)\b/i.test(lower)) {
+    return `### 📜 Institutional Regulatory Standards Guidance
+• **FINRA Rule 2210 (Communications with the Public)**: Prohibits promissory language, guaranteed returns (e.g., 'guaranteed 8% yield with zero downside risk'), exaggerated claims, and unhedged historical performance. All communications must be fair, balanced, and state that investments are subject to loss of principal.
+• **SEC Rule 206(4)-1 (Adviser Marketing Rule)**: Prohibits untrue or misleading statements of material fact. Performance metrics must be substantiated, clear fee deductions shown (net-of-fees), and full suitability disclosures provided.
+• **SEC Rule 204**: Requires rigorous books and records substantiation for all performance metrics and advisory claims.
+
+*Pro-Tip*: Drag and drop any draft into this chat—I will highlight exact rule infractions and generate a 100% compliant file for you.`;
+  }
+
+  // 5. General platform guidance
+  return `I am your Springer Capital Neural Compliance Copilot.
+You can:
+1. Ask about your live submissions (e.g., *"Show my submissions from this month"*).
+2. Upload any draft file (PDF, DOCX, TXT) directly into this chat to audit and auto-fix FINRA 2210 & SEC 206 infractions.
+3. Query supervisory review actions and multi-version lineages.
+
+How may I assist your compliance workflow today?`;
+}
+
+router.post('/', optionalAuth, async (req: Request, res: Response) => {
+  const { message, role, pathname, documentId } = req.body as {
+    message?: string;
+    role?: string;
+    pathname?: string;
+    documentId?: string;
+  };
 
   if (!message || !message.trim()) {
     res.status(400).json({ success: false, message: 'Message is required.' });
@@ -107,41 +133,119 @@ router.post('/', async (req: Request, res: Response) => {
   }
 
   const cleanMessage = message.trim();
-  const userRole = role || 'Advisor';
+  const user = (req as any).user;
+  const userRole: string = user?.role || role || 'Advisor';
+  const userId: string | undefined = user?.id;
+  const isOfficer = userRole === 'Officer';
 
-  // 1. Try remote AI microservice
+  // 1. Live Database Telemetry Query (grounds AI in actual repository data)
+  const telemetryData: LiveTelemetryData = {
+    statusCounts: {},
+    recentDocs: [],
+    activeDoc: null,
+  };
+
   try {
-    const aiUrl = `${config.services.aiServiceUrl}/chat`;
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
+    // Status counts
+    const statusQuery = isOfficer || !userId
+      ? `SELECT status, COUNT(*)::int as count FROM documents GROUP BY status`
+      : `SELECT status, COUNT(*)::int as count FROM documents WHERE advisor_id = $1 GROUP BY status`;
+    const statusParams = isOfficer || !userId ? [] : [userId];
+    const statusRes = await query<{ status: string; count: number }>(statusQuery, statusParams);
+    for (const row of statusRes.rows) {
+      telemetryData.statusCounts[row.status] = row.count;
+    }
 
-    const aiResponse = await fetch(aiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: cleanMessage, role: userRole }),
-      signal: controller.signal,
-    });
+    // Recent documents
+    const docQuery = isOfficer || !userId
+      ? `SELECT d.id, d.title, d.status, d.version, d.file_name, d.created_at, u.name as advisor_name
+         FROM documents d
+         LEFT JOIN users u ON d.advisor_id = u.id
+         ORDER BY d.created_at DESC LIMIT 10`
+      : `SELECT d.id, d.title, d.status, d.version, d.file_name, d.created_at
+         FROM documents d
+         WHERE d.advisor_id = $1
+         ORDER BY d.created_at DESC LIMIT 10`;
+    const docRes = await query<any>(docQuery, statusParams);
+    telemetryData.recentDocs = docRes.rows;
 
-    clearTimeout(timeout);
-
-    if (aiResponse.ok) {
-      const data = await aiResponse.json() as { reply: string };
-      if (data && data.reply) {
-        res.status(200).json({ success: true, reply: data.reply });
-        return;
+    // Active document context if user is inspecting /documents/[id]
+    const targetDocId = documentId || (pathname?.match(/\/documents\/([0-9a-fA-F-]+)/)?.[1]);
+    if (targetDocId) {
+      const activeRes = await query(
+        `SELECT d.id, d.title, d.status, d.version, da.summary, da.flags
+         FROM documents d
+         LEFT JOIN document_analyses da ON d.id = da.document_id AND d.version = da.version
+         WHERE d.id = $1`,
+        [targetDocId]
+      );
+      if (activeRes.rows.length > 0) {
+        telemetryData.activeDoc = activeRes.rows[0];
       }
     }
-  } catch (err: unknown) {
-    console.warn('[Chat] Remote AI service unreachable or timed out, executing direct Gemini / institutional fallback.');
+  } catch (dbErr) {
+    console.warn('[Chat] Telemetry database query warning:', dbErr);
   }
 
-  // 2. Direct Gemini REST API fallback if GEMINI_API_KEY is configured
+  // Format database context for Google Gemini
+  const countsFormatted = Object.entries(telemetryData.statusCounts)
+    .map(([s, c]) => `${s}: ${c}`)
+    .join(', ') || '0 documents';
+
+  const recentFormatted = telemetryData.recentDocs.length > 0
+    ? telemetryData.recentDocs
+        .map(
+          (d) =>
+            `- "${d.title}" | Status: ${d.status} | Version: v${d.version} | File: ${d.file_name} | Created: ${new Date(
+              d.created_at
+            ).toLocaleDateString()}${d.advisor_name ? ` | Advisor: ${d.advisor_name}` : ''}`
+        )
+        .join('\n')
+    : 'No documents recorded in database yet.';
+
+  const activeDocFormatted = telemetryData.activeDoc
+    ? `\nCURRENT DOCUMENT ON SCREEN:
+Title: "${telemetryData.activeDoc.title}" (Version: v${telemetryData.activeDoc.version}, Status: ${telemetryData.activeDoc.status})
+Summary: ${telemetryData.activeDoc.summary || 'None'}
+Active Risk Flags: ${JSON.stringify(telemetryData.activeDoc.flags || [])}`
+    : '';
+
+  // 2. Direct Google Gemini Engine Execution
   const geminiApiKey = process.env.GEMINI_API_KEY?.trim();
   if (geminiApiKey && !geminiApiKey.includes('your_gemini') && !geminiApiKey.includes('test-ci')) {
     try {
       const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
-      const systemPrompt = `You are the Springer Capital Neural Compliance Copilot, an enterprise institutional regulatory copilot specializing in wealth management, FINRA Rule 2210, SEC Rule 206(4)-1, document review workflows, and platform navigation. Respond conversationally, concisely, and authoritatively to the user (${userRole}).`;
-      
+
+      const systemPrompt = `You are Springer Capital's Neural Compliance Copilot, an elite Wall Street regulatory compliance intelligence copilot.
+You are interacting with an authenticated platform user.
+User Role: ${userRole}
+Current Page Context: ${pathname || 'Dashboard'}
+
+LIVE DATABASE RECORDS:
+Document Status Counts: ${countsFormatted}
+Recent Repository Filings:
+${recentFormatted}
+${activeDocFormatted}
+
+ROLE-SPECIFIC INSTRUCTIONS:
+${
+  isOfficer
+    ? `- The user is a Compliance Officer responsible for supervisory review across all advisors.
+- When they ask about the review queue, pending filings, or compliance infractions, CITE THE REAL DATABASE RECORDS ABOVE. Give exact counts, titles, and advisor names.
+- If asked to fix or evaluate a file, enforce strict FINRA Rule 2210 (promissory claims, guaranteed returns) and SEC Rule 206 (fiduciary marketing, net-of-fees disclosures).
+- Help them draft precise, professional supervisory determination notes (for Approve, Request Revision, or Rejection). Do not invent fictitious issues.`
+    : `- The user is an Investment Advisor who submits proposals and client communications.
+- When they ask about their submissions, pending documents, or filings that need revision, CITE THE REAL DATABASE RECORDS ABOVE. Give exact document titles, statuses, and version numbers.
+- If they ask how to fix or audit a document, guide them on removing promissory statements and adding required downside risk disclosures under FINRA Rule 2210 & SEC Rule 206.
+- Encourage them to attach or drag-and-drop their draft file into this chat for automated compliance auditing and 1-click remediation.`
+}
+
+CRITICAL RULES:
+1. Speak naturally, politely, and authoritatively like a senior Wall Street regulatory director.
+2. NEVER output generic canned apologies or placeholder responses like "Thank you for your inquiry regarding...".
+3. ALWAYS ground answers in the LIVE DATABASE RECORDS above whenever repository documents, statuses, or metrics are asked.
+4. Format responses cleanly with GitHub markdown (bullet points, bold titles, concise actionable steps).`;
+
       const gResp = await fetch(geminiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -149,15 +253,15 @@ router.post('/', async (req: Request, res: Response) => {
           contents: [
             {
               role: 'user',
-              parts: [{ text: `${systemPrompt}\n\nUser Question: ${cleanMessage}` }]
-            }
+              parts: [{ text: `${systemPrompt}\n\nUser Question: ${cleanMessage}` }],
+            },
           ],
           generationConfig: {
-            temperature: 0.2,
-            maxOutputTokens: 600,
-          }
+            temperature: 0.25,
+            maxOutputTokens: 750,
+          },
         }),
-        signal: AbortSignal.timeout(8000),
+        signal: AbortSignal.timeout(9000),
       });
 
       if (gResp.ok) {
@@ -169,18 +273,14 @@ router.post('/', async (req: Request, res: Response) => {
         }
       }
     } catch (gErr) {
-      console.warn('[Chat] Direct Gemini REST call warning:', gErr);
+      console.warn('[Chat] Direct Gemini REST call timed out or failed, using institutional data-grounded fallback:', gErr);
     }
   }
 
-  // 3. High-grade in-process conversational compliance fallback
-  const fallbackReply = generateContextualComplianceReply(cleanMessage, userRole);
+  // 3. Robust institutional fallback grounded in live database rows
+  const fallbackReply = generateContextualComplianceReply(cleanMessage, userRole, telemetryData);
   res.status(200).json({ success: true, reply: fallbackReply });
 });
-
-import { optionalAuth } from '../middleware/auth.middleware';
-import { uploadDocumentFile } from '../middleware/upload.middleware';
-import { DocumentController } from '../controllers/document.controller';
 
 router.post(
   '/audit-and-fix',

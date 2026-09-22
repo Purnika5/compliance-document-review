@@ -210,17 +210,69 @@ function resolveBotReply(rawText: string, isLoginMode: boolean): IResolvedBotRep
   return { text: getDashboardBotKnowledgeResponse(rawText) };
 }
 
-/** Determines active suggested questions without nested ternaries */
-function getSuggestedQuestions(isLoginMode: boolean): string[] {
+/** Determines active suggested questions dynamically based on authentication state, user role, and active page */
+function getSuggestedQuestions(isLoginMode: boolean, role?: string, pathname?: string): string[] {
   if (isLoginMode) {
     return LOGIN_SUGGESTED_QUESTIONS;
   }
+
+  const isOfficer = role === "Officer";
+  const path = pathname || "";
+
+  // 1. Specific Document Review Page (/documents/[id])
+  if (path.includes("/documents/")) {
+    if (isOfficer) {
+      return [
+        "Audit this document against FINRA 2210 & SEC 206 rules",
+        "Draft compliance memo with required revisions",
+        "Can this document be auto-remediated without altering intent?",
+        "Review attestation & audit history for this filing",
+      ];
+    }
+    return [
+      "Explain the flagged compliance issues for this document",
+      "What revisions does the Compliance Officer require?",
+      "Show version comparison between v1 and v2",
+      "How do I remediate promissory language in this filing?",
+    ];
+  }
+
+  // 2. Supervisory Queue & Assigned Pages (/queue, /assigned)
+  if (path.includes("/queue") || path.includes("/assigned")) {
+    return [
+      "List all pending documents awaiting my determination",
+      "Show unassigned queue submissions by date",
+      "Which filings contain severe FINRA 2210 violations?",
+      "Audit & fix draft document (attach file)",
+    ];
+  }
+
+  // 3. Submissions Page (/submissions)
+  if (path.includes("/submissions")) {
+    return [
+      "Which of my submissions are pending officer review?",
+      "Show documents requiring revision with officer feedback",
+      "Summarize my approved filings this quarter",
+      "How do I submit an updated version (v2)?",
+    ];
+  }
+
+  // 4. Dashboard & General Context
+  if (isOfficer) {
+    return [
+      "What documents are awaiting compliance review today?",
+      "Show high-risk submissions across all advisors",
+      "Show recent submissions by Keith",
+      "Audit & fix draft document (attach file)",
+    ];
+  }
+
+  // Default Advisor Dashboard
   return [
     "Show my submissions from this month",
     "Show filings that need revision",
     "Show approved documents",
     "Audit & fix draft document (attach file)",
-    ...DASHBOARD_SUGGESTED_QUESTIONS.slice(0, 3),
   ];
 }
 
@@ -642,9 +694,14 @@ export function ChatbotWidget() {
 
     // 3. Conversational AI fallback to Gemini API
     const userRole = session?.role || "Advisor";
+    const docMatch = pathname ? pathname.match(/\/documents\/([0-9a-fA-F-]+)/) : null;
+    const documentId = docMatch ? docMatch[1] : undefined;
 
     copilotApi
-      .sendChatMessage(rawText, userRole)
+      .sendChatMessage(rawText, userRole, {
+        pathname: pathname || undefined,
+        documentId,
+      })
       .then((res) => {
         return res?.reply || resolveBotReply(rawText, isLoginMode).text;
       })
@@ -656,7 +713,7 @@ export function ChatbotWidget() {
       });
   };
 
-  const currentSuggestedQuestions = getSuggestedQuestions(isLoginMode);
+  const currentSuggestedQuestions = getSuggestedQuestions(isLoginMode, session?.role, pathname);
   const currentPlaceholder = getPlaceholderText(isLoginMode, isTyping, isUploading);
 
   if (isAuthPage) {

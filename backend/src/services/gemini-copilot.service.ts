@@ -96,39 +96,103 @@ export class GeminiCopilotService {
     // 3. PII Sanitization & Security Gate
     const maskedText = await PipelineService.maskPii('in_chat_draft', 1, rawText);
 
-    // 4. Send to AI Microservice (Gemini 2.5 / 2.0 / 1.5 Flash) via Circuit Breaker
-    const endpoint = `${config.services.aiServiceUrl}/audit-and-fix`;
-
+    // 4. Audit & Remediate via Google Gemini (Direct REST API or AI Microservice)
     let aiData: any = null;
+    const geminiApiKey = process.env.GEMINI_API_KEY?.trim();
 
-    try {
-      aiData = await aiCircuitBreaker.execute(
-        async () => {
-          const resp = await fetch(endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              text: maskedText,
-              instructions: instructions || '',
-              original_filename: file.originalname,
-            }),
-            signal: AbortSignal.timeout(16000),
-          });
+    if (geminiApiKey && !geminiApiKey.includes('your_gemini') && !geminiApiKey.includes('test-ci')) {
+      try {
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
+        const auditSystemPrompt = `You are Springer Capital's Neural Compliance Copilot, an elite Wall Street regulatory compliance auditor and fiduciary drafting specialist.
+Auditing Document: "${file.originalname}"
+User Instructions: ${instructions || 'Audit against FINRA Rule 2210 and SEC Rule 206(4)-1.'}
 
-          if (!resp.ok) {
-            const errBody = await resp.text();
-            throw new Error(`AI service responded ${resp.status}: ${errBody}`);
+TASKS:
+1. AUDIT: Inspect every passage violating FINRA Rule 2210 (promissory language, guaranteed returns, unbalanced risks, unsubstantiated claims) or SEC Rule 206(4)-1 (fiduciary disclosures, net-of-fees presentation).
+2. BREAKDOWN: Identify what needs to change. Quote the original offending passage, cite the exact rule, and provide the fixed replacement. Do NOT invent unnecessary issues—fix actual infractions accurately.
+3. REMEDIATE: Output the FULL, COMPLETE, FIXED document text. Replace all promissory claims with balanced fiduciary language (e.g. "targeted returns subject to market volatility and loss of principal"). Ensure mandatory statutory risk disclaimers are present.
+4. Output strictly valid JSON matching this schema:
+{
+  "conversational_summary": "Summary of findings and changes made...",
+  "audit_breakdown": [
+    {
+      "rule": "Regulatory Rule Name",
+      "original_passage": "Offending passage from draft",
+      "issue": "Specific compliance infraction",
+      "fixed_passage": "Compliant rewritten passage",
+      "reason": "Why the change was required"
+    }
+  ],
+  "remediated_text": "Full rewritten compliant document text...",
+  "suggested_title": "${path.parse(file.originalname).name} (Compliance Remediated)"
+}`;
+
+        const gResp = await fetch(geminiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [
+              {
+                role: 'user',
+                parts: [
+                  {
+                    text: `${auditSystemPrompt}\n\nDOCUMENT TEXT TO AUDIT AND REMEDIATE:\n${maskedText}`,
+                  },
+                ],
+              },
+            ],
+            generationConfig: {
+              temperature: 0.1,
+              responseMimeType: 'application/json',
+              maxOutputTokens: 2500,
+            },
+          }),
+          signal: AbortSignal.timeout(18000),
+        });
+
+        if (gResp.ok) {
+          const gResult: any = await gResp.json();
+          const jsonText = gResult?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (jsonText) {
+            aiData = JSON.parse(jsonText);
           }
-          return await resp.json();
-        },
-        async () => {
-          console.warn('[GeminiCopilot] Circuit breaker triggered: using in-process regulatory fallback.');
-          return GeminiCopilotService.localRegulatoryFallback(maskedText, file.originalname);
         }
-      );
-    } catch (err) {
-      console.warn('[GeminiCopilot] Failed to audit via microservice, invoking robust local fallback:', err);
-      aiData = GeminiCopilotService.localRegulatoryFallback(maskedText, file.originalname);
+      } catch (geminiErr) {
+        console.warn('[GeminiCopilot] Direct Gemini REST call warning, checking AI microservice:', geminiErr);
+      }
+    }
+
+    if (!aiData) {
+      const endpoint = `${config.services.aiServiceUrl}/audit-and-fix`;
+      try {
+        aiData = await aiCircuitBreaker.execute(
+          async () => {
+            const resp = await fetch(endpoint, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                text: maskedText,
+                instructions: instructions || '',
+                original_filename: file.originalname,
+              }),
+              signal: AbortSignal.timeout(12000),
+            });
+
+            if (!resp.ok) {
+              const errBody = await resp.text();
+              throw new Error(`AI service responded ${resp.status}: ${errBody}`);
+            }
+            return await resp.json();
+          },
+          async () => {
+            console.warn('[GeminiCopilot] Circuit breaker triggered: using in-process regulatory fallback.');
+            return GeminiCopilotService.localRegulatoryFallback(maskedText, file.originalname);
+          }
+        );
+      } catch (err) {
+        console.warn('[GeminiCopilot] Falling back to robust local regulatory engine:', err);
+        aiData = GeminiCopilotService.localRegulatoryFallback(maskedText, file.originalname);
+      }
     }
 
     const downloadToken = crypto.randomBytes(16).toString('hex');

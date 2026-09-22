@@ -16,11 +16,17 @@ export const copilotApi = {
   /**
    * Conversational regulatory copilot message with token authentication and resilient fallback.
    */
-  async sendChatMessage(message: string, role?: string): Promise<{ reply: string }> {
+  async sendChatMessage(
+    message: string,
+    role?: string,
+    context?: { pathname?: string; documentId?: string }
+  ): Promise<{ reply: string }> {
     try {
       const response = await client.post<ApiResponse<{ reply: string }>>("/api/chat", {
         message: message.trim(),
         role: role || "Advisor",
+        pathname: context?.pathname,
+        documentId: context?.documentId,
       });
       if (response && response.data && response.data.reply) {
         return response.data;
@@ -34,7 +40,7 @@ export const copilotApi = {
 
     // Direct fallback if client.post cannot reach backend
     return {
-      reply: `Thank you for your question. As your Springer Capital Neural Compliance Copilot, I am here to assist with FINRA Rule 2210 & SEC Rule 206 compliance reviews, document repository search, and in-chat draft auditing. You can upload a draft file (PDF, DOCX, TXT) here or ask me to search platform documents.`,
+      reply: `As your Springer Capital Neural Compliance Copilot, I am here to assist with FINRA Rule 2210 & SEC Rule 206 compliance reviews. You can upload a draft file (PDF, DOCX, TXT) here to audit and auto-fix infractions, or query your submissions and review queue.`,
     };
   },
 
