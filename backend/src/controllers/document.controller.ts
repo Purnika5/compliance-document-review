@@ -2,8 +2,6 @@ import fs from 'fs';
 import path from 'path';
 import { Request, Response } from 'express';
 import { DocumentService } from '../services/document.service';
-import { SearchEngineService } from '../services/search-engine.service';
-import { GrokCopilotService } from '../services/grok-copilot.service';
 import { sendSuccess } from '../utils/response';
 import { AppError } from '../middleware/error.middleware';
 import { DocumentStatus } from '../types/models';
@@ -112,43 +110,6 @@ export class DocumentController {
     res.setHeader('Content-Type', document.mime_type || 'application/octet-stream');
     res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(document.file_name)}"`);
     res.sendFile(path.resolve(document.file_path));
-  });
-
-  public static searchDocuments = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const user = (req as any).user;
-    const {
-      query: searchQuery,
-      status,
-      date_range,
-      uploaded_by,
-      include_all_versions,
-      conversation_history,
-    } = req.body || {};
-
-    const searchResult = await SearchEngineService.executeSearch(
-      {
-        query: searchQuery,
-        status,
-        date_range,
-        uploaded_by,
-        include_all_versions: Boolean(include_all_versions),
-      },
-      user
-    );
-
-    const conversationalResponse = await GrokCopilotService.generateConversationalSummary(
-      searchResult.records,
-      searchResult.analytics,
-      searchQuery,
-      conversation_history
-    );
-
-    res.status(200).json({
-      success: true,
-      conversational_response: conversationalResponse,
-      analytics: searchResult.analytics,
-      records: searchResult.records,
-    });
   });
 }
 

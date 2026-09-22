@@ -24,13 +24,6 @@ router.get(
 );
 router.all('/:id/audit-trail', AuditController.methodNotAllowed);
 
-// Neural Compliance Copilot Filterable Search
-router.post(
-  '/search',
-  authenticateToken,
-  DocumentController.searchDocuments
-);
-
 // Submit document
 router.post(
   '/',

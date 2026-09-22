@@ -4,7 +4,6 @@
  * @author Keith
  */
 import type { IGrammarResult, IDocumentationResult } from "@/lib/chatbot/documentation-engine";
-import type { ICopilotSearchResponse } from "@/types/copilot.types";
 
 export interface IChatMessage {
   /** Stable identifier for the message. */
@@ -21,6 +20,4 @@ export interface IChatMessage {
   grammarResult?: IGrammarResult;
   /** Optional structured documentation enhancement result for rich rendering. */
   documentationResult?: IDocumentationResult;
-  /** Optional Neural Copilot structured search & analytics data for interactive telemetry cards. */
-  copilotData?: ICopilotSearchResponse;
 }
