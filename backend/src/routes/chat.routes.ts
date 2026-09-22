@@ -233,7 +233,7 @@ router.post('/', optionalAuth, async (req: Request, res: Response) => {
     // 1b. Enriched recent documents — uploader identity + flags from document_analyses
     const recentSql = isOfficer || !userId
       ? `SELECT
-           d.id, d.title, d.status, d.version, d.file_name, d.mime_type, d.category,
+           d.id, d.title, d.status, d.version, d.file_name, d.mime_type,
            d.created_at,
            u.name  AS advisor_name,
            u.email AS advisor_email,
@@ -243,7 +243,7 @@ router.post('/', optionalAuth, async (req: Request, res: Response) => {
          LEFT JOIN document_analyses da ON d.id = da.document_id AND d.version = da.version
          ORDER BY d.created_at DESC LIMIT 15`
       : `SELECT
-           d.id, d.title, d.status, d.version, d.file_name, d.mime_type, d.category,
+           d.id, d.title, d.status, d.version, d.file_name, d.mime_type,
            d.created_at,
            da.flags
          FROM documents d
@@ -264,7 +264,7 @@ router.post('/', optionalAuth, async (req: Request, res: Response) => {
     // 1c. Today's uploads (separate focused query)
     const todaySql = isOfficer || !userId
       ? `SELECT
-           d.id, d.title, d.status, d.version, d.file_name, d.category,
+           d.id, d.title, d.status, d.version, d.file_name,
            d.created_at,
            u.name  AS advisor_name,
            u.email AS advisor_email,
@@ -275,7 +275,7 @@ router.post('/', optionalAuth, async (req: Request, res: Response) => {
          WHERE d.created_at::date = CURRENT_DATE
          ORDER BY d.created_at DESC`
       : `SELECT
-           d.id, d.title, d.status, d.version, d.file_name, d.category,
+           d.id, d.title, d.status, d.version, d.file_name,
            d.created_at,
            da.flags
          FROM documents d

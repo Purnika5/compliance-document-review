@@ -159,8 +159,8 @@ function getSuggestedQuestions(isLoginMode: boolean, role?: string, pathname?: s
     return [
       "List all pending documents awaiting my determination",
       "Show unassigned queue submissions by date",
-      "Which filings contain severe FINRA 2210 violations?",
-      "Audit & fix draft document (attach file)",
+      "Show documents uploaded today",
+      "Who uploaded the most recent filing?",
     ];
   }
 
@@ -179,8 +179,8 @@ function getSuggestedQuestions(isLoginMode: boolean, role?: string, pathname?: s
     return [
       "What documents are awaiting compliance review today?",
       "Show high-risk submissions across all advisors",
-      "Show recent submissions by Keith",
-      "Audit & fix draft document (attach file)",
+      "Who uploaded documents this week?",
+      "Show all pending filings with risk flags",
     ];
   }
 
@@ -189,7 +189,7 @@ function getSuggestedQuestions(isLoginMode: boolean, role?: string, pathname?: s
     "Show my submissions from this month",
     "Show filings that need revision",
     "Show approved documents",
-    "Audit & fix draft document (attach file)",
+    "What are the FINRA 2210 disclosure rules?",
   ];
 }
 
@@ -424,25 +424,29 @@ export function ChatbotWidget() {
     const activeDocId = docMatch ? docMatch[1] : undefined;
 
     try {
-      // File quota check for Advisors
-      if (session?.role === "Advisor" && fileQuota && fileQuota.remaining === 0) {
+      // File quota check — both Advisors AND Officers limited to 2 scans per period
+      if (fileQuota && fileQuota.remaining === 0) {
         setIsUploading(false);
         setUploadStatusText("");
         const resetDate = fileQuota.resetsAt
           ? new Date(fileQuota.resetsAt).toLocaleDateString("en-US", { month: "long", day: "numeric" })
           : `in ${fileQuota.resetInDays} days`;
+        const roleMsg = session?.role === "Officer"
+          ? `You've used your ${fileQuota.limit} document scan${fileQuota.limit !== 1 ? "s" : ""} for this period. Your quota resets on ${resetDate} (${fileQuota.resetInDays} day${fileQuota.resetInDays !== 1 ? "s" : ""} from now).`
+          : `You've used both of your file analysis slots for this period. Your quota resets on ${resetDate} (${fileQuota.resetInDays} day${fileQuota.resetInDays !== 1 ? "s" : ""} from now). You can still chat, view your submissions, or download previously remediated files.`;
         setMessages((prev) => [
           ...prev,
           {
             id: botMsgId,
             sender: "bot",
-            text: `You've used both of your file analysis slots for this period. Your quota resets on ${resetDate} (${fileQuota.resetInDays} day${fileQuota.resetInDays !== 1 ? "s" : ""} from now). You can still chat, view your submissions, or download previously remediated files.`,
+            text: roleMsg,
             timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
           },
         ]);
         setIsTyping(false);
         return;
       }
+
 
       const auditResponse = await copilotApi.auditAndRemediate(file, {
         instructions: userInstructions,
@@ -459,12 +463,16 @@ export function ChatbotWidget() {
           sender: "bot",
           text: auditResponse.conversational_summary,
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          auditResult: auditResponse,
-          suggestedChips: [
-            "Submit remediated version",
-            "Show my submissions from this month",
-            "Download remediated file",
-          ],
+          auditResult: session?.role === "Officer" ? undefined : auditResponse,
+          // Officers get flag details in text only — no remediation chips
+          // Advisors get full remediation chips
+          suggestedChips: session?.role === "Officer"
+            ? undefined
+            : [
+                "Submit remediated version",
+                "Show my submissions from this month",
+                "Download remediated file",
+              ],
         },
       ]);
       // Capture file quota from audit response
@@ -842,7 +850,7 @@ export function ChatbotWidget() {
             className="hidden"
           />
 
-          {/* Staged Draft File Card (Choose Scan or Auto-Fix) */}
+          {/* Staged Draft File Card */}
           {pendingFile && (
             <div className="mx-3 mb-2 p-2.5 bg-[#FAFBFB] border border-[#C5E86C] rounded-xl flex flex-col gap-2 shadow-2xs animate-in fade-in slide-in-from-bottom-2">
               <div className="flex items-center justify-between">
@@ -865,7 +873,8 @@ export function ChatbotWidget() {
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+              {/* Officers: scan only. Advisors: scan + fix */}
+              {session?.role === "Officer" ? (
                 <button
                   type="button"
                   disabled={isUploading || isTyping}
@@ -873,25 +882,38 @@ export function ChatbotWidget() {
                   className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg bg-white hover:bg-[#FAFBFB] text-[#183028] border border-[#E6E8E7] text-[10px] font-bold transition-all shadow-2xs cursor-pointer hover:border-[#183028]/30"
                 >
                   <ShieldAlert className="h-3 w-3 text-amber-600" />
-                  <span>Scan File for Rules</span>
+                  <span>Scan File for Compliance Flags</span>
                 </button>
-                <button
-                  type="button"
-                  disabled={isUploading || isTyping}
-                  onClick={() => handleExecuteFileAudit(pendingFile, "remediate", inputValue.trim() || undefined)}
-                  className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg bg-[#183028] hover:bg-[#23453a] text-[#C5E86C] text-[10px] font-bold transition-all shadow-2xs cursor-pointer"
-                >
-                  <Wand2 className="h-3 w-3 text-[#C5E86C]" />
-                  <span>Fix & Remediate File</span>
-                </button>
-              </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+                  <button
+                    type="button"
+                    disabled={isUploading || isTyping}
+                    onClick={() => handleExecuteFileAudit(pendingFile, "scan", inputValue.trim() || undefined)}
+                    className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg bg-white hover:bg-[#FAFBFB] text-[#183028] border border-[#E6E8E7] text-[10px] font-bold transition-all shadow-2xs cursor-pointer hover:border-[#183028]/30"
+                  >
+                    <ShieldAlert className="h-3 w-3 text-amber-600" />
+                    <span>Scan File for Rules</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isUploading || isTyping}
+                    onClick={() => handleExecuteFileAudit(pendingFile, "remediate", inputValue.trim() || undefined)}
+                    className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg bg-[#183028] hover:bg-[#23453a] text-[#C5E86C] text-[10px] font-bold transition-all shadow-2xs cursor-pointer"
+                  >
+                    <Wand2 className="h-3 w-3 text-[#C5E86C]" />
+                    <span>Fix &amp; Remediate File</span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
-          {/* Quota Usage Bar — Advisor only */}
-          {isAuthenticated && session?.role === "Advisor" && (quota || fileQuota) && (
+          {/* Quota Usage Bar */}
+          {isAuthenticated && (quota || fileQuota) && (
             <div className="px-3 pt-2 pb-1 bg-white border-t border-[#E6E8E7] flex flex-col gap-1 shrink-0">
-              {quota && (
+              {/* Chat messages quota — Advisor only */}
+              {session?.role === "Advisor" && quota && (
                 <div className="flex items-center gap-2">
                   <span className="text-[9px] font-semibold text-[#183028]/60 shrink-0 w-20">AI Messages</span>
                   <div className="flex-1 bg-[#E6E8E7] rounded-full h-1.5 overflow-hidden">
@@ -908,9 +930,12 @@ export function ChatbotWidget() {
                   </span>
                 </div>
               )}
+              {/* File scans quota — both roles */}
               {fileQuota && (
                 <div className="flex items-center gap-2">
-                  <span className="text-[9px] font-semibold text-[#183028]/60 shrink-0 w-20">File Analyses</span>
+                  <span className="text-[9px] font-semibold text-[#183028]/60 shrink-0 w-20">
+                    {session?.role === "Officer" ? "Doc Scans" : "File Analyses"}
+                  </span>
                   <div className="flex-1 bg-[#E6E8E7] rounded-full h-1.5 overflow-hidden">
                     <div
                       className={cn(
@@ -934,6 +959,7 @@ export function ChatbotWidget() {
           )}
 
           {/* Message Input Box with Attachment Clip */}
+
           <div className="p-3 bg-white border-t border-[#E6E8E7] flex items-center space-x-2 shrink-0">
             {isAuthenticated && (
               <Button
@@ -1072,7 +1098,7 @@ function ChatMessageItem({
           </>
         )}
 
-        {/* Rich Audit & Remediation Card */}
+        {/* Rich Audit & Remediation Card — Advisor only; Officer gets text-only flag summary */}
         {!isUser && message.auditResult && !isCurrentlyTyping && (
           <AuditResultCard
             result={message.auditResult}

@@ -65,13 +65,9 @@ export class QuotaService {
 
   /**
    * Checks whether a user is allowed to perform a file analysis.
-   * Always returns allowed=true for Officers.
+   * Officers are limited to 2 scans per period. Chat messages remain unlimited for officers.
    */
   static async checkFileAnalysis(userId: string, userRole: string): Promise<QuotaStatus> {
-    if (userRole === 'Officer') {
-      return { allowed: true, type: 'file_analysis', used: 0, limit: 999, remaining: 999, resetsAt: '', resetInDays: 0 };
-    }
-
     try {
       const row = await this.getOrCreateQuota(userId);
       const used: number = row.file_analyses_used;
@@ -128,10 +124,10 @@ export class QuotaService {
   }
 
   /**
-   * Increments the file_analyses_used counter after a successful audit.
+   * Increments the file_analyses_used counter after a successful scan.
+   * Both Officers and Advisors consume from this quota.
    */
   static async consumeFileAnalysis(userId: string, userRole: string): Promise<void> {
-    if (userRole === 'Officer') return;
     try {
       await query(
         `UPDATE user_quotas SET file_analyses_used = file_analyses_used + 1, updated_at = NOW() WHERE user_id = $1`,
