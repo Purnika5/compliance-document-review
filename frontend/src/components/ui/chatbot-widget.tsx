@@ -8,6 +8,7 @@
  * @author Keith
  */
 import React, { useState, useRef, useEffect, useCallback, useSyncExternalStore } from "react";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Send,
@@ -964,6 +965,7 @@ function AuditResultCard({ result, isCopied, onCopy }: IAuditCardProps) {
   const [showFullText, setShowFullText] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submittedDocId, setSubmittedDocId] = useState<string | null>(null);
 
   const handleDownload = () => {
     // 1. Instant client-side blob download (zero latency, zero round-trip, always works)
@@ -999,12 +1001,16 @@ function AuditResultCard({ result, isCopied, onCopy }: IAuditCardProps) {
     if (isSubmitting || isSubmitted) return;
     setIsSubmitting(true);
     try {
-      await copilotApi.submitRemediated({
+      const res = await copilotApi.submitRemediated({
         text: result.remediated_content.text,
         title: result.remediated_content.suggested_title,
         token: result.remediated_content.token,
         targetDocumentId: result.one_click_actions.target_document_id || undefined,
       });
+      const docId = res?.id || res?.data?.id;
+      if (docId) {
+        setSubmittedDocId(docId);
+      }
       setIsSubmitted(true);
       showSuccessToast("Remediated document submitted successfully to compliance queue!");
     } catch (err: any) {
@@ -1158,6 +1164,19 @@ function AuditResultCard({ result, isCopied, onCopy }: IAuditCardProps) {
           )}
         </button>
       </div>
+
+      {/* 1-Click Jump to Review Workspace */}
+      {isSubmitted && submittedDocId && (
+        <div className="pt-2 animate-fade-in">
+          <Link
+            href={`/documents/${submittedDocId}`}
+            className="flex items-center justify-center gap-1.5 w-full py-2 px-3 rounded-xl bg-[#183028] hover:bg-[#23453a] text-[#C5E86C] text-[11px] font-bold transition-all shadow-md cursor-pointer border border-[#C5E86C]/30"
+          >
+            <FileText className="h-3.5 w-3.5 text-[#C5E86C]" />
+            <span>Open Remediated Document in Review Workspace →</span>
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

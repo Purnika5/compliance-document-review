@@ -104,15 +104,28 @@ export class DocumentController {
     const { id } = req.params;
     const user = (req as any).user || { id: 'public-access', role: 'Officer', email: '', name: 'Officer' };
     const document = await DocumentService.getDocumentById(id, user as any);
-    if (!fs.existsSync(document.file_path)) {
-      throw new AppError('File not found on storage disk', 404, 'FILE_NOT_FOUND');
-    }
+    
     res.removeHeader('X-Frame-Options');
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     res.setHeader('Content-Security-Policy', "frame-ancestors *");
-    res.setHeader('Content-Type', document.mime_type || 'application/octet-stream');
-    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(document.file_name)}"`);
-    res.sendFile(path.resolve(document.file_path));
+
+    if (document.file_path && fs.existsSync(document.file_path)) {
+      res.setHeader('Content-Type', document.mime_type || 'application/octet-stream');
+      res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(document.file_name)}"`);
+      res.sendFile(path.resolve(document.file_path));
+      return;
+    }
+
+    // Disk fallback: serve extracted text or database analysis text
+    const textContent = (document as any).original_text || document.masked_text;
+    if (textContent) {
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(document.file_name || 'document.txt')}"`);
+      res.send(textContent);
+      return;
+    }
+
+    throw new AppError('File not found on storage disk', 404, 'FILE_NOT_FOUND');
   });
 
   /**

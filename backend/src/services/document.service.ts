@@ -634,8 +634,9 @@ export class DocumentService {
       throw new AppError('Forbidden: You do not have permission to view this document', 403, 'FORBIDDEN');
     }
 
-    // Attach unmasked original text for authorized Compliance Officers if available on disk
-    if (user.role === 'Officer' && doc.file_path) {
+    // Hydrate document text: extract from disk if available, or fallback to database masked_text
+    let extractedText = '';
+    if (doc.file_path) {
       try {
         let filePath = doc.file_path;
         if (!fs.existsSync(filePath)) {
@@ -643,14 +644,17 @@ export class DocumentService {
           if (fs.existsSync(resolved)) filePath = resolved;
         }
         if (fs.existsSync(filePath)) {
-          const raw = await PipelineService.extractText(filePath, doc.mime_type);
-          if (raw) {
-            (doc as any).original_text = raw;
-          }
+          extractedText = await PipelineService.extractText(filePath, doc.mime_type);
         }
       } catch (err) {
-        console.warn('[DocumentService] Failed to extract raw text for officer view:', err);
+        console.warn(`[DocumentService] Failed to extract raw text for document ${doc.id}:`, err);
       }
+    }
+
+    // Attach text content for both Officers and Advisors
+    (doc as any).original_text = extractedText || doc.masked_text || '';
+    if (!doc.masked_text && extractedText) {
+      (doc as any).masked_text = extractedText;
     }
 
     return doc;

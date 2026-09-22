@@ -51,7 +51,9 @@ function mapApiDocumentToItem(doc: ApiDocument): DocumentItem {
       ? "PDF"
       : doc.mime_type?.includes("word") || doc.file_name?.endsWith(".docx")
         ? "DOCX"
-        : "Document",
+        : doc.mime_type?.includes("text") || doc.file_name?.endsWith(".txt")
+          ? "TXT"
+          : "Document",
     submittedBy: doc.advisor_name || "Advisor",
     advisorEmail: doc.advisor_email,
     submittedAt: doc.created_at,

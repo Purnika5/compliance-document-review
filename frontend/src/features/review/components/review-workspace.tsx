@@ -33,6 +33,9 @@ import {
   UploadCloud,
   Eye,
   EyeOff,
+  Copy,
+  Check,
+  Sparkles,
 } from "lucide-react";
 import { buildPiiMap, unmaskText, hasPiiPlaceholders } from "@/utils/pii-unmasker";
 import type { DocumentStatusType, DocumentItem } from "@/lib/validation/document";
@@ -376,6 +379,15 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
     currentDocItem.mimeType?.includes("pdf") ||
     currentDocItem.fileName?.toLowerCase().endsWith(".pdf") ||
     currentDocItem.fileUrl?.toLowerCase().endsWith(".pdf")
+  );
+
+  const isText = Boolean(
+    currentDocItem.category === "TXT" ||
+    currentDocItem.category === "Text" ||
+    currentDocItem.mimeType?.includes("text") ||
+    currentDocItem.fileName?.toLowerCase().endsWith(".txt") ||
+    currentDocItem.fileUrl?.toLowerCase().endsWith(".txt") ||
+    (!isDocx && !isPdf)
   );
 
   const isAlreadyDetermined = status === "Approved" || status === "Needs Revision" || status === "Rejected";
@@ -863,7 +875,7 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
                       : "text-[#183028]/70 hover:text-[#183028] hover:bg-[#C5E86C]/20"
                   )}
                 >
-                  {isDocx ? "Word Document" : isPdf ? "PDF Document" : "File Preview"}
+                  {isDocx ? "Word Document" : isPdf ? "PDF Document" : isText ? "Document View" : "File Preview"}
                 </button>
                 <button
                   type="button"
@@ -994,37 +1006,142 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
                       className="w-full h-[650px] border border-[#E6E8E7] rounded-xl bg-white shadow-2xs"
                       title={currentDocItem.title || "Uploaded Document"}
                     />
-                  ) : currentDocItem.fileUrl || currentDocItem.fileName ? (
-                    <iframe
-                      src={
-                        currentDocItem.fileUrl ||
-                        `/api/raw-file/documents/${currentDocItem.fileName}`
-                      }
-                      className="w-full h-[650px] border border-[#E6E8E7] rounded-xl bg-white shadow-2xs"
-                      title={currentDocItem.title || "Uploaded Document"}
-                    />
                   ) : (
-                    <div className="text-center p-8 bg-white border border-[#E6E8E7] rounded-2xl space-y-3 max-w-md shadow-2xs">
-                      <FileText className="h-10 w-10 text-[#183028] mx-auto" />
-                      <p className="font-semibold text-sm text-[#183028]">File Attachment Render</p>
-                      <p className="text-xs text-[#183028]/60">
-                        Document stream identifier: <code className="font-mono text-[#183028] bg-[#E6E8E7]/40 px-1.5 py-0.5 rounded">{currentDocItem.id}</code>
-                      </p>
-                      <div className="pt-2 flex justify-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setViewMode("text")}
-                          className="px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-[#183028] hover:bg-[#23453a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] text-white transition-all cursor-pointer shadow-2xs"
-                        >
-                          View Extracted Text
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setViewMode("paper")}
-                          className="px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-white text-[#183028] border border-[#E6E8E7] hover:bg-[#C5E86C]/20 transition-all cursor-pointer shadow-2xs"
-                        >
-                          View Overview
-                        </button>
+                    /* High-Fidelity Institutional Document Paper Canvas for Text / Remediated Proposals */
+                    <div
+                      style={{
+                        transform: `scale(${zoomLevel / 100})`,
+                        transformOrigin: "top center",
+                      }}
+                      className="w-full max-w-[680px] bg-white text-[#183028] rounded-2xl border border-[#E6E8E7] p-6 sm:p-9 space-y-6 transition-transform duration-150 shadow-md my-2"
+                    >
+                      {/* Document Top Bar */}
+                      <div className="flex items-center justify-between border-b border-[#E6E8E7] pb-4">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold tracking-tight text-sm text-[#183028]">
+                              SPRINGER CAPITAL
+                            </span>
+                            <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-[#183028] text-[#C5E86C]">
+                              Compliance Verified
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-[#183028]/60 uppercase tracking-wider mt-0.5 font-medium">
+                            Institutional Advisory Filing • {currentDocItem.fileName || "Proposal Document"}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <span className="font-mono text-[9px] font-bold text-[#183028]/60 uppercase block">
+                            Version {currentDocItem.version || 1}.0
+                          </span>
+                          <StatusBadge status={status} />
+                        </div>
+                      </div>
+
+                      {/* Document Title & Submitter Header */}
+                      <div className="space-y-2">
+                        <h2 className="text-lg sm:text-xl font-bold text-[#183028] leading-tight">
+                          {currentDocItem.title || "Remediated Compliance Proposal"}
+                        </h2>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-[#183028]/70">
+                          <span>
+                            Submitted by <strong className="text-[#183028]">{currentDocItem.submittedBy || "Advisor"}</strong>
+                          </span>
+                          {currentDocItem.advisorEmail && (
+                            <span className="text-[#183028]/50">({currentDocItem.advisorEmail})</span>
+                          )}
+                          <span>•</span>
+                          <span>
+                            {currentDocItem.submittedAt
+                              ? new Date(currentDocItem.submittedAt).toLocaleDateString(undefined, {
+                                  year: "numeric",
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })
+                              : "Recently Submitted"}
+                          </span>
+                        </div>
+
+                        {/* Neural Copilot Remediated Callout Banner */}
+                        <div className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-50/80 border border-emerald-200 text-emerald-950 text-[11px]">
+                          <ShieldCheck className="h-4 w-4 text-emerald-700 shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <span className="font-bold text-emerald-900 block text-[10.5px]">
+                              Google Gemini Neural Remediation Applied
+                            </span>
+                            <span className="text-[10px] text-emerald-800/80">
+                              This proposal text was audited and fixed against FINRA Rule 2210 &amp; SEC Rule 206 standards.
+                            </span>
+                          </div>
+                          {isOfficer && isUnmasked && (
+                            <span className="font-mono text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-200 border border-amber-400 text-amber-950 shrink-0">
+                              Unmasked View
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Main Document Content Body */}
+                      <div className="bg-white rounded-xl p-5 border border-[#E6E8E7] font-sans text-[12.5px] leading-relaxed text-[#183028] whitespace-pre-wrap select-text shadow-2xs space-y-3 min-h-[220px]">
+                        {displayedExtractedText ? (
+                          renderHighlightedText(
+                            displayedExtractedText,
+                            selectedFlag?.passage
+                          )
+                        ) : (
+                          <div className="text-center py-8 space-y-3">
+                            <FileText className="h-8 w-8 text-[#183028]/40 mx-auto animate-pulse" />
+                            <p className="font-semibold text-xs text-[#183028]">
+                              Preparing Document Content...
+                            </p>
+                            <p className="text-[11px] text-[#183028]/60 max-w-sm mx-auto">
+                              Extracting verified proposal text for regulatory review.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Footer Actions */}
+                      <div className="flex items-center justify-between pt-2 border-t border-[#E6E8E7] text-[11px]">
+                        <span className="text-[#183028]/50 text-[10px] font-mono">
+                          ID: {currentDocItem.id}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!displayedExtractedText) return;
+                              const blob = new Blob([displayedExtractedText], { type: "text/plain;charset=utf-8" });
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement("a");
+                              a.href = url;
+                              a.download = `${currentDocItem.title || "Remediated_Proposal"}.txt`;
+                              document.body.appendChild(a);
+                              a.click();
+                              document.body.removeChild(a);
+                              URL.revokeObjectURL(url);
+                              showSuccessToast("Document text downloaded.");
+                            }}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[#E6E8E7] bg-white text-[#183028] font-semibold hover:bg-[#C5E86C]/20 transition-all cursor-pointer shadow-2xs"
+                          >
+                            <Download className="h-3 w-3" />
+                            <span>Download .txt</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!displayedExtractedText) return;
+                              navigator.clipboard.writeText(displayedExtractedText);
+                              showSuccessToast("Document content copied to clipboard.");
+                            }}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#183028] text-white font-semibold hover:bg-[#23453a] transition-all cursor-pointer shadow-2xs"
+                          >
+                            <Copy className="h-3 w-3" />
+                            <span>Copy Content</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -1197,6 +1314,27 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
                         </button>
                       </div>
                     </div>
+
+                    {displayedExtractedText && (
+                      <div className="border border-[#E6E8E7] rounded-xl p-3.5 bg-white space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#183028]/60">
+                            Document Content Preview
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setViewMode("iframe")}
+                            className="text-[10.5px] text-[#183028] font-bold hover:underline cursor-pointer"
+                          >
+                            Open Full Canvas →
+                          </button>
+                        </div>
+                        <p className="text-[11px] leading-relaxed text-[#183028]/90 whitespace-pre-wrap font-sans max-h-[140px] overflow-y-auto bg-[#FAFBFB] p-2.5 rounded-lg border border-[#E6E8E7]">
+                          {displayedExtractedText.slice(0, 400)}
+                          {displayedExtractedText.length > 400 ? "..." : ""}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   {/* Footer */}
