@@ -9,6 +9,7 @@ import {
 
 const router = Router();
 
+
 router.use(authenticateToken);
 
 // SSE real-time stream endpoint
