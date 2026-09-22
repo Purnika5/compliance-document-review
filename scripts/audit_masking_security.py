@@ -8,25 +8,42 @@ Audits document payloads before transmission to external AI services (e.g. Gemin
 Verifies that all outgoing payloads are 100% masked and FAILS LOUDLY with exit code 1
 if ANY raw PII pattern (SSN, Email, Phone, Credit Card, Address, or Name) is detected.
 
+Supports both:
+  1. Live HTTP microservice audit against running containers (http://localhost:8002/mask).
+  2. Direct in-process engine audit fallback (devops/pii-masker/pii_masker.py) when
+     Docker is not running locally.
+
 Usage:
-    # Run full live audit against running services
+    # Run full live audit (with automatic local fallback if HTTP endpoint is offline)
     python scripts/audit_masking_security.py
 
     # Run in CI mode (strict exit codes, machine-readable)
     python scripts/audit_masking_security.py --ci
+
+    # Run directly against local in-process PII engine without HTTP requests
+    python scripts/audit_masking_security.py --local
 
     # Specify custom PII masker endpoint
     python scripts/audit_masking_security.py --url http://localhost:8002/mask
 """
 
 import argparse
+import importlib
 import json
 import os
+from pathlib import Path
 import re
 import sys
 import time
+from typing import TypedDict
 import urllib.request
 import urllib.error
+
+# Windows console ANSI color & UTF-8 initialization
+if sys.platform == "win32":
+    os.system("")  # Enables VT100 / ANSI escape sequence processing in Windows console
+if hasattr(sys.stdout, "reconfigure"):
+    getattr(sys.stdout, "reconfigure")(encoding="utf-8", errors="replace")
 
 # ANSI Color Codes for loud terminal reporting
 RED = "\033[91m"
@@ -37,7 +54,13 @@ BOLD = "\033[1m"
 RESET = "\033[0m"
 
 # Strict PII Leakage Detection Patterns (Must NOT match after masking)
-LEAKAGE_PATTERNS = [
+class LeakagePattern(TypedDict):
+    type: str
+    name: str
+    regex: re.Pattern[str]
+    severity: str
+
+LEAKAGE_PATTERNS: list[LeakagePattern] = [
     {
         "type": "SSN_LEAK",
         "name": "Social Security Number",
@@ -79,10 +102,18 @@ LEAKAGE_PATTERNS = [
     },
 ]
 
-# Pattern matching valid platform masked tokens (e.g. [NAME_1], [SSN_1], [EMAIL_1])
-VALID_TAG_PATTERN = re.compile(r'\[(?:NAME|EMAIL|SSN|PHONE|ACCOUNT|CARD|ADDRESS|ZIP|DATE)_[0-9A-Za-z_-]+\]')
+# Pattern matching valid platform masked tokens (e.g. [NAME_1], [SSN_1], [EMAIL_1], [REDACTED_SSN])
+VALID_TAG_PATTERN = re.compile(r'\[(?:NAME|EMAIL|SSN|PHONE|ACCOUNT|CARD|ADDRESS|ZIP|DATE|REDACTED)_[0-9A-Za-z_-]+\]')
 
-TEST_SCENARIOS = [
+class AuditScenario(TypedDict, total=False):
+    id: str
+    title: str
+    raw_text: str
+    forbidden_substrings: list[str]
+    required_substrings: list[str]
+    required_placeholders: list[str]
+
+TEST_SCENARIOS: list[AuditScenario] = [
     {
         "id": "SEC-AUDIT-01",
         "title": "HNW Wealth Management Client Onboarding",
@@ -100,6 +131,7 @@ TEST_SCENARIOS = [
             "ACCT-9988776655",
             "742 Evergreen Terrace",
             "Arthur Pendelton",
+            "Marcus Vance",
         ],
         "required_placeholders": ["[NAME_", "[SSN_", "[EMAIL_", "[PHONE_", "[ACCOUNT_", "[ADDRESS_"],
     },
@@ -117,6 +149,7 @@ TEST_SCENARIOS = [
             "887766554433",
             "021000021",
             "Beatrice Montgomery",
+            "Elena Rostova",
         ],
         "required_placeholders": ["[CARD_", "[ACCOUNT_"],
     },
@@ -199,6 +232,8 @@ TEST_SCENARIOS = [
             "4111 2222 3333 4444",
             "Charlotte Bronte",
             "100 Wall Street",
+            "Marcus Vance",
+            "Jonathan Edwards",
         ],
         "required_placeholders": ["[NAME_", "[SSN_", "[PHONE_", "[CARD_", "[ADDRESS_"],
     },
@@ -222,8 +257,8 @@ def scan_for_pii_leaks(text: str):
                 matched_str = m.group(1).strip()
 
             start_idx = max(0, m.start() - 25)
-            end_idx = min(len(text), m.end() + 25)
-            context_snippet = text[start_idx:end_idx].replace('\n', ' ')
+            end_idx = min(len(sanitized_for_scan), m.end() + 25)
+            context_snippet = sanitized_for_scan[start_idx:end_idx].replace('\n', ' ')
 
             violations.append({
                 "type": pattern["type"],
@@ -234,6 +269,20 @@ def scan_for_pii_leaks(text: str):
                 "offset": m.start(),
             })
     return violations
+
+def get_local_masker():
+    """Dynamically imports and returns a local PiiMasker instance if available."""
+    try:
+        repo_root = Path(__file__).resolve().parent.parent
+        pii_dir = repo_root / "devops" / "pii-masker"
+        if str(pii_dir) not in sys.path:
+            sys.path.insert(0, str(pii_dir))
+        pii_module = importlib.import_module("pii_masker")
+        masker_class = getattr(pii_module, "PiiMasker")
+        return masker_class()
+    except Exception as e:
+        print(f"Debug: Could not import local PiiMasker: {e}", file=sys.stderr)
+        return None
 
 def mask_payload_via_http(endpoint: str, text: str, doc_id: str):
     """Sends payload to the PII Masking HTTP endpoint."""
@@ -253,26 +302,44 @@ def mask_payload_via_http(endpoint: str, text: str, doc_id: str):
         body = json.loads(resp.read().decode('utf-8'))
         return body.get("masked_text", "")
 
-def run_audit(endpoint: str, ci_mode: bool = False):
+def run_audit(endpoint: str, ci_mode: bool = False, force_local: bool = False):
     print(f"{BOLD}=================================================================={RESET}")
     print(f"{BOLD}  SPRINGER CAPITAL -- OUTGOING AI PAYLOAD MASKING SECURITY AUDIT  {RESET}")
     print(f"{BOLD}=================================================================={RESET}")
-    print(f"Target Masker Endpoint: {CYAN}{endpoint}{RESET}")
+
+    local_masker = None
+
+    if force_local:
+        local_masker = get_local_masker()
+        if not local_masker:
+            print(f"{RED}[!] FATAL ERROR: Local PiiMasker engine not found in devops/pii-masker.{RESET}")
+            sys.exit(1)
+        print(f"Target Mode:           {CYAN}Local In-Process PiiMasker Engine{RESET}")
+    else:
+        print(f"Target Masker Endpoint: {CYAN}{endpoint}{RESET}")
+
     print(f"Audit Mode:            {YELLOW}{'CI Security Gate' if ci_mode else 'Pre-Demo Verification'}{RESET}")
     print(f"Roadmap Criteria:      {BOLD}\"No unmasked PII ever reaches the third-party API\"{RESET}")
     print()
 
-    # Pre-check endpoint health
-    health_url = endpoint.replace('/mask', '/health')
-    try:
-        req = urllib.request.Request(health_url, headers={"User-Agent": "PIISecurityAudit/1.0"})
-        with urllib.request.urlopen(req, timeout=5) as h_resp:
-            h_data = json.loads(h_resp.read().decode('utf-8'))
-            print(f"[*] PII Masker Status: {GREEN}HEALTHY{RESET} ({h_data.get('service', 'pii-masker')})")
-    except Exception as e:
-        print(f"{RED}[!] FATAL ERROR: Cannot reach PII Masker at {health_url}: {e}{RESET}")
-        print(f"{RED}[!] Ensure the docker containers are running (`docker compose up -d pii-masker`).{RESET}")
-        sys.exit(1)
+    # Pre-check endpoint health if not forcing local
+    if not force_local:
+        health_url = endpoint.replace('/mask', '/health')
+        try:
+            req = urllib.request.Request(health_url, headers={"User-Agent": "PIISecurityAudit/1.0"})
+            with urllib.request.urlopen(req, timeout=3) as h_resp:
+                h_data = json.loads(h_resp.read().decode('utf-8'))
+                print(f"[*] PII Masker Status: {GREEN}HEALTHY{RESET} ({h_data.get('service', 'pii-masker')})")
+        except Exception as e:
+            # Check if local masker is available as seamless fallback
+            local_masker = get_local_masker()
+            if local_masker:
+                print(f"{YELLOW}[!] Notice: Remote PII Masker at {health_url} is offline ({e}).{RESET}")
+                print(f"[*] {GREEN}Auto-fallback: Running audit against local devops/pii-masker engine directly.{RESET}")
+            else:
+                print(f"{RED}[!] FATAL ERROR: Cannot reach PII Masker at {health_url}: {e}{RESET}")
+                print(f"{RED}[!] Ensure the docker containers are running (`docker compose up -d pii-masker`).{RESET}")
+                sys.exit(1)
 
     print()
     total_scenarios = len(TEST_SCENARIOS)
@@ -285,7 +352,11 @@ def run_audit(endpoint: str, ci_mode: bool = False):
 
         start_time = time.time()
         try:
-            masked_text = mask_payload_via_http(endpoint, scenario["raw_text"], scenario["id"])
+            if local_masker is not None:
+                local_masker.reset()
+                masked_text = local_masker.mask_text(str(scenario["raw_text"]))
+            else:
+                masked_text = mask_payload_via_http(endpoint, str(scenario["raw_text"]), str(scenario["id"]))
             elapsed_ms = round((time.time() - start_time) * 1000, 2)
         except Exception as err:
             elapsed_ms = round((time.time() - start_time) * 1000, 2)
@@ -381,6 +452,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Audit outgoing AI payloads for PII leakage.")
     parser.add_argument("--url", default="http://localhost:8002/mask", help="PII Masker URL")
     parser.add_argument("--ci", action="store_true", help="Run in strict CI mode")
+    parser.add_argument("--local", action="store_true", help="Run directly against local in-process PiiMasker engine")
     args = parser.parse_args()
 
-    run_audit(endpoint=args.url, ci_mode=args.ci)
+    run_audit(endpoint=args.url, ci_mode=args.ci, force_local=args.local)
