@@ -438,14 +438,7 @@ export function UploadDocumentModal({
                 </div>
               </div>
 
-              {aiClassification && (
-                <div className="flex items-center gap-1.5 text-[10px] text-emerald-900 bg-emerald-50 border border-emerald-200/80 px-2 py-1 rounded-lg animate-in fade-in">
-                  <Sparkles className="h-3 w-3 text-emerald-600 shrink-0" />
-                  <span>
-                    <strong>AI Autofilled:</strong> {aiClassification.category} ({aiClassification.confidence}% confidence)
-                  </span>
-                </div>
-              )}
+
             </div>
 
             <div className="space-y-1.5 min-w-0">
