@@ -155,9 +155,12 @@ function resolveBotReply(
 
   if (isGrammarExplicit) {
     const cleanDraft = rawText
-      .replace(/^(check\s*grammar:\s*|grammar:\s*|check:\s*|audit\s*note:\s*|fix:\s*)/i, "")
+      .replace(/\b(?:please\s+)?(?:re-?check|check|fix)\s+grammar\b[:,-]?/gi, "")
+      .replace(/\bgrammar\s+(?:check|re-?check)\b[:,-]?/gi, "")
+      .replace(/^(?:grammar|check|audit\s*note|fix)[:,-]?\s*/i, "")
+      .replace(/\s{2,}/g, " ")
       .trim();
-    if (cleanDraft && cleanDraft.length > 5) {
+    if (cleanDraft && cleanDraft.length > 2) {
       const grammarResult = recheckGrammar(cleanDraft);
       return {
         text: grammarResult.summary,

@@ -555,7 +555,16 @@ def chat_endpoint(request: ChatRequest):
     if not request.message or not request.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty.")
 
-    full_prompt = f"{CHAT_SYSTEM_PROMPT}\n\nUser ({request.role}): {request.message.strip()}\n\nAssistant:"
+    # Strip command prefix/suffix from grammar check requests so the command phrase doesn't get corrected as text
+    user_msg = request.message.strip()
+    if re.search(r'\b(?:re-?check|check|fix)\s+grammar\b', user_msg, re.IGNORECASE):
+        stripped = re.sub(r'\b(?:please\s+)?(?:re-?check|check|fix)\s+grammar\b[:,-]?', '', user_msg, flags=re.IGNORECASE)
+        stripped = re.sub(r'\bgrammar\s+(?:check|re-?check)\b[:,-]?', '', stripped, flags=re.IGNORECASE)
+        stripped = stripped.strip()
+        if stripped:
+            user_msg = f"check grammar: {stripped}"
+
+    full_prompt = f"{CHAT_SYSTEM_PROMPT}\n\nUser ({request.role}): {user_msg}\n\nAssistant:"
 
     try:
         active_client = get_client()
