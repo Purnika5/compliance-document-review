@@ -362,62 +362,62 @@ export function DocumentQueueTable() {
       </div>
 
       {/* Main Content: Review Queue and Unified Compliance Calendar */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
         {/* Left Column: Review Queue Table & Toolbar */}
-        <div className="lg:col-span-8 xl:col-span-8 space-y-3">
+        <div className="xl:col-span-8 2xl:col-span-9 space-y-4 min-w-0">
           {/* Queue Toolbar: Search, Status Tabs, and Priority Filters */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-2.5 rounded-xl bg-card border border-border">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-2xl bg-white border border-[#E6E8E7] shadow-xs">
             {/* Status Filter Tabs */}
-            <div className="flex items-center space-x-1 overflow-x-auto [scrollbar-width:none]">
+            <div className="flex items-center space-x-1.5 overflow-x-auto [scrollbar-width:none]">
               {(["All", "Pending", "Needs Revision", "Approved", "Rejected"] as FilterTab[]).map(
                 (tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
                     className={cn(
-                      "px-3 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer whitespace-nowrap",
+                      "px-3.5 py-1.5 text-xs font-semibold rounded-xl transition-all cursor-pointer whitespace-nowrap",
                       activeTab === tab
-                        ? "bg-[#C5E86C] text-[#183028] font-bold shadow-xs"
+                        ? "bg-[#C5E86C] text-[#183028] font-bold shadow-xs scale-[1.02]"
                         : "bg-transparent text-[#183028]/70 hover:text-[#183028] hover:bg-[#C5E86C]/20"
                     )}
                   >
-                    {tab} ({counts[tab] || 0})
+                    {tab} <span className={cn("ml-1 font-mono text-[11px]", activeTab === tab ? "text-[#183028]" : "text-[#183028]/50")}>({counts[tab] || 0})</span>
                   </button>
                 )
               )}
             </div>
 
             {/* Search & Priority Controls */}
-            <div className="flex items-center gap-2">
-              <div className="relative w-full sm:w-64">
-                <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
+            <div className="flex items-center gap-2.5">
+              <div className="relative w-full sm:w-72">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#183028]/40" />
                 <Input
                   placeholder="Search advisor, document ID, title..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 h-8 text-xs rounded-md bg-background border-border text-foreground"
+                  className="pl-9 h-9 text-xs rounded-xl bg-[#FAFBF9] border-[#E6E8E7] text-[#183028] placeholder:text-[#183028]/40 focus:bg-white focus:border-[#183028]"
                 />
               </div>
 
               <div className="flex items-center gap-1.5 shrink-0">
-                <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+                <Filter className="h-4 w-4 text-[#183028]/50" />
                 <select
                   value={selectedPriority}
                   onChange={(e) => setSelectedPriority(e.target.value)}
-                  className="h-8 text-xs rounded-md px-2 font-medium bg-background border border-border text-foreground outline-none cursor-pointer"
+                  className="h-9 text-xs rounded-xl px-3 font-semibold bg-[#FAFBF9] border border-[#E6E8E7] text-[#183028] outline-none cursor-pointer hover:border-[#183028]/40 focus:border-[#183028]"
                 >
-                  <option value="All" className="bg-card text-foreground">All Priorities</option>
-                  <option value="Urgent" className="bg-card text-foreground">Urgent</option>
-                  <option value="High" className="bg-card text-foreground">High</option>
-                  <option value="Medium" className="bg-card text-foreground">Medium</option>
-                  <option value="Standard" className="bg-card text-foreground">Standard</option>
+                  <option value="All">All Priorities</option>
+                  <option value="Urgent">Urgent</option>
+                  <option value="High">High</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Standard">Standard</option>
                 </select>
               </div>
             </div>
           </div>
 
           {/* Main Review Queue Table */}
-          <div className="rounded-xl overflow-hidden text-xs border border-border bg-card shadow-xs">
+          <div className="rounded-2xl border border-[#E6E8E7] bg-white shadow-xs overflow-hidden">
         {isPending ? (
           <LoadingState rows={5} />
         ) : filteredDocuments.length === 0 ? (
@@ -441,166 +441,182 @@ export function DocumentQueueTable() {
             }
           />
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow className="border-b border-border bg-muted/40">
-                <TableHead className="w-32 pl-4 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  DOCUMENT ID
-                </TableHead>
-                <TableHead className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  DOCUMENT DETAILS
-                </TableHead>
-                <TableHead className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  SUBMITTING ADVISOR
-                </TableHead>
-                <TableHead className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  SUBMITTED DATE
-                </TableHead>
-                <TableHead className="w-28 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  STATUS
-                </TableHead>
-                <TableHead className="text-right pr-4 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  DECISION ACTIONS
-                </TableHead>
-              </TableRow>
-            </TableHeader>
+          <div className="overflow-x-auto [scrollbar-width:thin] [scrollbar-color:#E2E8F0_transparent] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-200 [&::-webkit-scrollbar-thumb]:rounded-full">
+            <Table className="w-full min-w-[880px] bg-white border-collapse">
+              <TableHeader className="bg-[#FAFBF9] border-b border-[#E6E8E7]">
+                <TableRow className="border-b border-[#E6E8E7] hover:bg-[#FAFBF9]">
+                  <TableHead className="py-4 pl-6 pr-4 text-left text-[11px] font-bold uppercase tracking-wider text-[#183028]/60 w-[13%] min-w-[110px]">
+                    DOCUMENT ID
+                  </TableHead>
+                  <TableHead className="py-4 px-4 text-left text-[11px] font-bold uppercase tracking-wider text-[#183028]/60 w-[30%] min-w-[240px]">
+                    DOCUMENT DETAILS
+                  </TableHead>
+                  <TableHead className="py-4 px-4 text-left text-[11px] font-bold uppercase tracking-wider text-[#183028]/60 w-[23%] min-w-[200px]">
+                    SUBMITTING ADVISOR
+                  </TableHead>
+                  <TableHead className="py-4 px-4 text-left text-[11px] font-bold uppercase tracking-wider text-[#183028]/60 w-[14%] min-w-[125px]">
+                    SUBMITTED DATE
+                  </TableHead>
+                  <TableHead className="py-4 px-4 text-left text-[11px] font-bold uppercase tracking-wider text-[#183028]/60 w-[10%] min-w-[110px]">
+                    STATUS
+                  </TableHead>
+                  <TableHead className="py-4 pl-4 pr-6 text-right text-[11px] font-bold uppercase tracking-wider text-[#183028]/60 w-[10%] min-w-[190px]">
+                    DECISION ACTIONS
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
 
-            <TableBody className="divide-y divide-border/60">
-              {filteredDocuments.map((doc) => {
-                return (
-                  <TableRow
-                    key={doc.id}
-                    onClick={() => router.push(`/documents/${doc.id}`)}
-                    className="hover:bg-muted/40 transition-colors cursor-pointer group"
-                  >
-                    <TableCell className="pl-4 font-mono text-xs font-semibold text-[#183028]">
-                      DOC-{(doc.id || "0000").slice(-4).toUpperCase()}
-                    </TableCell>
+              <TableBody className="divide-y divide-[#F0F2F0]">
+                {filteredDocuments.map((doc) => {
+                  return (
+                    <TableRow
+                      key={doc.id}
+                      onClick={() => router.push(`/documents/${doc.id}`)}
+                      className="hover:bg-[#FAFBF9]/80 transition-colors cursor-pointer group"
+                    >
+                      <TableCell className="py-5 pl-6 pr-4">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-[#183028]/5 border border-[#183028]/10 font-mono text-xs font-semibold text-[#183028] tracking-wide group-hover:bg-[#C5E86C]/30 transition-colors">
+                          DOC-{(doc.id || "0000").slice(-4).toUpperCase()}
+                        </span>
+                      </TableCell>
 
-                    <TableCell>
-                      <div className="max-w-[220px] sm:max-w-xs truncate">
-                        <p className="font-semibold text-foreground truncate">{doc.title}</p>
-                        <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
-                          {doc.category || "Unclassified Filing"}
-                        </p>
-                      </div>
-                    </TableCell>
-
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div className="h-6 w-6 rounded-full bg-[#183028] text-[#C5E86C] text-[10px] font-bold flex items-center justify-center shrink-0">
-                          {(doc.submittedBy || "Advisor").split(" ").map((n: string) => n[0]).join("")}
-                        </div>
-                        <div>
-                          <p className="text-xs font-medium text-foreground">
-                            {doc.submittedBy || "Institutional Advisor"}
+                      <TableCell className="py-5 px-4">
+                        <div className="space-y-1">
+                          <p className="font-semibold text-sm text-[#183028] leading-snug group-hover:text-[#183028] transition-colors line-clamp-1">
+                            {doc.title}
                           </p>
-                          <p className="text-[10px] text-muted-foreground">
-                            {doc.advisorEmail || "advisor@springer.capital"}
-                          </p>
+                          <div className="flex items-center gap-2 text-xs text-[#183028]/60">
+                            <span className="font-medium text-[#183028]/70">
+                              {doc.category || "Unclassified Filing"}
+                            </span>
+                            {(doc.fileName || (doc as any).file_name) && (
+                              <>
+                                <span className="text-[#183028]/30">•</span>
+                                <span className="text-[11px] font-mono text-[#183028]/50 uppercase font-semibold">
+                                  {String(doc.fileName || (doc as any).file_name).split(".").pop()}
+                                </span>
+                              </>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </TableCell>
+                      </TableCell>
 
-                    <TableCell className="text-muted-foreground text-xs font-mono">
-                      {new Date(doc.submittedAt).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </TableCell>
+                      <TableCell className="py-5 px-4">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8.5 w-8.5 rounded-full bg-[#183028] text-[#C5E86C] text-xs font-bold flex items-center justify-center shrink-0 shadow-2xs ring-2 ring-[#C5E86C]/20">
+                            {(doc.submittedBy || "Advisor").split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-[#183028] truncate">
+                              {doc.submittedBy || "Institutional Advisor"}
+                            </p>
+                            <p className="text-[11px] text-[#183028]/55 truncate mt-0.5 font-sans">
+                              {doc.advisorEmail || "advisor@springer.capital"}
+                            </p>
+                          </div>
+                        </div>
+                      </TableCell>
 
-                    <TableCell>
-                      <StatusBadge status={doc.status} />
-                    </TableCell>
+                      <TableCell className="py-5 px-4 font-mono text-xs text-[#183028]/70 whitespace-nowrap">
+                        {new Date(doc.submittedAt).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </TableCell>
 
-                    <TableCell className="text-right pr-4" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center justify-end gap-1.5">
-                        {doc.status !== "Pending" ? (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => router.push(`/documents/${doc.id}`)}
-                            className="h-7 px-2.5 rounded-md border-border text-xs font-semibold text-muted-foreground bg-muted/20 hover:bg-[#C5E86C]/20 hover:text-[#183028] hover:border-[#183028] transition-colors gap-1.5 cursor-pointer shadow-2xs"
-                          >
-                            <Eye className="h-3.5 w-3.5" />
-                            <span>View Only</span>
-                          </Button>
-                        ) : (
-                          <>
+                      <TableCell className="py-5 px-4 whitespace-nowrap">
+                        <StatusBadge status={doc.status} />
+                      </TableCell>
+
+                      <TableCell className="py-5 pl-4 pr-6 text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-2 whitespace-nowrap">
+                          {doc.status !== "Pending" ? (
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => router.push(`/documents/${doc.id}`)}
-                              className="h-7 px-2.5 rounded border-border text-xs font-medium text-foreground bg-transparent hover:bg-[#C5E86C]/20 hover:text-[#183028] hover:border-[#183028] transition-colors gap-1 shadow-2xs"
+                              className="h-8 px-3 rounded-lg border-[#E6E8E7] text-xs font-semibold text-[#183028]/80 bg-white hover:bg-[#C5E86C]/20 hover:text-[#183028] hover:border-[#183028] transition-colors gap-1.5 cursor-pointer shadow-2xs"
                             >
-                              <Eye className="h-3 w-3" />
-                              <span>Review</span>
+                              <Eye className="h-3.5 w-3.5" />
+                              <span>View Only</span>
                             </Button>
+                          ) : (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => router.push(`/documents/${doc.id}`)}
+                                className="h-8 px-3 rounded-lg border-[#E6E8E7] text-xs font-semibold text-[#183028] bg-white hover:bg-[#C5E86C]/20 hover:text-[#183028] hover:border-[#183028] transition-colors gap-1.5 shadow-2xs cursor-pointer"
+                              >
+                                <Eye className="h-3.5 w-3.5" />
+                                <span>Review</span>
+                              </Button>
 
-                            <button
-                              title="Quick Approve"
-                              onClick={() =>
-                                setDecisionDoc({
-                                  id: doc.id,
-                                  title: doc.title,
-                                  type: "Approved",
-                                })
-                              }
-                              className="inline-flex h-7 items-center gap-1 rounded bg-[#C5E86C]/30 border border-[#183028] px-2.5 text-xs font-semibold text-[#183028] hover:bg-[#C5E86C] transition-colors cursor-pointer shadow-2xs"
-                            >
-                              <CheckCircle2 className="h-3 w-3" />
-                              <span>Approve</span>
-                            </button>
+                              <button
+                                title="Quick Approve"
+                                onClick={() =>
+                                  setDecisionDoc({
+                                    id: doc.id,
+                                    title: doc.title,
+                                    type: "Approved",
+                                  })
+                                }
+                                className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#C5E86C] border border-[#183028]/20 px-3 text-xs font-bold text-[#183028] hover:bg-[#b8de5b] transition-all cursor-pointer shadow-2xs"
+                              >
+                                <CheckCircle2 className="h-3.5 w-3.5 text-[#183028]" />
+                                <span>Approve</span>
+                              </button>
 
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <button className="h-7 w-7 rounded-md bg-transparent hover:bg-[#C5E86C]/20 text-muted-foreground hover:text-[#183028] hover:border-[#183028] flex items-center justify-center transition-colors cursor-pointer border border-border shadow-2xs">
-                                  <MoreHorizontal className="h-3.5 w-3.5" />
-                                </button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-48 bg-[#FFFFFF] shadow-xl rounded-xl border-[#E6E8E7] p-1">
-                                <DropdownMenuItem
-                                  className="text-xs cursor-pointer gap-2 font-medium text-amber-800 hover:bg-amber-50 rounded-md px-2 py-1.5"
-                                  onClick={() =>
-                                    setDecisionDoc({
-                                      id: doc.id,
-                                      title: doc.title,
-                                      type: "Needs Revision",
-                                    })
-                                  }
-                                >
-                                  <AlertCircle className="h-3.5 w-3.5" /> Request Revision
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  className="text-xs cursor-pointer gap-2 font-medium text-rose-800 hover:bg-rose-50 rounded-md px-2 py-1.5"
-                                  onClick={() =>
-                                    setDecisionDoc({
-                                      id: doc.id,
-                                      title: doc.title,
-                                      type: "Rejected",
-                                    })
-                                  }
-                                >
-                                  <XCircle className="h-3.5 w-3.5" /> Reject Proposal
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <button className="h-8 w-8 rounded-lg bg-white hover:bg-[#C5E86C]/20 text-[#183028]/70 hover:text-[#183028] hover:border-[#183028] flex items-center justify-center transition-colors cursor-pointer border border-[#E6E8E7] shadow-2xs">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48 bg-[#FFFFFF] shadow-xl rounded-xl border-[#E6E8E7] p-1.5">
+                                  <DropdownMenuItem
+                                    className="text-xs cursor-pointer gap-2 font-medium text-amber-800 hover:bg-amber-50 rounded-lg px-2.5 py-2"
+                                    onClick={() =>
+                                      setDecisionDoc({
+                                        id: doc.id,
+                                        title: doc.title,
+                                        type: "Needs Revision",
+                                      })
+                                    }
+                                  >
+                                    <AlertCircle className="h-4 w-4" /> Request Revision
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    className="text-xs cursor-pointer gap-2 font-medium text-rose-800 hover:bg-rose-50 rounded-lg px-2.5 py-2"
+                                    onClick={() =>
+                                      setDecisionDoc({
+                                        id: doc.id,
+                                        title: doc.title,
+                                        type: "Rejected",
+                                      })
+                                    }
+                                  >
+                                    <XCircle className="h-4 w-4" /> Reject Proposal
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
         )}
           </div>
         </div>
 
         {/* Right Column: Unified Compliance Calendar (Merged in 1 place) */}
-        <div className="lg:col-span-4 xl:col-span-4 space-y-3.5 sticky top-4">
+        <div className="xl:col-span-4 2xl:col-span-3 space-y-4 sticky top-4 min-w-0">
           <ComplianceCalendar
             documents={documents}
             activePreset={dateFilterPreset}
