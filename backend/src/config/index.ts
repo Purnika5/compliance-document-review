@@ -66,5 +66,12 @@ export const config = {
     ruleTopK: parseInt(process.env.RULE_RETRIEVAL_TOP_K || '5', 10),
     precedentThreshold: parseFloat(process.env.PRECEDENT_SEARCH_THRESHOLD || process.env.PRECEDENT_THRESHOLD || '0.50'),
     precedentTopK: parseInt(process.env.PRECEDENT_SEARCH_TOP_K || process.env.PRECEDENT_TOP_K || '5', 10),
+  },
+
+  xai: {
+    apiKey: process.env.XAI_API_KEY || '',
+    apiUrl: process.env.XAI_API_URL || 'https://api.x.ai/v1/chat/completions',
+    model: process.env.XAI_MODEL || 'grok-beta',
+    timeoutMs: parseInt(process.env.XAI_TIMEOUT_MS || '8000', 10),
   }
 };

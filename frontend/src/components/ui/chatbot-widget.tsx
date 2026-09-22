@@ -1,14 +1,14 @@
 "use client";
 
 /**
- * DOCU: Renders the interactive compliance copilot and pre-login assistant.
- * Supports Pre-Login guidance, Grammar Recheck, and Institutional Documentation Rule optimization.
- * Last Updated Date: September 21, 2026
- * @returns The compliance copilot widget view.
+ * DOCU: Neural Compliance Copilot & Pre-Login Assistant (Grok API Integration).
+ * Provides multi-dimensional document search, real-time analytics aggregation,
+ * interactive telemetry cards, and direct lineage/audit trail action chips.
+ * Last Updated Date: September 23, 2026
  * @author Keith
  */
 import React, { useState, useRef, useEffect, useCallback, useSyncExternalStore } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Send,
   X,
@@ -19,13 +19,22 @@ import {
   FileCheck2,
   Wand2,
   ArrowRight,
+  FileText,
+  ShieldCheck,
+  AlertTriangle,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  RefreshCw,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { IChatMessage } from "@/types/chatbot.types";
+import type { ICopilotSearchResponse, ICopilotRecord } from "@/types/copilot.types";
 import { authStore, type UserSession } from "@/lib/auth/auth-store";
-import { getBaseBackendUrl } from "@/lib/api/client";
+import { copilotApi } from "@/lib/api/copilot";
 import {
   LOGIN_INITIAL_MESSAGES,
   LOGIN_SUGGESTED_QUESTIONS,
@@ -36,13 +45,12 @@ import {
 } from "@/lib/constants/chatbot";
 import {
   recheckGrammar,
-  enhanceForDocumentation,
   type IGrammarResult,
   type IDocumentationResult,
 } from "@/lib/chatbot/documentation-engine";
 
 /** Typing speed in milliseconds per character */
-const TYPING_SPEED_MS = 14;
+const TYPING_SPEED_MS = 12;
 
 interface IResolvedBotReply {
   text: string;
@@ -75,7 +83,7 @@ function getLoginBotResponse(rawText: string): string {
   return LOGIN_KNOWLEDGE_BASE.default;
 }
 
-/** Resolves bot knowledge base reply for authenticated dashboard state */
+/** Resolves fallback bot knowledge base reply for authenticated dashboard state */
 function getDashboardBotKnowledgeResponse(rawText: string): string {
   const lower = rawText.toLowerCase();
 
@@ -100,48 +108,13 @@ function getDashboardBotKnowledgeResponse(rawText: string): string {
   if (["upload", "submit", "proposal", "filing"].some((k) => lower.includes(k))) {
     return PLATFORM_KNOWLEDGE_BASE.upload;
   }
-  if (["review", "approve", "reject", "queue", "decision", "officer"].some((k) => lower.includes(k))) {
-    return PLATFORM_KNOWLEDGE_BASE.review;
-  }
-  if (["category", "classification", "type", "brief", "statement"].some((k) => lower.includes(k))) {
-    return PLATFORM_KNOWLEDGE_BASE.categories;
-  }
-  if (["format", "size", "limit", "pdf", "docx", "xlsx", "txt"].some((k) => lower.includes(k))) {
-    return PLATFORM_KNOWLEDGE_BASE.formats;
-  }
-  if (["role", "permission", "advisor", "access", "guard"].some((k) => lower.includes(k))) {
-    return PLATFORM_KNOWLEDGE_BASE.permissions;
-  }
   return PLATFORM_KNOWLEDGE_BASE.default;
 }
 
-/** Resolves full bot response and attached results based on input and mode */
-function resolveBotReply(
-  rawText: string,
-  isLoginMode: boolean
-): IResolvedBotReply {
+/** Resolves bot reply for grammar commands */
+function resolveBotReply(rawText: string, isLoginMode: boolean): IResolvedBotReply {
   const lower = rawText.toLowerCase();
 
-  // 1. Documentation Enhancement intent
-  const isEnhanceExplicit =
-    lower.startsWith("enhance:") ||
-    lower.startsWith("enhance documentation:") ||
-    lower.startsWith("enhance note:") ||
-    lower.includes("enhance for documentation") ||
-    lower.includes("format as memo");
-
-  if (isEnhanceExplicit) {
-    const cleanDraft = rawText
-      .replace(/^(enhance\s*(documentation|note)?:\s*)/i, "")
-      .trim();
-    const docResult = enhanceForDocumentation(cleanDraft || rawText);
-    return {
-      text: "I have audited and enhanced your draft according to institutional documentation rules (FINRA 2210 & SEC 206).",
-      documentationResult: docResult,
-    };
-  }
-
-  // 2. Grammar Recheck intent
   const isGrammarExplicit =
     lower.startsWith("check grammar:") ||
     lower.startsWith("grammar:") ||
@@ -172,7 +145,6 @@ function resolveBotReply(
     };
   }
 
-  // 3. Fallback to knowledge base
   if (isLoginMode) {
     return { text: getLoginBotResponse(rawText) };
   }
@@ -180,27 +152,68 @@ function resolveBotReply(
   return { text: getDashboardBotKnowledgeResponse(rawText) };
 }
 
-/** Determines active suggested questions without nested ternaries */
-function getSuggestedQuestions(isLoginMode: boolean): string[] {
-  if (isLoginMode) {
-    return LOGIN_SUGGESTED_QUESTIONS;
-  }
-  return DASHBOARD_SUGGESTED_QUESTIONS;
-}
+/** Helper to extract natural language filtering intent */
+function extractSearchFilters(
+  rawText: string,
+  previousContext: { status?: string | string[]; date_range?: string }
+): {
+  query?: string;
+  status?: string | string[];
+  date_range?: string;
+  uploaded_by?: string;
+} {
+  const lower = rawText.toLowerCase();
+  let status: string | string[] | undefined = previousContext.status;
+  let date_range: string | undefined = previousContext.date_range;
+  let uploaded_by: string | undefined;
 
-/** Determines active input placeholder text without nested ternaries */
-function getPlaceholderText(isLoginMode: boolean, isTyping: boolean): string {
-  if (isLoginMode) {
-    return "Ask about guidelines, classifications, formats...";
+  // Status Detection
+  if (lower.includes("approved")) {
+    status = "Approved";
+  } else if (lower.includes("needs revision") || lower.includes("revision")) {
+    status = "Needs Revision";
+  } else if (lower.includes("pending")) {
+    status = "Pending";
+  } else if (lower.includes("rejected")) {
+    status = "Rejected";
   }
-  if (isTyping) {
-    return "Springer Help is processing...";
+
+  // Date Range Detection
+  if (lower.includes("today")) date_range = "today";
+  else if (lower.includes("yesterday")) date_range = "yesterday";
+  else if (lower.includes("past 7 days") || lower.includes("last 7 days") || lower.includes("this week")) date_range = "past 7 days";
+  else if (lower.includes("this month")) date_range = "this month";
+  else if (lower.includes("last month") || lower.includes("past month")) date_range = "last month";
+  else if (lower.includes("past 30 days") || lower.includes("last 30 days")) date_range = "past 30 days";
+  else if (lower.includes("past 90 days") || lower.includes("last 90 days")) date_range = "past 90 days";
+  else if (lower.includes("2026")) date_range = "2026";
+  else if (lower.includes("2025")) date_range = "2025";
+
+  // Uploader Scope
+  if (lower.includes("my files") || lower.includes("my uploads") || lower.includes("my submissions") || lower.includes("mine")) {
+    uploaded_by = "my uploads";
   }
-  return "Ask about workflows, guidelines, or classifications...";
+
+  // Clean Query String
+  let cleaned = rawText
+    .replace(/\b(?:show|find|search|list|get|filter|display)\b/gi, "")
+    .replace(/\b(?:my files|my uploads|my submissions)\b/gi, "")
+    .replace(/\b(?:today|yesterday|this month|last month|past 7 days|past 30 days|past 90 days|2026|2025)\b/gi, "")
+    .replace(/\b(?:approved|pending|needs revision|rejected)\b/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
+  return {
+    query: cleaned.length > 2 ? cleaned : undefined,
+    status,
+    date_range,
+    uploaded_by,
+  };
 }
 
 export function ChatbotWidget() {
   const pathname = usePathname();
+  const router = useRouter();
 
   // Reactive subscription to authStore
   const session = useSyncExternalStore<UserSession | null>(
@@ -213,21 +226,24 @@ export function ChatbotWidget() {
   const isAuthPage = Boolean(pathname && (pathname.startsWith("/login") || pathname.startsWith("/signup")));
   const isLoginMode = !isAuthenticated || isAuthPage;
 
-  // Chatbot is closed by default on initial open and page navigation
   const [isOpen, setIsOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  // Automatically close chatbot on route redirection or page navigation
+  // Conversational filter state memory
+  const [activeFilterContext, setActiveFilterContext] = useState<{
+    status?: string | string[];
+    date_range?: string;
+  }>({});
+
+  // Close chatbot on route redirection or page navigation
   useEffect(() => {
     setIsOpen(false);
   }, [pathname]);
 
-  // Messages state
   const [messages, setMessages] = useState<IChatMessage[]>(
     isLoginMode ? LOGIN_INITIAL_MESSAGES : DASHBOARD_INITIAL_MESSAGES
   );
 
-  // Adjust state during render if transition between login and dashboard occurs
   const [prevIsLoginMode, setPrevIsLoginMode] = useState(isLoginMode);
   if (prevIsLoginMode !== isLoginMode) {
     setPrevIsLoginMode(isLoginMode);
@@ -238,7 +254,7 @@ export function ChatbotWidget() {
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const messageIdRef = useRef(0);
+  const messageIdRef = useRef(100);
   const typingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const scrollToBottom = () => {
@@ -259,7 +275,6 @@ export function ChatbotWidget() {
     };
   }, []);
 
-  /** Copies text to clipboard with animated feedback */
   const handleCopy = (id: string, text: string) => {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
@@ -268,7 +283,7 @@ export function ChatbotWidget() {
     }, 2000);
   };
 
-  /** Simulates character-by-character bot typing animation */
+  /** Simulates character-by-character typing animation */
   const simulateTyping = useCallback(
     (
       botMsgId: string,
@@ -277,6 +292,7 @@ export function ChatbotWidget() {
       extras?: {
         grammarResult?: IGrammarResult;
         documentationResult?: IDocumentationResult;
+        copilotData?: ICopilotSearchResponse;
       }
     ) => {
       setIsTyping(true);
@@ -292,11 +308,12 @@ export function ChatbotWidget() {
           isTyping: true,
           grammarResult: extras?.grammarResult,
           documentationResult: extras?.documentationResult,
+          copilotData: extras?.copilotData,
         },
       ]);
 
       typingIntervalRef.current = setInterval(() => {
-        charIndex += 2; // smooth slightly faster pacing
+        charIndex += 3;
         const currentText = fullText.slice(0, charIndex);
 
         setMessages((prev) =>
@@ -319,7 +336,7 @@ export function ChatbotWidget() {
     []
   );
 
-  const handleSend = (overrideText?: string) => {
+  const handleSend = async (overrideText?: string) => {
     const rawText = overrideText || inputValue.trim();
     if (!rawText || isTyping) return;
 
@@ -336,7 +353,7 @@ export function ChatbotWidget() {
     const botMsgId = `bot-${++messageIdRef.current}`;
     const lower = rawText.toLowerCase();
 
-    // Grammar / enhance: always run locally (instant, no network)
+    // 1. Instant local grammar check
     const isGrammar =
       lower.startsWith("check grammar:") ||
       lower.startsWith("grammar:") ||
@@ -348,74 +365,72 @@ export function ChatbotWidget() {
       lower.includes("proofread") ||
       lower.includes("audit draft note");
 
-    const isEnhance =
-      lower.startsWith("enhance:") ||
-      lower.startsWith("enhance documentation:") ||
-      lower.startsWith("enhance note:") ||
-      lower.includes("enhance for documentation") ||
-      lower.includes("format as memo");
-
-    if (isGrammar || isEnhance) {
+    if (isGrammar) {
       setTimeout(() => {
         const reply = resolveBotReply(rawText, isLoginMode);
         simulateTyping(botMsgId, reply.text, timestamp, {
           grammarResult: reply.grammarResult,
           documentationResult: reply.documentationResult,
         });
-      }, 200);
+      }, 150);
       return;
     }
 
-    // All other messages: call real Gemini AI via backend proxy
+    // 2. Pre-login FAQ mode
+    if (isLoginMode) {
+      setTimeout(() => {
+        const reply = resolveBotReply(rawText, isLoginMode);
+        simulateTyping(botMsgId, reply.text, timestamp);
+      }, 150);
+      return;
+    }
+
+    // 3. Neural Compliance Copilot (Grok Search Engine)
     setIsTyping(true);
     setMessages((prev) => [
       ...prev,
       { id: botMsgId, sender: "bot", text: "", timestamp, isTyping: true },
     ]);
 
-    const userRole = session?.role || "Advisor";
-    const apiUrl = `${getBaseBackendUrl()}/api/chat`;
+    // Extract filters with conversational memory
+    const parsed = extractSearchFilters(rawText, activeFilterContext);
+    setActiveFilterContext({ status: parsed.status, date_range: parsed.date_range });
 
-    fetch(apiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: rawText, role: userRole }),
-      signal: AbortSignal.timeout(14000),
-    })
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`status ${res.status}`);
-        const data = await res.json() as { reply: string };
-        return data.reply;
-      })
-      .catch(() => {
-        // Fallback to local knowledge base if API is down
-        return resolveBotReply(rawText, isLoginMode).text;
-      })
-      .then((replyText) => {
-        let charIndex = 0;
-        typingIntervalRef.current = setInterval(() => {
-          charIndex += 2;
-          const currentText = replyText.slice(0, charIndex);
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === botMsgId
-                ? { ...msg, text: currentText, isTyping: charIndex < replyText.length }
-                : msg
-            )
-          );
-          if (charIndex >= replyText.length) {
-            if (typingIntervalRef.current) {
-              clearInterval(typingIntervalRef.current);
-              typingIntervalRef.current = null;
-            }
-            setIsTyping(false);
-          }
-        }, TYPING_SPEED_MS);
+    // Build conversation history payload
+    const recentHistory = messages
+      .slice(-4)
+      .map((m) => ({ role: m.sender === "user" ? ("user" as const) : ("assistant" as const), content: m.text }));
+
+    try {
+      const response = await copilotApi.search({
+        query: parsed.query,
+        status: parsed.status,
+        date_range: parsed.date_range,
+        uploaded_by: parsed.uploaded_by,
+        include_all_versions: lower.includes("lineage") || lower.includes("all version") || lower.includes("versions"),
+        conversation_history: recentHistory,
       });
+
+      const replyText = response.conversational_response.text;
+      simulateTyping(botMsgId, replyText, timestamp, { copilotData: response });
+    } catch {
+      // Fallback gracefully
+      const fallbackReply = resolveBotReply(rawText, isLoginMode);
+      simulateTyping(botMsgId, fallbackReply.text, timestamp);
+    }
   };
 
-  const currentSuggestedQuestions = getSuggestedQuestions(isLoginMode);
-  const currentPlaceholder = getPlaceholderText(isLoginMode, isTyping);
+  const handleResetConversation = () => {
+    setActiveFilterContext({});
+    setMessages(isLoginMode ? LOGIN_INITIAL_MESSAGES : DASHBOARD_INITIAL_MESSAGES);
+  };
+
+  const currentSuggestedQuestions = isLoginMode ? LOGIN_SUGGESTED_QUESTIONS : DASHBOARD_SUGGESTED_QUESTIONS;
+  const currentPlaceholder = isLoginMode
+    ? "Ask about guidelines, classifications, formats..."
+    : isTyping
+    ? "Neural Copilot is analyzing..."
+    : "Ask anything, search files, or verify compliance...";
 
   // Do not render the chatbot on login or sign up pages
   if (isAuthPage) {
@@ -428,32 +443,38 @@ export function ChatbotWidget() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="flex items-center gap-2 bg-[#C5E86C] hover:bg-[#b4db53] text-[#183028] border border-[#b4db53] px-4 py-2.5 rounded-full shadow-lg shadow-[#183028]/15 text-xs font-bold transition-all hover:scale-105 active:scale-95 cursor-pointer group"
-          aria-label="Open Compliance Help Assistant"
+          className="flex items-center gap-2.5 bg-[#183028] hover:bg-[#203d33] text-[#C5E86C] border border-[#C5E86C]/40 px-4 py-3 rounded-full shadow-xl shadow-[#183028]/25 text-xs font-bold transition-all hover:scale-105 active:scale-95 cursor-pointer group backdrop-blur-md"
+          aria-label="Open Neural Compliance Copilot"
         >
-          <div className="h-2 w-2 rounded-full bg-[#183028] animate-pulse" />
-          <Bot className="h-4 w-4 text-[#183028]" />
-          <span>{isLoginMode ? "Compliance Help" : "Compliance Copilot"}</span>
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C5E86C] opacity-75" />
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#C5E86C]" />
+          </span>
+          <Bot className="h-4 w-4 text-[#C5E86C]" />
+          <span className="tracking-wide">Neural Copilot</span>
         </button>
       )}
 
       {/* Main Chatbot Window */}
       {isOpen && (
-        <div className="w-[360px] sm:w-[440px] h-[580px] rounded-2xl flex flex-col overflow-hidden text-xs bg-white border border-[#E6E8E7] shadow-2xl transition-all animate-in fade-in zoom-in-95 duration-200">
+        <div className="w-[380px] sm:w-[480px] h-[640px] rounded-3xl flex flex-col overflow-hidden text-xs bg-white border border-[#E6E8E7] shadow-2xl transition-all animate-in fade-in zoom-in-95 duration-200">
           <ChatHeader
             isLoginMode={isLoginMode}
             role={session?.role}
             onClose={() => setIsOpen(false)}
+            onReset={handleResetConversation}
           />
 
           {/* Chat Messages Log */}
-          <div className="flex-1 p-3.5 overflow-y-auto space-y-3 bg-white">
+          <div className="flex-1 p-4 overflow-y-auto space-y-3.5 bg-gradient-to-b from-[#FAFBF9] to-white [scrollbar-width:thin] [scrollbar-color:#E2E8F0_transparent]">
             {messages.map((message) => (
               <ChatMessageItem
                 key={message.id}
                 message={message}
                 copiedId={copiedId}
                 onCopy={handleCopy}
+                onSendFollowUp={handleSend}
+                onNavigate={(url) => router.push(url)}
                 onElevateToDocumentation={(txt) => handleSend(`Enhance documentation: ${txt}`)}
               />
             ))}
@@ -461,13 +482,13 @@ export function ChatbotWidget() {
           </div>
 
           {/* Quick Questions Pills */}
-          <div className="px-3 py-2 bg-[#FAFBFB]/80 border-t border-[#E6E8E7] flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] shrink-0">
+          <div className="px-3.5 py-2.5 bg-white border-t border-[#E6E8E7] flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] shrink-0">
             {currentSuggestedQuestions.map((q) => (
               <button
                 key={q}
                 onClick={() => handleSend(q)}
                 disabled={isTyping}
-                className="whitespace-nowrap text-[10px] font-semibold text-[#183028] hover:bg-[#C5E86C]/25 bg-white border border-[#E6E8E7] px-2.5 py-1 rounded-xl transition-colors cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
+                className="whitespace-nowrap text-[10.5px] font-semibold text-[#183028] hover:bg-[#C5E86C]/30 bg-[#FAFBF9] border border-[#E6E8E7] px-3 py-1 rounded-xl transition-all cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs hover:scale-[1.02]"
               >
                 {q}
               </button>
@@ -475,7 +496,7 @@ export function ChatbotWidget() {
           </div>
 
           {/* Message Input Box */}
-          <div className="p-3 bg-white border-t border-[#E6E8E7] flex items-center space-x-2 shrink-0">
+          <div className="p-3.5 bg-white border-t border-[#E6E8E7] flex items-center space-x-2 shrink-0">
             <Input
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
@@ -487,15 +508,15 @@ export function ChatbotWidget() {
               }}
               disabled={isTyping}
               placeholder={currentPlaceholder}
-              className="bg-[#FAFBFB] border-[#E6E8E7] text-[#183028] placeholder:text-[#183028]/40 h-8 text-xs rounded-xl focus-visible:ring-1 focus-visible:ring-[#183028] disabled:opacity-60"
+              className="bg-[#FAFBF9] border-[#E6E8E7] text-[#183028] placeholder:text-[#183028]/45 h-9 text-xs rounded-xl focus-visible:ring-1 focus-visible:ring-[#183028] disabled:opacity-60"
             />
             <Button
               size="icon"
               disabled={!inputValue.trim() || isTyping}
               onClick={() => handleSend()}
-              className="h-8 w-8 bg-[#183028] hover:bg-[#23453a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] text-white rounded-xl disabled:opacity-40 shrink-0 cursor-pointer shadow-2xs transition-all"
+              className="h-9 w-9 bg-[#183028] hover:bg-[#23453a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] text-white rounded-xl disabled:opacity-40 shrink-0 cursor-pointer shadow-2xs transition-all"
             >
-              <Send className="h-3.5 w-3.5" />
+              <Send className="h-4 w-4" />
             </Button>
           </div>
         </div>
@@ -509,41 +530,55 @@ interface IChatHeaderProps {
   isLoginMode: boolean;
   role?: string;
   onClose: () => void;
+  onReset: () => void;
 }
 
-function ChatHeader({ isLoginMode, role, onClose }: IChatHeaderProps) {
+function ChatHeader({ isLoginMode, role, onClose, onReset }: IChatHeaderProps) {
   return (
-    <div className="bg-[#FAFBFB] text-[#183028] px-4 py-3 flex items-center justify-between border-b border-[#E6E8E7] shrink-0">
-      <div className="flex items-center space-x-2.5">
-        <div className="h-8 w-8 rounded-xl bg-[#C5E86C]/35 border border-[#C5E86C] flex items-center justify-center text-[#183028] shadow-2xs">
-          <Bot className="h-4 w-4" />
+    <div className="bg-[#183028] text-white px-4 py-3.5 flex items-center justify-between border-b border-[#C5E86C]/20 shrink-0 shadow-sm">
+      <div className="flex items-center space-x-3">
+        <div className="h-9 w-9 rounded-xl bg-[#C5E86C]/20 border border-[#C5E86C]/40 flex items-center justify-center text-[#C5E86C] shadow-2xs">
+          <Bot className="h-4.5 w-4.5" />
         </div>
         <div>
-          <div className="flex items-center gap-1.5">
-            <h3 className="font-bold text-[#183028] tracking-tight">
-              {isLoginMode ? "Compliance Help" : "Compliance Copilot"}
+          <div className="flex items-center gap-2">
+            <h3 className="font-bold text-white text-sm tracking-tight">
+              {isLoginMode ? "Springer Help" : "Neural Compliance Copilot"}
             </h3>
             {!isLoginMode && (
-              <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider bg-[#C5E86C]/50 text-[#183028]">
+              <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider bg-[#C5E86C] text-[#183028]">
                 {role || "Staff"}
               </span>
             )}
           </div>
-          <p className="text-[10px] text-[#183028]/60">
-            {isLoginMode
-              ? "Institutional workflow guide"
-              : "Grammar recheck & documentation rules optimizer"}
-          </p>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C5E86C] opacity-75" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#C5E86C]" />
+            </span>
+            <p className="text-[10px] text-[#C5E86C]/90 font-mono font-medium">
+              {isLoginMode ? "Institutional Guide" : "Grok Neural Engine: Active"}
+            </p>
+          </div>
         </div>
       </div>
 
-      <button
-        onClick={onClose}
-        className="p-1.5 rounded-lg text-[#183028]/60 hover:text-[#183028] hover:bg-[#C5E86C]/20 transition-colors cursor-pointer"
-        aria-label="Close help window"
-      >
-        <X className="h-4 w-4" />
-      </button>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={onReset}
+          className="p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+          title="Reset Conversation"
+        >
+          <RefreshCw className="h-3.5 w-3.5" />
+        </button>
+        <button
+          onClick={onClose}
+          className="p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+          aria-label="Close help window"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
     </div>
   );
 }
@@ -553,6 +588,8 @@ interface IChatMessageItemProps {
   message: IChatMessage;
   copiedId: string | null;
   onCopy: (id: string, text: string) => void;
+  onSendFollowUp: (text: string) => void;
+  onNavigate: (url: string) => void;
   onElevateToDocumentation?: (text: string) => void;
 }
 
@@ -560,6 +597,8 @@ function ChatMessageItem({
   message,
   copiedId,
   onCopy,
+  onSendFollowUp,
+  onNavigate,
   onElevateToDocumentation,
 }: IChatMessageItemProps) {
   const isUser = message.sender === "user";
@@ -568,23 +607,23 @@ function ChatMessageItem({
   return (
     <div
       className={cn(
-        "flex flex-col max-w-[90%] space-y-1",
+        "flex flex-col max-w-[94%] space-y-1.5",
         isUser ? "ml-auto items-end" : "mr-auto items-start"
       )}
     >
       <div className="flex items-center space-x-1.5 px-0.5">
         <span className={cn("text-[10px]", isUser ? "text-[#183028]/60" : "text-[#183028] font-bold")}>
-          {isUser ? "You" : "Springer Help"}
+          {isUser ? "You" : "Springer Neural Copilot"}
         </span>
         <span className="text-[9px] text-[#183028]/40">{message.timestamp}</span>
       </div>
 
       <div
         className={cn(
-          "p-3 rounded-2xl text-xs leading-relaxed break-words whitespace-pre-wrap min-h-[30px]",
+          "p-3.5 rounded-2xl text-xs leading-relaxed break-words whitespace-pre-wrap min-h-[32px] transition-all",
           isUser
             ? "bg-[#183028] text-white font-medium rounded-br-xs shadow-2xs"
-            : "bg-[#FAFBFB] text-[#183028] border border-[#E6E8E7] rounded-bl-xs shadow-2xs"
+            : "bg-white text-[#183028] border border-[#E6E8E7] rounded-bl-xs shadow-xs"
         )}
       >
         {!isUser && message.text === "" ? (
@@ -598,6 +637,16 @@ function ChatMessageItem({
           </>
         )}
 
+        {/* Live Copilot Telemetry Card */}
+        {!isUser && message.copilotData && !isCurrentlyTyping && (
+          <CopilotTelemetryCard
+            data={message.copilotData}
+            onNavigate={onNavigate}
+            onSendFollowUp={onSendFollowUp}
+          />
+        )}
+
+        {/* Grammar Card */}
         {!isUser && message.grammarResult && !isCurrentlyTyping && (
           <GrammarResultCard
             result={message.grammarResult}
@@ -607,6 +656,7 @@ function ChatMessageItem({
           />
         )}
 
+        {/* Documentation Card */}
         {!isUser && message.documentationResult && !isCurrentlyTyping && (
           <DocumentationResultCard
             result={message.documentationResult}
@@ -615,6 +665,180 @@ function ChatMessageItem({
           />
         )}
       </div>
+    </div>
+  );
+}
+
+/** Interactive Live Data & Telemetry Card inside Chat */
+interface ICopilotTelemetryCardProps {
+  data: ICopilotSearchResponse;
+  onNavigate: (url: string) => void;
+  onSendFollowUp: (text: string) => void;
+}
+
+function CopilotTelemetryCard({ data, onNavigate, onSendFollowUp }: ICopilotTelemetryCardProps) {
+  const { analytics, records, conversational_response } = data;
+  const [expandedDocId, setExpandedDocId] = useState<string | null>(null);
+
+  const toggleExpand = (id: string) => {
+    setExpandedDocId((prev) => (prev === id ? null : id));
+  };
+
+  return (
+    <div className="mt-3.5 pt-3 border-t border-[#E6E8E7] space-y-3">
+      {/* 1. High-Density Telemetry Chips */}
+      <div className="flex flex-wrap items-center gap-1.5 bg-[#FAFBF9] p-2 rounded-xl border border-[#E6E8E7]">
+        <span className="text-[10px] font-bold text-[#183028]/60 uppercase px-1.5">Metrics:</span>
+        <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-[#183028] text-white">
+          Total: {analytics.total_records}
+        </span>
+        <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300">
+          ✓ {analytics.by_status.Approved} Approved
+        </span>
+        <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-amber-100 text-amber-800 border border-amber-300">
+          ⚠ {analytics.by_status["Needs Revision"]} Needs Rev
+        </span>
+        <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-sky-100 text-sky-800 border border-sky-300">
+          ⏳ {analytics.by_status.Pending} Pending
+        </span>
+        {analytics.by_status.Rejected > 0 && (
+          <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-rose-100 text-rose-800 border border-rose-300">
+            ✕ {analytics.by_status.Rejected} Rejected
+          </span>
+        )}
+      </div>
+
+      {/* 2. Document Result Cards */}
+      {records.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-[10.5px] font-bold text-[#183028]/70 px-0.5">
+            <span>Live Document Filings ({records.length})</span>
+            {analytics.latest_versions_only && (
+              <span className="text-[9.5px] font-mono text-[#183028]/50">Showing Latest Versions</span>
+            )}
+          </div>
+
+          {records.slice(0, 4).map((rec: ICopilotRecord) => {
+            const isExpanded = expandedDocId === rec.id;
+            return (
+              <div
+                key={rec.id}
+                className="bg-white rounded-xl border border-[#E6E8E7] p-3 space-y-2.5 shadow-2xs hover:border-[#183028]/30 transition-all"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="space-y-0.5 min-w-0">
+                    <p className="font-bold text-xs text-[#183028] leading-tight truncate">
+                      {rec.title}
+                    </p>
+                    <p className="text-[10px] text-[#183028]/60">
+                      Advisor: <span className="font-semibold text-[#183028]">{rec.advisor_name}</span> • {new Date(rec.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span
+                      className={cn(
+                        "px-2 py-0.5 text-[9.5px] font-bold rounded-full border",
+                        rec.status === "Approved"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : rec.status === "Needs Revision"
+                          ? "bg-amber-50 text-amber-700 border-amber-200"
+                          : rec.status === "Pending"
+                          ? "bg-sky-50 text-sky-700 border-sky-200"
+                          : "bg-rose-50 text-rose-700 border-rose-200"
+                      )}
+                    >
+                      {rec.status}
+                    </span>
+                    <span className="px-1.5 py-0.5 text-[9.5px] font-mono font-bold bg-[#FAFBF9] border border-[#E6E8E7] text-[#183028] rounded">
+                      v{rec.version}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Compliance Flag Alert */}
+                {rec.flags_count > 0 && (
+                  <div className="bg-amber-50/70 rounded-lg p-2 border border-amber-200 text-[#183028] space-y-1">
+                    <button
+                      onClick={() => toggleExpand(rec.id)}
+                      className="w-full flex items-center justify-between text-[10px] font-bold text-amber-900 cursor-pointer"
+                    >
+                      <span className="flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3 text-amber-700" />
+                        {rec.flags_count} Compliance Flag{rec.flags_count === 1 ? "" : "s"} Detected
+                      </span>
+                      {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                    </button>
+
+                    {isExpanded && (
+                      <div className="pt-1 space-y-1.5 text-[10px]">
+                        {rec.flags.map((f, i) => (
+                          <div key={i} className="bg-white p-2 rounded border border-amber-200 space-y-0.5">
+                            <span className="font-bold text-[#183028] block">{f.rule}</span>
+                            <p className="italic text-rose-700 bg-rose-50 p-1 rounded font-serif">
+                              &ldquo;{f.passage}&rdquo;
+                            </p>
+                            <p className="text-[9.5px] text-[#183028]/70">{f.explanation}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Quick-Action Chips */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                  <button
+                    onClick={() => onNavigate(`/documents/${rec.id}`)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold text-[#183028] bg-[#FAFBF9] hover:bg-[#C5E86C]/30 border border-[#E6E8E7] rounded-lg transition-colors cursor-pointer shadow-2xs"
+                  >
+                    <FileText className="h-3 w-3" />
+                    <span>Open Document</span>
+                  </button>
+
+                  {rec.total_versions > 1 && (
+                    <button
+                      onClick={() => onNavigate(`/documents/${rec.latest_doc_id}`)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold text-[#183028] bg-[#FAFBF9] hover:bg-[#C5E86C]/30 border border-[#E6E8E7] rounded-lg transition-colors cursor-pointer shadow-2xs"
+                    >
+                      <Zap className="h-3 w-3 text-[#183028]" />
+                      <span>Lineage (v1-v{rec.total_versions})</span>
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => onNavigate(`/documents/${rec.id}/audit-trail`)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold text-[#183028] bg-[#FAFBF9] hover:bg-[#C5E86C]/30 border border-[#E6E8E7] rounded-lg transition-colors cursor-pointer shadow-2xs"
+                  >
+                    <ShieldCheck className="h-3 w-3 text-emerald-700" />
+                    <span>Audit Trail</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* 3. Follow-Up Suggestion Bubbles */}
+      {conversational_response.suggested_followups && conversational_response.suggested_followups.length > 0 && (
+        <div className="space-y-1.5 pt-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-[#183028]/60 block px-0.5">
+            Suggested Next Queries:
+          </span>
+          <div className="flex flex-wrap gap-1.5">
+            {conversational_response.suggested_followups.map((followUp) => (
+              <button
+                key={followUp}
+                onClick={() => onSendFollowUp(followUp)}
+                className="px-2.5 py-1 text-[10.5px] font-bold text-[#183028] bg-[#C5E86C]/25 hover:bg-[#C5E86C] border border-[#183028]/20 rounded-xl transition-all cursor-pointer shadow-2xs hover:scale-[1.02]"
+              >
+                ⚡ {followUp}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -764,7 +988,7 @@ function DocumentationResultCard({ result, isCopied, onCopy }: IDocCardProps) {
   );
 }
 
-/** Animated three-dot typing indicator shown before first character appears */
+/** Animated three-dot typing indicator */
 function TypingDots() {
   return (
     <span className="flex items-center gap-1 py-0.5">
