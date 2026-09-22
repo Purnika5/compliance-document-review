@@ -66,6 +66,8 @@ export function DecisionDialog({
    * @author Keith
    */
   const handleConfirm = async () => {
+    if (isSubmitting) return;
+
     // Revisions and rejections require mandatory officer remarks for audit compliance
     if ((isRevision || isRejection) && !comment.trim()) {
       setValidationError(

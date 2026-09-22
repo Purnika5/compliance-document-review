@@ -34,7 +34,12 @@ export class AuditService {
         );
         const auditData = auditRes?.data;
         if (Array.isArray(auditData) && auditData.length > 0) {
-          return auditData.map((item: any) => {
+          return auditData
+            .filter((item: any) => {
+              const action = String(item?.what?.action || item?.action || "");
+              return action !== "REVISION_COMMENT_ADDED";
+            })
+            .map((item: any) => {
             const who = item.who || {};
             const what = item.what || {};
             const details = what.details || {};

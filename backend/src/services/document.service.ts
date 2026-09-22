@@ -214,7 +214,7 @@ export class DocumentService {
       }
     }
 
-    // Record Audit Trail entries
+    // Record Audit Trail entry
     try {
       const actorId = officerId || advisorId;
       await AuditService.createAuditRecord({
@@ -225,15 +225,6 @@ export class DocumentService {
         newStatus,
         reason: comment || null
       });
-
-      if (comment && comment.trim()) {
-        await AuditService.createAuditRecord({
-          documentId,
-          userId: actorId,
-          action: 'REVISION_COMMENT_ADDED',
-          reason: comment.trim()
-        });
-      }
     } catch (err) {
       console.error('[DocumentService] Failed to record audit log for status update:', err);
     }
@@ -426,15 +417,6 @@ export class DocumentService {
           input.file.mimetype ? input.file.mimetype.substring(0, 50) : null
         ]
       );
-
-      if (input.notes && input.notes.trim()) {
-        await client.query(
-          `INSERT INTO audit_trail (
-            document_id, user_id, action, previous_status, new_status, reason, file_size, file_type
-          ) VALUES ($1, $2, 'REVISION_COMMENT_ADDED', NULL, NULL, $3, NULL, NULL)`,
-          [newDoc.id, user.id, input.notes.trim()]
-        );
-      }
 
       // Mark past revision notifications for this document lineage as read for this advisor
       await client.query(
