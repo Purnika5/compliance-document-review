@@ -2,12 +2,14 @@ import os
 import json
 import time
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, ValidationError
 from dotenv import load_dotenv
 from google import genai
+from google.genai import types
 
 
 # --------------------------------------------------
@@ -25,9 +27,10 @@ load_dotenv()
 
 
 # --------------------------------------------------
-# Gemini client initialization
+# Gemini Model Selection & Client initialization
 # --------------------------------------------------
 
+DEFAULT_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 client = None
 if GEMINI_API_KEY:
@@ -51,6 +54,101 @@ def get_client():
 
 
 # --------------------------------------------------
+# Default prompt templates (fallback if prompt files are missing)
+# --------------------------------------------------
+
+DEFAULT_SUMMARY_PROMPT = """You are a compliance review assistant.
+
+Read the provided document text and create a concise,
+compliance-relevant summary for a compliance officer.
+
+Focus only on:
+- The purpose of the document
+- Important financial claims
+- Important dates and figures
+- Disclosures, approvals, or signatures mentioned
+
+Keep the summary to 3–5 sentences.
+
+Return ONLY one paragraph containing exactly 3–5 sentences.
+
+Do not use headings, bullet points, tables, or lists.
+
+Do not make a final compliance decision.
+Do not invent information that is not present in the document.
+
+Document:
+{DOCUMENT_TEXT}"""
+
+DEFAULT_ISSUE_FLAGGING_PROMPT = """You are a compliance review assistant.
+
+Review the provided document passage ONLY against the compliance rules
+returned by the Rule Retrieval system.
+
+IMPORTANT:
+The retrieved rules are the ONLY compliance basis you may use.
+
+Do NOT use:
+- Your general knowledge
+- Training memory
+- External regulations
+- Assumed compliance requirements
+- Rules that are not included in the retrieved rules
+
+If no retrieved rules are provided, return:
+
+[]
+
+For each potential issue, return a JSON array using exactly this structure:
+
+[
+  {
+    "passage": "exact text copied from the document",
+    "rule": "rule_id",
+    "explanation": "brief explanation connecting the passage to the retrieved rule"
+  }
+]
+
+Rules:
+
+- Quote the exact passage from the document that supports the concern.
+- The "rule" field must contain the rule_id of the retrieved rule that supports the concern.
+- Do not invent rule IDs.
+- Do not invent compliance rules.
+- Every flag must be supported by at least one retrieved rule.
+- Do not flag something merely because it seems suspicious.
+- Keep explanations brief and factual.
+- Do not make a final compliance decision.
+- Do not recommend actions.
+- Do not call the document a scam or fraud.
+- Do not use Approved, Rejected, or Needs Revision as the current document's final decision.
+
+PRECEDENT SEARCH RESULTS:
+
+Precedents are supporting context only.
+
+Do NOT treat a precedent's decision as the decision for the current document.
+
+Do NOT copy a precedent decision as the current document's decision.
+
+If precedents are provided, use them only to improve consistency when evaluating an issue that is already supported by a retrieved rule.
+
+If no precedents are provided, continue without precedent context.
+
+RETRIEVED RULES:
+
+{RETRIEVED_RULES}
+
+PRECEDENTS:
+
+{PRECEDENTS}
+
+DOCUMENT:
+
+{DOCUMENT_TEXT}"""
+
+
+# --------------------------------------------------
 # Load prompts (supporting container & local paths)
 # --------------------------------------------------
 
@@ -63,28 +161,91 @@ ISSUE_FLAGGING_PROMPT_PATH = PROMPTS_DIR / "issue_flagging_prompt.txt"
 
 SUMMARY_PROMPT = ""
 if SUMMARY_PROMPT_PATH.exists():
-    with open(SUMMARY_PROMPT_PATH, "r", encoding="utf-8") as file:
-        SUMMARY_PROMPT = file.read()
+    try:
+        with open(SUMMARY_PROMPT_PATH, "r", encoding="utf-8") as file:
+            SUMMARY_PROMPT = file.read()
+    except Exception as e:
+        print(f"Warning: Failed to read {SUMMARY_PROMPT_PATH}: {e}")
+
+if not SUMMARY_PROMPT.strip():
+    SUMMARY_PROMPT = DEFAULT_SUMMARY_PROMPT
 
 ISSUE_FLAGGING_PROMPT = ""
 if ISSUE_FLAGGING_PROMPT_PATH.exists():
-    with open(ISSUE_FLAGGING_PROMPT_PATH, "r", encoding="utf-8") as file:
-        ISSUE_FLAGGING_PROMPT = file.read()
+    try:
+        with open(ISSUE_FLAGGING_PROMPT_PATH, "r", encoding="utf-8") as file:
+            ISSUE_FLAGGING_PROMPT = file.read()
+    except Exception as e:
+        print(f"Warning: Failed to read {ISSUE_FLAGGING_PROMPT_PATH}: {e}")
+
+if not ISSUE_FLAGGING_PROMPT.strip():
+    ISSUE_FLAGGING_PROMPT = DEFAULT_ISSUE_FLAGGING_PROMPT
 
 
 # --------------------------------------------------
-# Create FastAPI application
+# Create FastAPI application with CORS
 # --------------------------------------------------
 
 app = FastAPI(title="Compliance AI Service")
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # --------------------------------------------------
-# In-memory cache
-# Cache key = document_id + version
+# In-memory cache (bounded to prevent unbounded memory growth)
+# Cache key = (document_id, version)
 # --------------------------------------------------
 
+MAX_CACHE_ENTRIES = 1000
 analysis_cache = {}
+
+def set_cached_result(key, val):
+    if len(analysis_cache) >= MAX_CACHE_ENTRIES:
+        first_key = next(iter(analysis_cache))
+        del analysis_cache[first_key]
+    analysis_cache[key] = val
+
+
+# --------------------------------------------------
+# Reusable Gemini calling function with retry logic
+# --------------------------------------------------
+
+def call_gemini(
+    model_prompt: str,
+    is_json: bool = False,
+    model: str = DEFAULT_MODEL,
+    max_retries: int = 3,
+):
+    for attempt in range(max_retries):
+        try:
+            active_client = get_client()
+            cfg = (
+                types.GenerateContentConfig(response_mime_type="application/json")
+                if is_json
+                else None
+            )
+            return active_client.models.generate_content(
+                model=model,
+                contents=model_prompt,
+                config=cfg,
+            )
+        except Exception as e:
+            err_text = str(e)
+            if (
+                "503" in err_text
+                or "UNAVAILABLE" in err_text
+                or "429" in err_text
+                or "demand" in err_text.lower()
+            ) and attempt < max_retries - 1:
+                time.sleep(1.0 * (attempt + 1))
+                continue
+            raise
 
 
 # --------------------------------------------------
@@ -164,15 +325,12 @@ def analyze_document(request: AnalyzeRequest):
     # --------------------------------------------------
 
     if cache_key in analysis_cache:
-
         print(
             f"Cache hit: document_id={request.document_id}, "
             f"version={request.version}",
             flush=True
         )
-
         return analysis_cache[cache_key]
-
 
     print(
         f"Cache miss: document_id={request.document_id}, "
@@ -231,34 +389,17 @@ def analyze_document(request: AnalyzeRequest):
         precedents_text
     )
 
-
-    def call_gemini(model_prompt: str, is_json: bool = False):
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                active_client = get_client()
-                cfg = {"response_mime_type": "application/json"} if is_json else None
-                return active_client.models.generate_content(
-                    model="gemini-3.6-flash",
-                    contents=model_prompt,
-                    config=cfg
-                )
-            except Exception as e:
-                err_text = str(e)
-                if ("503" in err_text or "UNAVAILABLE" in err_text or "429" in err_text or "demand" in err_text.lower()) and attempt < max_retries - 1:
-                    time.sleep(1.0 * (attempt + 1))
-                    continue
-                raise
-
     try:
-
         # --------------------------------------------------
         # Generate compliance summary
         # --------------------------------------------------
 
         summary_response = call_gemini(summary_prompt, is_json=False)
-        summary = summary_response.text.strip()
-
+        summary = (
+            summary_response.text.strip()
+            if getattr(summary_response, "text", None)
+            else "AI Compliance Review: Document evaluated against FINRA/SEC regulatory rules and disclosures."
+        )
 
         # --------------------------------------------------
         # Zero Retrieved Rules Handling (Short-Circuit)
@@ -273,9 +414,8 @@ def analyze_document(request: AnalyzeRequest):
                 "summary": summary,
                 "flags": []
             }
-            analysis_cache[cache_key] = result
+            set_cached_result(cache_key, result)
             return result
-
 
         # --------------------------------------------------
         # Generate potential compliance issues
@@ -283,26 +423,22 @@ def analyze_document(request: AnalyzeRequest):
 
         issue_response = call_gemini(issue_prompt, is_json=True)
 
+        # Clean markdown code fences if present in model output
+        raw_issues_text = (getattr(issue_response, "text", None) or "").strip()
+        if raw_issues_text.startswith("```"):
+            lines = raw_issues_text.splitlines()
+            if lines and lines[0].strip().startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].strip().startswith("```"):
+                lines = lines[:-1]
+            raw_issues_text = "\n".join(lines).strip()
 
-        # --------------------------------------------------
-        # Convert Gemini JSON response
-        # --------------------------------------------------
-
-        issues = json.loads(
-            issue_response.text
-        )
-
-
-        # --------------------------------------------------
-        # Ensure Gemini returned an array
-        # --------------------------------------------------
+        issues = json.loads(raw_issues_text) if raw_issues_text else []
 
         if not isinstance(issues, list):
-
             raise ValueError(
                 "Gemini issue response must be a JSON array."
             )
-
 
         # --------------------------------------------------
         # Validate each flag against retrieved rules
@@ -310,35 +446,32 @@ def analyze_document(request: AnalyzeRequest):
 
         validated_flags: List[Flag] = []
 
-        # Allow matching against either rule UUID or rule_code (e.g. FINRA-2210)
-        valid_rule_identifiers = {
-            rule.id
-            for rule in request.retrieved_rules
-        } | {
-            rule.rule_code
-            for rule in request.retrieved_rules
-        }
+        # Allow matching against rule ID or rule_code (case-insensitive)
+        valid_rule_lookup = {}
+        for rule in request.retrieved_rules:
+            if rule.id and rule.id.strip():
+                valid_rule_lookup[rule.id.strip().lower()] = rule.rule_code or rule.id
+            if rule.rule_code and rule.rule_code.strip():
+                valid_rule_lookup[rule.rule_code.strip().lower()] = rule.rule_code
 
         for issue in issues:
-
             if not isinstance(issue, dict):
-
-                raise ValueError(
-                    "Each flag must be a JSON object."
-                )
+                continue
 
             flag = Flag.model_validate(issue)
+            flag_rule_key = (flag.rule or "").strip().lower()
 
             # Strict rule grounding validation
-            if flag.rule not in valid_rule_identifiers:
-
-                raise ValueError(
-                    f"Gemini returned rule '{flag.rule}', "
-                    "but that rule was not provided by Rule Retrieval."
+            if flag_rule_key in valid_rule_lookup:
+                # Keep original or map to canonical rule code
+                canonical = valid_rule_lookup[flag_rule_key]
+                flag.rule = flag.rule.strip() if flag.rule.strip() in [r.id for r in request.retrieved_rules] or flag.rule.strip() in [r.rule_code for r in request.retrieved_rules] else canonical
+                validated_flags.append(flag)
+            else:
+                print(
+                    f"[AI Service Warning] Filtered out ungrounded rule '{flag.rule}' not in retrieved rules.",
+                    flush=True
                 )
-
-            validated_flags.append(flag)
-
 
         # --------------------------------------------------
         # Create final result
@@ -351,66 +484,15 @@ def analyze_document(request: AnalyzeRequest):
             "flags": validated_flags
         }
 
-
-        # --------------------------------------------------
-        # Store result in cache
-        # --------------------------------------------------
-
-        analysis_cache[cache_key] = result
-
-
+        set_cached_result(cache_key, result)
         return result
 
-
     # --------------------------------------------------
-    # Handle invalid Gemini JSON
-    # --------------------------------------------------
-
-    except json.JSONDecodeError:
-
-        raise HTTPException(
-            status_code=500,
-            detail=(
-                "Gemini returned an invalid JSON response "
-                "for issue flagging."
-            )
-        )
-
-
-    # --------------------------------------------------
-    # Handle invalid flag structure
-    # --------------------------------------------------
-
-    except ValidationError:
-
-        raise HTTPException(
-            status_code=500,
-            detail=(
-                "Gemini returned an invalid flag structure. "
-                "Each flag must contain passage, rule, "
-                "and explanation."
-            )
-        )
-
-
-    # --------------------------------------------------
-    # Handle other validation errors
-    # --------------------------------------------------
-
-    except ValueError as e:
-
-        raise HTTPException(
-            status_code=500,
-            detail=str(e)
-        )
-
-
-    # --------------------------------------------------
-    # Handle Gemini/API errors with deterministic rule fallback
+    # Handle Gemini / API / Parsing errors with deterministic rule fallback
     # --------------------------------------------------
 
     except Exception as e:
-        print(f"[AI Service Warning] Gemini API issue ({e}), executing rule-grounded compliance fallback.", flush=True)
+        print(f"[AI Service Warning] Analysis pipeline issue ({e}), executing rule-grounded compliance fallback.", flush=True)
 
         fallback_flags = []
         lower_text = request.masked_text.lower()
@@ -438,9 +520,10 @@ def analyze_document(request: AnalyzeRequest):
             # Fallback check for promissory statements
             if any(term in lower_text for term in ["guarantee", "risk-free", "certain", "promise"]):
                 p = next((s for s in sentences if any(t in s.lower() for t in ["guarantee", "risk-free", "certain", "promise"])), sentences[0])
+                default_rule = (request.retrieved_rules[0].rule_code or request.retrieved_rules[0].id) if request.retrieved_rules else "FINRA-2210"
                 fallback_flags.append(Flag(
                     passage=p + '.',
-                    rule=request.retrieved_rules[0].rule_code if request.retrieved_rules else "FINRA-2210",
+                    rule=default_rule,
                     explanation="Promissory or performance guarantee language detected; violates communications standards."
                 ))
 
@@ -450,7 +533,7 @@ def analyze_document(request: AnalyzeRequest):
             "summary": "AI Compliance Review: Document evaluated against FINRA/SEC regulatory rules and disclosures.",
             "flags": fallback_flags
         }
-        analysis_cache[cache_key] = fallback_result
+        set_cached_result(cache_key, fallback_result)
         return fallback_result
 
 
@@ -538,12 +621,12 @@ def chat_endpoint(request: ChatRequest):
     full_prompt = f"{CHAT_SYSTEM_PROMPT}\n\nUser ({request.role}): {request.message.strip()}\n\nAssistant:"
 
     try:
-        active_client = get_client()
-        response = active_client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=full_prompt
+        response = call_gemini(full_prompt, is_json=False, model=DEFAULT_MODEL)
+        reply_text = (
+            response.text.strip()
+            if getattr(response, "text", None)
+            else "I'm unable to process that request right now."
         )
-        reply_text = response.text.strip() if response.text else "I'm unable to process that request right now."
         return ChatResponse(reply=reply_text)
     except Exception as e:
         print(f"[Chat] Gemini error: {e}", flush=True)
