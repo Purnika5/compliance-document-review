@@ -491,23 +491,46 @@ export function ChatbotWidget() {
         suggestedChips?: string[];
       }
     ) => {
+      if (typingIntervalRef.current) {
+        clearInterval(typingIntervalRef.current);
+        typingIntervalRef.current = null;
+      }
+
       setIsTyping(true);
       let charIndex = 0;
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: botMsgId,
-          sender: "bot",
-          text: "",
-          timestamp,
-          isTyping: true,
-          grammarResult: extras?.grammarResult,
-          documentationResult: extras?.documentationResult,
-          searchResult: extras?.searchResult,
-          suggestedChips: extras?.suggestedChips,
-        },
-      ]);
+      setMessages((prev) => {
+        const existing = prev.some((msg) => msg.id === botMsgId);
+        if (existing) {
+          return prev.map((msg) =>
+            msg.id === botMsgId
+              ? {
+                  ...msg,
+                  text: "",
+                  isTyping: true,
+                  grammarResult: extras?.grammarResult,
+                  documentationResult: extras?.documentationResult,
+                  searchResult: extras?.searchResult,
+                  suggestedChips: extras?.suggestedChips,
+                }
+              : msg
+          );
+        }
+        return [
+          ...prev,
+          {
+            id: botMsgId,
+            sender: "bot",
+            text: "",
+            timestamp,
+            isTyping: true,
+            grammarResult: extras?.grammarResult,
+            documentationResult: extras?.documentationResult,
+            searchResult: extras?.searchResult,
+            suggestedChips: extras?.suggestedChips,
+          },
+        ];
+      });
 
       typingIntervalRef.current = setInterval(() => {
         charIndex += 2;
@@ -580,14 +603,15 @@ export function ChatbotWidget() {
       return;
     }
 
+    // Add bot typing placeholder once
+    setIsTyping(true);
+    setMessages((prev) => [
+      ...prev,
+      { id: botMsgId, sender: "bot", text: "", timestamp, isTyping: true },
+    ]);
+
     // 2. Repository Search Intent Routing
     if (isAuthenticated && isDocumentSearchQuery(rawText)) {
-      setIsTyping(true);
-      setMessages((prev) => [
-        ...prev,
-        { id: botMsgId, sender: "bot", text: "", timestamp, isTyping: true },
-      ]);
-
       try {
         const searchParams = parseNaturalSearch(rawText);
         const searchResult = await copilotApi.searchDocuments({
@@ -612,16 +636,11 @@ export function ChatbotWidget() {
         return;
       } catch (searchErr) {
         console.warn("[Copilot Search Engine Error] Falling back to standard chat proxy:", searchErr);
+        // Do not add another message to prev; update the existing botMsgId below
       }
     }
 
     // 3. Conversational AI fallback to Gemini API
-    setIsTyping(true);
-    setMessages((prev) => [
-      ...prev,
-      { id: botMsgId, sender: "bot", text: "", timestamp, isTyping: true },
-    ]);
-
     const userRole = session?.role || "Advisor";
 
     copilotApi
@@ -633,25 +652,7 @@ export function ChatbotWidget() {
         return resolveBotReply(rawText, isLoginMode).text;
       })
       .then((replyText) => {
-        let charIndex = 0;
-        typingIntervalRef.current = setInterval(() => {
-          charIndex += 2;
-          const currentText = replyText.slice(0, charIndex);
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === botMsgId
-                ? { ...msg, text: currentText, isTyping: charIndex < replyText.length }
-                : msg
-            )
-          );
-          if (charIndex >= replyText.length) {
-            if (typingIntervalRef.current) {
-              clearInterval(typingIntervalRef.current);
-              typingIntervalRef.current = null;
-            }
-            setIsTyping(false);
-          }
-        }, TYPING_SPEED_MS);
+        simulateTyping(botMsgId, replyText, timestamp);
       });
   };
 

@@ -73,7 +73,7 @@ router.get(
 // High-density filterable repository search & analytics endpoint
 router.post(
   '/search',
-  authenticateToken,
+  optionalAuth,
   DocumentController.search
 );
 

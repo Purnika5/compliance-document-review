@@ -173,16 +173,19 @@ export class SearchEngineService {
     let idx = 1;
 
     // 1. Role Scoping & Ownership
-    if (user.role === 'Advisor') {
+    const userRole = user?.role || 'Advisor';
+    const userId = user?.id;
+
+    if (userRole === 'Advisor' && userId) {
       // Advisors are strictly locked to their own submissions
       conditions.push(`d.advisor_id = $${idx++}`);
-      values.push(user.id);
+      values.push(userId);
     } else if (uploaded_by) {
       const cleanUpload = uploaded_by.trim().toLowerCase();
-      if (cleanUpload === 'my uploads' || cleanUpload === 'my files') {
+      if ((cleanUpload === 'my uploads' || cleanUpload === 'my files' || cleanUpload === 'my submissions') && userId) {
         conditions.push(`d.advisor_id = $${idx++}`);
-        values.push(user.id);
-      } else if (cleanUpload.length > 0 && cleanUpload !== 'all') {
+        values.push(userId);
+      } else if (cleanUpload.length > 0 && cleanUpload !== 'all' && cleanUpload !== 'my uploads' && cleanUpload !== 'my files' && cleanUpload !== 'my submissions') {
         // Can match advisor UUID, email, or name
         conditions.push(`(u.name ILIKE $${idx} OR u.email ILIKE $${idx} OR d.advisor_id::text = $${idx})`);
         values.push(`%${cleanUpload}%`);
