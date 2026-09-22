@@ -1,8 +1,130 @@
 import fs from 'fs';
 import path from 'path';
 import { pool, query, isMemFallbackActive } from './pool';
+import { config } from '../config';
+
+/**
+ * Detects if the current database connection targets a Supabase instance.
+ */
+export const isSupabaseDatabase = (): boolean => {
+  const dbUrl = (
+    process.env.DATABASE_URL ||
+    process.env.SUPABASE_DB_URL ||
+    config.db.connectionString ||
+    ''
+  ).toLowerCase();
+  const dbHost = (
+    process.env.DB_HOST ||
+    config.db.host ||
+    ''
+  ).toLowerCase();
+
+  return (
+    dbUrl.includes('supabase.co') ||
+    dbUrl.includes('supabase.com') ||
+    dbUrl.includes('pooler.supabase') ||
+    dbUrl.includes('supabase.in') ||
+    dbUrl.includes('supabase.net') ||
+    dbHost.includes('supabase') ||
+    Boolean(process.env.SUPABASE_URL)
+  );
+};
+
+/**
+ * Checks for existing public tables in the database.
+ */
+export const hasExistingTables = async (): Promise<{ exists: boolean; tables: string[]; publicCount: number }> => {
+  try {
+    const res = await query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public' 
+        AND table_name IN ('users', 'documents', 'schema_migrations', 'rules', 'document_revisions', 'audit_trail', 'notifications')
+    `);
+    const tables: string[] = res.rows.map((r: any) => r.table_name);
+
+    let publicCount = tables.length;
+    try {
+      const countRes = await query(`
+        SELECT count(*)::int as count 
+        FROM information_schema.tables 
+        WHERE table_schema = 'public'
+      `);
+      publicCount = countRes.rows[0]?.count || tables.length;
+    } catch {
+      // ignore
+    }
+
+    return { exists: tables.length > 0 || publicCount > 0, tables, publicCount };
+  } catch (err) {
+    return { exists: false, tables: [], publicCount: 0 };
+  }
+};
+
+/**
+ * Determines whether database migrations should be skipped.
+ */
+export const shouldSkipMigrations = async (): Promise<{ skip: boolean; reason?: string }> => {
+  // 1. Explicit skip flags
+  if (
+    process.env.SKIP_MIGRATIONS === 'true' ||
+    process.env.RUN_MIGRATIONS === 'false' ||
+    process.env.DISABLE_MIGRATIONS === 'true' ||
+    process.env.SUPABASE_EXISTING_DB === 'true'
+  ) {
+    return {
+      skip: true,
+      reason: 'Automated migrations skipped via configuration flag (SKIP_MIGRATIONS=true / RUN_MIGRATIONS=false / SUPABASE_EXISTING_DB=true).'
+    };
+  }
+
+  const isSupabase = isSupabaseDatabase();
+
+  // 2. Allow unit tests and in-memory fallbacks to run unless connected to Supabase
+  if (!isSupabase && (process.env.NODE_ENV === 'test' || isMemFallbackActive())) {
+    return { skip: false };
+  }
+
+  try {
+    const { exists, tables, publicCount } = await hasExistingTables();
+
+    // 3. Supabase existing database detection
+    if (isSupabase) {
+      if (tables.length > 0) {
+        return {
+          skip: true,
+          reason: `Existing database in Supabase detected (found existing tables: ${tables.join(', ')}). Bypassing automated migrations to preserve existing schema and data.`
+        };
+      }
+      if (publicCount > 0) {
+        return {
+          skip: true,
+          reason: `Existing database in Supabase detected with ${publicCount} public table(s). Bypassing automated migrations to prevent schema conflicts.`
+        };
+      }
+    }
+
+    // 4. Non-Supabase: Core tables already present without migration tracker
+    if (tables.includes('users') && tables.includes('documents') && !tables.includes('schema_migrations')) {
+      return {
+        skip: true,
+        reason: 'Existing database with core tables (users, documents) detected without migration history table. Bypassing migrations to prevent table collision.'
+      };
+    }
+  } catch (checkErr: any) {
+    console.warn('[Migration] Warning while inspecting database schema:', checkErr?.message || checkErr);
+  }
+
+  return { skip: false };
+};
 
 export const runMigrations = async (): Promise<void> => {
+  const skipCheck = await shouldSkipMigrations();
+  if (skipCheck.skip) {
+    console.log(`[Migration] ${skipCheck.reason}`);
+    return;
+  }
+
   let migrationsDir = path.join(__dirname, 'migrations');
   if (!fs.existsSync(migrationsDir)) {
     migrationsDir = path.join(process.cwd(), 'src', 'db', 'migrations');

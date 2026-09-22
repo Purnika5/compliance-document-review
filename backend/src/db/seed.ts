@@ -1,11 +1,55 @@
 import bcrypt from 'bcrypt';
 import fs from 'fs';
 import path from 'path';
-import { pool, query } from './pool';
-import { runMigrations } from './migrate';
+import { pool, query, isMemFallbackActive } from './pool';
+import { runMigrations, isSupabaseDatabase } from './migrate';
 import { config } from '../config';
 
+/**
+ * Determines whether database seeding should be skipped.
+ */
+export const shouldSkipSeeding = async (): Promise<{ skip: boolean; reason?: string }> => {
+  // 1. Explicit skip flags
+  if (
+    process.env.SKIP_SEEDING === 'true' ||
+    process.env.SEED_DATABASE === 'false' ||
+    process.env.DISABLE_SEEDING === 'true' ||
+    process.env.SUPABASE_EXISTING_DB === 'true'
+  ) {
+    return {
+      skip: true,
+      reason: 'Database seeding skipped via configuration flag (SKIP_SEEDING=true / SEED_DATABASE=false / SUPABASE_EXISTING_DB=true).'
+    };
+  }
+
+  // 2. Force override flag allows explicit seeding on Supabase if desired
+  if (process.env.FORCE_SEED === 'true') {
+    return { skip: false };
+  }
+
+  // 3. Protect Supabase database from mock seed overwrite
+  if (isSupabaseDatabase()) {
+    return {
+      skip: true,
+      reason: 'Supabase database detected. Automated mock seeding is disabled to protect existing production data (set FORCE_SEED=true to override).'
+    };
+  }
+
+  // 4. Unit testing and in-memory DB fallback
+  if (process.env.NODE_ENV === 'test' || isMemFallbackActive()) {
+    return { skip: false };
+  }
+
+  return { skip: false };
+};
+
 export const seedDatabase = async (): Promise<void> => {
+  const skipCheck = await shouldSkipSeeding();
+  if (skipCheck.skip) {
+    console.log(`[Seed] ${skipCheck.reason}`);
+    return;
+  }
+
   console.log('[Seed] Starting database seeding...');
   await runMigrations();
 
