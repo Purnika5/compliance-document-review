@@ -50,4 +50,15 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
+import { authenticateToken } from '../middleware/auth.middleware';
+import { uploadDocumentFile } from '../middleware/upload.middleware';
+import { DocumentController } from '../controllers/document.controller';
+
+router.post(
+  '/audit-and-fix',
+  authenticateToken,
+  uploadDocumentFile.single('file'),
+  DocumentController.auditAndFix
+);
+
 export default router;

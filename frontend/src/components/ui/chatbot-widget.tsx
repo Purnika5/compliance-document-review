@@ -1,14 +1,14 @@
 "use client";
 
 /**
- * DOCU: Renders the interactive compliance copilot and pre-login assistant.
- * Supports Pre-Login guidance, Grammar Recheck, and Institutional Documentation Rule optimization.
- * Last Updated Date: September 21, 2026
+ * DOCU: Renders the Neural Compliance Copilot with Google Gemini engine.
+ * Features filterable document search, telemetry analytics, in-chat draft audit, and automated remediation.
+ * Last Updated Date: September 23, 2026
  * @returns The compliance copilot widget view.
  * @author Keith
  */
 import React, { useState, useRef, useEffect, useCallback, useSyncExternalStore } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Send,
   X,
@@ -19,13 +19,29 @@ import {
   FileCheck2,
   Wand2,
   ArrowRight,
+  Paperclip,
+  UploadCloud,
+  FileText,
+  Download,
+  ExternalLink,
+  ShieldAlert,
+  ShieldCheck,
+  History,
+  AlertTriangle,
+  Loader2,
+  Layers,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { IChatMessage } from "@/types/chatbot.types";
+import type { ISearchResponse, IAuditAndFixResponse, IAuditBreakdownItem, ISearchDocument } from "@/types/copilot.types";
 import { authStore, type UserSession } from "@/lib/auth/auth-store";
 import { getBaseBackendUrl } from "@/lib/api/client";
+import { copilotApi } from "@/lib/api/copilot";
+import { showSuccessToast, showErrorToast } from "@/components/ui/toast";
 import {
   LOGIN_INITIAL_MESSAGES,
   LOGIN_SUGGESTED_QUESTIONS,
@@ -116,10 +132,7 @@ function getDashboardBotKnowledgeResponse(rawText: string): string {
 }
 
 /** Resolves full bot response and attached results based on input and mode */
-function resolveBotReply(
-  rawText: string,
-  isLoginMode: boolean
-): IResolvedBotReply {
+function resolveBotReply(rawText: string, isLoginMode: boolean): IResolvedBotReply {
   const lower = rawText.toLowerCase();
 
   // 1. Documentation Enhancement intent
@@ -131,9 +144,7 @@ function resolveBotReply(
     lower.includes("format as memo");
 
   if (isEnhanceExplicit) {
-    const cleanDraft = rawText
-      .replace(/^(enhance\s*(documentation|note)?:\s*)/i, "")
-      .trim();
+    const cleanDraft = rawText.replace(/^(enhance\s*(documentation|note)?:\s*)/i, "").trim();
     const docResult = enhanceForDocumentation(cleanDraft || rawText);
     return {
       text: "I have audited and enhanced your draft according to institutional documentation rules (FINRA 2210 & SEC 206).",
@@ -185,22 +196,107 @@ function getSuggestedQuestions(isLoginMode: boolean): string[] {
   if (isLoginMode) {
     return LOGIN_SUGGESTED_QUESTIONS;
   }
-  return DASHBOARD_SUGGESTED_QUESTIONS;
+  return [
+    "Show my submissions from this month",
+    "Show filings that need revision",
+    "Show approved documents",
+    "Audit & fix draft document (attach file)",
+    ...DASHBOARD_SUGGESTED_QUESTIONS.slice(0, 3),
+  ];
 }
 
-/** Determines active input placeholder text without nested ternaries */
-function getPlaceholderText(isLoginMode: boolean, isTyping: boolean): string {
+/** Determines active input placeholder text */
+function getPlaceholderText(isLoginMode: boolean, isTyping: boolean, isUploading: boolean): string {
+  if (isUploading) {
+    return "Auditing draft with Google Gemini...";
+  }
   if (isLoginMode) {
     return "Ask about guidelines, classifications, formats...";
   }
   if (isTyping) {
-    return "Springer Help is processing...";
+    return "Springer Neural Copilot is reasoning...";
   }
-  return "Ask about workflows, guidelines, or classifications...";
+  return "Ask copilot, search filings, or attach file to audit...";
+}
+
+/** Detects if query looks like a document search request */
+function isDocumentSearchQuery(text: string): boolean {
+  const lower = text.toLowerCase();
+  const searchKeywords = [
+    "show",
+    "list",
+    "find",
+    "search",
+    "files",
+    "filings",
+    "submissions",
+    "documents",
+    "proposals",
+    "approved",
+    "pending",
+    "needs revision",
+    "rejected",
+    "my uploads",
+    "my files",
+    "this month",
+    "last month",
+    "today",
+    "yesterday",
+    "past 7 days",
+    "past 30 days",
+    "past 90 days",
+    "high-risk",
+    "flags",
+  ];
+  return searchKeywords.some((k) => lower.includes(k));
+}
+
+/** Extracts search parameters from natural language user query */
+function parseNaturalSearch(text: string): {
+  query?: string;
+  status?: string[];
+  date_range?: string;
+  uploaded_by?: string;
+} {
+  const lower = text.toLowerCase();
+  const params: { query?: string; status?: string[]; date_range?: string; uploaded_by?: string } = {};
+
+  // Date range detection
+  if (lower.includes("past 7 days") || lower.includes("last 7 days")) params.date_range = "past 7 days";
+  else if (lower.includes("past 30 days") || lower.includes("last 30 days")) params.date_range = "past 30 days";
+  else if (lower.includes("past 90 days") || lower.includes("last 90 days")) params.date_range = "past 90 days";
+  else if (lower.includes("this month")) params.date_range = "this month";
+  else if (lower.includes("last month")) params.date_range = "last month";
+  else if (lower.includes("today")) params.date_range = "today";
+  else if (lower.includes("yesterday")) params.date_range = "yesterday";
+  else if (lower.includes("2026")) params.date_range = "2026";
+  else if (lower.includes("2025")) params.date_range = "2025";
+
+  // Status detection
+  const statuses: string[] = [];
+  if (lower.includes("needs revision") || lower.includes("revision needed")) statuses.push("Needs Revision");
+  if (lower.includes("approved")) statuses.push("Approved");
+  if (lower.includes("pending")) statuses.push("Pending");
+  if (lower.includes("rejected")) statuses.push("Rejected");
+  if (statuses.length > 0) params.status = statuses;
+
+  // Ownership
+  if (lower.includes("my uploads") || lower.includes("my files") || lower.includes("my submissions")) {
+    params.uploaded_by = "my uploads";
+  }
+
+  // Keywords (extract title search after "find", "search", or "named")
+  const titleMatch = lower.match(/(?:find|search|named|title|called)\s+["']?([^"'\n]+?)["']?(?:$|\s+(?:from|in|with|that))/i);
+  if (titleMatch && titleMatch[1] && titleMatch[1].length > 2) {
+    params.query = titleMatch[1].trim();
+  }
+
+  return params;
 }
 
 export function ChatbotWidget() {
   const pathname = usePathname();
+  const router = useRouter();
 
   // Reactive subscription to authStore
   const session = useSyncExternalStore<UserSession | null>(
@@ -213,9 +309,14 @@ export function ChatbotWidget() {
   const isAuthPage = Boolean(pathname && (pathname.startsWith("/login") || pathname.startsWith("/signup")));
   const isLoginMode = !isAuthenticated || isAuthPage;
 
-  // Chatbot is closed by default on initial open and page navigation
+  // Chatbot open state
   const [isOpen, setIsOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatusText, setUploadStatusText] = useState("");
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Automatically close chatbot on route redirection or page navigation
   useEffect(() => {
@@ -268,6 +369,96 @@ export function ChatbotWidget() {
     }, 2000);
   };
 
+  /** Handles file upload and triggers in-chat Gemini audit & remediation */
+  const handleFileUpload = async (file: File) => {
+    if (!file || isUploading) return;
+
+    if (file.size > 25 * 1024 * 1024) {
+      showErrorToast("File exceeds maximum allowed limit of 25MB.");
+      return;
+    }
+
+    const userMsgId = `user-${++messageIdRef.current}`;
+    const timestamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+    // Add user upload message
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: userMsgId,
+        sender: "user",
+        text: `📎 Uploaded draft file: ${file.name} (${Math.round(file.size / 1024)} KB) for institutional compliance audit & auto-remediation.`,
+        timestamp,
+      },
+    ]);
+
+    setIsUploading(true);
+    setUploadStatusText("Extracting document text & sanitizing PII...");
+
+    const botMsgId = `bot-${++messageIdRef.current}`;
+
+    try {
+      setTimeout(() => {
+        setUploadStatusText("Auditing passages with Google Gemini against FINRA 2210 & SEC 206...");
+      }, 900);
+
+      const auditResponse = await copilotApi.auditAndRemediate(file);
+
+      setIsUploading(false);
+      setUploadStatusText("");
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: botMsgId,
+          sender: "bot",
+          text: auditResponse.conversational_summary,
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          auditResult: auditResponse,
+          suggestedChips: [
+            "Submit remediated version",
+            "Show high-risk flags",
+            "Show my submissions from this month",
+          ],
+        },
+      ]);
+    } catch (err: any) {
+      setIsUploading(false);
+      setUploadStatusText("");
+      console.error("[Copilot File Audit Error]", err);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: botMsgId,
+          sender: "bot",
+          text: `Compliance audit encountered an issue: ${err.message || "Failed to process file"}. Please try again or paste text directly.`,
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        },
+      ]);
+    }
+  };
+
+  /** Handles drag-and-drop file ingestion into chat */
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (!isAuthenticated) return;
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (!isAuthenticated) return;
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFileUpload(e.dataTransfer.files[0]);
+    }
+  };
+
   /** Simulates character-by-character bot typing animation */
   const simulateTyping = useCallback(
     (
@@ -277,6 +468,8 @@ export function ChatbotWidget() {
       extras?: {
         grammarResult?: IGrammarResult;
         documentationResult?: IDocumentationResult;
+        searchResult?: ISearchResponse;
+        suggestedChips?: string[];
       }
     ) => {
       setIsTyping(true);
@@ -292,11 +485,13 @@ export function ChatbotWidget() {
           isTyping: true,
           grammarResult: extras?.grammarResult,
           documentationResult: extras?.documentationResult,
+          searchResult: extras?.searchResult,
+          suggestedChips: extras?.suggestedChips,
         },
       ]);
 
       typingIntervalRef.current = setInterval(() => {
-        charIndex += 2; // smooth slightly faster pacing
+        charIndex += 2;
         const currentText = fullText.slice(0, charIndex);
 
         setMessages((prev) =>
@@ -319,9 +514,9 @@ export function ChatbotWidget() {
     []
   );
 
-  const handleSend = (overrideText?: string) => {
+  const handleSend = async (overrideText?: string) => {
     const rawText = overrideText || inputValue.trim();
-    if (!rawText || isTyping) return;
+    if (!rawText || isTyping || isUploading) return;
 
     const userMsgId = `user-${++messageIdRef.current}`;
     const timestamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -336,7 +531,7 @@ export function ChatbotWidget() {
     const botMsgId = `bot-${++messageIdRef.current}`;
     const lower = rawText.toLowerCase();
 
-    // Grammar / enhance: always run locally (instant, no network)
+    // 1. Grammar / enhance check (run locally)
     const isGrammar =
       lower.startsWith("check grammar:") ||
       lower.startsWith("grammar:") ||
@@ -366,7 +561,42 @@ export function ChatbotWidget() {
       return;
     }
 
-    // All other messages: call real Gemini AI via backend proxy
+    // 2. Repository Search Intent Routing
+    if (isAuthenticated && isDocumentSearchQuery(rawText)) {
+      setIsTyping(true);
+      setMessages((prev) => [
+        ...prev,
+        { id: botMsgId, sender: "bot", text: "", timestamp, isTyping: true },
+      ]);
+
+      try {
+        const searchParams = parseNaturalSearch(rawText);
+        const searchResult = await copilotApi.searchDocuments({
+          ...searchParams,
+          conversation_history: messages.slice(-4).map((m) => ({ role: m.sender, content: m.text })),
+        });
+
+        setIsTyping(false);
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === botMsgId
+              ? {
+                  ...msg,
+                  text: searchResult.conversational_reply,
+                  isTyping: false,
+                  searchResult,
+                  suggestedChips: searchResult.suggested_chips,
+                }
+              : msg
+          )
+        );
+        return;
+      } catch (searchErr) {
+        console.warn("[Copilot Search Engine Error] Falling back to standard chat proxy:", searchErr);
+      }
+    }
+
+    // 3. Conversational AI fallback to Gemini API
     setIsTyping(true);
     setMessages((prev) => [
       ...prev,
@@ -384,11 +614,10 @@ export function ChatbotWidget() {
     })
       .then(async (res) => {
         if (!res.ok) throw new Error(`status ${res.status}`);
-        const data = await res.json() as { reply: string };
+        const data = (await res.json()) as { reply: string };
         return data.reply;
       })
       .catch(() => {
-        // Fallback to local knowledge base if API is down
         return resolveBotReply(rawText, isLoginMode).text;
       })
       .then((replyText) => {
@@ -415,9 +644,8 @@ export function ChatbotWidget() {
   };
 
   const currentSuggestedQuestions = getSuggestedQuestions(isLoginMode);
-  const currentPlaceholder = getPlaceholderText(isLoginMode, isTyping);
+  const currentPlaceholder = getPlaceholderText(isLoginMode, isTyping, isUploading);
 
-  // Do not render the chatbot on login or sign up pages
   if (isAuthPage) {
     return null;
   }
@@ -428,18 +656,45 @@ export function ChatbotWidget() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="flex items-center gap-2 bg-[#C5E86C] hover:bg-[#b4db53] text-[#183028] border border-[#b4db53] px-4 py-2.5 rounded-full shadow-lg shadow-[#183028]/15 text-xs font-bold transition-all hover:scale-105 active:scale-95 cursor-pointer group"
-          aria-label="Open Compliance Help Assistant"
+          className="flex items-center gap-2.5 bg-[#183028] hover:bg-[#203f35] text-[#C5E86C] border border-[#C5E86C]/40 px-4 py-2.5 rounded-full shadow-xl shadow-[#183028]/25 text-xs font-bold transition-all hover:scale-105 active:scale-95 cursor-pointer group"
+          aria-label="Open Compliance Copilot"
         >
-          <div className="h-2 w-2 rounded-full bg-[#183028] animate-pulse" />
-          <Bot className="h-4 w-4 text-[#183028]" />
-          <span>{isLoginMode ? "Compliance Help" : "Compliance Copilot"}</span>
+          <div className="relative flex h-2.5 w-2.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C5E86C] opacity-75" />
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#C5E86C]" />
+          </div>
+          <Bot className="h-4 w-4 text-[#C5E86C]" />
+          <span className="tracking-tight">{isLoginMode ? "Compliance Help" : "Neural Copilot"}</span>
+          <span className="text-[9.5px] px-1.5 py-0.5 rounded font-extrabold bg-[#C5E86C] text-[#183028]">
+            Gemini 2.5
+          </span>
         </button>
       )}
 
       {/* Main Chatbot Window */}
       {isOpen && (
-        <div className="w-[360px] sm:w-[440px] h-[580px] rounded-2xl flex flex-col overflow-hidden text-xs bg-white border border-[#E6E8E7] shadow-2xl transition-all animate-in fade-in zoom-in-95 duration-200">
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={cn(
+            "relative w-[380px] sm:w-[500px] h-[640px] rounded-2xl flex flex-col overflow-hidden text-xs bg-white border border-[#E6E8E7] shadow-2xl transition-all animate-in fade-in zoom-in-95 duration-200",
+            isDragging && "ring-2 ring-[#C5E86C] border-[#183028]"
+          )}
+        >
+          {/* Drag & Drop Overlay */}
+          {isDragging && (
+            <div className="absolute inset-0 z-50 bg-[#183028]/90 backdrop-blur-xs flex flex-col items-center justify-center p-6 text-center text-white space-y-3 pointer-events-none animate-in fade-in">
+              <div className="h-16 w-16 rounded-2xl bg-[#C5E86C]/20 border border-[#C5E86C] flex items-center justify-center text-[#C5E86C]">
+                <UploadCloud className="h-8 w-8 animate-bounce" />
+              </div>
+              <h4 className="text-sm font-bold text-[#C5E86C]">Drop Draft to Audit & Remediate</h4>
+              <p className="text-xs text-white/80 max-w-xs leading-relaxed">
+                Google Gemini will inspect against FINRA Rule 2210 & SEC Rule 206 and generate your already-fixed compliant version.
+              </p>
+            </div>
+          )}
+
           <ChatHeader
             isLoginMode={isLoginMode}
             role={session?.role}
@@ -447,7 +702,7 @@ export function ChatbotWidget() {
           />
 
           {/* Chat Messages Log */}
-          <div className="flex-1 p-3.5 overflow-y-auto space-y-3 bg-white">
+          <div className="flex-1 p-3.5 overflow-y-auto space-y-3 bg-[#FAFBFB]/50">
             {messages.map((message) => (
               <ChatMessageItem
                 key={message.id}
@@ -455,27 +710,74 @@ export function ChatbotWidget() {
                 copiedId={copiedId}
                 onCopy={handleCopy}
                 onElevateToDocumentation={(txt) => handleSend(`Enhance documentation: ${txt}`)}
+                onExecuteChip={(chip) => handleSend(chip)}
               />
             ))}
+
+            {/* Uploading progress banner */}
+            {isUploading && (
+              <div className="p-3 bg-[#183028] text-white rounded-2xl border border-[#C5E86C]/40 space-y-2 shadow-lg animate-in fade-in">
+                <div className="flex items-center justify-between text-[11px] font-bold">
+                  <span className="flex items-center gap-2 text-[#C5E86C]">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Neural Compliance Engine Active
+                  </span>
+                  <span className="text-[10px] text-white/70">Auditing Draft</span>
+                </div>
+                <p className="text-[10px] text-white/90">{uploadStatusText}</p>
+                <div className="w-full bg-white/20 h-1.5 rounded-full overflow-hidden">
+                  <div className="bg-[#C5E86C] h-full rounded-full w-2/3 animate-[pulse_1.5s_infinite]" />
+                </div>
+              </div>
+            )}
+
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Quick Questions Pills */}
-          <div className="px-3 py-2 bg-[#FAFBFB]/80 border-t border-[#E6E8E7] flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] shrink-0">
+          {/* Quick Questions / Dynamic Suggestion Pills */}
+          <div className="px-3 py-2 bg-white border-t border-[#E6E8E7] flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] shrink-0">
             {currentSuggestedQuestions.map((q) => (
               <button
                 key={q}
                 onClick={() => handleSend(q)}
-                disabled={isTyping}
-                className="whitespace-nowrap text-[10px] font-semibold text-[#183028] hover:bg-[#C5E86C]/25 bg-white border border-[#E6E8E7] px-2.5 py-1 rounded-xl transition-colors cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
+                disabled={isTyping || isUploading}
+                className="whitespace-nowrap text-[10px] font-semibold text-[#183028] hover:bg-[#C5E86C]/30 bg-[#FAFBFB] border border-[#E6E8E7] px-2.5 py-1 rounded-xl transition-colors cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
               >
                 {q}
               </button>
             ))}
           </div>
 
-          {/* Message Input Box */}
+          {/* Hidden File Input for Attachment Clip */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={(e) => {
+              if (e.target.files && e.target.files.length > 0) {
+                handleFileUpload(e.target.files[0]);
+                e.target.value = "";
+              }
+            }}
+            accept=".pdf,.docx,.doc,.txt,.xlsx,.xls"
+            className="hidden"
+          />
+
+          {/* Message Input Box with Attachment Clip */}
           <div className="p-3 bg-white border-t border-[#E6E8E7] flex items-center space-x-2 shrink-0">
+            {isAuthenticated && (
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                disabled={isTyping || isUploading}
+                onClick={() => fileInputRef.current?.click()}
+                title="Attach draft file (.pdf, .docx, .txt) to audit & remediate"
+                className="h-8 w-8 rounded-xl border-[#E6E8E7] text-[#183028] hover:bg-[#C5E86C]/25 hover:text-[#183028] shrink-0 cursor-pointer shadow-2xs"
+              >
+                <Paperclip className="h-3.5 w-3.5" />
+              </Button>
+            )}
+
             <Input
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
@@ -485,13 +787,14 @@ export function ChatbotWidget() {
                   handleSend();
                 }
               }}
-              disabled={isTyping}
+              disabled={isTyping || isUploading}
               placeholder={currentPlaceholder}
-              className="bg-[#FAFBFB] border-[#E6E8E7] text-[#183028] placeholder:text-[#183028]/40 h-8 text-xs rounded-xl focus-visible:ring-1 focus-visible:ring-[#183028] disabled:opacity-60"
+              className="bg-[#FAFBFB] border-[#E6E8E7] text-[#183028] placeholder:text-[#183028]/45 h-8 text-xs rounded-xl focus-visible:ring-1 focus-visible:ring-[#183028] disabled:opacity-60"
             />
+
             <Button
               size="icon"
-              disabled={!inputValue.trim() || isTyping}
+              disabled={!inputValue.trim() || isTyping || isUploading}
               onClick={() => handleSend()}
               className="h-8 w-8 bg-[#183028] hover:bg-[#23453a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] text-white rounded-xl disabled:opacity-40 shrink-0 cursor-pointer shadow-2xs transition-all"
             >
@@ -513,34 +816,32 @@ interface IChatHeaderProps {
 
 function ChatHeader({ isLoginMode, role, onClose }: IChatHeaderProps) {
   return (
-    <div className="bg-[#FAFBFB] text-[#183028] px-4 py-3 flex items-center justify-between border-b border-[#E6E8E7] shrink-0">
+    <div className="bg-[#183028] text-white px-4 py-3 flex items-center justify-between border-b border-[#23453a] shrink-0">
       <div className="flex items-center space-x-2.5">
-        <div className="h-8 w-8 rounded-xl bg-[#C5E86C]/35 border border-[#C5E86C] flex items-center justify-center text-[#183028] shadow-2xs">
+        <div className="relative h-8 w-8 rounded-xl bg-[#C5E86C]/20 border border-[#C5E86C] flex items-center justify-center text-[#C5E86C] shadow-2xs">
           <Bot className="h-4 w-4" />
+          <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-[#C5E86C] animate-pulse" />
         </div>
         <div>
           <div className="flex items-center gap-1.5">
-            <h3 className="font-bold text-[#183028] tracking-tight">
-              {isLoginMode ? "Compliance Help" : "Compliance Copilot"}
+            <h3 className="font-bold text-white tracking-tight">
+              {isLoginMode ? "Compliance Help" : "Neural Compliance Copilot"}
             </h3>
-            {!isLoginMode && (
-              <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider bg-[#C5E86C]/50 text-[#183028]">
-                {role || "Staff"}
-              </span>
-            )}
+            <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider bg-[#C5E86C] text-[#183028]">
+              {isLoginMode ? "Guidance" : role || "Staff"}
+            </span>
           </div>
-          <p className="text-[10px] text-[#183028]/60">
-            {isLoginMode
-              ? "Institutional workflow guide"
-              : "Grammar recheck & documentation rules optimizer"}
-          </p>
+          <div className="flex items-center gap-1.5 text-[9.5px] text-[#C5E86C]/90 mt-0.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#C5E86C]" />
+            <span>Google Gemini Engine: Active</span>
+          </div>
         </div>
       </div>
 
       <button
         onClick={onClose}
-        className="p-1.5 rounded-lg text-[#183028]/60 hover:text-[#183028] hover:bg-[#C5E86C]/20 transition-colors cursor-pointer"
-        aria-label="Close help window"
+        className="p-1.5 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+        aria-label="Close copilot window"
       >
         <X className="h-4 w-4" />
       </button>
@@ -554,6 +855,7 @@ interface IChatMessageItemProps {
   copiedId: string | null;
   onCopy: (id: string, text: string) => void;
   onElevateToDocumentation?: (text: string) => void;
+  onExecuteChip?: (chipText: string) => void;
 }
 
 function ChatMessageItem({
@@ -561,6 +863,7 @@ function ChatMessageItem({
   copiedId,
   onCopy,
   onElevateToDocumentation,
+  onExecuteChip,
 }: IChatMessageItemProps) {
   const isUser = message.sender === "user";
   const isCurrentlyTyping = message.isTyping;
@@ -568,23 +871,23 @@ function ChatMessageItem({
   return (
     <div
       className={cn(
-        "flex flex-col max-w-[90%] space-y-1",
+        "flex flex-col max-w-[94%] space-y-1",
         isUser ? "ml-auto items-end" : "mr-auto items-start"
       )}
     >
       <div className="flex items-center space-x-1.5 px-0.5">
         <span className={cn("text-[10px]", isUser ? "text-[#183028]/60" : "text-[#183028] font-bold")}>
-          {isUser ? "You" : "Springer Help"}
+          {isUser ? "You" : "Springer Neural Copilot"}
         </span>
         <span className="text-[9px] text-[#183028]/40">{message.timestamp}</span>
       </div>
 
       <div
         className={cn(
-          "p-3 rounded-2xl text-xs leading-relaxed break-words whitespace-pre-wrap min-h-[30px]",
+          "p-3 rounded-2xl text-xs leading-relaxed break-words whitespace-pre-wrap min-h-[30px] shadow-2xs",
           isUser
-            ? "bg-[#183028] text-white font-medium rounded-br-xs shadow-2xs"
-            : "bg-[#FAFBFB] text-[#183028] border border-[#E6E8E7] rounded-bl-xs shadow-2xs"
+            ? "bg-[#183028] text-white font-medium rounded-br-xs"
+            : "bg-white text-[#183028] border border-[#E6E8E7] rounded-bl-xs"
         )}
       >
         {!isUser && message.text === "" ? (
@@ -598,6 +901,21 @@ function ChatMessageItem({
           </>
         )}
 
+        {/* Rich Audit & Remediation Card */}
+        {!isUser && message.auditResult && !isCurrentlyTyping && (
+          <AuditResultCard
+            result={message.auditResult}
+            isCopied={copiedId === message.id}
+            onCopy={() => onCopy(message.id, message.auditResult!.remediated_content.text)}
+          />
+        )}
+
+        {/* Rich Repository Search Telemetry Card */}
+        {!isUser && message.searchResult && !isCurrentlyTyping && (
+          <TelemetrySearchCard result={message.searchResult} />
+        )}
+
+        {/* Existing Grammar Result */}
         {!isUser && message.grammarResult && !isCurrentlyTyping && (
           <GrammarResultCard
             result={message.grammarResult}
@@ -607,6 +925,7 @@ function ChatMessageItem({
           />
         )}
 
+        {/* Existing Documentation Result */}
         {!isUser && message.documentationResult && !isCurrentlyTyping && (
           <DocumentationResultCard
             result={message.documentationResult}
@@ -614,6 +933,313 @@ function ChatMessageItem({
             onCopy={() => onCopy(message.id, message.documentationResult!.enhancedText)}
           />
         )}
+
+        {/* Dynamic Contextual Suggestion Bubbles */}
+        {!isUser && message.suggestedChips && message.suggestedChips.length > 0 && !isCurrentlyTyping && (
+          <div className="mt-3 pt-2 border-t border-[#E6E8E7] flex flex-wrap gap-1.5">
+            {message.suggestedChips.map((chip) => (
+              <button
+                key={chip}
+                onClick={() => onExecuteChip?.(chip)}
+                className="text-[9.5px] font-semibold text-[#183028] hover:bg-[#C5E86C] bg-[#FAFBFB] border border-[#183028]/20 px-2 py-0.5 rounded-lg transition-colors cursor-pointer shadow-2xs"
+              >
+                ↳ {chip}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Card rendering in-chat File Audit & Automated Remediation results */
+interface IAuditCardProps {
+  result: IAuditAndFixResponse;
+  isCopied: boolean;
+  onCopy: () => void;
+}
+
+function AuditResultCard({ result, isCopied, onCopy }: IAuditCardProps) {
+  const [showFullText, setShowFullText] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+
+  const handleDownload = () => {
+    // Download through URL or blob
+    const downloadUrl = copilotApi.getDownloadUrl(result.remediated_content.token);
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.download = `${result.remediated_content.suggested_title}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showSuccessToast("Remediated compliant file downloaded.");
+  };
+
+  const handleDirectSubmit = async () => {
+    if (isSubmitting || isSubmitted) return;
+    setIsSubmitting(true);
+    try {
+      await copilotApi.submitRemediated({
+        text: result.remediated_content.text,
+        title: result.remediated_content.suggested_title,
+        token: result.remediated_content.token,
+        targetDocumentId: result.one_click_actions.target_document_id || undefined,
+      });
+      setIsSubmitted(true);
+      showSuccessToast("Remediated document submitted successfully to compliance queue!");
+    } catch (err: any) {
+      console.error("[Submit Remediated Error]", err);
+      showErrorToast(err.message || "Failed to submit remediated document.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="mt-3 pt-3 border-t border-[#E6E8E7] space-y-2.5 text-[#183028]">
+      {/* Header with Readiness Score Badge */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <ShieldCheck className="h-4 w-4 text-emerald-600" />
+          <span className="text-[10.5px] font-bold uppercase tracking-wider text-[#183028]">
+            Compliance Audit & Auto-Fix
+          </span>
+        </div>
+        <span className="text-[9px] px-2 py-0.5 rounded-full font-bold bg-[#C5E86C] text-[#183028] border border-[#183028]/10 shadow-2xs">
+          100% Compliant
+        </span>
+      </div>
+
+      {/* File meta tag */}
+      <div className="flex items-center gap-2 p-1.5 bg-[#FAFBFB] rounded-lg border border-[#E6E8E7] text-[10px]">
+        <FileText className="h-3.5 w-3.5 text-[#183028]/60" />
+        <span className="font-semibold text-[#183028] truncate max-w-[220px]">
+          {result.file_meta.original_filename}
+        </span>
+        <span className="text-[#183028]/50">
+          ({Math.round(result.file_meta.file_size / 1024)} KB)
+        </span>
+      </div>
+
+      {/* Identified Infractions Diff Breakdown */}
+      {result.audit_breakdown.length > 0 && (
+        <div className="space-y-2 pt-1">
+          <span className="text-[10px] font-bold text-[#183028] flex items-center gap-1">
+            <AlertTriangle className="h-3 w-3 text-amber-600" />
+            Infraction Diagnostic & Prescribed Amendments:
+          </span>
+
+          <div className="space-y-2">
+            {result.audit_breakdown.map((item, i) => (
+              <div
+                key={i}
+                className="p-2.5 bg-white border border-[#E6E8E7] rounded-xl space-y-1.5 shadow-2xs"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-[#183028] text-[#C5E86C]">
+                    {item.rule}
+                  </span>
+                  <span className="text-[9px] text-rose-600 font-semibold">Violation Flag</span>
+                </div>
+
+                {/* Original problematic passage */}
+                <div className="p-1.5 bg-rose-50/80 border border-rose-200 rounded text-[10px] text-rose-900 leading-relaxed">
+                  <span className="font-bold text-rose-700 block text-[9px] uppercase">Original Passage:</span>
+                  <span className="line-through decoration-rose-500 font-mono text-[9.5px]">{item.original_passage}</span>
+                </div>
+
+                {/* Fixed passage */}
+                <div className="p-1.5 bg-emerald-50/80 border border-emerald-200 rounded text-[10px] text-emerald-900 leading-relaxed">
+                  <span className="font-bold text-emerald-700 block text-[9px] uppercase">Remediated Compliant Text:</span>
+                  <span className="font-semibold text-[9.5px]">{item.fixed_passage}</span>
+                </div>
+
+                <p className="text-[9px] text-[#183028]/70 italic">
+                  <strong>Amendment Rationale:</strong> {item.reason}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Collapsible Remediated Document Preview */}
+      <div className="space-y-1 pt-1">
+        <button
+          onClick={() => setShowFullText(!showFullText)}
+          className="flex items-center justify-between w-full text-[10px] font-bold text-[#183028] hover:text-[#23453a] py-1 cursor-pointer"
+        >
+          <span className="flex items-center gap-1">
+            <FileCheck2 className="h-3 w-3 text-emerald-600" />
+            Remediated Compliant Document Preview
+          </span>
+          {showFullText ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+        </button>
+
+        {showFullText && (
+          <div className="p-2.5 bg-white border border-[#183028]/20 rounded-xl text-[10px] font-mono leading-relaxed text-[#183028] max-h-[140px] overflow-y-auto whitespace-pre-wrap select-text shadow-2xs">
+            {result.remediated_content.text}
+          </div>
+        )}
+      </div>
+
+      {/* 1-Click Interactive Action Triggers */}
+      <div className="pt-2 grid grid-cols-1 sm:grid-cols-3 gap-1.5">
+        <button
+          onClick={onCopy}
+          className="flex items-center justify-center gap-1 text-[10px] font-semibold text-[#183028] hover:bg-[#FAFBFB] bg-white border border-[#E6E8E7] py-1.5 px-2 rounded-lg cursor-pointer transition-colors shadow-2xs"
+        >
+          {isCopied ? (
+            <>
+              <Check className="h-3 w-3 text-emerald-600" />
+              <span className="text-emerald-600 font-bold">Copied</span>
+            </>
+          ) : (
+            <>
+              <Copy className="h-3 w-3" />
+              <span>Copy Text</span>
+            </>
+          )}
+        </button>
+
+        <button
+          onClick={handleDownload}
+          className="flex items-center justify-center gap-1 text-[10px] font-semibold text-[#183028] hover:bg-[#FAFBFB] bg-white border border-[#E6E8E7] py-1.5 px-2 rounded-lg cursor-pointer transition-colors shadow-2xs"
+        >
+          <Download className="h-3 w-3" />
+          <span>Download Fixed</span>
+        </button>
+
+        <button
+          onClick={handleDirectSubmit}
+          disabled={isSubmitting || isSubmitted}
+          className={cn(
+            "flex items-center justify-center gap-1 text-[10px] font-bold py-1.5 px-2 rounded-lg cursor-pointer transition-colors shadow-2xs",
+            isSubmitted
+              ? "bg-emerald-600 text-white"
+              : "bg-[#183028] hover:bg-[#23453a] text-[#C5E86C]"
+          )}
+        >
+          {isSubmitting ? (
+            <>
+              <Loader2 className="h-3 w-3 animate-spin" />
+              <span>Submitting...</span>
+            </>
+          ) : isSubmitted ? (
+            <>
+              <Check className="h-3 w-3" />
+              <span>Submitted ✓</span>
+            </>
+          ) : (
+            <>
+              <Sparkles className="h-3 w-3 text-[#C5E86C]" />
+              <span>Submit Proposal</span>
+            </>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Card rendering live repository search matches and telemetry metrics */
+interface ITelemetryCardProps {
+  result: ISearchResponse;
+}
+
+function TelemetrySearchCard({ result }: ITelemetryCardProps) {
+  const router = useRouter();
+  const { documents, analytics } = result;
+
+  return (
+    <div className="mt-3 pt-3 border-t border-[#E6E8E7] space-y-2.5 text-[#183028]">
+      {/* High-density telemetry chips */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-[#183028] text-white">
+          {analytics.total_matches} {analytics.total_matches === 1 ? "Match" : "Matches"}
+        </span>
+        <span className="text-[9.5px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+          {analytics.breakdown_by_status.Approved} Approved
+        </span>
+        <span className="text-[9.5px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
+          {analytics.breakdown_by_status.Pending} Pending
+        </span>
+        <span className="text-[9.5px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+          {analytics.breakdown_by_status.NeedsRevision} Needs Revision
+        </span>
+        {analytics.regulatory_risk_summary > 0 && (
+          <span className="text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 flex items-center gap-1">
+            <ShieldAlert className="h-2.5 w-2.5" />
+            {analytics.regulatory_risk_summary} Flagged
+          </span>
+        )}
+      </div>
+
+      {/* Matching Document Items List */}
+      <div className="space-y-1.5 max-h-[220px] overflow-y-auto pr-0.5">
+        {documents.slice(0, 5).map((doc) => (
+          <div
+            key={doc.id}
+            className="p-2 bg-white rounded-xl border border-[#E6E8E7] hover:border-[#183028]/30 transition-all space-y-1.5 shadow-2xs"
+          >
+            <div className="flex items-start justify-between gap-1.5">
+              <div className="min-w-0">
+                <h5 className="font-bold text-[11px] text-[#183028] truncate">{doc.title}</h5>
+                <p className="text-[9px] text-[#183028]/60">
+                  By {doc.advisor_name} • {new Date(doc.created_at).toLocaleDateString()}
+                </p>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <span className="text-[8.5px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-800">
+                  v{doc.version}
+                  {doc.total_versions > 1 ? ` of ${doc.total_versions}` : ""}
+                </span>
+                <span
+                  className={cn(
+                    "text-[8.5px] font-bold px-1.5 py-0.5 rounded",
+                    doc.status === "Approved" && "bg-emerald-100 text-emerald-800",
+                    doc.status === "Pending" && "bg-blue-100 text-blue-800",
+                    doc.status === "Needs Revision" && "bg-amber-100 text-amber-800",
+                    doc.status === "Rejected" && "bg-rose-100 text-rose-800"
+                  )}
+                >
+                  {doc.status}
+                </span>
+              </div>
+            </div>
+
+            {/* Quick Action Chips */}
+            <div className="flex items-center gap-1 pt-0.5">
+              <button
+                onClick={() => router.push(`/documents/${doc.id}`)}
+                className="flex items-center gap-1 text-[9px] font-semibold text-[#183028] hover:bg-[#C5E86C]/30 bg-[#FAFBFB] border border-[#E6E8E7] px-2 py-0.5 rounded cursor-pointer transition-colors"
+              >
+                <ExternalLink className="h-2.5 w-2.5" />
+                <span>Open File</span>
+              </button>
+
+              <button
+                onClick={() => router.push(`/documents/${doc.id}/audit-trail`)}
+                className="flex items-center gap-1 text-[9px] font-semibold text-[#183028] hover:bg-[#C5E86C]/30 bg-[#FAFBFB] border border-[#E6E8E7] px-2 py-0.5 rounded cursor-pointer transition-colors"
+              >
+                <History className="h-2.5 w-2.5" />
+                <span>Audit Trail</span>
+              </button>
+
+              {doc.has_revisions && (
+                <button
+                  onClick={() => router.push(`/documents/${doc.id}`)}
+                  className="flex items-center gap-1 text-[9px] font-semibold text-[#183028] hover:bg-[#C5E86C]/30 bg-[#FAFBFB] border border-[#E6E8E7] px-2 py-0.5 rounded cursor-pointer transition-colors"
+                >
+                  <Layers className="h-2.5 w-2.5" />
+                  <span>Lineage (v1-v{doc.total_versions})</span>
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

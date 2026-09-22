@@ -7,6 +7,9 @@ import { AppError } from '../middleware/error.middleware';
 import { DocumentStatus } from '../types/models';
 import { asyncHandler } from '../utils/asyncHandler';
 
+import { SearchEngineService } from '../services/search-engine.service';
+import { GeminiCopilotService } from '../services/gemini-copilot.service';
+
 export class DocumentController {
   public static submit = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     if (!req.file) {
@@ -110,6 +113,66 @@ export class DocumentController {
     res.setHeader('Content-Type', document.mime_type || 'application/octet-stream');
     res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(document.file_name)}"`);
     res.sendFile(path.resolve(document.file_path));
+  });
+
+  /**
+   * High-density filterable repository search & analytics endpoint.
+   */
+  public static search = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const user = (req as any).user;
+    const result = await SearchEngineService.search(user, req.body || {});
+    sendSuccess(res, result, 200, 'Documents and telemetry analytics retrieved successfully');
+  });
+
+  /**
+   * In-chat file compliance audit & automated remediation endpoint.
+   */
+  public static auditAndFix = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.file) {
+      throw new AppError('A document file is required for compliance audit (PDF, DOCX, XLSX, TXT)', 400, 'FILE_REQUIRED');
+    }
+    const user = (req as any).user;
+    const { target_document_id, instructions } = req.body;
+    const result = await GeminiCopilotService.auditAndRemediateFile(
+      req.file,
+      user,
+      target_document_id,
+      instructions
+    );
+    res.status(200).json(result);
+  });
+
+  /**
+   * Downloads a remediated compliant document.
+   */
+  public static downloadRemediated = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const token = req.query.token as string;
+    if (!token) {
+      throw new AppError('Download token is required.', 400, 'TOKEN_REQUIRED');
+    }
+    const cached = GeminiCopilotService.getRemediatedFile(token);
+    if (!cached) {
+      throw new AppError('Download token expired or file not found.', 404, 'TOKEN_EXPIRED');
+    }
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(cached.filename)}"`);
+    res.send(cached.text);
+  });
+
+  /**
+   * 1-Click submit remediated document directly as proposal or revision.
+   */
+  public static submitRemediated = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const user = (req as any).user;
+    const { text, title, description, targetDocumentId, token } = req.body;
+    const document = await GeminiCopilotService.submitRemediatedDraft(user, {
+      text,
+      title,
+      description,
+      targetDocumentId,
+      token,
+    });
+    sendSuccess(res, document, 201, 'Remediated document submitted successfully');
   });
 }
 

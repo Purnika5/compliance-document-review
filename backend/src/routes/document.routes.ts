@@ -110,5 +110,33 @@ router.get(
   DocumentController.downloadFile
 );
 
+// High-density filterable repository search & analytics endpoint
+router.post(
+  '/search',
+  authenticateToken,
+  DocumentController.search
+);
+
+// In-chat file compliance audit & automated remediation endpoint
+router.post(
+  '/audit-and-fix',
+  authenticateToken,
+  uploadDocumentFile.single('file'),
+  DocumentController.auditAndFix
+);
+
+// Download compliant remediated document
+router.get(
+  '/download-remediated',
+  DocumentController.downloadRemediated
+);
+
+// 1-Click submit remediated document
+router.post(
+  '/submit-remediated',
+  authenticateToken,
+  DocumentController.submitRemediated
+);
+
 export default router;
 
