@@ -23,7 +23,6 @@ export function LoginForm() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [rememberDevice, setRememberDevice] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -192,22 +191,6 @@ export function LoginForm() {
           {touched.password && formErrors.password && (
             <p className="text-[11px] text-rose-500 font-medium">{formErrors.password}</p>
           )}
-        </div>
-
-        {/* Remember Device Checkbox */}
-        <div className="pt-1 text-left">
-          <label className="flex items-center gap-2 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              id="login-remember-device"
-              checked={rememberDevice}
-              onChange={(e) => setRememberDevice(e.target.checked)}
-              className="h-4 w-4 rounded-sm border-slate-300 text-[#183028] focus:ring-[#183028] cursor-pointer accent-[#183028]"
-            />
-            <span className="text-xs text-slate-600">
-              Remember this device for 30 days
-            </span>
-          </label>
         </div>
 
         {/* Submit Button */}
