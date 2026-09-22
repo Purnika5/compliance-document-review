@@ -6,7 +6,7 @@
  * @returns The AI assistance panel view.
  * @author Keith
  */
-import React, { useState } from "react";
+import React from "react";
 import {
   ChevronRight,
   Bot,
