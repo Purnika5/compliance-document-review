@@ -34,7 +34,6 @@ export default function SettingsPage() {
   // Form states initialized from authenticated session
   const [fullName, setFullName] = useState(session?.name || "");
   const [email, setEmail] = useState(session?.email || "");
-  const [phone, setPhone] = useState("");
 
   const [isSaving, setIsSaving] = useState(false);
 
@@ -202,17 +201,6 @@ export default function SettingsPage() {
                 readOnly
                 className="h-9 text-xs bg-[#FAFBFB] border-[#E6E8E7] text-[#183028]/70 rounded-xl shadow-2xs cursor-not-allowed select-none focus-visible:ring-0 focus-visible:border-[#E6E8E7]"
                 placeholder="Role"
-              />
-            </div>
-
-            {/* Phone */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-[#183028]">Direct Desk Phone</label>
-              <Input
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="h-9 text-xs bg-[#FFFFFF] border-[#E6E8E7] text-[#183028] rounded-xl focus:border-[#183028] focus:ring-1 focus:ring-[#183028] shadow-2xs"
-                placeholder="+1 (212) 555-0190"
               />
             </div>
           </div>
