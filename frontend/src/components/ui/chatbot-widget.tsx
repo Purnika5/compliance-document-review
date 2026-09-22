@@ -656,16 +656,16 @@ export function ChatbotWidget() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="flex items-center gap-2.5 bg-[#183028] hover:bg-[#203f35] text-[#C5E86C] border border-[#C5E86C]/40 px-4 py-2.5 rounded-full shadow-xl shadow-[#183028]/25 text-xs font-bold transition-all hover:scale-105 active:scale-95 cursor-pointer group"
+          className="flex items-center gap-2.5 bg-white hover:bg-[#FAFBFB] text-[#183028] border border-[#E6E8E7] hover:border-[#183028]/30 px-4 py-2.5 rounded-full shadow-xl shadow-[#183028]/10 text-xs font-bold transition-all hover:scale-105 active:scale-95 cursor-pointer group"
           aria-label="Open Compliance Copilot"
         >
           <div className="relative flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C5E86C] opacity-75" />
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#C5E86C]" />
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
           </div>
-          <Bot className="h-4 w-4 text-[#C5E86C]" />
-          <span className="tracking-tight">{isLoginMode ? "Compliance Help" : "Neural Copilot"}</span>
-          <span className="text-[9.5px] px-1.5 py-0.5 rounded font-extrabold bg-[#C5E86C] text-[#183028]">
+          <Bot className="h-4 w-4 text-[#183028]" />
+          <span className="tracking-tight text-[#183028]">{isLoginMode ? "Compliance Help" : "Neural Copilot"}</span>
+          <span className="text-[9.5px] px-1.5 py-0.5 rounded font-extrabold bg-[#C5E86C] text-[#183028] border border-[#b4db53]">
             Gemini 2.5
           </span>
         </button>
