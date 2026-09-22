@@ -4,6 +4,7 @@ import healthRoutes from './health.routes';
 import authRoutes from './auth.routes';
 import documentRoutes from './document.routes';
 import notificationRoutes from './notification.routes';
+import chatRoutes from './chat.routes';
 
 const router = Router();
 
@@ -31,6 +32,9 @@ router.use('/api/documents', documentRoutes);
 
 router.use('/notifications', notificationRoutes);
 router.use('/api/notifications', notificationRoutes);
+
+router.use('/chat', chatRoutes);
+router.use('/api/chat', chatRoutes);
 
 export default router;
 

@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { IChatMessage } from "@/types/chatbot.types";
 import { authStore, type UserSession } from "@/lib/auth/auth-store";
+import { getBaseBackendUrl } from "@/lib/api/client";
 import {
   LOGIN_INITIAL_MESSAGES,
   LOGIN_SUGGESTED_QUESTIONS,
@@ -322,28 +323,92 @@ export function ChatbotWidget() {
     const userMsgId = `user-${++messageIdRef.current}`;
     const timestamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
-    // Append user message immediately
     setMessages((prev) => [
       ...prev,
-      {
-        id: userMsgId,
-        sender: "user",
-        text: rawText,
-        timestamp,
-      },
+      { id: userMsgId, sender: "user", text: rawText, timestamp },
     ]);
 
     if (!overrideText) setInputValue("");
 
     const botMsgId = `bot-${++messageIdRef.current}`;
+    const lower = rawText.toLowerCase();
 
-    setTimeout(() => {
-      const reply = resolveBotReply(rawText, isLoginMode);
-      simulateTyping(botMsgId, reply.text, timestamp, {
-        grammarResult: reply.grammarResult,
-        documentationResult: reply.documentationResult,
+    // Grammar / enhance: always run locally (instant, no network)
+    const isGrammar =
+      lower.startsWith("check grammar:") ||
+      lower.startsWith("grammar:") ||
+      lower.startsWith("check:") ||
+      lower.startsWith("audit note:") ||
+      lower.startsWith("fix:") ||
+      lower.includes("check grammar") ||
+      lower.includes("grammar check") ||
+      lower.includes("proofread") ||
+      lower.includes("audit draft note");
+
+    const isEnhance =
+      lower.startsWith("enhance:") ||
+      lower.startsWith("enhance documentation:") ||
+      lower.startsWith("enhance note:") ||
+      lower.includes("enhance for documentation") ||
+      lower.includes("format as memo");
+
+    if (isGrammar || isEnhance) {
+      setTimeout(() => {
+        const reply = resolveBotReply(rawText, isLoginMode);
+        simulateTyping(botMsgId, reply.text, timestamp, {
+          grammarResult: reply.grammarResult,
+          documentationResult: reply.documentationResult,
+        });
+      }, 200);
+      return;
+    }
+
+    // All other messages: call real Gemini AI via backend proxy
+    setIsTyping(true);
+    setMessages((prev) => [
+      ...prev,
+      { id: botMsgId, sender: "bot", text: "", timestamp, isTyping: true },
+    ]);
+
+    const userRole = session?.role || "Advisor";
+    const apiUrl = `${getBaseBackendUrl()}/api/chat`;
+
+    fetch(apiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: rawText, role: userRole }),
+      signal: AbortSignal.timeout(14000),
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`status ${res.status}`);
+        const data = await res.json() as { reply: string };
+        return data.reply;
+      })
+      .catch(() => {
+        // Fallback to local knowledge base if API is down
+        return resolveBotReply(rawText, isLoginMode).text;
+      })
+      .then((replyText) => {
+        let charIndex = 0;
+        typingIntervalRef.current = setInterval(() => {
+          charIndex += 2;
+          const currentText = replyText.slice(0, charIndex);
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === botMsgId
+                ? { ...msg, text: currentText, isTyping: charIndex < replyText.length }
+                : msg
+            )
+          );
+          if (charIndex >= replyText.length) {
+            if (typingIntervalRef.current) {
+              clearInterval(typingIntervalRef.current);
+              typingIntervalRef.current = null;
+            }
+            setIsTyping(false);
+          }
+        }, TYPING_SPEED_MS);
       });
-    }, 300);
   };
 
   const currentSuggestedQuestions = getSuggestedQuestions(isLoginMode);
