@@ -210,7 +210,7 @@ export function ChatbotWidget() {
   );
 
   const isAuthenticated = Boolean(session?.token);
-  const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/signup");
+  const isAuthPage = Boolean(pathname && (pathname.startsWith("/login") || pathname.startsWith("/signup")));
   const isLoginMode = !isAuthenticated || isAuthPage;
 
   // Chatbot is closed by default on initial open and page navigation
@@ -416,6 +416,11 @@ export function ChatbotWidget() {
 
   const currentSuggestedQuestions = getSuggestedQuestions(isLoginMode);
   const currentPlaceholder = getPlaceholderText(isLoginMode, isTyping);
+
+  // Do not render the chatbot on login or sign up pages
+  if (isAuthPage) {
+    return null;
+  }
 
   return (
     <div className="fixed bottom-5 right-5 z-40 print:hidden font-sans">
