@@ -13,7 +13,7 @@ export const LOGIN_INITIAL_MESSAGES: IChatMessage[] = [
   {
     id: "login-greeting",
     sender: "bot",
-    text: "Welcome to the Springer Capital Compliance Portal. I can assist with platform orientation, accepted file formats, regulatory standards (FINRA 2210 & SEC 206), and account access before you sign in.",
+    text: "Hello! I'm your Springer Capital Compliance Assistant. I can help answer questions regarding our platform review workflows, accepted filing formats, and FINRA 2210 / SEC 206 regulatory guidelines. What would you like to know?",
     timestamp: "Live",
   },
 ];
@@ -56,7 +56,7 @@ export const DASHBOARD_INITIAL_MESSAGES: IChatMessage[] = [
   {
     id: "dash-greeting",
     sender: "bot",
-    text: "Springer Capital Compliance Copilot active. You can ask workflow questions, check regulatory rules (FINRA 2210, SEC 206), verify accepted formats, or submit text to audit grammar and enhance compliance notes.",
+    text: "Hello! I'm your Neural Compliance Copilot. I'm here to help you navigate filings, answer regulatory questions, or scan and remediate any draft proposals before submission. What are you working on today?",
     timestamp: "Live",
   },
 ];

@@ -36,7 +36,7 @@ interface LiveTelemetryData {
 
 /**
  * Generates an institutional, data-grounded compliance response when remote AI microservice or Gemini REST times out.
- * Strictly grounds output in actual database rows instead of generic placeholders.
+ * Strictly grounds output in actual database rows in warm, natural, human conversational language.
  */
 function generateContextualComplianceReply(
   message: string,
@@ -47,7 +47,21 @@ function generateContextualComplianceReply(
   const isOfficer = role === 'Officer';
   const { statusCounts, recentDocs, activeDoc } = data;
 
-  // 1. Specific inquiries about submissions, filings, documents, or queue
+  // 1. Inquiries about active document
+  if (activeDoc && /\b(this document|this file|current document|infractions?|flags?|violations?|fix)\b/i.test(lower)) {
+    const flagsCount = activeDoc.flags?.length || 0;
+    if (flagsCount === 0) {
+      return `I just inspected "${activeDoc.title}" (v${activeDoc.version}). It currently has zero compliance flags and meets all FINRA 2210 & SEC 206 standards. Everything looks clean and ready for review!`;
+    }
+    const sample = activeDoc.flags?.[0];
+    return `For "${activeDoc.title}" (v${activeDoc.version}), there ${flagsCount === 1 ? 'is 1 item' : `are ${flagsCount} items`} flagged under ${sample?.rule || 'FINRA 2210'}: "${sample?.passage || ''}". ${
+      isOfficer
+        ? 'Would you like to draft an official revision request note, or should we evaluate an auto-remediation?'
+        : 'Would you like me to help you rewrite this passage into compliant fiduciary language so you can upload a revision?'
+    }`;
+  }
+
+  // 2. Inquiries about submissions, filings, documents, or queue
   if (
     /\b(submission|submissions|filing|filings|document|documents|proposal|proposals|queue|pending|approved|revision|status|my uploads|my files|what documents|show my)\b/i.test(
       lower
@@ -55,68 +69,38 @@ function generateContextualComplianceReply(
   ) {
     if (recentDocs.length === 0) {
       return isOfficer
-        ? `There are currently no document submissions in the supervisory review queue. All institutional filings are up-to-date.`
-        : `You do not have any active proposal submissions on file yet. You can submit a new proposal via the **Submit Proposal Document** button or upload a draft right here in this chat to audit and auto-fix it.`;
+        ? 'The supervisory review queue is currently clear—there are no pending document submissions awaiting review right now.'
+        : "You don't have any proposal submissions on file yet. You can submit a new proposal through the dashboard, or attach a draft right here in chat and I'll scan or auto-fix it for you before submission.";
     }
 
-    const countList = Object.entries(statusCounts)
-      .map(([s, c]) => `**${c} ${s}**`)
-      .join(', ') || '0 documents';
+    const countsSummary = Object.entries(statusCounts)
+      .map(([s, c]) => `${c} ${s.toLowerCase()}`)
+      .join(', ') || '0 filings';
 
-    const docItems = recentDocs
-      .slice(0, 5)
-      .map(
-        (d) =>
-          `• **${d.title}** — Status: \`${d.status}\` | Version: v${d.version} | File: \`${d.file_name}\`${
-            d.advisor_name ? ` | Advisor: ${d.advisor_name}` : ''
-          }`
-      )
-      .join('\n');
+    const docList = recentDocs
+      .slice(0, 3)
+      .map((d) => `"${d.title}" (${d.status}, v${d.version})`)
+      .join(', ');
 
     return isOfficer
-      ? `### 📋 Supervisory Compliance Review Queue\n**Telemetry Summary**: ${countList}\n\n**Recent Institutional Filings**:\n${docItems}\n\nYou can click any document in the **Review Queue** to open the 3-Zone Workspace and issue formal supervisory determinations (Approve, Request Revision, Reject).`
-      : `### 📂 Your Proposal Filings\n**Telemetry Summary**: ${countList}\n\n**Recent Submissions**:\n${docItems}\n\nWould you like me to inspect any of these documents, or drag and drop a draft into this chat to audit and auto-fix infractions before submission?`;
+      ? `Across the platform, we currently have ${countsSummary}. Recent filings awaiting attention include ${docList}. Which one would you like to review first?`
+      : `Looking at your filings, you have ${countsSummary}. Your recent submissions include ${docList}. Would you like me to check any of these, or do you have a new draft you want to scan or auto-fix?`;
   }
 
-  // 2. Active document inspection if viewing a specific document
-  if (activeDoc && /\b(this document|this file|current document|infractions?|flags?|violations?|fix)\b/i.test(lower)) {
-    const flagsCount = activeDoc.flags?.length || 0;
-    const flagsList = (activeDoc.flags || [])
-      .map((f: any) => `• **${f.rule || 'FINRA Rule 2210'}**: "${f.passage || 'Flagged passage'}" — *${f.explanation || 'Infraction detected'}*`)
-      .join('\n') || '• No active regulatory risk flags detected on this version.';
-
-    return `### 🛡️ Active Document Review: "${activeDoc.title}" (v${activeDoc.version})\n**Status**: \`${activeDoc.status}\`\n**Executive AI Summary**: ${activeDoc.summary || 'Summary unavailable'}\n\n**Compliance Audit Breakdown (${flagsCount} flags)**:\n${flagsList}\n\n${
-      isOfficer
-        ? 'As a Compliance Officer, you can evaluate these flags in the review workspace and issue an official supervisory determination.'
-        : 'You can upload a revised version addressing these flags using the **Upload Revision** button.'
-    }`;
-  }
-
-  // 3. Greetings & Role Identity
+  // 3. Greetings
   if (/\b(hi|hello|hey|good\s+morning|good\s+afternoon|good\s+evening|greetings|who\s+are\s+you)\b/i.test(lower)) {
     return isOfficer
-      ? `Hello Officer! I am your Springer Capital Neural Compliance Copilot. I monitor the institutional review queue, evaluate filings against FINRA Rule 2210 & SEC Rule 206 standards, and assist with supervisory determinations. How may I assist your review workflow today?`
-      : `Hello! I am your Springer Capital Neural Compliance Copilot. How can I assist you today? You can ask me about your proposal submissions, search platform filings, or upload any draft file (PDF, DOCX, TXT) right here to audit and auto-fix regulatory infractions before submission.`;
+      ? "Hello Officer! I'm your Neural Compliance Copilot. I monitor the supervisory review queue, evaluate filings against FINRA Rule 2210 & SEC Rule 206 standards, and assist with review determinations. How can I help you today?"
+      : "Hello! I'm your Neural Compliance Copilot. I'm here to help you track your proposal submissions, explain FINRA Rule 2210 & SEC Rule 206 rules, or scan and auto-fix any draft file you attach here with zero flags. What are you working on today?";
   }
 
   // 4. Regulatory Rules (FINRA 2210, SEC 206)
   if (/\b(finra|sec|2210|206|rule|rules|regulation|regulatory|promissory|guarantee)\b/i.test(lower)) {
-    return `### 📜 Institutional Regulatory Standards Guidance
-• **FINRA Rule 2210 (Communications with the Public)**: Prohibits promissory language, guaranteed returns (e.g., 'guaranteed 8% yield with zero downside risk'), exaggerated claims, and unhedged historical performance. All communications must be fair, balanced, and state that investments are subject to loss of principal.
-• **SEC Rule 206(4)-1 (Adviser Marketing Rule)**: Prohibits untrue or misleading statements of material fact. Performance metrics must be substantiated, clear fee deductions shown (net-of-fees), and full suitability disclosures provided.
-• **SEC Rule 204**: Requires rigorous books and records substantiation for all performance metrics and advisory claims.
-
-*Pro-Tip*: Drag and drop any draft into this chat—I will highlight exact rule infractions and generate a 100% compliant file for you.`;
+    return "Under FINRA Rule 2210 and SEC Rule 206, marketing communications and proposals must be fair, balanced, and free from promissory language or guaranteed returns. You always need to include clear downside risk disclosures, such as stating that investments are subject to market volatility and loss of principal. If you attach a draft file here, I can scan it for these exact rules or fix it into 100% compliant language for you.";
   }
 
-  // 5. General platform guidance
-  return `I am your Springer Capital Neural Compliance Copilot.
-You can:
-1. Ask about your live submissions (e.g., *"Show my submissions from this month"*).
-2. Upload any draft file (PDF, DOCX, TXT) directly into this chat to audit and auto-fix FINRA 2210 & SEC 206 infractions.
-3. Query supervisory review actions and multi-version lineages.
-
-How may I assist your compliance workflow today?`;
+  // 5. Default natural interactive assistance
+  return "I'm here to help with your compliance workflows, submissions, and regulatory questions under FINRA 2210 and SEC 206. You can ask about your documents or attach a draft file right here to scan or auto-fix it. What would you like to explore?";
 }
 
 router.post('/', optionalAuth, async (req: Request, res: Response) => {
@@ -204,7 +188,7 @@ router.post('/', optionalAuth, async (req: Request, res: Response) => {
     : 'No documents recorded in database yet.';
 
   const activeDocFormatted = telemetryData.activeDoc
-    ? `\nCURRENT DOCUMENT ON SCREEN:
+    ? `\nCURRENT ACTIVE DOCUMENT:
 Title: "${telemetryData.activeDoc.title}" (Version: v${telemetryData.activeDoc.version}, Status: ${telemetryData.activeDoc.status})
 Summary: ${telemetryData.activeDoc.summary || 'None'}
 Active Risk Flags: ${JSON.stringify(telemetryData.activeDoc.flags || [])}`
@@ -216,35 +200,34 @@ Active Risk Flags: ${JSON.stringify(telemetryData.activeDoc.flags || [])}`
     try {
       const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
 
-      const systemPrompt = `You are Springer Capital's Neural Compliance Copilot, an elite Wall Street regulatory compliance intelligence copilot.
-You are interacting with an authenticated platform user.
-User Role: ${userRole}
-Current Page Context: ${pathname || 'Dashboard'}
+      const systemPrompt = `You are Springer Capital's Neural Compliance Copilot.
+You speak like a knowledgeable, articulate, and friendly senior Wall Street compliance director and trusted colleague.
+Your tone is warm, conversational, human, and interactive.
+Talk naturally in fluid, engaging sentences. Do NOT output robotic templates, rigid headers, or pre-canned corporate apologies like "Thank you for your inquiry regarding...".
+If the user asks about their submissions, queue, or documents, weave the live database data into your conversation naturally (e.g., 'You currently have 3 filings pending and 2 approved. Your latest submission is Keith's proposal...').
+Ask helpful follow-up questions to keep the dialogue interactive.
 
-LIVE DATABASE RECORDS:
-Document Status Counts: ${countsFormatted}
+CONTEXT:
+User Role: ${userRole} (${isOfficer ? 'Compliance Officer' : 'Investment Advisor'})
+Current Page: ${pathname || 'Dashboard'}
+
+LIVE DATABASE TELEMETRY:
+Status Counts: ${countsFormatted}
 Recent Repository Filings:
 ${recentFormatted}
 ${activeDocFormatted}
 
-ROLE-SPECIFIC INSTRUCTIONS:
+ROLE CONTEXT:
 ${
   isOfficer
-    ? `- The user is a Compliance Officer responsible for supervisory review across all advisors.
-- When they ask about the review queue, pending filings, or compliance infractions, CITE THE REAL DATABASE RECORDS ABOVE. Give exact counts, titles, and advisor names.
-- If asked to fix or evaluate a file, enforce strict FINRA Rule 2210 (promissory claims, guaranteed returns) and SEC Rule 206 (fiduciary marketing, net-of-fees disclosures).
-- Help them draft precise, professional supervisory determination notes (for Approve, Request Revision, or Rejection). Do not invent fictitious issues.`
-    : `- The user is an Investment Advisor who submits proposals and client communications.
-- When they ask about their submissions, pending documents, or filings that need revision, CITE THE REAL DATABASE RECORDS ABOVE. Give exact document titles, statuses, and version numbers.
-- If they ask how to fix or audit a document, guide them on removing promissory statements and adding required downside risk disclosures under FINRA Rule 2210 & SEC Rule 206.
-- Encourage them to attach or drag-and-drop their draft file into this chat for automated compliance auditing and 1-click remediation.`
+    ? 'The user is a Compliance Officer. You can discuss the supervisory review queue, flagged compliance issues, and help them draft official determinations without hallucinating fake infractions.'
+    : 'The user is an Investment Advisor. You can help them check their submissions, understand FINRA Rule 2210 and SEC Rule 206 requirements, and guide them on attaching draft files so you can scan or fix them.'
 }
 
-CRITICAL RULES:
-1. Speak naturally, politely, and authoritatively like a senior Wall Street regulatory director.
-2. NEVER output generic canned apologies or placeholder responses like "Thank you for your inquiry regarding...".
-3. ALWAYS ground answers in the LIVE DATABASE RECORDS above whenever repository documents, statuses, or metrics are asked.
-4. Format responses cleanly with GitHub markdown (bullet points, bold titles, concise actionable steps).`;
+IMPORTANT:
+- Speak like an engaging human expert in natural conversational language.
+- Never use robotic canned replies or embedded templates.
+- Keep responses interactive, concise, and helpful.`;
 
       const gResp = await fetch(geminiUrl, {
         method: 'POST',
@@ -257,7 +240,7 @@ CRITICAL RULES:
             },
           ],
           generationConfig: {
-            temperature: 0.25,
+            temperature: 0.35,
             maxOutputTokens: 750,
           },
         }),

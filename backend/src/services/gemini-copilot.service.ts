@@ -330,12 +330,14 @@ TASKS:
            VALUES ($1, $2, $3, $4, $5::jsonb, NOW())
            ON CONFLICT (document_id, version) DO UPDATE SET
              masked_text = EXCLUDED.masked_text,
+             summary = EXCLUDED.summary,
+             flags = '[]'::jsonb,
              updated_at = NOW()`,
           [
             resultDoc.id,
             resultDoc.version || 1,
             text,
-            'Neural Copilot verified: Automated remediation completed against FINRA Rule 2210 and SEC Rule 206 guidelines.',
+            'Neural Copilot verified: Automated remediation completed against FINRA Rule 2210 and SEC Rule 206 guidelines. Zero compliance flags.',
             JSON.stringify([]),
           ]
         );

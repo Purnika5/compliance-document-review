@@ -46,10 +46,8 @@ import { showSuccessToast, showErrorToast } from "@/components/ui/toast";
 import {
   LOGIN_INITIAL_MESSAGES,
   LOGIN_SUGGESTED_QUESTIONS,
-  LOGIN_KNOWLEDGE_BASE,
   DASHBOARD_INITIAL_MESSAGES,
   DASHBOARD_SUGGESTED_QUESTIONS,
-  PLATFORM_KNOWLEDGE_BASE,
 } from "@/lib/constants/chatbot";
 import {
   recheckGrammar,
@@ -67,91 +65,18 @@ interface IResolvedBotReply {
   documentationResult?: IDocumentationResult;
 }
 
-/** Resolves bot reply for informative pre-login state */
-function getLoginBotResponse(rawText: string): string {
-  const lower = rawText.toLowerCase();
-
-  if (["regulation", "rule", "finra", "sec", "standard", "2210", "206"].some((k) => lower.includes(k))) {
-    return LOGIN_KNOWLEDGE_BASE.regulations;
+/** Human conversational fallback response when backend is unreachable */
+function getConversationalFallback(role?: string, isLoginMode?: boolean): string {
+  if (isLoginMode) {
+    return "Hello! I am your Springer Capital Compliance Assistant. I can help answer questions regarding our platform review workflows, accepted filing formats, and FINRA 2210 / SEC 206 regulatory guidelines. What would you like to know?";
   }
-  if (["privacy", "pii", "mask", "security", "protect", "redact"].some((k) => lower.includes(k))) {
-    return LOGIN_KNOWLEDGE_BASE.privacy;
-  }
-  if (["format", "pdf", "docx", "xlsx", "txt", "size", "limit", "category", "supported"].some((k) => lower.includes(k))) {
-    return LOGIN_KNOWLEDGE_BASE.formats;
-  }
-  if (["access", "account", "permission", "register", "role", "login", "admin"].some((k) => lower.includes(k))) {
-    return LOGIN_KNOWLEDGE_BASE.access;
-  }
-  if (["portal", "what is", "springer", "about", "overview"].some((k) => lower.includes(k))) {
-    return LOGIN_KNOWLEDGE_BASE.overview;
-  }
-  if (["review", "workflow", "how does", "officer", "process"].some((k) => lower.includes(k))) {
-    return LOGIN_KNOWLEDGE_BASE.workflow;
-  }
-  return LOGIN_KNOWLEDGE_BASE.default;
-}
-
-/** Resolves bot knowledge base reply for authenticated dashboard state */
-function getDashboardBotKnowledgeResponse(rawText: string): string {
-  const lower = rawText.toLowerCase().trim();
-
-  // 1. Greetings & Salutations
-  if (/\b(hi|hello|hey|good\s+morning|good\s+afternoon|good\s+evening|greetings|who\s+are\s+you)\b/i.test(lower)) {
-    return "Hello! I am your Springer Capital Neural Compliance Copilot. How can I assist you today? You can ask me platform workflow questions, search repository records by uploader or status, or upload draft documents directly into this chat for automated regulatory audit and remediation.";
-  }
-
-  // 2. Capabilities & Commands
-  if (/\b(what\s+can\s+you\s+do|help|features|capabilities|commands|how\s+to\s+use)\b/i.test(lower)) {
-    return "As your Neural Compliance Copilot, I can help you with:\n• **Document Auditing & Remediation**: Drag & drop drafts (PDF, DOCX, TXT) to audit against FINRA 2210 & SEC 206 rules and get an auto-fixed file.\n• **Repository Search**: Ask me naturally about any document, status, or advisor (e.g., 'Show pending documents from Keith').\n• **Regulatory Guidance**: Inquire about FINRA Rule 2210 (promissory statements), SEC Rule 206 (fiduciary marketing), or KYC/AML.\n• **Review & Versioning Workflows**: Learn about submission steps, Officer review actions, and multi-version revision lineages (v1, v2...).\n• **Grammar & Compliance Memos**: Type 'check grammar: <text>' to polish and institutionalize determination notes.";
-  }
-
-  if (["version", "revision", "resubmit", "v1", "v2", "lineage"].some((k) => lower.includes(k))) {
-    return PLATFORM_KNOWLEDGE_BASE.versions;
-  }
-  if (["finra", "sec", "rule", "2210", "206", "regulation", "standard", "204", "2111"].some((k) => lower.includes(k))) {
-    return PLATFORM_KNOWLEDGE_BASE.rules;
-  }
-  if (["pii", "mask", "unmask", "redact", "ssn", "privacy", "leak"].some((k) => lower.includes(k))) {
-    return PLATFORM_KNOWLEDGE_BASE.pii;
-  }
-  if (["audit", "trail", "history", "log", "attestation"].some((k) => lower.includes(k))) {
-    return PLATFORM_KNOWLEDGE_BASE.audit;
-  }
-  if (["circuit", "breaker", "degrade", "resilience", "fallback", "outage"].some((k) => lower.includes(k))) {
-    return PLATFORM_KNOWLEDGE_BASE.circuit_breaker;
-  }
-  if (["setting", "profile", "password", "preferences", "signature", "contact"].some((k) => lower.includes(k))) {
-    return PLATFORM_KNOWLEDGE_BASE.settings;
-  }
-  if (["upload", "submit", "proposal", "filing"].some((k) => lower.includes(k))) {
-    return PLATFORM_KNOWLEDGE_BASE.upload;
-  }
-  if (["review", "approve", "reject", "queue", "decision", "officer"].some((k) => lower.includes(k))) {
-    return PLATFORM_KNOWLEDGE_BASE.review;
-  }
-  if (["category", "classification", "type", "brief", "statement"].some((k) => lower.includes(k))) {
-    return PLATFORM_KNOWLEDGE_BASE.categories;
-  }
-  if (["format", "size", "limit", "pdf", "docx", "xlsx", "txt"].some((k) => lower.includes(k))) {
-    return PLATFORM_KNOWLEDGE_BASE.formats;
-  }
-  if (["role", "permission", "advisor", "access", "guard"].some((k) => lower.includes(k))) {
-    return PLATFORM_KNOWLEDGE_BASE.permissions;
-  }
-
-  return `Thank you for your inquiry. As the Springer Capital Neural Compliance Copilot, I am here to assist with regulatory compliance workflows under FINRA Rule 2210 and SEC Rule 206 standards.
-
-You can ask me to:
-1. Search documents (e.g. 'Show pending proposals')
-2. Audit a draft by attaching a file or pasting text
-3. Guide you through submission, review, or revision procedures
-
-How can I help you today?`;
+  return role === "Officer"
+    ? "I'm monitoring the supervisory review queue and ready to help evaluate filings, check regulatory rules, or assist with determinations. How can I help you today?"
+    : "I'm here to help you track your proposal submissions, explain FINRA Rule 2210 & SEC Rule 206 rules, or scan and auto-fix any draft file you attach here with zero flags. What are you working on today?";
 }
 
 /** Resolves full bot response and attached results based on input and mode */
-function resolveBotReply(rawText: string, isLoginMode: boolean): IResolvedBotReply {
+function resolveBotReply(rawText: string, isLoginMode: boolean, role?: string): IResolvedBotReply {
   const lower = rawText.toLowerCase();
 
   // 1. Documentation Enhancement intent
@@ -197,17 +122,9 @@ function resolveBotReply(rawText: string, isLoginMode: boolean): IResolvedBotRep
         grammarResult,
       };
     }
-    return {
-      text: PLATFORM_KNOWLEDGE_BASE.grammar,
-    };
   }
 
-  // 3. Fallback to knowledge base
-  if (isLoginMode) {
-    return { text: getLoginBotResponse(rawText) };
-  }
-
-  return { text: getDashboardBotKnowledgeResponse(rawText) };
+  return { text: getConversationalFallback(role, isLoginMode) };
 }
 
 /** Determines active suggested questions dynamically based on authentication state, user role, and active page */
@@ -386,6 +303,7 @@ export function ChatbotWidget() {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatusText, setUploadStatusText] = useState("");
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -440,40 +358,61 @@ export function ChatbotWidget() {
     }, 2000);
   };
 
-  /** Handles file upload and triggers in-chat Gemini audit & remediation */
-  const handleFileUpload = async (file: File) => {
-    if (!file || isUploading) return;
+  /** Stages draft file upload without automatically submitting */
+  const handleFileUpload = (file: File) => {
+    if (!file) return;
 
     if (file.size > 25 * 1024 * 1024) {
       showErrorToast("File exceeds maximum allowed limit of 25MB.");
       return;
     }
 
+    setPendingFile(file);
+    showSuccessToast(`Draft attached: "${file.name}". Choose 'Scan File' or 'Fix & Remediate'.`);
+  };
+
+  /** Executes in-chat Gemini audit or remediation on the attached file */
+  const handleExecuteFileAudit = async (file: File, mode: "scan" | "remediate", userInstructions?: string) => {
+    if (!file || isUploading) return;
+
+    setPendingFile(null);
+    if (inputValue) setInputValue("");
+
     const userMsgId = `user-${++messageIdRef.current}`;
     const timestamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
-    // Add user upload message
+    const modeLabel = mode === "scan"
+      ? "Scan for FINRA 2210 & SEC 206 rule violations"
+      : "Auto-remediate into 100% compliant proposal (zero flags)";
+
+    const promptDesc = userInstructions
+      ? ` — Instruction: "${userInstructions}"`
+      : ` — Action: ${modeLabel}`;
+
+    // Add user message
     setMessages((prev) => [
       ...prev,
       {
         id: userMsgId,
         sender: "user",
-        text: `📎 Uploaded draft file: ${file.name} (${Math.round(file.size / 1024)} KB) for institutional compliance audit & auto-remediation.`,
+        text: `📎 Draft file: ${file.name} (${Math.round(file.size / 1024)} KB)${promptDesc}`,
         timestamp,
       },
     ]);
 
     setIsUploading(true);
-    setUploadStatusText("Extracting document text & sanitizing PII...");
+    setUploadStatusText("Auditing draft passages with Google Gemini against FINRA 2210 & SEC 206...");
 
     const botMsgId = `bot-${++messageIdRef.current}`;
 
-    try {
-      setTimeout(() => {
-        setUploadStatusText("Auditing passages with Google Gemini against FINRA 2210 & SEC 206...");
-      }, 900);
+    const docMatch = pathname ? pathname.match(/\/documents\/([0-9a-fA-F-]+)/) : null;
+    const activeDocId = docMatch ? docMatch[1] : undefined;
 
-      const auditResponse = await copilotApi.auditAndRemediate(file);
+    try {
+      const auditResponse = await copilotApi.auditAndRemediate(file, {
+        instructions: userInstructions,
+        targetDocumentId: activeDocId,
+      });
 
       setIsUploading(false);
       setUploadStatusText("");
@@ -488,8 +427,8 @@ export function ChatbotWidget() {
           auditResult: auditResponse,
           suggestedChips: [
             "Submit remediated version",
-            "Show high-risk flags",
             "Show my submissions from this month",
+            "Download remediated file",
           ],
         },
       ]);
@@ -502,7 +441,7 @@ export function ChatbotWidget() {
         {
           id: botMsgId,
           sender: "bot",
-          text: `Compliance audit encountered an issue: ${err.message || "Failed to process file"}. Please try again or paste text directly.`,
+          text: `I encountered an issue auditing your file: ${err.message || "Failed to process file"}. Please try again or paste text directly.`,
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         },
       ]);
@@ -610,6 +549,14 @@ export function ChatbotWidget() {
 
   const handleSend = async (overrideText?: string) => {
     const rawText = overrideText || inputValue.trim();
+
+    // If an uploaded draft file is pending, execute remediation with the user's message
+    if (pendingFile) {
+      const fileToProcess = pendingFile;
+      handleExecuteFileAudit(fileToProcess, "remediate", rawText || undefined);
+      return;
+    }
+
     if (!rawText || isTyping || isUploading) return;
 
     const userMsgId = `user-${++messageIdRef.current}`;
@@ -646,7 +593,7 @@ export function ChatbotWidget() {
 
     if (isGrammar || isEnhance) {
       setTimeout(() => {
-        const reply = resolveBotReply(rawText, isLoginMode);
+        const reply = resolveBotReply(rawText, isLoginMode, session?.role);
         simulateTyping(botMsgId, reply.text, timestamp, {
           grammarResult: reply.grammarResult,
           documentationResult: reply.documentationResult,
@@ -688,7 +635,6 @@ export function ChatbotWidget() {
         return;
       } catch (searchErr) {
         console.warn("[Copilot Search Engine Error] Falling back to standard chat proxy:", searchErr);
-        // Do not add another message to prev; update the existing botMsgId below
       }
     }
 
@@ -703,10 +649,10 @@ export function ChatbotWidget() {
         documentId,
       })
       .then((res) => {
-        return res?.reply || resolveBotReply(rawText, isLoginMode).text;
+        return res?.reply || getConversationalFallback(userRole, isLoginMode);
       })
       .catch(() => {
-        return resolveBotReply(rawText, isLoginMode).text;
+        return getConversationalFallback(userRole, isLoginMode);
       })
       .then((replyText) => {
         simulateTyping(botMsgId, replyText, timestamp);
@@ -758,9 +704,9 @@ export function ChatbotWidget() {
               <div className="h-16 w-16 rounded-2xl bg-[#C5E86C]/20 border border-[#C5E86C] flex items-center justify-center text-[#C5E86C]">
                 <UploadCloud className="h-8 w-8 animate-bounce" />
               </div>
-              <h4 className="text-sm font-bold text-[#C5E86C]">Drop Draft to Audit & Remediate</h4>
+              <h4 className="text-sm font-bold text-[#C5E86C]">Drop Draft to Stage for Review</h4>
               <p className="text-xs text-white/80 max-w-xs leading-relaxed">
-                Google Gemini will inspect against FINRA Rule 2210 & SEC Rule 206 and generate your already-fixed compliant version.
+                Release file to attach. You can choose to scan for infractions or auto-fix into a 100% compliant proposal with zero flags.
               </p>
             </div>
           )}
@@ -779,24 +725,41 @@ export function ChatbotWidget() {
                 message={message}
                 copiedId={copiedId}
                 onCopy={handleCopy}
-                onElevateToDocumentation={(txt) => handleSend(`Enhance documentation: ${txt}`)}
-                onExecuteChip={(chip) => handleSend(chip)}
+                onElevateToDocumentation={(text) => {
+                  setInputValue(`enhance documentation: ${text}`);
+                }}
+                onExecuteChip={(chip) => {
+                  if (chip === "Submit remediated version") {
+                    const latestAudit = [...messages].reverse().find((m) => m.auditResult)?.auditResult;
+                    if (latestAudit) {
+                      copilotApi
+                        .submitRemediated({
+                          text: latestAudit.remediated_content.text,
+                          title: latestAudit.remediated_content.suggested_title,
+                          token: latestAudit.remediated_content.token,
+                          targetDocumentId: latestAudit.one_click_actions.target_document_id || undefined,
+                        })
+                        .then(() => {
+                          showSuccessToast("Remediated document submitted with zero flags!");
+                        })
+                        .catch((err) => {
+                          showErrorToast(err.message || "Failed to submit remediated document.");
+                        });
+                      return;
+                    }
+                  }
+                  handleSend(chip);
+                }}
               />
             ))}
 
-            {/* Uploading progress banner */}
+            {/* In-chat Live Processing State */}
             {isUploading && (
-              <div className="p-3 bg-[#183028] text-white rounded-2xl border border-[#C5E86C]/40 space-y-2 shadow-lg animate-in fade-in">
-                <div className="flex items-center justify-between text-[11px] font-bold">
-                  <span className="flex items-center gap-2 text-[#C5E86C]">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    Neural Compliance Engine Active
-                  </span>
-                  <span className="text-[10px] text-white/70">Auditing Draft</span>
-                </div>
-                <p className="text-[10px] text-white/90">{uploadStatusText}</p>
-                <div className="w-full bg-white/20 h-1.5 rounded-full overflow-hidden">
-                  <div className="bg-[#C5E86C] h-full rounded-full w-2/3 animate-[pulse_1.5s_infinite]" />
+              <div className="flex items-center space-x-2 text-[11px] text-[#183028] bg-white border border-[#E6E8E7] p-3 rounded-2xl animate-pulse shadow-2xs">
+                <Loader2 className="h-4 w-4 animate-spin text-[#183028]" />
+                <div className="flex flex-col">
+                  <span className="font-bold">{uploadStatusText || "Processing document..."}</span>
+                  <span className="text-[9.5px] text-[#183028]/60">Google Gemini compliance intelligence pipeline active</span>
                 </div>
               </div>
             )}
@@ -832,6 +795,52 @@ export function ChatbotWidget() {
             className="hidden"
           />
 
+          {/* Staged Draft File Card (Choose Scan or Auto-Fix) */}
+          {pendingFile && (
+            <div className="mx-3 mb-2 p-2.5 bg-[#FAFBFB] border border-[#C5E86C] rounded-xl flex flex-col gap-2 shadow-2xs animate-in fade-in slide-in-from-bottom-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="h-7 w-7 rounded-lg bg-[#183028] text-[#C5E86C] flex items-center justify-center shrink-0">
+                    <FileText className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="truncate">
+                    <p className="text-[11px] font-bold text-[#183028] truncate">{pendingFile.name}</p>
+                    <p className="text-[9.5px] text-[#183028]/60">{Math.round(pendingFile.size / 1024)} KB • Attached draft</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPendingFile(null)}
+                  className="text-[#183028]/50 hover:text-rose-600 p-1 rounded-md transition-colors cursor-pointer"
+                  title="Remove attached file"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+                <button
+                  type="button"
+                  disabled={isUploading || isTyping}
+                  onClick={() => handleExecuteFileAudit(pendingFile, "scan", inputValue.trim() || undefined)}
+                  className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg bg-white hover:bg-[#FAFBFB] text-[#183028] border border-[#E6E8E7] text-[10px] font-bold transition-all shadow-2xs cursor-pointer hover:border-[#183028]/30"
+                >
+                  <ShieldAlert className="h-3 w-3 text-amber-600" />
+                  <span>Scan File for Rules</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={isUploading || isTyping}
+                  onClick={() => handleExecuteFileAudit(pendingFile, "remediate", inputValue.trim() || undefined)}
+                  className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg bg-[#183028] hover:bg-[#23453a] text-[#C5E86C] text-[10px] font-bold transition-all shadow-2xs cursor-pointer"
+                >
+                  <Wand2 className="h-3 w-3 text-[#C5E86C]" />
+                  <span>Fix & Remediate File</span>
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Message Input Box with Attachment Clip */}
           <div className="p-3 bg-white border-t border-[#E6E8E7] flex items-center space-x-2 shrink-0">
             {isAuthenticated && (
@@ -841,7 +850,7 @@ export function ChatbotWidget() {
                 variant="outline"
                 disabled={isTyping || isUploading}
                 onClick={() => fileInputRef.current?.click()}
-                title="Attach draft file (.pdf, .docx, .txt) to audit & remediate"
+                title="Attach draft file (.pdf, .docx, .txt) to scan or remediate"
                 className="h-8 w-8 rounded-xl border-[#E6E8E7] text-[#183028] hover:bg-[#C5E86C]/25 hover:text-[#183028] shrink-0 cursor-pointer shadow-2xs"
               >
                 <Paperclip className="h-3.5 w-3.5" />
@@ -858,13 +867,13 @@ export function ChatbotWidget() {
                 }
               }}
               disabled={isTyping || isUploading}
-              placeholder={currentPlaceholder}
+              placeholder={pendingFile ? "Type optional instructions or hit send..." : currentPlaceholder}
               className="bg-[#FAFBFB] border-[#E6E8E7] text-[#183028] placeholder:text-[#183028]/45 h-8 text-xs rounded-xl focus-visible:ring-1 focus-visible:ring-[#183028] disabled:opacity-60"
             />
 
             <Button
               size="icon"
-              disabled={!inputValue.trim() || isTyping || isUploading}
+              disabled={(!inputValue.trim() && !pendingFile) || isTyping || isUploading}
               onClick={() => handleSend()}
               className="h-8 w-8 bg-[#183028] hover:bg-[#23453a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] text-white rounded-xl disabled:opacity-40 shrink-0 cursor-pointer shadow-2xs transition-all"
             >
