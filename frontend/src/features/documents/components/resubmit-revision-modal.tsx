@@ -192,10 +192,10 @@ export function ResubmitRevisionModal({
               </div>
             </div>
 
-            {/* Revision Notes / Explanation */}
+            {/* Revision Message */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-[#183028]">
-                Revision Notes &amp; Addressed Changes
+                Revision Message
               </label>
               <Textarea
                 placeholder="Explain the changes made in this revised version..."
