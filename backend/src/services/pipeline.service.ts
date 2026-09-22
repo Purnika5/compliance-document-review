@@ -11,9 +11,11 @@ export class PipelineService {
   /**
    * Extract plain text directly from Microsoft Word (.docx) OpenXML container without external dependencies.
    */
-  public static extractDocxText(filePath: string): string {
+  public static extractDocxText(filePath: string, inputBuf?: Buffer): string {
     try {
-      const buf = fs.readFileSync(filePath);
+      const buf = inputBuf || (fs.existsSync(filePath) ? fs.readFileSync(filePath) : null);
+      if (!buf) return '';
+
       let pos = 0;
       while (pos < buf.length - 30) {
         if (buf.readUInt32LE(pos) === 0x04034b50) { // PK\x03\x04
@@ -58,20 +60,23 @@ export class PipelineService {
   }
 
   /**
-   * Extract plain text from the uploaded file on disk.
+   * Extract plain text from the uploaded file on disk or directly from memory buffer.
    */
-  public static async extractText(filePath: string, mimeType: string): Promise<string> {
-    if (!fs.existsSync(filePath)) {
-      console.warn(`[PipelineService] File not found at ${filePath}, skipping extraction.`);
+  public static async extractText(filePath: string, mimeType: string, inputBuffer?: Buffer): Promise<string> {
+    const hasBuffer = Boolean(inputBuffer && inputBuffer.length > 0);
+    const fileExists = Boolean(filePath && fs.existsSync(filePath));
+
+    if (!hasBuffer && !fileExists) {
+      console.warn(`[PipelineService] File not found at ${filePath} and no buffer provided, skipping extraction.`);
       return '';
     }
 
     try {
-      const ext = path.extname(filePath).toLowerCase();
+      const ext = filePath ? path.extname(filePath).toLowerCase() : '';
+      const buffer = hasBuffer ? inputBuffer! : fs.readFileSync(filePath);
 
       if (mimeType === 'application/pdf' || ext === '.pdf') {
-        const fileBuffer = fs.readFileSync(filePath);
-        const parsed = await pdfParse(fileBuffer);
+        const parsed = await pdfParse(buffer);
         return parsed.text ? parsed.text.trim() : '';
       }
 
@@ -81,18 +86,17 @@ export class PipelineService {
         ext === '.docx' ||
         ext === '.doc'
       ) {
-        const docxText = PipelineService.extractDocxText(filePath);
+        const docxText = PipelineService.extractDocxText(filePath, buffer);
         if (docxText && docxText.trim().length > 0) {
           return docxText.trim();
         }
       }
 
       if (mimeType === 'text/plain' || ext === '.txt') {
-        return fs.readFileSync(filePath, 'utf-8').trim();
+        return buffer.toString('utf-8').trim();
       }
 
       // Fallback for docx or generic text-based formats: attempt reading as utf8
-      const buffer = fs.readFileSync(filePath);
       const content = buffer.toString('utf-8');
       // Clean non-printable characters for fallback
       return content.replace(/[^\x20-\x7E\n\r\t]/g, ' ').trim();

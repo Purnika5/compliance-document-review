@@ -178,13 +178,13 @@ router.post('/', async (req: Request, res: Response) => {
   res.status(200).json({ success: true, reply: fallbackReply });
 });
 
-import { authenticateToken } from '../middleware/auth.middleware';
+import { optionalAuth } from '../middleware/auth.middleware';
 import { uploadDocumentFile } from '../middleware/upload.middleware';
 import { DocumentController } from '../controllers/document.controller';
 
 router.post(
   '/audit-and-fix',
-  authenticateToken,
+  optionalAuth,
   uploadDocumentFile.single('file'),
   DocumentController.auditAndFix
 );

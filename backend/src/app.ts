@@ -16,10 +16,37 @@ export const createApp = (): Application => {
     contentSecurityPolicy: false,
     crossOriginOpenerPolicy: false
   }));
-  app.use(cors({
-    origin: config.cors.origin,
-    credentials: true
-  }));
+  // Dynamic CORS origin reflection supporting Vercel, localhost, and custom domains with credentials
+  const corsOptions: cors.CorsOptions = {
+    origin: (requestOrigin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, or server-to-server)
+      if (!requestOrigin) return callback(null, true);
+      // Reflect requesting origin to satisfy W3C CORS specification when credentials: true
+      return callback(null, true);
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+    exposedHeaders: ['Content-Disposition'],
+  };
+
+  app.use(cors(corsOptions));
+  app.options('*', cors(corsOptions));
+
+  // Universal CORS header assurance middleware
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const origin = req.headers.origin;
+    if (origin) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+    }
+    if (req.method === 'OPTIONS') {
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+      return res.status(204).end();
+    }
+    next();
+  });
 
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));

@@ -30,6 +30,12 @@ export const errorHandler = (
   res: Response,
   next: NextFunction
 ): void => {
+  const origin = req.headers.origin;
+  if (origin && !res.getHeader('Access-Control-Allow-Origin')) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
+
   if (!req.complete) {
     req.resume();
   }
