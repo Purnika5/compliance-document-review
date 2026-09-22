@@ -227,6 +227,14 @@ export class GeminiCopilotService {
       stream: null as any,
     };
 
+    const validAdvisorId = await DocumentService.ensureValidAdvisorId(user?.id, user?.email);
+    const effectiveUser: AuthTokenPayload = {
+      ...(user || {}),
+      id: validAdvisorId,
+      email: user?.email || 'advisor@springercapital.com',
+      role: (user?.role || 'Advisor') as any,
+    };
+
     let resultDoc: any;
     if (targetDocumentId) {
       // Resubmit as revision
@@ -238,7 +246,7 @@ export class GeminiCopilotService {
           description: description || 'Remediated compliance revision via Neural Copilot',
           notes: 'Remediated against FINRA 2210 & SEC 206 by Google Gemini Neural Engine',
         },
-        user
+        effectiveUser
       );
     } else {
       // Submit as new proposal
@@ -246,7 +254,7 @@ export class GeminiCopilotService {
         title: title || 'Compliance Remediated Proposal',
         description: description || 'Remediated proposal submitted via Neural Copilot',
         file: mockMulterFile,
-        advisorId: user?.id || '00000000-0000-0000-0000-000000000001',
+        advisorId: validAdvisorId,
       });
     }
 

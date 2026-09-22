@@ -85,23 +85,26 @@ export const seedDatabase = async (): Promise<void> => {
   const saltRounds = 10;
   const passwordHash = await bcrypt.hash('Password123!', saltRounds);
 
-  // Seed Institutional Users
+  // Seed Institutional Users with deterministic fixed UUIDs
   const usersToSeed = [
-    { name: 'Marcus Vance', email: 'advisor1@springer.capital', role: 'Advisor' },
-    { name: 'Elena Rostova', email: 'officer1@springer.capital', role: 'Officer' },
-    { name: 'Sarah Jenkins', email: 'sarah.j@springercapital.com', role: 'Advisor' },
-    { name: 'Alex Smith', email: 'alex.smith@springercapital.com', role: 'Officer' },
+    { id: '00000000-0000-0000-0000-000000000001', name: 'Marcus Vance', email: 'advisor1@springer.capital', role: 'Advisor' },
+    { id: '00000000-0000-0000-0000-000000000002', name: 'Elena Rostova', email: 'officer1@springer.capital', role: 'Officer' },
+    { id: '00000000-0000-0000-0000-000000000003', name: 'Sarah Jenkins', email: 'sarah.j@springercapital.com', role: 'Advisor' },
+    { id: '00000000-0000-0000-0000-000000000004', name: 'Alex Smith', email: 'alex.smith@springercapital.com', role: 'Officer' },
+    { id: '0678188c-93ba-419e-973a-a8d6a9f7bc35', name: 'Active Investment Advisor', email: 'active.advisor@springercapital.com', role: 'Advisor' },
   ];
 
   const userIds: Record<string, string> = {};
 
   for (const user of usersToSeed) {
-    const existing = await query('SELECT id FROM users WHERE email = $1', [user.email]);
+    const existing = await query('SELECT id FROM users WHERE email = $1 OR id = $2', [user.email, user.id]);
     if (existing.rows.length === 0) {
       const inserted = await query(
-        `INSERT INTO users (name, email, password_hash, role) 
-         VALUES ($1, $2, $3, $4) RETURNING id`,
-        [user.name, user.email, passwordHash, user.role]
+        `INSERT INTO users (id, name, email, password_hash, role) 
+         VALUES ($1, $2, $3, $4, $5) 
+         ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, email = EXCLUDED.email
+         RETURNING id`,
+        [user.id, user.name, user.email, passwordHash, user.role]
       );
       userIds[user.email] = inserted.rows[0].id;
       console.log(`[Seed] Created user: ${user.name} <${user.email}> (${user.role})`);
