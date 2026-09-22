@@ -240,8 +240,8 @@ export function ComplianceCalendar({
         </div>
       </div>
 
-      {/* Merged Preset Filter Buttons (All in 1 Place!) */}
-      <div className="flex flex-wrap items-center gap-1 bg-[#FAFBFB] p-1 rounded-xl border border-[#E6E8E7]">
+      {/* Merged Preset Filter Buttons (All in 1 Place - Single Row) */}
+      <div className="flex items-center flex-nowrap gap-0.5 sm:gap-1 bg-[#FAFBFB] p-1 rounded-xl border border-[#E6E8E7] w-full overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {PRESET_OPTIONS.map((preset) => {
           const isSelected = activePreset === preset.value;
           return (
@@ -253,7 +253,7 @@ export function ComplianceCalendar({
                 onSelectPreset(preset.value);
               }}
               className={cn(
-                "px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-all cursor-pointer whitespace-nowrap flex-1 text-center",
+                "px-1.5 sm:px-2 py-1 text-[10px] sm:text-[11px] font-semibold rounded-lg transition-all cursor-pointer whitespace-nowrap flex-1 text-center shrink-0",
                 isSelected
                   ? "bg-[#183028] text-white shadow-2xs font-bold"
                   : "text-[#183028]/70 hover:text-[#183028] hover:bg-[#C5E86C]/25"
