@@ -11,7 +11,6 @@ import {
   ChevronRight,
   Bot,
   FileCheck,
-  RefreshCw,
   Loader2,
   AlertTriangle,
 } from "lucide-react";
@@ -69,18 +68,6 @@ export function AIAssistPanel({
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
-          {onRefresh && (
-            <button
-              type="button"
-              disabled={isLoading}
-              onClick={onRefresh}
-              title="Refresh AI Analysis"
-              className="p-1.5 rounded-xl text-[#183028]/60 hover:text-[#183028] hover:bg-[#C5E86C]/20 transition-colors cursor-pointer border border-[#E6E8E7] disabled:opacity-50"
-            >
-              <RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin text-[#183028]")} />
-            </button>
-          )}
         </div>
       </div>
 
