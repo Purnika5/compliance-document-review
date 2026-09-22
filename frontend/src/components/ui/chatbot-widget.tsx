@@ -730,16 +730,24 @@ export function ChatbotWidget() {
                 }}
                 onExecuteChip={(chip) => {
                   if (chip === "Submit remediated version") {
-                    const latestAudit = [...messages].reverse().find((m) => m.auditResult)?.auditResult;
-                    if (latestAudit) {
+                    const auditMessage = [...messages].reverse().find((m) => m.auditResult);
+                    if (auditMessage?.auditResult) {
                       copilotApi
                         .submitRemediated({
-                          text: latestAudit.remediated_content.text,
-                          title: latestAudit.remediated_content.suggested_title,
-                          token: latestAudit.remediated_content.token,
-                          targetDocumentId: latestAudit.one_click_actions.target_document_id || undefined,
+                          text: auditMessage.auditResult.remediated_content.text,
+                          title: auditMessage.auditResult.remediated_content.suggested_title,
+                          token: auditMessage.auditResult.remediated_content.token,
+                          targetDocumentId: auditMessage.auditResult.one_click_actions.target_document_id || undefined,
                         })
                         .then(() => {
+                          // Mark the source message as submitted so chips update
+                          setMessages((prev) =>
+                            prev.map((m) =>
+                              m.id === auditMessage.id
+                                ? { ...m, submittedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) }
+                                : m
+                            )
+                          );
                           showSuccessToast("Remediated document submitted with zero flags!");
                         })
                         .catch((err) => {
@@ -1015,16 +1023,36 @@ function ChatMessageItem({
 
         {/* Dynamic Contextual Suggestion Bubbles */}
         {!isUser && message.suggestedChips && message.suggestedChips.length > 0 && !isCurrentlyTyping && (
-          <div className="mt-3 pt-2 border-t border-[#E6E8E7] flex flex-wrap gap-1.5">
-            {message.suggestedChips.map((chip) => (
-              <button
-                key={chip}
-                onClick={() => onExecuteChip?.(chip)}
-                className="text-[9.5px] font-semibold text-[#183028] hover:bg-[#C5E86C] bg-[#FAFBFB] border border-[#183028]/20 px-2 py-0.5 rounded-lg transition-colors cursor-pointer shadow-2xs"
-              >
-                ↳ {chip}
-              </button>
-            ))}
+          <div className="mt-3 pt-2 border-t border-[#E6E8E7] flex flex-wrap gap-1.5 items-center">
+            {message.submittedAt ? (
+              // Already submitted — show badge, hide submit chip to prevent spam
+              <>
+                <span className="flex items-center gap-1 text-[9.5px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
+                  ✓ Submitted at {message.submittedAt}
+                </span>
+                {message.suggestedChips
+                  .filter((chip) => chip !== "Submit remediated version")
+                  .map((chip) => (
+                    <button
+                      key={chip}
+                      onClick={() => onExecuteChip?.(chip)}
+                      className="text-[9.5px] font-semibold text-[#183028] hover:bg-[#C5E86C] bg-[#FAFBFB] border border-[#183028]/20 px-2 py-0.5 rounded-lg transition-colors cursor-pointer shadow-2xs"
+                    >
+                      ↳ {chip}
+                    </button>
+                  ))}
+              </>
+            ) : (
+              message.suggestedChips.map((chip) => (
+                <button
+                  key={chip}
+                  onClick={() => onExecuteChip?.(chip)}
+                  className="text-[9.5px] font-semibold text-[#183028] hover:bg-[#C5E86C] bg-[#FAFBFB] border border-[#183028]/20 px-2 py-0.5 rounded-lg transition-colors cursor-pointer shadow-2xs"
+                >
+                  ↳ {chip}
+                </button>
+              ))
+            )}
           </div>
         )}
       </div>

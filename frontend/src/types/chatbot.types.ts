@@ -27,5 +27,7 @@ export interface IChatMessage {
   auditResult?: IAuditAndFixResponse;
   /** Dynamic contextual suggestion chips. */
   suggestedChips?: string[];
+  /** Set when the remediated version has been submitted — holds the submission timestamp. */
+  submittedAt?: string;
 }
 
