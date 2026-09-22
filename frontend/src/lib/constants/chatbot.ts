@@ -70,7 +70,6 @@ export const DASHBOARD_SUGGESTED_QUESTIONS: string[] = [
   "How does versioning and revision work?",
   "What document formats and limits are accepted?",
   "What are FINRA 2210 & SEC 206 standards?",
-  "Audit draft note or check grammar",
 ];
 
 /**
