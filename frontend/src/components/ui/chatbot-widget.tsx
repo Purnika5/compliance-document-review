@@ -345,6 +345,17 @@ export function ChatbotWidget() {
     }
   }, [messages, isOpen]);
 
+  // Pre-fetch quota when chatbot opens for Advisor users
+  useEffect(() => {
+    if (isOpen && isAuthenticated && session?.role === "Advisor") {
+      copilotApi.getQuota().then((info) => {
+        if (!info) return;
+        setQuota({ used: info.chatMessages.used, limit: info.chatMessages.limit, remaining: info.chatMessages.remaining, resetsAt: info.resetsAt, resetInDays: info.resetInDays });
+        setFileQuota({ used: info.fileAnalyses.used, limit: info.fileAnalyses.limit, remaining: info.fileAnalyses.remaining, resetsAt: info.resetsAt, resetInDays: info.resetInDays });
+      }).catch(() => {/* silent — quota bar just won't show */});
+    }
+  }, [isOpen, isAuthenticated, session?.role]);
+
   useEffect(() => {
     return () => {
       if (typingIntervalRef.current) {

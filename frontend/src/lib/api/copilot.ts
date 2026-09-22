@@ -163,5 +163,15 @@ export const copilotApi = {
     }
     return { category: "Compliance Document", confidence: 82, reason: "Matched institutional compliance documentation baseline." };
   },
+  /**
+   * Fetches the current advisor quota status (pre-load on chatbot open).
+   */
+  async getQuota(): Promise<{ fileAnalyses: { used: number; limit: number; remaining: number }; chatMessages: { used: number; limit: number; remaining: number }; resetsAt: string; resetInDays: number } | null> {
+    try {
+      const response = await client.get<ApiResponse<any>>("/api/chat/quota");
+      return response?.data ?? null;
+    } catch {
+      return null;
+    }
+  },
 };
-

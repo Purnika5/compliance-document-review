@@ -467,4 +467,23 @@ router.post(
   DocumentController.auditAndFix
 );
 
+/**
+ * GET /api/chat/quota — returns the current advisor quota status.
+ * Used by the frontend on chatbot open to pre-populate quota bars before the first message.
+ */
+router.get('/quota', optionalAuth, async (req: Request, res: Response) => {
+  const user = (req as any).user;
+  const userId: string | undefined = user?.id;
+  const userRole: string = user?.role || 'Advisor';
+
+  if (!userId || userRole === 'Officer') {
+    res.status(200).json({ success: true, quota: null });
+    return;
+  }
+
+  const info = await QuotaService.getQuotaInfo(userId, userRole);
+  res.status(200).json({ success: true, quota: info });
+});
+
 export default router;
+
