@@ -94,7 +94,17 @@ function getLoginBotResponse(rawText: string): string {
 
 /** Resolves bot knowledge base reply for authenticated dashboard state */
 function getDashboardBotKnowledgeResponse(rawText: string): string {
-  const lower = rawText.toLowerCase();
+  const lower = rawText.toLowerCase().trim();
+
+  // 1. Greetings & Salutations
+  if (/\b(hi|hello|hey|good\s+morning|good\s+afternoon|good\s+evening|greetings|who\s+are\s+you)\b/i.test(lower)) {
+    return "Hello! I am your Springer Capital Neural Compliance Copilot. How can I assist you today? You can ask me platform workflow questions, search repository records by uploader or status, or upload draft documents directly into this chat for automated regulatory audit and remediation.";
+  }
+
+  // 2. Capabilities & Commands
+  if (/\b(what\s+can\s+you\s+do|help|features|capabilities|commands|how\s+to\s+use)\b/i.test(lower)) {
+    return "As your Neural Compliance Copilot, I can help you with:\n• **Document Auditing & Remediation**: Drag & drop drafts (PDF, DOCX, TXT) to audit against FINRA 2210 & SEC 206 rules and get an auto-fixed file.\n• **Repository Search**: Ask me naturally about any document, status, or advisor (e.g., 'Show pending documents from Keith').\n• **Regulatory Guidance**: Inquire about FINRA Rule 2210 (promissory statements), SEC Rule 206 (fiduciary marketing), or KYC/AML.\n• **Review & Versioning Workflows**: Learn about submission steps, Officer review actions, and multi-version revision lineages (v1, v2...).\n• **Grammar & Compliance Memos**: Type 'check grammar: <text>' to polish and institutionalize determination notes.";
+  }
 
   if (["version", "revision", "resubmit", "v1", "v2", "lineage"].some((k) => lower.includes(k))) {
     return PLATFORM_KNOWLEDGE_BASE.versions;
@@ -129,7 +139,15 @@ function getDashboardBotKnowledgeResponse(rawText: string): string {
   if (["role", "permission", "advisor", "access", "guard"].some((k) => lower.includes(k))) {
     return PLATFORM_KNOWLEDGE_BASE.permissions;
   }
-  return PLATFORM_KNOWLEDGE_BASE.default;
+
+  return `Thank you for your inquiry. As the Springer Capital Neural Compliance Copilot, I am here to assist with regulatory compliance workflows under FINRA Rule 2210 and SEC Rule 206 standards.
+
+You can ask me to:
+1. Search documents (e.g. 'Show pending proposals')
+2. Audit a draft by attaching a file or pasting text
+3. Guide you through submission, review, or revision procedures
+
+How can I help you today?`;
 }
 
 /** Resolves full bot response and attached results based on input and mode */
@@ -605,18 +623,11 @@ export function ChatbotWidget() {
     ]);
 
     const userRole = session?.role || "Advisor";
-    const apiUrl = `${getBaseBackendUrl()}/api/chat`;
 
-    fetch(apiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: rawText, role: userRole }),
-      signal: AbortSignal.timeout(14000),
-    })
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`status ${res.status}`);
-        const data = (await res.json()) as { reply: string };
-        return data.reply;
+    copilotApi
+      .sendChatMessage(rawText, userRole)
+      .then((res) => {
+        return res?.reply || resolveBotReply(rawText, isLoginMode).text;
       })
       .catch(() => {
         return resolveBotReply(rawText, isLoginMode).text;
