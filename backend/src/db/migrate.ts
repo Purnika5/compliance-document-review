@@ -65,7 +65,7 @@ export const hasExistingTables = async (): Promise<{ exists: boolean; tables: st
  * Determines whether database migrations should be skipped.
  */
 export const shouldSkipMigrations = async (): Promise<{ skip: boolean; reason?: string }> => {
-  // 1. Explicit skip flags
+  // 1. Explicit opt-out flags — always check first
   if (
     process.env.SKIP_MIGRATIONS === 'true' ||
     process.env.RUN_MIGRATIONS === 'false' ||
@@ -74,41 +74,42 @@ export const shouldSkipMigrations = async (): Promise<{ skip: boolean; reason?: 
   ) {
     return {
       skip: true,
-      reason: 'Automated migrations skipped via configuration flag (SKIP_MIGRATIONS=true / RUN_MIGRATIONS=false / SUPABASE_EXISTING_DB=true).'
+      reason: 'Migrations skipped via environment flag (SKIP_MIGRATIONS / RUN_MIGRATIONS=false / SUPABASE_EXISTING_DB).'
     };
   }
 
-  const isSupabase = isSupabaseDatabase();
+  // 2. Supabase detected — always skip without querying DB.
+  //    Supabase schemas must be managed via the Supabase dashboard or CLI, not auto-migrated.
+  //    This prevents data loss on every Render/Railway deploy.
+  if (isSupabaseDatabase()) {
+    return {
+      skip: true,
+      reason:
+        'Supabase database detected. Automated migrations are disabled to protect your production data. ' +
+        'Apply schema changes manually via the Supabase SQL Editor or Supabase CLI. ' +
+        'To override (dangerous), set FORCE_MIGRATIONS=true.'
+    };
+  }
 
-  // 2. Allow unit tests and in-memory fallbacks to run unless connected to Supabase
-  if (!isSupabase && (process.env.NODE_ENV === 'test' || isMemFallbackActive())) {
+  // 3. Allow unit tests and in-memory fallbacks to run migrations freely
+  if (process.env.NODE_ENV === 'test' || isMemFallbackActive()) {
     return { skip: false };
   }
 
+  // 4. Non-Supabase: check if core tables already exist to avoid re-running on restart
   try {
-    const { exists, tables, publicCount } = await hasExistingTables();
-
-    // 3. Supabase existing database detection
-    if (isSupabase) {
-      if (tables.length > 0) {
-        return {
-          skip: true,
-          reason: `Existing database in Supabase detected (found existing tables: ${tables.join(', ')}). Bypassing automated migrations to preserve existing schema and data.`
-        };
-      }
-      if (publicCount > 0) {
-        return {
-          skip: true,
-          reason: `Existing database in Supabase detected with ${publicCount} public table(s). Bypassing automated migrations to prevent schema conflicts.`
-        };
-      }
+    const { tables } = await hasExistingTables();
+    if (tables.includes('users') && tables.includes('documents') && tables.includes('schema_migrations')) {
+      return {
+        skip: true,
+        reason: `Core tables already present with migration history (found: ${tables.join(', ')}). Skipping to avoid re-running applied migrations.`
+      };
     }
-
-    // 4. Non-Supabase: Core tables already present without migration tracker
+    // Core tables exist but no migration tracker — pre-existing DB, skip to be safe
     if (tables.includes('users') && tables.includes('documents') && !tables.includes('schema_migrations')) {
       return {
         skip: true,
-        reason: 'Existing database with core tables (users, documents) detected without migration history table. Bypassing migrations to prevent table collision.'
+        reason: 'Core tables (users, documents) found without schema_migrations tracker. Skipping to prevent collision on pre-existing database.'
       };
     }
   } catch (checkErr: any) {

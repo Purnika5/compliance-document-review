@@ -424,7 +424,7 @@ export class PipelineService {
         if (isExplicitPromissory && !hasFiduciaryDisclaimer) {
           const passage =
             maskedText.split('.').find((s) => /\b(guarantee|risk-free|assured)\b/i.test(s))?.trim() ||
-            'Guaranteed return with zero downside risk.';
+            '[Promissory statement detected — see document for exact passage]';
           fallbackFlags.push({
             passage: `${passage}.`,
             rule: 'FINRA Rule 2210 - Communications with the Public',

@@ -61,7 +61,7 @@ export function UploadDocumentModal({
 }: UploadDocumentModalProps) {
   const [step, setStep] = useState<"details" | "validation" | "success">("details");
   const [title, setTitle] = useState("");
-  const [category, setCategory] = useState("Compliance Document");
+  const [category, setCategory] = useState("");
   const [notes, setNotes] = useState("");
   const [files, setFiles] = useState<IFileValidationItem[]>([]);
   const [rawFile, setRawFile] = useState<File | null>(null);
@@ -156,7 +156,7 @@ export function UploadDocumentModal({
 
   const handleCloseAndReset = () => {
     setTitle("");
-    setCategory("Compliance Document");
+    setCategory("");
     setNotes("");
     setFiles([]);
     setRawFile(null);
@@ -212,6 +212,7 @@ export function UploadDocumentModal({
     setFiles((prev) => prev.filter((f) => f.id !== id));
     setRawFile(null);
     setAiClassification(null);
+    setCategory("");
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }

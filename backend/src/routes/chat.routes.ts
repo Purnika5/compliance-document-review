@@ -200,60 +200,85 @@ Active Risk Flags: ${JSON.stringify(telemetryData.activeDoc.flags || [])}`
     try {
       const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
 
-      const systemPrompt = `You are Springer Capital's Neural Compliance Copilot.
-You speak like a knowledgeable, articulate, and friendly senior Wall Street compliance director and trusted colleague.
-Your tone is warm, conversational, human, and interactive.
-Talk naturally in fluid, engaging sentences. Do NOT output robotic templates, rigid headers, or pre-canned corporate apologies like "Thank you for your inquiry regarding...".
-If the user asks about their submissions, queue, or documents, weave the live database data into your conversation naturally (e.g., 'You currently have 3 filings pending and 2 approved. Your latest submission is Keith's proposal...').
-Ask helpful follow-up questions to keep the dialogue interactive.
+      // System instruction is kept separate from user content to avoid empty-candidate errors
+      const systemInstruction = `You are Springer Capital's Neural Compliance Copilot — a knowledgeable, articulate, and friendly senior Wall Street compliance director and trusted colleague.
+
+Your tone is warm, conversational, human, and interactive. Speak in natural, flowing sentences — no robotic templates, rigid headers, or pre-canned corporate openers like "Thank you for your inquiry regarding...".
+
+When the user asks about submissions, queue, or documents, weave the live database data into conversation naturally (e.g., "Right now you have 3 filings pending and 2 approved. Your latest is Keith's proposal..."). Always ask a helpful follow-up question to keep the dialogue going.
 
 CONTEXT:
-User Role: ${userRole} (${isOfficer ? 'Compliance Officer' : 'Investment Advisor'})
-Current Page: ${pathname || 'Dashboard'}
+- User Role: ${userRole} (${isOfficer ? 'Compliance Officer' : 'Investment Advisor'})
+- Current Page: ${pathname || 'Dashboard'}
 
 LIVE DATABASE TELEMETRY:
-Status Counts: ${countsFormatted}
-Recent Repository Filings:
+- Status Counts: ${countsFormatted}
+- Recent Repository Filings:
 ${recentFormatted}
 ${activeDocFormatted}
 
-ROLE CONTEXT:
+ROLE GUIDANCE:
 ${
   isOfficer
-    ? 'The user is a Compliance Officer. You can discuss the supervisory review queue, flagged compliance issues, and help them draft official determinations without hallucinating fake infractions.'
-    : 'The user is an Investment Advisor. You can help them check their submissions, understand FINRA Rule 2210 and SEC Rule 206 requirements, and guide them on attaching draft files so you can scan or fix them.'
+    ? `As a Compliance Officer, you have full visibility into the supervisory review queue, all advisors' filings, risk flags, and uploader identity. You can help draft official determinations and compliance memos. Never fabricate infractions that are not in the data above.`
+    : `As an Investment Advisor, help the user track their own submissions, understand FINRA Rule 2210 and SEC Rule 206 requirements, and guide them on attaching draft files to scan or auto-fix before submission.`
 }
 
-IMPORTANT:
-- Speak like an engaging human expert in natural conversational language.
-- Never use robotic canned replies or embedded templates.
-- Keep responses interactive, concise, and helpful.`;
+CRITICAL RULES:
+- Always respond. Never refuse to answer compliance or document questions.
+- Speak naturally in 2–4 sentences. Keep it concise, warm, and helpful.
+- Ground every data claim in the LIVE DATABASE TELEMETRY above. If data is absent, say so honestly.
+- Do not hallucinate document titles, advisor names, or risk flags that are not in the telemetry.`;
 
       const gResp = await fetch(geminiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          system_instruction: {
+            parts: [{ text: systemInstruction }],
+          },
           contents: [
             {
               role: 'user',
-              parts: [{ text: `${systemPrompt}\n\nUser Question: ${cleanMessage}` }],
+              parts: [{ text: cleanMessage }],
             },
           ],
           generationConfig: {
-            temperature: 0.35,
-            maxOutputTokens: 750,
+            temperature: 0.4,
+            maxOutputTokens: 600,
+            candidateCount: 1,
           },
+          safetySettings: [
+            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
+          ],
         }),
-        signal: AbortSignal.timeout(9000),
+        signal: AbortSignal.timeout(12000),
       });
 
       if (gResp.ok) {
         const gData: any = await gResp.json();
-        const textReply = gData?.candidates?.[0]?.content?.parts?.[0]?.text;
+        const candidate = gData?.candidates?.[0];
+        const finishReason = candidate?.finishReason;
+        const textReply = candidate?.content?.parts?.[0]?.text;
+
+        // Log non-STOP finish reasons for debugging
+        if (finishReason && finishReason !== 'STOP') {
+          console.warn(`[Chat] Gemini non-STOP finishReason: ${finishReason}`, JSON.stringify(candidate?.safetyRatings || []));
+        }
+
         if (textReply && textReply.trim()) {
           res.status(200).json({ success: true, reply: textReply.trim() });
           return;
         }
+
+        // Candidate present but empty text — log for diagnostics
+        console.warn('[Chat] Gemini returned candidate with no text. finishReason:', finishReason, 'promptFeedback:', JSON.stringify(gData?.promptFeedback || {}));
+      } else {
+        const errBody = await gResp.text().catch(() => '');
+        console.warn(`[Chat] Gemini responded with ${gResp.status}:`, errBody.slice(0, 300));
       }
     } catch (gErr) {
       console.warn('[Chat] Direct Gemini REST call timed out or failed, using institutional data-grounded fallback:', gErr);

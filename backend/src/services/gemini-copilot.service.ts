@@ -21,6 +21,7 @@ export interface AuditBreakdownItem {
   issue: string;
   fixed_passage: string;
   reason: string;
+  category: 'PROHIBITED_CLAIM' | 'MISSING_DISCLOSURE' | 'SUITABILITY' | 'PRECEDENT_MATCH';
 }
 
 export interface AuditAndFixResult {
@@ -103,59 +104,115 @@ export class GeminiCopilotService {
     if (geminiApiKey && !geminiApiKey.includes('your_gemini') && !geminiApiKey.includes('test-ci')) {
       try {
         const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
-        const auditSystemPrompt = `You are Springer Capital's Neural Compliance Copilot, an elite Wall Street regulatory compliance auditor and fiduciary drafting specialist.
-Auditing Document: "${file.originalname}"
-User Instructions: ${instructions || 'Audit against FINRA Rule 2210 and SEC Rule 206(4)-1.'}
 
-TASKS:
-1. AUDIT: Inspect every passage violating FINRA Rule 2210 (promissory language, guaranteed returns, unbalanced risks, unsubstantiated claims) or SEC Rule 206(4)-1 (fiduciary disclosures, net-of-fees presentation).
-2. BREAKDOWN: Identify what needs to change. Quote the original offending passage, cite the exact rule, and provide the fixed replacement. Do NOT invent unnecessary issues—fix actual infractions accurately.
-3. REMEDIATE: Output the FULL, COMPLETE, FIXED document text. Replace all promissory claims with balanced fiduciary language (e.g. "targeted returns subject to market volatility and loss of principal"). Ensure mandatory statutory risk disclaimers are present.
-4. Output strictly valid JSON matching this schema:
+        // System instruction separated from document content to avoid empty-candidate errors
+        const auditSystemInstruction = `You are reviewing a client-facing financial document submitted by an advisor for compliance officer review. You receive a MASKED version of the document (all client PII has been replaced with placeholder tokens — never attempt to infer, reconstruct, or output real PII, even inside quoted passages).
+
+Run the following four checks. For each flag, cite the EXACT sentence or phrase from the document that triggered it. Do not flag a category unless you can point to specific text — no vague or unsupported flags.
+
+CHECK CATEGORIES
+
+1. PROHIBITED / MISLEADING CLAIMS (rule: FINRA Rule 2210 - Communications with the Public)
+   - Guaranteed-return or no-risk language applied to a market-linked or variable-return product
+   - Absolute/unfalsifiable track-record claims ("never lost money", "always outperforms")
+   - Performance statistics without matching methodology or time-period context
+   - Artificial urgency or pressure language (deadlines to "lock in" a rate/offer)
+   - Internal contradictions — e.g. a no-risk claim in the body vs. a risk disclaimer elsewhere
+
+2. MISSING DISCLOSURES (rule: FINRA Rule 2210 / SEC Rule 206(4)-1)
+   - Flag disclosures absent entirely from the document
+   - Flag disclosures present only as generic boilerplate at the bottom but absent next to the specific performance claim in the body
+   - Required disclosures vary by product type (annuity, mutual fund, advisory letter, etc.)
+
+3. SUITABILITY / BEST INTEREST (rule: SEC Rule 206(4)-1 / FINRA Rule 2111)
+   - Compare the recommended product's risk and liquidity profile against the client's stated risk tolerance, time horizon, and liquidity needs (fields in the client profile block, masked)
+   - Flag replacement or switching recommendations as higher scrutiny by default
+   - Flag suitability statements that assert suitability without stating the reasoning
+
+4. PRECEDENT MATCH
+   - Precedent similarity alone is NOT grounds for a flag — it must accompany a finding from categories 1–3
+
+CONSTRAINTS
+- Never fabricate a rule citation — only cite FINRA Rule 2210, SEC Rule 206(4)-1, FINRA Rule 2111, or rules explicitly applicable to the passage
+- Never output unmasked PII — keep placeholder tokens as-is inside any quoted passage
+- Confidence matters more than coverage — a fabricated flag erodes reviewer trust
+- Do not make a final compliance decision (Approved / Rejected / Needs Revision)
+- Do not call the document a scam or fraud
+- If no flags are found, return an empty audit_breakdown array
+
+REMEDIATION (after flagging)
+Also provide:
+- remediated_text: The COMPLETE compliant text of the entire document. Replace all promissory language with balanced fiduciary language (e.g. "targeted returns subject to market volatility and risk of loss of principal"). Add missing required disclosures in the appropriate sections.
+- suggested_title: A clean institutional title for the remediated document.
+- conversational_summary: A concise, confident plain-English briefing of findings and changes. Speak naturally — no corporate openers.
+
+Advisor instructions for this review: ${instructions || 'Standard FINRA 2210 and SEC 206 audit.'}
+Document filename: ${file.originalname}
+
+Return ONLY valid JSON — no prose outside the JSON object:
 {
-  "conversational_summary": "Summary of findings and changes made...",
+  "conversational_summary": "string",
   "audit_breakdown": [
     {
-      "rule": "Regulatory Rule Name",
-      "original_passage": "Offending passage from draft",
-      "issue": "Specific compliance infraction",
-      "fixed_passage": "Compliant rewritten passage",
-      "reason": "Why the change was required"
+      "rule": "exact regulatory rule name — never invented",
+      "original_passage": "exact offending sentence or phrase",
+      "issue": "specific infraction",
+      "fixed_passage": "compliant rewritten passage",
+      "reason": "fiduciary rationale",
+      "category": "PROHIBITED_CLAIM | MISSING_DISCLOSURE | SUITABILITY | PRECEDENT_MATCH"
     }
   ],
-  "remediated_text": "Full rewritten compliant document text...",
-  "suggested_title": "${path.parse(file.originalname).name} (Compliance Remediated)"
+  "remediated_text": "full rewritten compliant document text",
+  "suggested_title": "string"
 }`;
 
         const gResp = await fetch(geminiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            system_instruction: {
+              parts: [{ text: auditSystemInstruction }],
+            },
             contents: [
               {
                 role: 'user',
-                parts: [
-                  {
-                    text: `${auditSystemPrompt}\n\nDOCUMENT TEXT TO AUDIT AND REMEDIATE:\n${maskedText}`,
-                  },
-                ],
+                parts: [{ text: `DOCUMENT TEXT TO AUDIT AND REMEDIATE:\n\n${maskedText}` }],
               },
             ],
             generationConfig: {
               temperature: 0.1,
               responseMimeType: 'application/json',
-              maxOutputTokens: 2500,
+              maxOutputTokens: 3000,
             },
+            safetySettings: [
+              { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+              { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+              { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+              { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
+            ],
           }),
-          signal: AbortSignal.timeout(18000),
+          signal: AbortSignal.timeout(20000),
         });
 
         if (gResp.ok) {
           const gResult: any = await gResp.json();
-          const jsonText = gResult?.candidates?.[0]?.content?.parts?.[0]?.text;
+          const candidate = gResult?.candidates?.[0];
+          const finishReason = candidate?.finishReason;
+          const jsonText = candidate?.content?.parts?.[0]?.text;
+
+          if (finishReason && finishReason !== 'STOP') {
+            console.warn(`[GeminiCopilot] Non-STOP finishReason: ${finishReason}`, JSON.stringify(candidate?.safetyRatings || []));
+          }
+
           if (jsonText) {
             aiData = JSON.parse(jsonText);
+          } else {
+            const errBody = await gResp.text().catch(() => '');
+            console.warn('[GeminiCopilot] Gemini audit returned empty text. promptFeedback:', JSON.stringify(gResult?.promptFeedback || {}));
           }
+        } else {
+          const errBody = await gResp.text().catch(() => '');
+          console.warn(`[GeminiCopilot] Gemini responded with ${gResp.status}:`, errBody.slice(0, 300));
         }
       } catch (geminiErr) {
         console.warn('[GeminiCopilot] Direct Gemini REST call warning, checking AI microservice:', geminiErr);
@@ -398,6 +455,7 @@ TASKS:
           issue: p.issue,
           fixed_passage: fixed,
           reason: p.reason,
+          category: 'PROHIBITED_CLAIM',
         });
         remediated = remediated.replace(orig, fixed);
       }
@@ -414,6 +472,7 @@ TASKS:
           issue: 'Absence of institutional risk suitability disclaimer.',
           fixed_passage: disclaimer.trim(),
           reason: 'Appended required statutory risk disclosure.',
+          category: 'MISSING_DISCLOSURE',
         });
       }
     }

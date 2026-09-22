@@ -85,23 +85,8 @@ export const copilotApi = {
             file_size: file.size,
             mime_type: file.type || "application/octet-stream",
           },
-          conversational_summary: `I audited "${file.name}" against FINRA Rule 2210 & SEC Rule 206(4)-1. Several non-compliant promissory statements and unhedged return claims were identified. I have generated a fully compliant, remediated draft ready for instant download or 1-click submission.`,
-          audit_breakdown: [
-            {
-              rule: "FINRA Rule 2210(d)(1)(B)",
-              original_passage: "Guarantees consistent quarterly yield with zero downside risk.",
-              issue: "Promissory claim guaranteeing returns and denying investment downside risks.",
-              fixed_passage: "Targeted quarterly returns subject to market volatility; principal risk disclosures apply.",
-              reason: "FINRA 2210 strictly prohibits misleading, exaggerated, or promissory statements regarding performance.",
-            },
-            {
-              rule: "SEC Rule 206(4)-1",
-              original_passage: "Top-tier institutional asset performance surpassing all benchmarks.",
-              issue: "Unsubstantiated performance claim lacking net-of-fees disclosures.",
-              fixed_passage: "Historical portfolio performance presented net-of-fees; past performance is no guarantee of future results.",
-              reason: "SEC Marketing Rule mandates fair, balanced representation with substantiation and net fee disclosures.",
-            },
-          ],
+          conversational_summary: `I was unable to reach the compliance analysis server for "${file.name}". Please check your connection and try again, or contact your system administrator if the issue persists.`,
+          audit_breakdown: [],
           remediated_content: {
             text: `[COMPLIANCE REMEDIATED FILING - ${file.name}]\n\nSpringer Capital Institutional Advisory Proposal\n\n1. Executive Summary\nThis document outlines strategic wealth management and portfolio management solutions. Past performance is not indicative of future results. Investments are subject to market risks, including the possible loss of principal.\n\n2. Portfolio Objectives & Disclosures\nAll returns discussed are targeted, net-of-fees, and based on rigorous institutional risk models. Neither Springer Capital nor its affiliates provide guaranteed returns.\n\nApproved under FINRA Rule 2210 and SEC Rule 206(4)-1 standards.`,
             download_url: "",
@@ -172,7 +157,11 @@ export const copilotApi = {
     } else if (/\b(proposal|portfolio|pitch|allocation|growth\s+strategy|asset\s+management|wealth|deck|fund)\b/i.test(combined)) {
       return { category: "Investment Proposal", confidence: 97, reason: "Identified investment proposal and portfolio presentation characteristics." };
     }
-    return { category: "Compliance Document", confidence: 94, reason: "Matched institutional compliance documentation baseline." };
+    // Only return a generic fallback when there is actual content to evaluate
+    if (!combined.trim()) {
+      return { category: "", confidence: 0, reason: "" };
+    }
+    return { category: "Compliance Document", confidence: 82, reason: "Matched institutional compliance documentation baseline." };
   },
 };
 
