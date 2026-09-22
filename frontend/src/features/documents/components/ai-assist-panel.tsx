@@ -67,8 +67,6 @@ export function AIAssistPanel({
             </h3>
           </div>
         </div>
-
-        </div>
       </div>
 
       <div className="flex-1 flex flex-col min-h-0">
