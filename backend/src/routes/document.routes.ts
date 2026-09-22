@@ -62,52 +62,12 @@ router.patch(
   DocumentController.updateStatus
 );
 
-// Get document version history
-router.get(
-  '/:id/versions',
-  authenticateToken,
-  validate({ params: documentIdParamSchema }),
-  DocumentController.getVersions
-);
-
 // List advisor submissions alias
 router.get(
   '/my-submissions',
   authenticateToken,
   validate({ query: documentQuerySchema }),
   DocumentController.list
-);
-
-// List documents
-router.get(
-  '/',
-  authenticateToken,
-  validate({ query: documentQuerySchema }),
-  DocumentController.list
-);
-
-// Get document analysis
-router.get(
-  '/:id/analysis',
-  authenticateToken,
-  validate({ params: documentIdParamSchema }),
-  DocumentController.getAnalysis
-);
-
-// Get single document detail
-router.get(
-  '/:id',
-  authenticateToken,
-  validate({ params: documentIdParamSchema }),
-  DocumentController.getById
-);
-
-// Stream document file content (inline view / download)
-router.get(
-  '/:id/file',
-  authenticateToken,
-  validate({ params: documentIdParamSchema }),
-  DocumentController.downloadFile
 );
 
 // High-density filterable repository search & analytics endpoint
@@ -125,7 +85,7 @@ router.post(
   DocumentController.auditAndFix
 );
 
-// Download compliant remediated document
+// Download compliant remediated document (public token authentication)
 router.get(
   '/download-remediated',
   DocumentController.downloadRemediated
@@ -143,6 +103,46 @@ router.post(
   '/classify',
   authenticateToken,
   DocumentController.classify
+);
+
+// List documents
+router.get(
+  '/',
+  authenticateToken,
+  validate({ query: documentQuerySchema }),
+  DocumentController.list
+);
+
+// Get document version history
+router.get(
+  '/:id/versions',
+  authenticateToken,
+  validate({ params: documentIdParamSchema }),
+  DocumentController.getVersions
+);
+
+// Get document analysis
+router.get(
+  '/:id/analysis',
+  authenticateToken,
+  validate({ params: documentIdParamSchema }),
+  DocumentController.getAnalysis
+);
+
+// Stream document file content (inline view / download)
+router.get(
+  '/:id/file',
+  authenticateToken,
+  validate({ params: documentIdParamSchema }),
+  DocumentController.downloadFile
+);
+
+// Get single document detail (MUST BE LAST GET ROUTE WITH :id)
+router.get(
+  '/:id',
+  authenticateToken,
+  validate({ params: documentIdParamSchema }),
+  DocumentController.getById
 );
 
 export default router;

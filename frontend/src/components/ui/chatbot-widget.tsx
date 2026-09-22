@@ -966,7 +966,25 @@ function AuditResultCard({ result, isCopied, onCopy }: IAuditCardProps) {
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   const handleDownload = () => {
-    // Download through URL or blob
+    // 1. Instant client-side blob download (zero latency, zero round-trip, always works)
+    if (result.remediated_content && result.remediated_content.text) {
+      const blob = new Blob([result.remediated_content.text], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      const safeTitle = (result.remediated_content.suggested_title || "Remediated_Proposal")
+        .replace(/[^a-zA-Z0-9_\-\s]/g, "")
+        .trim();
+      link.download = `${safeTitle}.txt`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      showSuccessToast("Remediated compliant file downloaded.");
+      return;
+    }
+
+    // 2. Fallback to server endpoint
     const downloadUrl = copilotApi.getDownloadUrl(result.remediated_content.token);
     const link = document.createElement("a");
     link.href = downloadUrl;
