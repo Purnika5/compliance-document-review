@@ -36,6 +36,7 @@ Rules:
 - Every flag must be supported by at least one retrieved rule.
 - Do not flag something merely because it seems suspicious.
 - Keep explanations brief and factual.
+- Correct the grammar, but do not add the phrase "recheck grammar" or any notes to recheck grammar in the sentences.
 - Do not make a final compliance decision.
 - Do not recommend actions.
 - Do not call the document a scam or fraud.
