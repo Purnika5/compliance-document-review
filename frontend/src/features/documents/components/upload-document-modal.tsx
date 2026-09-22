@@ -20,13 +20,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   UploadCloud,
   CheckCircle2,
   AlertTriangle,
@@ -122,7 +115,12 @@ export function UploadDocumentModal({
     e.preventDefault();
     setFormErrors({});
 
-    const validation = uploadDocumentSchema.safeParse({ title, category, notes });
+    const effectiveCategory = category.trim() || "Compliance Document";
+    if (!category.trim()) {
+      setCategory(effectiveCategory);
+    }
+
+    const validation = uploadDocumentSchema.safeParse({ title, category: effectiveCategory, notes });
     if (!validation.success) {
       const errs: Record<string, string> = {};
       validation.error.issues.forEach((issue) => {
@@ -369,6 +367,11 @@ export function UploadDocumentModal({
                     setFormErrors((prev) => ({ ...prev, title: "" }));
                   }
                 }}
+                onBlur={() => {
+                  if (title && title.trim().length >= 3) {
+                    classifyWithAi(rawFile, title, notes);
+                  }
+                }}
                 className={cn(
                   "h-9 text-xs rounded-xl bg-[#FFFFFF] border-[#E6E8E7] text-[#183028] focus:border-[#183028] focus:ring-1 focus:ring-[#183028] transition-colors shadow-2xs w-full min-w-0",
                   formErrors.title && "border-rose-500 ring-1 ring-rose-500"
@@ -405,43 +408,40 @@ export function UploadDocumentModal({
                 </button>
               </div>
 
-              <Select
-                value={category}
-                onValueChange={(val) => {
-                  setCategory(val);
-                  setAiClassification(null);
-                }}
-              >
-                <SelectTrigger className="h-9 w-full text-xs rounded-xl bg-white border border-[#E6E8E7] text-[#183028] focus:border-[#183028] focus:ring-1 focus:ring-[#183028] shadow-2xs cursor-pointer min-w-0">
-                  <SelectValue placeholder="Select Category" />
-                </SelectTrigger>
-                <SelectContent className="bg-white rounded-xl border border-[#E6E8E7] shadow-xl text-[#183028]">
-                  <SelectItem value="Compliance Document" className="text-xs cursor-pointer py-1.5 text-[#183028] hover:bg-[#C5E86C]/20">
-                    Compliance Document
-                  </SelectItem>
-                  <SelectItem value="Audit Report" className="text-xs cursor-pointer py-1.5 text-[#183028] hover:bg-[#C5E86C]/20">
-                    Audit Report
-                  </SelectItem>
-                  <SelectItem value="Regulatory Filing" className="text-xs cursor-pointer py-1.5 text-[#183028] hover:bg-[#C5E86C]/20">
-                    Regulatory Filing
-                  </SelectItem>
-                  <SelectItem value="Policy Agreement" className="text-xs cursor-pointer py-1.5 text-[#183028] hover:bg-[#C5E86C]/20">
-                    Policy Agreement
-                  </SelectItem>
-                  <SelectItem value="Identity & KYC Verification" className="text-xs cursor-pointer py-1.5 text-[#183028] hover:bg-[#C5E86C]/20">
-                    Identity &amp; KYC Verification
-                  </SelectItem>
-                  <SelectItem value="Investment Proposal" className="text-xs cursor-pointer py-1.5 text-[#183028] hover:bg-[#C5E86C]/20">
-                    Investment Proposal
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="relative">
+                <Input
+                  value={category}
+                  onChange={(e) => {
+                    setCategory(e.target.value);
+                    if (formErrors.category) {
+                      setFormErrors((prev) => ({ ...prev, category: "" }));
+                    }
+                  }}
+                  placeholder={
+                    isClassifying
+                      ? "✨ AI is analyzing document & autofilling category..."
+                      : "AI will autofill category, or type custom classification..."
+                  }
+                  className={cn(
+                    "h-9 text-xs rounded-xl bg-white border border-[#E6E8E7] text-[#183028] focus:border-[#183028] focus:ring-1 focus:ring-[#183028] transition-colors shadow-2xs w-full min-w-0 pr-8",
+                    formErrors.category && "border-rose-500 ring-1 ring-rose-500",
+                    isClassifying && "bg-emerald-50/50 animate-pulse border-emerald-400"
+                  )}
+                />
+                <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none">
+                  {isClassifying ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-600" />
+                  ) : (
+                    <Sparkles className="h-3.5 w-3.5 text-[#183028]/40" />
+                  )}
+                </div>
+              </div>
 
               {aiClassification && (
                 <div className="flex items-center gap-1.5 text-[10px] text-emerald-900 bg-emerald-50 border border-emerald-200/80 px-2 py-1 rounded-lg animate-in fade-in">
                   <Sparkles className="h-3 w-3 text-emerald-600 shrink-0" />
                   <span>
-                    <strong>AI Classified:</strong> {aiClassification.category} ({aiClassification.confidence}% confidence)
+                    <strong>AI Autofilled:</strong> {aiClassification.category} ({aiClassification.confidence}% confidence)
                   </span>
                 </div>
               )}
