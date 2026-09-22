@@ -816,31 +816,31 @@ interface IChatHeaderProps {
 
 function ChatHeader({ isLoginMode, role, onClose }: IChatHeaderProps) {
   return (
-    <div className="bg-[#183028] text-white px-4 py-3 flex items-center justify-between border-b border-[#23453a] shrink-0">
+    <div className="bg-white text-[#183028] px-4 py-3 flex items-center justify-between border-b border-[#E6E8E7] shrink-0">
       <div className="flex items-center space-x-2.5">
-        <div className="relative h-8 w-8 rounded-xl bg-[#C5E86C]/20 border border-[#C5E86C] flex items-center justify-center text-[#C5E86C] shadow-2xs">
-          <Bot className="h-4 w-4" />
-          <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-[#C5E86C] animate-pulse" />
+        <div className="relative h-8 w-8 rounded-xl bg-[#C5E86C]/30 border border-[#b4db53] flex items-center justify-center text-[#183028] shadow-2xs">
+          <Bot className="h-4 w-4 text-[#183028]" />
+          <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
         </div>
         <div>
           <div className="flex items-center gap-1.5">
-            <h3 className="font-bold text-white tracking-tight">
+            <h3 className="font-bold text-[#183028] tracking-tight">
               {isLoginMode ? "Compliance Help" : "Neural Compliance Copilot"}
             </h3>
-            <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider bg-[#C5E86C] text-[#183028]">
+            <span className="text-[9px] px-1.5 py-0.5 rounded font-extrabold uppercase tracking-wider bg-[#C5E86C] text-[#183028] border border-[#b4db53]">
               {isLoginMode ? "Guidance" : role || "Staff"}
             </span>
           </div>
-          <div className="flex items-center gap-1.5 text-[9.5px] text-[#C5E86C]/90 mt-0.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#C5E86C]" />
-            <span>Google Gemini Engine: Active</span>
+          <div className="flex items-center gap-1.5 text-[9.5px] text-[#183028]/70 mt-0.5 font-medium">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            <span className="text-emerald-700 font-semibold">Google Gemini Engine: Active</span>
           </div>
         </div>
       </div>
 
       <button
         onClick={onClose}
-        className="p-1.5 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+        className="p-1.5 rounded-lg text-[#183028]/60 hover:text-[#183028] hover:bg-[#FAFBFB] transition-colors cursor-pointer"
         aria-label="Close copilot window"
       >
         <X className="h-4 w-4" />
