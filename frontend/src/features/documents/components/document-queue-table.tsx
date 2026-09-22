@@ -41,7 +41,7 @@ import {
   Filter,
   Calendar,
 } from "lucide-react";
-import { DateFilterModal, type DateFilterPreset } from "./date-filter-modal";
+import { ComplianceCalendar, type DateFilterPreset } from "./compliance-calendar";
 import { showSuccessToast, showErrorToast, showInfoToast } from "@/components/ui/toast";
 import type { DocumentItem } from "@/lib/validation/document";
 import { updateDocumentStatusAction } from "@/lib/actions/document-actions";
@@ -65,7 +65,6 @@ export function DocumentQueueTable() {
   const { documents, isPending, refetch, counts: queueCounts } = useDocuments("queue", activeTab);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPriority, setSelectedPriority] = useState<string>("All");
-  const [isDateModalOpen, setIsDateModalOpen] = useState(false);
   const [dateFilterPreset, setDateFilterPreset] = useState<DateFilterPreset>("All");
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
@@ -362,73 +361,63 @@ export function DocumentQueueTable() {
         </div>
       </div>
 
-      {/* Queue Toolbar: Search, Status Tabs, and Priority Filters */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-2.5 rounded-xl bg-card border border-border">
-        {/* Status Filter Tabs */}
-        <div className="flex items-center space-x-1 overflow-x-auto [scrollbar-width:none]">
-          {(["All", "Pending", "Needs Revision", "Approved", "Rejected"] as FilterTab[]).map(
-            (tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={cn(
-                  "px-3 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer whitespace-nowrap",
-                  activeTab === tab
-                    ? "bg-[#C5E86C] text-[#183028] font-bold shadow-xs"
-                    : "bg-transparent text-[#183028]/70 hover:text-[#183028] hover:bg-[#C5E86C]/20"
-                )}
-              >
-                {tab} ({counts[tab] || 0})
-              </button>
-            )
-          )}
-        </div>
+      {/* Main Content: Review Queue and Unified Compliance Calendar */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+        {/* Left Column: Review Queue Table & Toolbar */}
+        <div className="lg:col-span-8 xl:col-span-8 space-y-3">
+          {/* Queue Toolbar: Search, Status Tabs, and Priority Filters */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-2.5 rounded-xl bg-card border border-border">
+            {/* Status Filter Tabs */}
+            <div className="flex items-center space-x-1 overflow-x-auto [scrollbar-width:none]">
+              {(["All", "Pending", "Needs Revision", "Approved", "Rejected"] as FilterTab[]).map(
+                (tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={cn(
+                      "px-3 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer whitespace-nowrap",
+                      activeTab === tab
+                        ? "bg-[#C5E86C] text-[#183028] font-bold shadow-xs"
+                        : "bg-transparent text-[#183028]/70 hover:text-[#183028] hover:bg-[#C5E86C]/20"
+                    )}
+                  >
+                    {tab} ({counts[tab] || 0})
+                  </button>
+                )
+              )}
+            </div>
 
-        {/* Search & Priority Controls */}
-        <div className="flex items-center gap-2">
-          {/* Date Filter Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsDateModalOpen(true)}
-            className={cn(
-              "h-8 px-2.5 text-xs rounded-md border border-border bg-background text-foreground hover:bg-[#C5E86C]/10 hover:border-[#183028] cursor-pointer flex items-center gap-1.5 shrink-0 transition-colors",
-              dateFilterPreset !== "All" && "border-[#183028] bg-[#C5E86C]/20 text-[#183028] font-semibold"
-            )}
-          >
-            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-            <span>{dateFilterPreset !== "All" ? `Date: ${dateFilterPreset}` : "Filter by Date"}</span>
-          </Button>
+            {/* Search & Priority Controls */}
+            <div className="flex items-center gap-2">
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Search advisor, document ID, title..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-8 h-8 text-xs rounded-md bg-background border-border text-foreground"
+                />
+              </div>
 
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Search advisor, document ID, title..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 h-8 text-xs rounded-md bg-background border-border text-foreground"
-            />
+              <div className="flex items-center gap-1.5 shrink-0">
+                <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+                <select
+                  value={selectedPriority}
+                  onChange={(e) => setSelectedPriority(e.target.value)}
+                  className="h-8 text-xs rounded-md px-2 font-medium bg-background border border-border text-foreground outline-none cursor-pointer"
+                >
+                  <option value="All" className="bg-card text-foreground">All Priorities</option>
+                  <option value="Urgent" className="bg-card text-foreground">Urgent</option>
+                  <option value="High" className="bg-card text-foreground">High</option>
+                  <option value="Medium" className="bg-card text-foreground">Medium</option>
+                  <option value="Standard" className="bg-card text-foreground">Standard</option>
+                </select>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-center gap-1.5 shrink-0">
-            <Filter className="h-3.5 w-3.5 text-muted-foreground" />
-            <select
-              value={selectedPriority}
-              onChange={(e) => setSelectedPriority(e.target.value)}
-              className="h-8 text-xs rounded-md px-2 font-medium bg-background border border-border text-foreground outline-none cursor-pointer"
-            >
-              <option value="All" className="bg-card text-foreground">All Priorities</option>
-              <option value="Urgent" className="bg-card text-foreground">Urgent</option>
-              <option value="High" className="bg-card text-foreground">High</option>
-              <option value="Medium" className="bg-card text-foreground">Medium</option>
-              <option value="Standard" className="bg-card text-foreground">Standard</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Review Queue Table */}
-      <div className="rounded-xl overflow-hidden text-xs border border-border bg-card shadow-xs">
+          {/* Main Review Queue Table */}
+          <div className="rounded-xl overflow-hidden text-xs border border-border bg-card shadow-xs">
         {isPending ? (
           <LoadingState rows={5} />
         ) : filteredDocuments.length === 0 ? (
@@ -607,6 +596,33 @@ export function DocumentQueueTable() {
             </TableBody>
           </Table>
         )}
+          </div>
+        </div>
+
+        {/* Right Column: Unified Compliance Calendar (Merged in 1 place) */}
+        <div className="lg:col-span-4 xl:col-span-4 space-y-3.5 sticky top-4">
+          <ComplianceCalendar
+            documents={documents}
+            activePreset={dateFilterPreset}
+            customStartDate={customStartDate}
+            customEndDate={customEndDate}
+            onSelectPreset={(preset) => {
+              setDateFilterPreset(preset);
+              setCustomStartDate("");
+              setCustomEndDate("");
+            }}
+            onSelectCustomRange={(start, end) => {
+              setDateFilterPreset("Custom");
+              setCustomStartDate(start);
+              setCustomEndDate(end);
+            }}
+            onClear={() => {
+              setDateFilterPreset("All");
+              setCustomStartDate("");
+              setCustomEndDate("");
+            }}
+          />
+        </div>
       </div>
 
       {/* Decision Execution Dialog */}
@@ -620,25 +636,6 @@ export function DocumentQueueTable() {
           onConfirmDecision={handleDecisionExecution}
         />
       )}
-
-      {/* Date Filter Modal */}
-      <DateFilterModal
-        isOpen={isDateModalOpen}
-        onClose={() => setIsDateModalOpen(false)}
-        onApply={(preset, start, end) => {
-          setDateFilterPreset(preset);
-          setCustomStartDate(start);
-          setCustomEndDate(end);
-        }}
-        onReset={() => {
-          setDateFilterPreset("All");
-          setCustomStartDate("");
-          setCustomEndDate("");
-        }}
-        currentPreset={dateFilterPreset}
-        currentStartDate={customStartDate}
-        currentEndDate={customEndDate}
-      />
     </div>
   );
 }
