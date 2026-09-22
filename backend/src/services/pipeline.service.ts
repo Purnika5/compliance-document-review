@@ -413,22 +413,6 @@ export class PipelineService {
           });
         }
 
-        if (lowerText.includes('conflict') || lowerText.includes('compensation') || lowerText.includes('fee')) {
-          fallbackFlags.push({
-            passage: 'Advisor receives compensation from product sponsors without full client disclosure.',
-            rule: 'SEC Rule 206 - Fiduciary Duty & Conflict Disclosure',
-            explanation: 'Undisclosed third-party compensation or conflicts of interest violate SEC Section 206 fiduciary disclosure requirements.'
-          });
-        }
-
-        if (fallbackFlags.length === 0) {
-          fallbackFlags.push({
-            passage: 'Historical returns guarantee future fund performance.',
-            rule: 'FINRA Rule 2210 - Communications with the Public',
-            explanation: 'Promissory statements and performance guarantees are strictly prohibited in marketing and disclosure materials.'
-          });
-        }
-
         return {
           summary: 'AI Compliance Analysis: Document evaluated against FINRA/SEC regulatory rules. Disclosures, fee schedules, and performance claim checks completed.',
           flags: fallbackFlags,
@@ -483,7 +467,7 @@ export class PipelineService {
           rawText = [
             `Document Title: ${row.title}`,
             row.description ? `Description: ${row.description}` : '',
-            'Regulatory Context: Investment portfolio commentary and marketing disclosures regarding fund performance, advisor compensation, and risk factors.'
+            'Regulatory Context: Investment portfolio commentary and marketing disclosures regarding fund performance and risk factors.'
           ].filter(Boolean).join('\n');
         }
       } catch (err) {
