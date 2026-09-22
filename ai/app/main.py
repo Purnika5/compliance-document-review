@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import time
 from pathlib import Path
@@ -16,6 +17,25 @@ from google import genai
 
 CURRENT_DIR = Path(__file__).resolve().parent
 AI_DIR = CURRENT_DIR.parent
+
+def clean_grammar_notes(text: str) -> str:
+    """Ensure grammar notes such as 'recheck grammar' are stripped from sentences."""
+    if not text:
+        return text
+    cleaned = re.sub(
+        r'[\(\[\{,;-]?\s*(?:please\s+)?(?:re-?check|check)\s+grammar\s*[:,-]?\s*[\)\]\}]?',
+        '',
+        text,
+        flags=re.IGNORECASE
+    )
+    cleaned = re.sub(r'^[\s,;:-]+', '', cleaned)
+    cleaned = re.sub(r'\s{2,}', ' ', cleaned)
+    cleaned = re.sub(r'\s+([.,!?;:])', r'', cleaned)
+    cleaned = cleaned.strip()
+    if cleaned and cleaned[0].islower():
+        cleaned = cleaned[0].upper() + cleaned[1:]
+    return cleaned
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2] if len(Path(__file__).resolve().parents) > 2 else AI_DIR
 
 # Load .env from project root or AI directory
@@ -257,7 +277,7 @@ def analyze_document(request: AnalyzeRequest):
         # --------------------------------------------------
 
         summary_response = call_gemini(summary_prompt, is_json=False)
-        summary = summary_response.text.strip()
+        summary = clean_grammar_notes(summary_response.text.strip())
 
 
         # --------------------------------------------------
@@ -455,10 +475,10 @@ def analyze_document(request: AnalyzeRequest):
 
 
 # --------------------------------------------------
-# Chatbot endpoint — app-scoped Gemini copilot
+# Chatbot endpoint â€” app-scoped Gemini copilot
 # --------------------------------------------------
 
-CHAT_SYSTEM_PROMPT = """You are the Springer Capital Compliance Copilot — a strict, app-scoped assistant.
+CHAT_SYSTEM_PROMPT = """You are the Springer Capital Compliance Copilot â€” a strict, app-scoped assistant.
 
 You may ONLY answer questions about the following topics related to the Springer Capital Compliance Document Review platform:
 
@@ -517,7 +537,7 @@ STRICT RULES:
 - Do NOT answer general questions about finance, investing, other software, or general knowledge.
 - Do NOT make up features that do not exist in the platform.
 - Keep answers concise (3-5 sentences max for factual questions).
-- For grammar check requests, return the corrected text and a brief explanation of changes.
+- For grammar check requests, correct the grammar, but do NOT add or embed 'recheck grammar' or any notes to recheck grammar inside the corrected sentence. Return the clean corrected sentence and a brief explanation of changes.
 """
 
 
@@ -535,7 +555,16 @@ def chat_endpoint(request: ChatRequest):
     if not request.message or not request.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty.")
 
-    full_prompt = f"{CHAT_SYSTEM_PROMPT}\n\nUser ({request.role}): {request.message.strip()}\n\nAssistant:"
+    # Strip command prefix/suffix from grammar check requests so the command phrase doesn't get corrected as text
+    user_msg = request.message.strip()
+    if re.search(r'\b(?:re-?check|check|fix)\s+grammar\b', user_msg, re.IGNORECASE):
+        stripped = re.sub(r'\b(?:please\s+)?(?:re-?check|check|fix)\s+grammar\b[:,-]?', '', user_msg, flags=re.IGNORECASE)
+        stripped = re.sub(r'\bgrammar\s+(?:check|re-?check)\b[:,-]?', '', stripped, flags=re.IGNORECASE)
+        stripped = stripped.strip()
+        if stripped:
+            user_msg = f"check grammar: {stripped}"
+
+    full_prompt = f"{CHAT_SYSTEM_PROMPT}\n\nUser ({request.role}): {user_msg}\n\nAssistant:"
 
     try:
         active_client = get_client()
@@ -544,6 +573,7 @@ def chat_endpoint(request: ChatRequest):
             contents=full_prompt
         )
         reply_text = response.text.strip() if response.text else "I'm unable to process that request right now."
+        reply_text = clean_grammar_notes(reply_text)
         return ChatResponse(reply=reply_text)
     except Exception as e:
         print(f"[Chat] Gemini error: {e}", flush=True)

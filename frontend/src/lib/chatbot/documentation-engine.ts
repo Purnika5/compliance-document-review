@@ -189,7 +189,15 @@ const PHRASE_CORRECTIONS: Array<{
  */
 export function recheckGrammar(text: string): IGrammarResult {
   const issues: IGrammarIssue[] = [];
-  let corrected = text;
+  // Strip trigger command phrases so user commands do not get treated as draft text
+  const cleanInput = text
+    .replace(/\b(?:please\s+)?(?:re-?check|check|fix)\s+grammar\b[:,-]?/gi, "")
+    .replace(/\bgrammar\s+(?:check|re-?check)\b[:,-]?/gi, "")
+    .replace(/^(?:grammar|check|audit\s*note|fix)[:,-]?\s*/i, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
+  let corrected = cleanInput || text.trim();
 
   // 1. Phrase-level grammar checks
   for (const rule of PHRASE_CORRECTIONS) {

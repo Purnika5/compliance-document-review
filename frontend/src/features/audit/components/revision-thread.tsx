@@ -166,7 +166,7 @@ export function RevisionThread({
     <div className="space-y-4 min-w-0">
       {/* Header Info */}
       <div className="border border-[#E6E8E7] bg-white text-[#183028] flex items-center rounded-xl px-3.5 py-2.5 text-xs shadow-2xs">
-        <span className="font-bold text-[#183028]">Revision History</span>
+        <span className="font-bold text-[#183028]">Revision Message</span>
       </div>
 
       {/* Structured Chronological Timeline */}
