@@ -9,6 +9,7 @@ import { query } from '../db/pool';
 import { optionalAuth } from '../middleware/auth.middleware';
 import { uploadDocumentFile } from '../middleware/upload.middleware';
 import { DocumentController } from '../controllers/document.controller';
+import { QuotaService } from '../services/quota.service';
 
 const router = Router();
 
@@ -338,7 +339,22 @@ Compliance Summary: ${telemetryData.activeDoc.summary || 'Not yet analyzed'}
 Risk Flags: ${telemetryData.activeDoc.flag_count} flag${telemetryData.activeDoc.flag_count !== 1 ? 's' : ''} — ${JSON.stringify(telemetryData.activeDoc.flags || [])}`
     : '';
 
-  // ── 3. Google Gemini REST Call ────────────────────────────────────────────
+  // ── 3. Advisor Quota Check ────────────────────────────────────────────────
+  if (userId) {
+    const quota = await QuotaService.checkChatMessage(userId, userRole);
+    if (!quota.allowed) {
+      const resetDate = quota.resetsAt ? new Date(quota.resetsAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : `in ${quota.resetInDays} days`;
+      res.status(200).json({
+        success: true,
+        reply: `You've used all ${quota.limit} AI messages for this period — your quota resets on ${resetDate} (${quota.resetInDays} day${quota.resetInDays !== 1 ? 's' : ''} from now). In the meantime, you can still view your submissions, download remediated files, and check the dashboard. Need more capacity? Reach out to your Compliance Officer.`,
+        quota: { used: quota.used, limit: quota.limit, remaining: 0, resetsAt: quota.resetsAt, resetInDays: quota.resetInDays },
+        quotaExceeded: true,
+      });
+      return;
+    }
+  }
+
+  // ── 4. Google Gemini REST Call ────────────────────────────────────────────
   const geminiApiKey = process.env.GEMINI_API_KEY?.trim();
   if (geminiApiKey && !geminiApiKey.includes('your_gemini') && !geminiApiKey.includes('test-ci')) {
     try {
@@ -416,7 +432,10 @@ CRITICAL RULES:
         }
 
         if (textReply && textReply.trim()) {
-          res.status(200).json({ success: true, reply: textReply.trim() });
+          // Consume quota after successful AI response
+          if (userId) await QuotaService.consumeChatMessage(userId, userRole);
+          const quotaInfo = userId ? await QuotaService.getQuotaInfo(userId, userRole) : null;
+          res.status(200).json({ success: true, reply: textReply.trim(), quota: quotaInfo ? { used: quotaInfo.chatMessages.used, limit: quotaInfo.chatMessages.limit, remaining: quotaInfo.chatMessages.remaining, resetsAt: quotaInfo.resetsAt, resetInDays: quotaInfo.resetInDays } : undefined });
           return;
         }
 
@@ -430,9 +449,15 @@ CRITICAL RULES:
     }
   }
 
-  // ── 4. Robust institutional fallback grounded in live database rows ───────
+  // ── 5. Robust institutional fallback grounded in live database rows ───────
+  // Fallback responses do not consume quota (no AI token usage)
   const fallbackReply = generateContextualComplianceReply(cleanMessage, userRole, telemetryData);
-  res.status(200).json({ success: true, reply: fallbackReply });
+  const quotaInfo = userId ? await QuotaService.getQuotaInfo(userId, userRole) : null;
+  res.status(200).json({
+    success: true,
+    reply: fallbackReply,
+    quota: quotaInfo ? { used: quotaInfo.chatMessages.used, limit: quotaInfo.chatMessages.limit, remaining: quotaInfo.chatMessages.remaining, resetsAt: quotaInfo.resetsAt, resetInDays: quotaInfo.resetInDays } : undefined,
+  });
 });
 
 router.post(

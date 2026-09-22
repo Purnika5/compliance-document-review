@@ -9,6 +9,7 @@ import { asyncHandler } from '../utils/asyncHandler';
 
 import { SearchEngineService } from '../services/search-engine.service';
 import { GeminiCopilotService } from '../services/gemini-copilot.service';
+import { QuotaService } from '../services/quota.service';
 
 export class DocumentController {
   public static submit = asyncHandler(async (req: Request, res: Response): Promise<void> => {
@@ -145,14 +146,42 @@ export class DocumentController {
       throw new AppError('A document file is required for compliance audit (PDF, DOCX, XLSX, TXT)', 400, 'FILE_REQUIRED');
     }
     const user = (req as any).user;
+    const userId: string | undefined = user?.id;
+    const userRole: string = user?.role || 'Advisor';
     const { target_document_id, instructions } = req.body;
+
+    // Quota check — Advisors are limited to 2 file analyses per 4-day period
+    if (userId) {
+      const quota = await QuotaService.checkFileAnalysis(userId, userRole);
+      if (!quota.allowed) {
+        const resetDate = quota.resetsAt
+          ? new Date(quota.resetsAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+          : `in ${quota.resetInDays} days`;
+        res.status(429).json({
+          success: false,
+          error: 'QUOTA_EXCEEDED',
+          message: `You\'ve used your ${quota.limit} file analysis${quota.limit !== 1 ? 'es' : ''} for this period. Your quota resets on ${resetDate} (${quota.resetInDays} day${quota.resetInDays !== 1 ? 's' : ''} from now).`,
+          quota: { used: quota.used, limit: quota.limit, remaining: 0, resetsAt: quota.resetsAt, resetInDays: quota.resetInDays },
+        });
+        return;
+      }
+    }
+
     const result = await GeminiCopilotService.auditAndRemediateFile(
       req.file,
       user,
       target_document_id,
       instructions
     );
-    res.status(200).json(result);
+
+    // Consume quota after successful audit
+    if (userId) await QuotaService.consumeFileAnalysis(userId, userRole);
+    const quotaInfo = userId ? await QuotaService.getQuotaInfo(userId, userRole) : null;
+
+    res.status(200).json({
+      ...result,
+      quota: quotaInfo ? { used: quotaInfo.fileAnalyses.used, limit: quotaInfo.fileAnalyses.limit, remaining: quotaInfo.fileAnalyses.remaining, resetsAt: quotaInfo.resetsAt, resetInDays: quotaInfo.resetInDays } : undefined,
+    });
   });
 
   /**

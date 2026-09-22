@@ -20,16 +20,16 @@ export const copilotApi = {
     message: string,
     role?: string,
     context?: { pathname?: string; documentId?: string }
-  ): Promise<{ reply: string }> {
+  ): Promise<{ reply: string; quota?: { used: number; limit: number; remaining: number; resetsAt: string; resetInDays: number }; quotaExceeded?: boolean }> {
     try {
-      const response = await client.post<ApiResponse<{ reply: string }>>("/api/chat", {
+      const response = await client.post<ApiResponse<{ reply: string; quota?: any; quotaExceeded?: boolean }>>("/api/chat", {
         message: message.trim(),
         role: role || "Advisor",
         pathname: context?.pathname,
         documentId: context?.documentId,
       });
       if (response && response.data && response.data.reply) {
-        return response.data;
+        return { reply: response.data.reply, quota: (response.data as any).quota, quotaExceeded: (response.data as any).quotaExceeded };
       }
       if ((response as any)?.reply) {
         return response as any;

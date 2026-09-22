@@ -305,6 +305,10 @@ export function ChatbotWidget() {
   const [uploadStatusText, setUploadStatusText] = useState("");
   const [pendingFile, setPendingFile] = useState<File | null>(null);
 
+  // Quota tracking (Advisor only, null = Officer or not loaded)
+  const [quota, setQuota] = useState<{ used: number; limit: number; remaining: number; resetsAt: string; resetInDays: number } | null>(null);
+  const [fileQuota, setFileQuota] = useState<{ used: number; limit: number; remaining: number; resetsAt: string; resetInDays: number } | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Automatically close chatbot on route redirection or page navigation
@@ -409,6 +413,26 @@ export function ChatbotWidget() {
     const activeDocId = docMatch ? docMatch[1] : undefined;
 
     try {
+      // File quota check for Advisors
+      if (session?.role === "Advisor" && fileQuota && fileQuota.remaining === 0) {
+        setIsUploading(false);
+        setUploadStatusText("");
+        const resetDate = fileQuota.resetsAt
+          ? new Date(fileQuota.resetsAt).toLocaleDateString("en-US", { month: "long", day: "numeric" })
+          : `in ${fileQuota.resetInDays} days`;
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: botMsgId,
+            sender: "bot",
+            text: `You've used both of your file analysis slots for this period. Your quota resets on ${resetDate} (${fileQuota.resetInDays} day${fileQuota.resetInDays !== 1 ? "s" : ""} from now). You can still chat, view your submissions, or download previously remediated files.`,
+            timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          },
+        ]);
+        setIsTyping(false);
+        return;
+      }
+
       const auditResponse = await copilotApi.auditAndRemediate(file, {
         instructions: userInstructions,
         targetDocumentId: activeDocId,
@@ -432,6 +456,8 @@ export function ChatbotWidget() {
           ],
         },
       ]);
+      // Capture file quota from audit response
+      if ((auditResponse as any)?.quota) setFileQuota((auditResponse as any).quota);
     } catch (err: any) {
       setIsUploading(false);
       setUploadStatusText("");
@@ -649,6 +675,8 @@ export function ChatbotWidget() {
         documentId,
       })
       .then((res) => {
+        // Capture quota from response
+        if (res?.quota) setQuota(res.quota);
         return res?.reply || getConversationalFallback(userRole, isLoginMode);
       })
       .catch(() => {
@@ -846,6 +874,51 @@ export function ChatbotWidget() {
                   <span>Fix & Remediate File</span>
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* Quota Usage Bar — Advisor only */}
+          {isAuthenticated && session?.role === "Advisor" && (quota || fileQuota) && (
+            <div className="px-3 pt-2 pb-1 bg-white border-t border-[#E6E8E7] flex flex-col gap-1 shrink-0">
+              {quota && (
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] font-semibold text-[#183028]/60 shrink-0 w-20">AI Messages</span>
+                  <div className="flex-1 bg-[#E6E8E7] rounded-full h-1.5 overflow-hidden">
+                    <div
+                      className={cn(
+                        "h-full rounded-full transition-all",
+                        quota.remaining === 0 ? "bg-red-400" : quota.remaining <= 5 ? "bg-amber-400" : "bg-[#C5E86C]"
+                      )}
+                      style={{ width: `${Math.min(100, (quota.used / quota.limit) * 100)}%` }}
+                    />
+                  </div>
+                  <span className={cn("text-[9px] font-bold shrink-0", quota.remaining === 0 ? "text-red-500" : "text-[#183028]/60")}>
+                    {quota.remaining}/{quota.limit}
+                  </span>
+                </div>
+              )}
+              {fileQuota && (
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] font-semibold text-[#183028]/60 shrink-0 w-20">File Analyses</span>
+                  <div className="flex-1 bg-[#E6E8E7] rounded-full h-1.5 overflow-hidden">
+                    <div
+                      className={cn(
+                        "h-full rounded-full transition-all",
+                        fileQuota.remaining === 0 ? "bg-red-400" : "bg-[#C5E86C]"
+                      )}
+                      style={{ width: `${Math.min(100, (fileQuota.used / fileQuota.limit) * 100)}%` }}
+                    />
+                  </div>
+                  <span className={cn("text-[9px] font-bold shrink-0", fileQuota.remaining === 0 ? "text-red-500" : "text-[#183028]/60")}>
+                    {fileQuota.remaining}/{fileQuota.limit}
+                  </span>
+                </div>
+              )}
+              {(quota?.remaining === 0 || fileQuota?.remaining === 0) && (
+                <p className="text-[9px] text-[#183028]/50 text-center">
+                  Resets in {(quota?.resetInDays || fileQuota?.resetInDays)} day{((quota?.resetInDays || fileQuota?.resetInDays) !== 1) ? "s" : ""}
+                </p>
+              )}
             </div>
           )}
 
