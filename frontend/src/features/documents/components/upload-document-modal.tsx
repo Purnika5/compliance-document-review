@@ -38,7 +38,7 @@ import {
 } from "lucide-react";
 import { uploadDocumentSchema, type UploadDocumentInput } from "@/lib/validation/document";
 import { cn } from "@/lib/utils";
-import { showSuccessToast, showErrorToast } from "@/components/ui/toast";
+import { showErrorToast } from "@/components/ui/toast";
 
 export interface UploadDocumentModalProps {
   isOpen: boolean;
@@ -107,7 +107,6 @@ export function UploadDocumentModal({
     try {
       await onUpload({ title, category, notes, file: rawFile || undefined });
       setStep("success");
-      showSuccessToast("Document Uploaded", `"${title}" has been submitted for review.`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Upload failed.";
       showErrorToast("Upload Failed", message);
