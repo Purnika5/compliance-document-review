@@ -282,6 +282,53 @@ function parseNaturalSearch(text: string): {
   return params;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// localStorage quota helpers — enforce file-scan limit client-side
+// Works even if the user_quotas Supabase table doesn't exist yet.
+// ─────────────────────────────────────────────────────────────────────────────
+const LOCAL_QUOTA_KEY = "sc_file_scan_quota";
+const LOCAL_QUOTA_LIMIT = 2;
+const LOCAL_QUOTA_PERIOD_DAYS = 4;
+
+interface LocalQuota {
+  used: number;
+  periodStartedAt: number; // epoch ms
+}
+
+function getLocalQuota(userId: string): LocalQuota {
+  if (typeof window === "undefined") return { used: 0, periodStartedAt: Date.now() };
+  try {
+    const raw = localStorage.getItem(`${LOCAL_QUOTA_KEY}_${userId}`);
+    if (!raw) return { used: 0, periodStartedAt: Date.now() };
+    const parsed: LocalQuota = JSON.parse(raw);
+    const periodMs = LOCAL_QUOTA_PERIOD_DAYS * 24 * 60 * 60 * 1000;
+    // Auto-reset if period expired
+    if (Date.now() - parsed.periodStartedAt > periodMs) {
+      const fresh = { used: 0, periodStartedAt: Date.now() };
+      localStorage.setItem(`${LOCAL_QUOTA_KEY}_${userId}`, JSON.stringify(fresh));
+      return fresh;
+    }
+    return parsed;
+  } catch {
+    return { used: 0, periodStartedAt: Date.now() };
+  }
+}
+
+function incrementLocalQuota(userId: string): LocalQuota {
+  const current = getLocalQuota(userId);
+  const updated = { ...current, used: current.used + 1 };
+  try {
+    localStorage.setItem(`${LOCAL_QUOTA_KEY}_${userId}`, JSON.stringify(updated));
+  } catch { /* storage full — ignore */ }
+  return updated;
+}
+
+function getLocalQuotaResetDate(userId: string): string {
+  const q = getLocalQuota(userId);
+  const resetMs = q.periodStartedAt + LOCAL_QUOTA_PERIOD_DAYS * 24 * 60 * 60 * 1000;
+  return new Date(resetMs).toLocaleDateString("en-US", { month: "long", day: "numeric" });
+}
+
 export function ChatbotWidget() {
   const pathname = usePathname();
   const router = useRouter();
@@ -345,16 +392,43 @@ export function ChatbotWidget() {
     }
   }, [messages, isOpen]);
 
-  // Pre-fetch quota when chatbot opens for Advisor users
+  // Pre-load quota when chatbot opens — localStorage is instant, server is async
   useEffect(() => {
-    if (isOpen && isAuthenticated && session?.role === "Advisor") {
+    if (!isOpen || !isAuthenticated) return;
+    const userId = session?.id || session?.email || "anonymous";
+
+    // 1. Immediately apply localStorage quota (works without Supabase table)
+    const localQ = getLocalQuota(userId);
+    setFileQuota((prev) => {
+      // Only override if server hasn't returned a more authoritative value
+      if (prev !== null) return prev;
+      return {
+        used: localQ.used,
+        limit: LOCAL_QUOTA_LIMIT,
+        remaining: Math.max(0, LOCAL_QUOTA_LIMIT - localQ.used),
+        resetsAt: "",
+        resetInDays: LOCAL_QUOTA_PERIOD_DAYS,
+      };
+    });
+
+    // 2. Also fetch server quota async for Advisor role (server quota wins if available)
+    if (session?.role === "Advisor" || session?.role === "Officer") {
       copilotApi.getQuota().then((info) => {
         if (!info) return;
-        setQuota({ used: info.chatMessages.used, limit: info.chatMessages.limit, remaining: info.chatMessages.remaining, resetsAt: info.resetsAt, resetInDays: info.resetInDays });
-        setFileQuota({ used: info.fileAnalyses.used, limit: info.fileAnalyses.limit, remaining: info.fileAnalyses.remaining, resetsAt: info.resetsAt, resetInDays: info.resetInDays });
-      }).catch(() => {/* silent — quota bar just won't show */});
+        // Use the stricter of server vs local counts
+        const serverUsed = info.fileAnalyses.used;
+        const localUsed = getLocalQuota(userId).used;
+        const effectiveUsed = Math.max(serverUsed, localUsed);
+        const effectiveRemaining = Math.max(0, info.fileAnalyses.limit - effectiveUsed);
+
+        if (session?.role === "Advisor") {
+          setQuota({ used: info.chatMessages.used, limit: info.chatMessages.limit, remaining: info.chatMessages.remaining, resetsAt: info.resetsAt, resetInDays: info.resetInDays });
+        }
+        setFileQuota({ used: effectiveUsed, limit: info.fileAnalyses.limit, remaining: effectiveRemaining, resetsAt: info.resetsAt, resetInDays: info.resetInDays });
+      }).catch(() => { /* silent — localStorage gate still works */ });
     }
-  }, [isOpen, isAuthenticated, session?.role]);
+  }, [isOpen, isAuthenticated, session?.id, session?.role]);
+
 
   useEffect(() => {
     return () => {
@@ -424,16 +498,26 @@ export function ChatbotWidget() {
     const activeDocId = docMatch ? docMatch[1] : undefined;
 
     try {
-      // File quota check — both Advisors AND Officers limited to 2 scans per period
-      if (fileQuota && fileQuota.remaining === 0) {
+      // ── Local quota gate (works even without Supabase table) ──────────────
+      const userId = session?.id || session?.email || "anonymous";
+      const localQ = getLocalQuota(userId);
+      const localExhausted = localQ.used >= LOCAL_QUOTA_LIMIT;
+
+      // Also check cached server quota
+      const serverExhausted = fileQuota !== null && fileQuota.remaining === 0;
+
+      if (localExhausted || serverExhausted) {
         setIsUploading(false);
         setUploadStatusText("");
-        const resetDate = fileQuota.resetsAt
+        const resetDate = serverExhausted && fileQuota?.resetsAt
           ? new Date(fileQuota.resetsAt).toLocaleDateString("en-US", { month: "long", day: "numeric" })
-          : `in ${fileQuota.resetInDays} days`;
+          : getLocalQuotaResetDate(userId);
+        const resetInDays = serverExhausted && fileQuota?.resetInDays
+          ? fileQuota.resetInDays
+          : LOCAL_QUOTA_PERIOD_DAYS;
         const roleMsg = session?.role === "Officer"
-          ? `You've used your ${fileQuota.limit} document scan${fileQuota.limit !== 1 ? "s" : ""} for this period. Your quota resets on ${resetDate} (${fileQuota.resetInDays} day${fileQuota.resetInDays !== 1 ? "s" : ""} from now).`
-          : `You've used both of your file analysis slots for this period. Your quota resets on ${resetDate} (${fileQuota.resetInDays} day${fileQuota.resetInDays !== 1 ? "s" : ""} from now). You can still chat, view your submissions, or download previously remediated files.`;
+          ? `You've used your ${LOCAL_QUOTA_LIMIT} document scan${LOCAL_QUOTA_LIMIT !== 1 ? "s" : ""} for this period. Your quota resets on ${resetDate} (${resetInDays} day${resetInDays !== 1 ? "s" : ""} from now).`
+          : `You've used both of your file analysis slots for this period. Your quota resets on ${resetDate} (${resetInDays} day${resetInDays !== 1 ? "s" : ""} from now). You can still chat, view submissions, or download previously remediated files.`;
         setMessages((prev) => [
           ...prev,
           {
@@ -446,7 +530,6 @@ export function ChatbotWidget() {
         setIsTyping(false);
         return;
       }
-
 
       const auditResponse = await copilotApi.auditAndRemediate(file, {
         instructions: userInstructions,
@@ -464,8 +547,6 @@ export function ChatbotWidget() {
           text: auditResponse.conversational_summary,
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
           auditResult: session?.role === "Officer" ? undefined : auditResponse,
-          // Officers get flag details in text only — no remediation chips
-          // Advisors get full remediation chips
           suggestedChips: session?.role === "Officer"
             ? undefined
             : [
@@ -475,12 +556,49 @@ export function ChatbotWidget() {
               ],
         },
       ]);
-      // Capture file quota from audit response
-      if ((auditResponse as any)?.quota) setFileQuota((auditResponse as any).quota);
+      // Increment LOCAL quota counter on every successful scan/fix
+      const userId = session?.id || session?.email || "anonymous";
+      const updatedLocal = incrementLocalQuota(userId);
+      // Also sync server quota
+      if ((auditResponse as any)?.quota) {
+        setFileQuota((auditResponse as any).quota);
+      } else {
+        // Update local-derived display even if server didn't return quota
+        setFileQuota((prev) => prev
+          ? { ...prev, used: updatedLocal.used, remaining: Math.max(0, LOCAL_QUOTA_LIMIT - updatedLocal.used) }
+          : { used: updatedLocal.used, limit: LOCAL_QUOTA_LIMIT, remaining: Math.max(0, LOCAL_QUOTA_LIMIT - updatedLocal.used), resetsAt: "", resetInDays: LOCAL_QUOTA_PERIOD_DAYS }
+        );
+      }
     } catch (err: any) {
       setIsUploading(false);
       setUploadStatusText("");
       console.error("[Copilot File Audit Error]", err);
+
+      // Handle quota exceeded (HTTP 429) — surfaced from API after our fix
+      if (err?.status === 429) {
+        const quotaData = err?.data?.quota;
+        const resetDate = quotaData?.resetsAt
+          ? new Date(quotaData.resetsAt).toLocaleDateString("en-US", { month: "long", day: "numeric" })
+          : getLocalQuotaResetDate(session?.id || session?.email || "anonymous");
+        const resetInDays = quotaData?.resetInDays ?? LOCAL_QUOTA_PERIOD_DAYS;
+        const limitNum = quotaData?.limit ?? LOCAL_QUOTA_LIMIT;
+        const roleMsg = session?.role === "Officer"
+          ? `You've used your ${limitNum} document scan${limitNum !== 1 ? "s" : ""} for this period. Your quota resets on ${resetDate} (${resetInDays} day${resetInDays !== 1 ? "s" : ""} from now).`
+          : `You've used both of your file analysis slots for this period. Your quota resets on ${resetDate} (${resetInDays} day${resetInDays !== 1 ? "s" : ""} from now). You can still chat, view your submissions, or download previously remediated files.`;
+        if (quotaData) setFileQuota(quotaData);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: botMsgId,
+            sender: "bot",
+            text: roleMsg,
+            timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          },
+        ]);
+        setIsTyping(false);
+        return;
+      }
+
       setMessages((prev) => [
         ...prev,
         {

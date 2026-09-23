@@ -71,10 +71,14 @@ export const copilotApi = {
     try {
       return await client.post<IAuditAndFixResponse>("/api/chat/audit-and-fix", formData);
     } catch (err: any) {
+      // NEVER swallow quota exceeded errors — must surface to the user
+      if (err?.status === 429) throw err;
       console.warn("[auditAndRemediate] primary /api/chat/audit-and-fix endpoint warning, trying secondary route:", err);
       try {
         return await client.post<IAuditAndFixResponse>("/api/documents/audit-and-fix", formData);
       } catch (secondaryErr: any) {
+        // NEVER swallow quota exceeded errors from secondary route either
+        if (secondaryErr?.status === 429) throw secondaryErr;
         console.warn("[auditAndRemediate] backend unreachable or cold-starting, activating client regulatory fallback:", secondaryErr);
         // Client-side institutional audit & remediation fallback so user workflow never breaks
         const baseName = file.name.replace(/\.[^/.]+$/, "");
