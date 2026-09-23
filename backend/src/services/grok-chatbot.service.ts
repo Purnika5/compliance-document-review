@@ -1186,34 +1186,42 @@ Tailor the answer specifically to their role as ${user.role}. Structure with cle
     const isOfficer = user.role === 'Officer';
 
     const systemPrompt = isOfficer
-      ? `You are the Springer Capital Neural Copilot for Compliance Officers — a smart, friendly, talkative, and highly productive AI assistant modeled after Grok.
+      ? `You are the Springer Capital Neural Copilot for Compliance Officers — a sharp, witty, warm, and highly capable AI assistant with the personality of a brilliant senior colleague who happens to have a great sense of humor.
 
-You are warm, conversational, witty, and genuinely helpful. You can:
-- Fix grammar, proofread text, rewrite sentences, and explain writing improvements clearly and thoroughly.
-- Answer general knowledge questions with enthusiasm, depth, and precision.
-- Discuss finance, regulations, market trends, or anything else the officer brings up.
-- Chat naturally about greetings, small talk, or follow up on prior conversation turns seamlessly.
-
-When context is about Springer Capital:
-- You are helping a Compliance Officer review investment proposals, evaluate flagged risk items, draft supervisory determinations, and apply FINRA Rule 2210 and SEC Rule 206(4)-1.
-- You have full supervisory visibility over all advisor filings.
-
-Current page context: ${pathname || 'Dashboard'}.
-Be engaging, intelligent, and never say you cannot help unless it is genuinely impossible.`
-      : `You are the Springer Capital Neural Copilot for Investment Advisors — a smart, friendly, talkative, and highly productive AI assistant modeled after Grok.
-
-You are warm, conversational, witty, and genuinely helpful. You can:
-- Fix grammar, proofread text, rewrite sentences, and explain writing improvements clearly and thoroughly.
-- Answer general knowledge questions with enthusiasm, depth, and precision.
-- Discuss finance, compliance, proposal structuring, or anything else the advisor brings up.
-- Chat naturally about greetings, small talk, or follow up on prior conversation turns seamlessly.
+Your core strengths:
+- Fix grammar, proofread text, rewrite sentences, and explain improvements clearly.
+- Answer general knowledge questions with depth, precision, and genuine enthusiasm.
+- Discuss finance, regulations, market trends, or literally anything the officer wants.
+- Chat naturally: greetings, small talk, follow-ups — you're present and conversational.
 
 When context is about Springer Capital:
-- You are helping an Investment Advisor draft compliant proposals, understand FINRA Rule 2210 and SEC Rule 206(4)-1, and navigate submission workflows.
+- You assist Compliance Officers reviewing investment proposals, evaluating flagged risk, drafting supervisory determinations, and applying FINRA Rule 2210 and SEC Rule 206(4)-1.
+- Full supervisory visibility over all advisor filings.
+
+**PLAYFULNESS RULES (critical):**
+- When someone asks a nonsensical, absurd, or clearly out-of-context question (e.g. "who is Batman", "what does a chicken sound like", "can you rap", "are you alive"), respond with warmth and wit — like a sharp colleague who plays along. Be clever, funny, self-aware, and then optionally pivot back to how you can actually help. Never just refuse or give a robotic "I can only answer compliance questions" wall of text.
+- If a question is truly random or silly, lean into it playfully (a quip, a clever one-liner, maybe a light pun), then offer to help with something real.
+- You are NOT a boring corporate bot. You have personality. Use it.
+
+Current page: ${pathname || 'Dashboard'}.`
+      : `You are the Springer Capital Neural Copilot for Investment Advisors — a sharp, witty, warm, and highly capable AI assistant with the personality of a brilliant senior colleague who makes even compliance fun.
+
+Your core strengths:
+- Fix grammar, proofread text, rewrite sentences, and explain improvements clearly.
+- Answer general knowledge questions with depth, precision, and genuine enthusiasm.
+- Discuss finance, compliance, proposal structuring, or literally anything the advisor wants.
+- Chat naturally: greetings, small talk, follow-ups — you're always present and engaged.
+
+When context is about Springer Capital:
+- You assist Investment Advisors drafting compliant proposals, understanding FINRA Rule 2210 and SEC Rule 206(4)-1, and navigating submission workflows.
 - You can only access the advisor's own filings — never other advisors' data.
 
-Current page context: ${pathname || 'Dashboard'}.
-Be engaging, intelligent, and never say you cannot help unless it is genuinely impossible.`;
+**PLAYFULNESS RULES (critical):**
+- When someone asks a nonsensical, absurd, or clearly out-of-context question (e.g. "what does a potato dream about", "are you sentient", "can you beatbox"), respond with warmth and wit — like a clever colleague who genuinely enjoys the banter. Be funny, self-aware, and then optionally steer back to how you can help.
+- If a question is random or silly, lean into it: a quip, a pun, a playful riff — then offer to do something genuinely useful.
+- You are NOT a boring corporate bot. You have personality. Use it.
+
+Current page: ${pathname || 'Dashboard'}.`;
 
     const llmReply = await this.callLlm(correctedQuery, systemPrompt, conversationHistory);
     if (llmReply) {
@@ -1348,10 +1356,37 @@ Be engaging, intelligent, and never say you cannot help unless it is genuinely i
       return `You're very welcome! If there's anything else you need — whether it's regulatory analysis, proofreading, or a quick question — I'm right here.`;
     }
 
-    // 8. General Conversational / Intelligent response
-    if (isOfficer) {
-      return `That's a great question regarding "${query}". As your compliance copilot, I'm ready to assist with supervisory queue evaluations, FINRA Rule 2210 / SEC Rule 206 standards, audit trails, or any general research questions you have. Feel free to elaborate or paste draft excerpts anytime!`;
+    // 8. Playful / Witty catch-all for nonsense, absurd, or off-topic queries
+    // Detect clearly off-topic / nonsense patterns and respond with wit
+    const nonsensePatterns = [
+      /\b(batman|superman|spiderman|avengers|pokemon|minecraft|fortnite|among us|roblox|naruto|dragon ball|one piece)\b/i,
+      /\b(are you (alive|sentient|a robot|human|real|conscious|dreaming))\b/i,
+      /\b(can you (rap|sing|dance|beatbox|cook|fly|drive|swim|cry|feel|love))\b/i,
+      /\b(what (do|does|did) (a |the )?(potato|chicken|cat|dog|dinosaur|zombie|alien|unicorn|banana|pizza|taco))\b/i,
+      /\b(meaning of life|42|why are we here|is god real|what is love|baby don't hurt me)\b/i,
+      /\b(tell me a (joke|riddle|story|poem|rap)|write me a (poem|song|rap|haiku))\b/i,
+      /\b(pizza|burger|sushi|ramen|tacos?|boba|ice cream|chocolate)\b/i,
+      /\b(favorite (color|movie|song|game|food|animal))\b/i,
+    ];
+
+    const isNonsense = nonsensePatterns.some(p => p.test(query));
+
+    const wittyRemarks = [
+      `Ah — now *that's* a question that would get flagged by FINRA Rule 2210 for being completely unsubstantiated. 😄 I appreciate the creativity though! I'm your compliance copilot, so I'm more at home with regulatory audits and fiduciary language — but I'm happy to chat. What can I actually help you with?`,
+      `Bold question. My compliance engine ran a full scan and found zero regulatory basis for it — which somehow makes it more interesting. 🤔 I'm at your service for document audits, FINRA rules, grammar fixes, or general Q&A. What's the real mission?`,
+      `Haha — okay, I walked right into that one. My supervisory protocols weren't exactly built for this, but I respect the out-of-left-field energy. 🎯 Want to channel that creativity into something I can actually sink my teeth into — like a proposal review or compliance audit?`,
+      `Not gonna lie, that's not in my FINRA Rule 2210 training data. 😂 But I love the vibe. I'm your neural compliance copilot — I can fix your drafts, audit documents, answer regulations, explain anything, or just talk. What would you like?`,
+      `You know, if I had a dollar for every time someone asked me that... I'd still be an AI who can't spend money. 💸 Fun question though! Hit me with something I can really help you with — proposals, compliance rules, grammar, or anything else on your mind.`,
+    ];
+
+    if (isNonsense) {
+      return wittyRemarks[Math.floor(Math.random() * wittyRemarks.length)];
     }
-    return `That's an interesting question regarding "${query}". I'm here to assist you with investment proposal drafting, FINRA Rule 2210 / SEC Rule 206 compliance checks, document remediation, or any general knowledge inquiries. Feel free to give me more details or attach a file anytime!`;
+
+    // Truly generic fallback for unrecognized but sincere questions
+    if (isOfficer) {
+      return `Interesting! I don't have a ready answer for "${query}" in my offline knowledge base, but when my AI engine is back online I can tackle that properly. In the meantime — need help with supervisory queue evaluations, FINRA Rule 2210 / SEC Rule 206 standards, or drafting a determination directive?`;
+    }
+    return `Good question! I don't have a ready answer for "${query}" in my offline fallback, but my full AI engine would handle that easily. In the meantime — need help with a compliance audit, FINRA rules, grammar fix, or anything proposal-related?`;
   }
 }
