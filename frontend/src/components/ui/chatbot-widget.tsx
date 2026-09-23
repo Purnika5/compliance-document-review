@@ -759,11 +759,7 @@ export function ChatbotWidget() {
     const botMsgId = `bot-${++messageIdRef.current}`;
     const lower = rawText.toLowerCase();
 
-    // 1. Grammar / enhance check (run locally)
-    const isGrammar =
-      isGrammarCheckQuery(rawText) ||
-      (isAwaitingGrammarInput && !isDocumentSearchQuery(rawText) && !lower.startsWith("/"));
-
+    // 1. Documentation enhancement (local only — grammar/polish goes to backend AI)
     const isEnhance =
       lower.startsWith("enhance:") ||
       lower.startsWith("enhance documentation:") ||
@@ -771,23 +767,18 @@ export function ChatbotWidget() {
       lower.includes("enhance for documentation") ||
       lower.includes("format as memo");
 
-    if (isGrammar || isEnhance) {
-      if (isAwaitingGrammarInput) {
-        setIsAwaitingGrammarInput(false);
-      }
+    if (isEnhance) {
       setTimeout(() => {
         const reply = resolveBotReply(rawText, isLoginMode, session?.role);
-        if (reply.suggestedChips && !reply.grammarResult) {
-          setIsAwaitingGrammarInput(true);
-        }
         simulateTyping(botMsgId, reply.text, timestamp, {
-          grammarResult: reply.grammarResult,
           documentationResult: reply.documentationResult,
-          suggestedChips: reply.suggestedChips,
         });
       }, 200);
       return;
     }
+
+    // Grammar/polish/sentence-fix requests flow to the backend AI (Gemini/Grok)
+    // with role-scoped system prompts — not processed locally.
 
     // Add bot typing placeholder once
     setIsTyping(true);

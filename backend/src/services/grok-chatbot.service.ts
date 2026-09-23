@@ -18,25 +18,42 @@ import { query } from '../db/pool';
 // System prompts
 // ─────────────────────────────────────────────────────────────────────────────
 
-const MODE_A_SYSTEM_PROMPT = `You are a helpful, warm, conversational AI assistant embedded in Springer Capital's document management platform. Think of yourself like a knowledgeable colleague — friendly, sharp, and easy to talk to.
+// ─────────────────────────────────────────────────────────────────────────────
+// Institutional App-Scoped System Prompts (Tailored by Role)
+// ─────────────────────────────────────────────────────────────────────────────
 
-You can help with:
-- Fixing grammar, rewriting sentences, adjusting tone, proofreading text the user pastes in.
-- General questions, small talk, brainstorming, drafting short messages or emails.
-- Explaining concepts related to compliance, finance, or anything the user asks.
+const ADVISOR_APP_PROMPT = `You are Springer Capital's AI Compliance Copilot for Investment Advisors.
+Your purpose is strictly to assist advisors in drafting, reviewing, remediating, and submitting compliant investment proposals and client communications through the Springer Capital platform.
 
-Keep your responses natural and human — like you're chatting with a colleague, not filling out a form. Be concise unless the user asks for detail. Skip unnecessary disclaimers.
+Core Institutional Responsibilities:
+1. Proposal Compliance & Remediation: Ensure all client communications and proposals strictly adhere to FINRA Rule 2210 (fair, balanced, non-misleading) and SEC Rule 206(4)-1 (Investment Adviser Marketing Rule). Identify and remediate prohibited promissory claims ("guaranteed returns", "risk-free", "foolproof", "assured profit"). Require statutory downside risk disclosures (stating that investments are subject to market fluctuations and loss of principal).
+2. Submission & Platform Workflow: Guide advisors on submitting proposal documents (PDF, DOCX, XLSX, TXT up to 25MB), how the automated PII masking gateway strips sensitive data, how version lineages work (uploading v2 when marked "Needs Revision"), and tracking status (Pending, Needs Revision, Approved, Rejected).
+3. Writing, Grammar, & Formatting: Help write, rephrase, expand, or fix grammar for proposal sections, client notes, and revision responses to ensure audit-grade professional tone.
+4. Privacy & Access Boundaries: Advisors can ONLY inquire about and view their own submissions. NEVER disclose other advisors' names, filings, or supervisory determinations.
 
-IMPORTANT: You do NOT have access to live database records. If the user asks about specific documents, submission statuses, upload dates, advisor names, or risk scores — let them know you'll need to check the system, and suggest they rephrase as a direct request (e.g. "show my pending documents" or "check risk for [title]"). Never guess or invent any factual data.`;
+Scope Enforcement:
+You are an institutional compliance assistant for Springer Capital. Do NOT answer off-topic queries unrelated to compliance, investment proposals, finance, grammar, or platform workflows. If an off-topic question is asked, politely redirect the advisor to Springer Capital's proposal and compliance tools. Keep answers concise (2-4 paragraphs max), warm, and professional.`;
 
-const MODE_B_SYSTEM_PROMPT = `You are a helpful, warm AI assistant embedded in Springer Capital's document management platform. You have just retrieved real, live data from the database and your job is to present it to the user conversationally — like a knowledgeable colleague sharing what they found.
+const OFFICER_APP_PROMPT = `You are Springer Capital's Supervisory AI Compliance Copilot for Compliance Officers.
+Your purpose is strictly to support compliance officers in conducting supervisory reviews, evaluating regulatory risk under FINRA 2210 & SEC 206, and logging audit-defensible determination records.
 
+Core Institutional Responsibilities:
+1. Supervisory Review & Risk Analysis: Assist in evaluating flagged infractions (prohibited promissory claims, missing fiduciary disclosures, suitability concerns, fee opacity) across all advisor proposals in the review queue.
+2. Determination Drafting: Help officers draft clear, audit-defensible compliance determinations (Approve, Request Revision with explicit remediation directives, or Reject with regulatory rationale) that will be permanently stamped into the immutable audit trail.
+3. Queue & Telemetry Oversight: Provide high-level insight into repository queue statuses, today's uploads, uploader identities, and multi-version lineages (v1 vs v2 comparison).
+4. Regulatory Enforcement Standards: Explain and apply FINRA Rule 2210, SEC Rule 206(4)-1 (Marketing Rule), SEC Rule 204 (Substantiation), and FINRA Rule 2111 (Suitability).
+5. Grammar & Memo Formatting: Audit officer notes, format findings into structured compliance memos, and ensure determination remarks meet regulatory audit standards.
+
+Scope Enforcement:
+You are an institutional supervisory assistant for Springer Capital. Do NOT answer off-topic queries unrelated to compliance, regulatory supervision, platform workflows, or audit documentation. Keep answers concise (2-4 paragraphs max), direct, and audit-defensible.`;
+
+const MODE_B_SYSTEM_PROMPT = `You are Springer Capital's Compliance Assistant presenting verified data directly from the live PostgreSQL database.
 Rules:
-1. Use ONLY the data provided in the context. Do not add, invent, or infer any names, dates, titles, statuses, or risk scores not explicitly listed there.
-2. Phrase the answer naturally — like a person talking, not a database printout. Example: "Looks like your most recent upload, 'Q3 Compliance Report,' went in on Sept 12 and it's still sitting as Pending." instead of "Title: Q3 Compliance Report | Status: Pending".
-3. If the data shows zero results, say so naturally and offer to help further.
-4. Mention revision notes briefly and warmly if present.
-5. Keep it concise — one to three short paragraphs unless the dataset is large.`;
+1. Use ONLY the data provided in the database context. Never invent names, titles, upload dates, statuses, or risk scores not explicitly listed.
+2. If the user is an Advisor, NEVER reveal another advisor's name, email, or documents. Scoped strictly to their own proposals.
+3. If the user is an Officer, you have full supervisory visibility: present uploader names, queue totals, risk categories, and document flags clearly.
+4. Speak warmly and conversationally — like a knowledgeable colleague sharing what was found, rather than a raw database dump.
+5. If the data shows zero results, say so naturally and offer platform-specific assistance.`;
 
 export interface ChatUserContext {
   id?: string;
@@ -196,8 +213,11 @@ Preserve proper nouns, names, years, and specific document titles exactly as int
 
   /**
    * Mode A — Grammar check: corrects and explains changes conversationally.
+   * Uses role-scoped system prompts so grammar corrections are tailored to
+   * the user's compliance role (Advisor → proposal language, Officer → audit notes).
    */
-  public static async handleGrammarCheckIntent(rawText: string): Promise<string> {
+  public static async handleGrammarCheckIntent(rawText: string, user?: ChatUserContext): Promise<string> {
+    const isOfficer = user?.role === 'Officer';
     const textToCheck = rawText
       .replace(/^(?:can you\s+|please\s+|help me\s+|i want\s+(?:you\s+)?to\s+|i want more to\s+)?(?:fix|check|re-?check|correct|proofread|improve|rewrite|rephrase)\s*(?:my|this|the)?\s*(?:grammar|sentence|sentences|phrasing|text|draft|writing)?[:,-]?\s*/i, '')
       .replace(/\b(?:please\s+)?(?:re-?check|check|fix)\s+(?:grammar|sentence|sentences)\b[:,-]?/gi, '')
@@ -206,14 +226,20 @@ Preserve proper nouns, names, years, and specific document titles exactly as int
       .trim();
 
     if (!textToCheck || textToCheck.length < 3 || /^(?:my\s+)?(?:sentence|sentences|grammar|text|phrasing|draft)$/i.test(textToCheck)) {
-      return "I'd be glad to help fix your sentence! Please paste or type the sentence or draft note you'd like me to audit (for example: *\"The investment team have submited the proposal\"* or *\"Our fund guarantees 10% return\"*), and I will correct its grammar, spelling, and regulatory tone for you.";
+      return isOfficer
+        ? "I'd be glad to help polish your text! Please paste or type the supervisory determination note, audit remark, or compliance memo you'd like me to review (for example: *\"The advisor have not complied with the required disclosure\"*), and I'll ensure it is grammatically flawless and meets institutional audit documentation standards."
+        : "I'd be glad to help fix your sentence! Please paste or type the proposal text, client note, or revision response you'd like me to audit (for example: *\"The investment team have submited the proposal\"* or *\"Our fund guarantees 10% return\"*), and I'll correct its grammar, spelling, and ensure it complies with FINRA 2210 & SEC 206 rules.";
     }
 
-    const systemPrompt = `You are a friendly, expert editor helping a user clean up their text. Correct any grammar, spelling, or style issues and give your response in two parts:
-- **Corrected Text**: the fixed version
+    // Use role-scoped base prompt + grammar-specific instructions
+    const roleBase = isOfficer ? OFFICER_APP_PROMPT : ADVISOR_APP_PROMPT;
+    const systemPrompt = `${roleBase}
+
+Additionally, you are now acting as a grammar and writing editor. The user has pasted text they want corrected. Correct any grammar, spelling, punctuation, tone, or style issues and give your response in two parts:
+- **Corrected Text**: the fully fixed, polished version ready for ${isOfficer ? 'audit documentation' : 'client-facing compliance submission'}
 - **What I changed**: a brief, friendly bullet list of what you improved
 
-Keep the tone warm — like a helpful colleague reviewing a draft, not a strict teacher grading an essay.`;
+Keep the tone warm — like a helpful colleague reviewing a draft, not a strict teacher grading an essay.${isOfficer ? ' Ensure the corrected text meets audit-defensible documentation standards.' : ' Ensure the corrected text meets FINRA 2210 and SEC 206 compliance standards.'}`;
 
     const result = await this.callLlm(textToCheck || rawText, systemPrompt);
     if (result) return result;
@@ -265,7 +291,7 @@ Keep the tone warm — like a helpful colleague reviewing a draft, not a strict 
       /\bgrammar\s+(?:check|re-?check|fix)\b/i.test(lower);
 
     if (isGrammarRequest) {
-      const reply = await this.handleGrammarCheckIntent(message);
+      const reply = await this.handleGrammarCheckIntent(message, user);
       return { reply, intent: 'grammar_check', correctedQuery };
     }
 
@@ -328,7 +354,49 @@ Keep the tone warm — like a helpful colleague reviewing a draft, not a strict 
       return await this.handleOfficerDocumentRiskIntent(correctedQuery, lower, documentId);
     }
 
-    // ── Mode A fallback: free conversational (no DB lookup) ─────────────────
+    // ── Intent 6: Officer: Supervisory Queue & Workload Overview (Database) ──
+    const isQueueOverviewQuery =
+      isOfficer &&
+      /\b(queue|supervisory queue|review queue|unassigned|pending queue|how many pending|workload|today's uploads|uploads today)\b/i.test(lower);
+
+    if (isQueueOverviewQuery) {
+      return await this.handleOfficerQueueOverviewIntent(correctedQuery);
+    }
+
+    // ── Intent 7: Advisor: Officer Revision Feedback & Directives (Database) ─
+    const isRevisionFeedbackQuery =
+      isAdvisor &&
+      /\b(officer feedback|revision remarks|what revisions|why needs revision|officer comments?|what needs fix|how to fix revision)\b/i.test(lower);
+
+    if (isRevisionFeedbackQuery) {
+      return await this.handleAdvisorRevisionFeedbackIntent(user, correctedQuery);
+    }
+
+    // ── Intent 8: Interactive Compliance Regulatory Guidance ────────────────
+    const isRegulatoryQuery =
+      /\b(finra|sec|2210|206|marketing rule|promissory|guarantee|risk disclosure|fiduciary|suitability|2111)\b/i.test(lower);
+
+    if (isRegulatoryQuery) {
+      return await this.handleComplianceRegulatoryGuidance(user, correctedQuery, lower);
+    }
+
+    // ── Intent 9: Interactive Proposal Remediation & Determination Drafting ─
+    const isDraftingOrRemediateQuery =
+      /\b(remediate|rephrase|rewrite|draft|how to write|help me write|improve phrasing|disclaimer|determination note)\b/i.test(lower);
+
+    if (isDraftingOrRemediateQuery) {
+      return await this.handleComplianceDraftingAndRemediation(user, message, correctedQuery);
+    }
+
+    // ── Intent 10: Platform Workflow Guidance ───────────────────────────────
+    const isWorkflowQuery =
+      /\b(how do i upload|file limits?|file formats?|supported formats?|versioning|v1|v2|pii|masking|audit trail|how does review work)\b/i.test(lower);
+
+    if (isWorkflowQuery) {
+      return await this.handlePlatformWorkflowHelp(user, correctedQuery);
+    }
+
+    // ── Mode A fallback: role-scoped interactive conversational ─────────────
     return await this.handleFreeConversation(correctedQuery, user, pathname);
   }
 
@@ -694,7 +762,161 @@ Keep the tone warm — like a helpful colleague reviewing a draft, not a strict 
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Mode A — Free Conversational Fallback (no DB lookup)
+  // Intent 6 Handler: Officer Supervisory Queue Overview (Database)
+  // ─────────────────────────────────────────────────────────────────────────
+  private static async handleOfficerQueueOverviewIntent(
+    correctedQuery: string
+  ): Promise<ChatbotResponse> {
+    const statusSql = `SELECT status, COUNT(*)::int as count FROM documents GROUP BY status`;
+    const statusRes = await query<any>(statusSql, []);
+    const counts: Record<string, number> = {};
+    for (const r of statusRes.rows) counts[r.status] = r.count;
+
+    const todaySql = `SELECT COUNT(*)::int as count FROM documents WHERE created_at::date = CURRENT_DATE`;
+    const todayRes = await query<any>(todaySql, []);
+    const todayCount = todayRes.rows[0]?.count || 0;
+
+    const dbSummary = `Supervisory review queue summary:\n- Pending officer review: ${counts['Pending'] || 0}\n- Requiring revision: ${counts['Needs Revision'] || 0}\n- Approved: ${counts['Approved'] || 0}\n- Rejected: ${counts['Rejected'] || 0}\n- Uploaded today: ${todayCount}`;
+    const fallback = `**Supervisory Review Queue Status:**\n- **${counts['Pending'] || 0}** pending officer determination\n- **${counts['Needs Revision'] || 0}** awaiting advisor revision\n- **${counts['Approved'] || 0}** approved filings\n- **${todayCount}** uploaded today\n\nWould you like me to inspect documents with compliance flags or filter by a specific advisor?`;
+
+    const reply = await this.formatDbResultWithLlm(dbSummary, correctedQuery, 'Officer', fallback);
+    return { reply, intent: 'officer_queue_overview', correctedQuery };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Intent 7 Handler: Advisor Revision Feedback Notes (Database)
+  // ─────────────────────────────────────────────────────────────────────────
+  private static async handleAdvisorRevisionFeedbackIntent(
+    user: ChatUserContext,
+    correctedQuery: string
+  ): Promise<ChatbotResponse> {
+    if (!user.id) {
+      return {
+        reply: "You'll need to log in to see officer feedback on your submissions.",
+        intent: 'advisor_revision_feedback',
+        correctedQuery,
+      };
+    }
+
+    const sql = `
+      SELECT d.id, d.title, d.version, d.status,
+        COALESCE(
+          (SELECT te.message FROM thread_entries te WHERE te.document_id = d.id ORDER BY te.created_at DESC LIMIT 1),
+          'Officer requested revision: please address highlighted regulatory disclosures and submit Version 2 (v2).'
+        ) AS officer_note
+      FROM documents d
+      WHERE d.advisor_id = $1 AND d.status = 'Needs Revision'
+      ORDER BY d.created_at DESC LIMIT 3
+    `;
+    const res = await query<any>(sql, [user.id]);
+
+    if (res.rows.length === 0) {
+      return {
+        reply: "Great news — you have zero submissions currently marked as 'Needs Revision'. All your active filings are either Approved or currently pending officer review.",
+        intent: 'advisor_revision_feedback',
+        correctedQuery,
+      };
+    }
+
+    const feedbackList = res.rows.map((r) => `"${r.title}" (v${r.version}): Officer note: "${r.officer_note}"`).join('\n');
+    const dbSummary = `Advisor filings needing revision:\n${feedbackList}\nInstruction: Advise the user to revise the document in their word processor and click 'Upload Revision' on the document review page to submit Version 2 (v2).`;
+    const fallback = `Here are your submissions requiring revision with officer feedback:\n\n${res.rows.map((r: any) => `- **${r.title}** (v${r.version}): *"${r.officer_note}"*`).join('\n')}\n\nYou can click **Upload Revision** in the document review page to submit an updated version (v${(res.rows[0].version || 1) + 1}).`;
+
+    const reply = await this.formatDbResultWithLlm(dbSummary, correctedQuery, 'Advisor', fallback);
+    return { reply, intent: 'advisor_revision_feedback', correctedQuery };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Intent 8 Handler: Interactive Compliance Regulatory Guidance
+  // ─────────────────────────────────────────────────────────────────────────
+  private static async handleComplianceRegulatoryGuidance(
+    user: ChatUserContext,
+    correctedQuery: string,
+    lower: string
+  ): Promise<ChatbotResponse> {
+    const isOfficer = user.role === 'Officer';
+    const systemPrompt = isOfficer ? OFFICER_APP_PROMPT : ADVISOR_APP_PROMPT;
+
+    const prompt = `The user (${user.role}) is asking an institutional regulatory compliance question: "${correctedQuery}".
+Explain clearly and concisely according to FINRA Rule 2210 (Communications with the Public), SEC Rule 206(4)-1 (Investment Adviser Marketing Rule), SEC Rule 204 (Substantiation), or FINRA Rule 2111 (Suitability).
+${isOfficer ? 'Focus on supervisory review criteria, verifying required disclosures, and substantiating officer determination records.' : 'Focus on how the advisor must structure their proposal, avoid promissory/guaranteed claims, and include mandatory downside risk disclosures.'}
+Structure the response with 2-3 concise paragraphs.`;
+
+    const llmReply = await this.callLlm(prompt, systemPrompt);
+    if (llmReply) {
+      return { reply: llmReply, intent: 'compliance_regulatory_guidance', correctedQuery };
+    }
+
+    const fallback = isOfficer
+      ? "Under FINRA Rule 2210 and SEC Rule 206(4)-1, compliance officers must verify that all proposals and marketing decks are fair, balanced, and substantiated. Any promissory returns or unhedged performance claims require a 'Needs Revision' determination with explicit corrective directives. Ensure clear disclosure of material risks, fee deductions, and fiduciary conflicts."
+      : "Under FINRA Rule 2210 and SEC Rule 206, investment proposals must never guarantee returns, promise zero risk, or omit market downside warnings. Always include clear fiduciary disclosures stating that past performance does not guarantee future results and investments are subject to market volatility and loss of principal.";
+
+    return { reply: fallback, intent: 'compliance_regulatory_guidance', correctedQuery };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Intent 9 Handler: Interactive Proposal Remediation & Determination Drafting
+  // ─────────────────────────────────────────────────────────────────────────
+  private static async handleComplianceDraftingAndRemediation(
+    user: ChatUserContext,
+    rawText: string,
+    correctedQuery: string
+  ): Promise<ChatbotResponse> {
+    const isOfficer = user.role === 'Officer';
+    const systemPrompt = isOfficer ? OFFICER_APP_PROMPT : ADVISOR_APP_PROMPT;
+
+    const prompt = isOfficer
+      ? `The Compliance Officer needs assistance drafting or polishing a supervisory determination note / revision directive for a submission: "${rawText}".
+Generate an audit-defensible compliance determination note structured with:
+1. Determination Action (e.g. Revision Required / Approved with Disclosures)
+2. Regulatory Reference (FINRA 2210 / SEC 206)
+3. Factual Finding (identifying problematic passage or missing disclosure)
+4. Prescribed Remediation (exact corrective wording for the advisor).`
+      : `The Investment Advisor needs help remediating a draft proposal passage or client note into compliant text: "${rawText}".
+Remediate the passage into compliant fiduciary language under FINRA Rule 2210 & SEC Rule 206(4)-1:
+1. Remediated Compliant Text (removing promissory statements, adding statutory risk disclosures)
+2. Summary of Compliance Adjustments Made.`;
+
+    const llmReply = await this.callLlm(prompt, systemPrompt);
+    if (llmReply) {
+      return { reply: llmReply, intent: 'compliance_drafting_remediation', correctedQuery };
+    }
+
+    const fallback = isOfficer
+      ? "### Supervisory Determination Directive\n\n**Action**: Revision Required\n**Regulatory Authority**: FINRA Rule 2210(d)(1) & SEC Rule 206(4)-1\n**Factual Finding**: Proposal contains promissory return projections without balanced risk factors.\n**Required Remediation**: Remove absolute performance claims and append statutory disclosure: 'Past performance does not guarantee future results. Investments are subject to market risk and loss of principal.'"
+      : "### Remediated Fiduciary Language\n\n**Compliant Text**:\n\"Our strategy aims to achieve competitive capital growth through disciplined asset allocation, subject to market fluctuations and potential loss of principal.\"\n\n**Compliance Adjustments**:\n- Replaced promissory claims with objective investment objectives.\n- Appended mandatory FINRA 2210 risk disclosures.";
+
+    return { reply: fallback, intent: 'compliance_drafting_remediation', correctedQuery };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Intent 10 Handler: Platform Workflow Guidance
+  // ─────────────────────────────────────────────────────────────────────────
+  private static async handlePlatformWorkflowHelp(
+    user: ChatUserContext,
+    correctedQuery: string
+  ): Promise<ChatbotResponse> {
+    const isOfficer = user.role === 'Officer';
+    const systemPrompt = isOfficer ? OFFICER_APP_PROMPT : ADVISOR_APP_PROMPT;
+
+    const prompt = `The user (${user.role}) is asking about Springer Capital platform workflow: "${correctedQuery}".
+Explain the relevant workflow (file upload limits: PDF/DOCX/XLSX/TXT up to 25MB, automated PII sanitization gateway, multi-version lineage v1->v2, Review Queue, or Officer Determinations).
+Tailor the answer specifically to their role as ${user.role}. Keep it structured and concise.`;
+
+    const llmReply = await this.callLlm(prompt, systemPrompt);
+    if (llmReply) {
+      return { reply: llmReply, intent: 'platform_workflow_help', correctedQuery };
+    }
+
+    const fallback = isOfficer
+      ? "Springer Capital Review Workflow for Officers:\n1. Access the Review Queue to inspect pending proposals from advisors.\n2. Review automated risk flags, extracted text, and PII masking.\n3. Record your determination (Approve, Request Revision, or Reject) with mandatory compliance rationale.\n4. When a revision is requested, the advisor submits Version 2 (v2), preserving full audit lineage."
+      : "Springer Capital Submission Workflow for Advisors:\n1. Click '+ Submit Proposal Document' on your dashboard.\n2. Upload PDF, DOCX, XLSX, or TXT files up to 25MB.\n3. The platform automatically masks PII (SSN, emails) before compliance evaluation.\n4. If an officer requests revisions, open the filing and click 'Upload Revision' to submit Version 2 (v2).";
+
+    return { reply: fallback, intent: 'platform_workflow_help', correctedQuery };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Mode A — Role-Scoped Interactive Conversational Fallback
   // ─────────────────────────────────────────────────────────────────────────
   private static async handleFreeConversation(
     correctedQuery: string,
@@ -702,22 +924,19 @@ Keep the tone warm — like a helpful colleague reviewing a draft, not a strict 
     pathname?: string
   ): Promise<ChatbotResponse> {
     const isOfficer = user.role === 'Officer';
-    const contextNote = isOfficer
-      ? 'The user is a Compliance Officer who reviews advisors\' documents in the Springer Capital platform.'
-      : 'The user is a Financial Advisor who submits compliance documents through the Springer Capital platform.';
-
-    const enrichedSystemPrompt = `${MODE_A_SYSTEM_PROMPT}\n\nContext: ${contextNote} Current page: ${pathname || 'Dashboard'}.`;
+    const systemPrompt = isOfficer ? OFFICER_APP_PROMPT : ADVISOR_APP_PROMPT;
+    const enrichedSystemPrompt = `${systemPrompt}\n\nContext: Current page: ${pathname || 'Dashboard'}.`;
 
     const llmReply = await this.callLlm(correctedQuery, enrichedSystemPrompt);
     if (llmReply) {
-      return { reply: llmReply, intent: 'general_conversational', correctedQuery };
+      return { reply: llmReply, intent: 'compliance_interactive_guidance', correctedQuery };
     }
 
     // Static fallback when both LLMs are unavailable
     const fallbackReply = isOfficer
-      ? "I'm here to help! You can ask me to check an advisor's latest upload, filter documents by year, or look up the risk level for any document. What do you need?"
-      : "I'm here to help! Ask me about your pending or approved documents, check last year's uploads, or paste in some text and I'll help you tidy it up.";
+      ? "I'm monitoring the supervisory review queue. You can ask me to check pending filings, review uploader identities, evaluate document risk scores under FINRA 2210 & SEC 206, or draft determination directives."
+      : "I'm here to assist with your proposal submissions. You can ask me about your pending filings, check officer feedback on revisions, or ask how to remediate proposals to meet FINRA 2210 & SEC 206 rules.";
 
-    return { reply: fallbackReply, intent: 'general_conversational', correctedQuery };
+    return { reply: fallbackReply, intent: 'compliance_interactive_guidance', correctedQuery };
   }
 }
