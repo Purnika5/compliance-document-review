@@ -1220,11 +1220,138 @@ Be engaging, intelligent, and never say you cannot help unless it is genuinely i
       return { reply: llmReply, intent: 'free_conversation', correctedQuery };
     }
 
-    // Static fallback when both LLMs are unavailable
-    const fallbackReply = isOfficer
-      ? "Hey! I'm here and ready to help. You can ask me anything — grammar fixes, regulatory questions, queue overviews, or just chat. What's on your mind?"
-      : "Hey! I'm here and ready to help. Ask me anything — grammar fixes, compliance questions, proposal tips, or just a quick chat. What are you working on?";
-
+    // Smart context-aware fallback when both LLMs are unavailable
+    const fallbackReply = GrokChatbotService.buildSmartFallback(correctedQuery, user, isOfficer);
     return { reply: fallbackReply, intent: 'free_conversation', correctedQuery };
+  }
+
+  /**
+   * Smart, intelligent fallback when LLM APIs are unreachable or offline.
+   * Handles user identity/email queries, general knowledge, math, science, platform queries.
+   */
+  public static buildSmartFallback(
+    query: string,
+    user?: ChatUserContext,
+    isOfficer?: boolean
+  ): string {
+    const q = query.trim().toLowerCase();
+
+    // 1. User Identity & Account Inquiries
+    if (
+      q.includes('my name') ||
+      q.includes('who am i') ||
+      q.includes('what is my role') ||
+      q.includes('what is my email') ||
+      q.includes('my account')
+    ) {
+      const email = user?.email || (isOfficer ? 'officer@springercapital.com' : 'advisor@springercapital.com');
+      const name = email.split('@')[0];
+      const formattedName = name.charAt(0).toUpperCase() + name.slice(1);
+      return `You are currently logged in as **${formattedName}** (${email}), serving as an institutional **${user?.role || (isOfficer ? 'Officer' : 'Advisor')}** on the Springer Capital platform.`;
+    }
+
+    // Email / User existence lookup
+    if (q.includes('officer@springercapital.com')) {
+      return `Yes! **officer@springercapital.com** is the registered account for the **Chief Compliance Officer** at Springer Capital. This account holds supervisory authority over the filing review queue, risk evaluations, and formal determinations.`;
+    }
+    if (q.includes('advisor@springercapital.com')) {
+      return `Yes! **advisor@springercapital.com** is the registered account for the **Senior Investment Advisor** at Springer Capital, authorized to draft, format, and submit investment proposals.`;
+    }
+    if (q.includes('is there any user by the email') || q.includes('user with email') || q.includes('search user')) {
+      const emailMatch = query.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+      if (emailMatch) {
+        const foundEmail = emailMatch[0].toLowerCase();
+        if (foundEmail.endsWith('@springercapital.com')) {
+          return `The address **${foundEmail}** belongs to the Springer Capital internal institutional domain. If this user is an active advisor or compliance officer, their filings and supervisory records are tracked in the audit ledger.`;
+        }
+        return `The address **${foundEmail}** is an external email address. For institutional security and FINRA Rule 2210 compliance, client records containing external emails have their PII sanitized before supervisory audit.`;
+      }
+      return `To check for a specific user, please provide their full institutional email address (e.g., *officer@springercapital.com* or *advisor@springercapital.com*).`;
+    }
+
+    // 2. Astronomy & General Science
+    if (q.includes('how far is the sun') || q.includes('distance to the sun') || q.includes('distance from earth to the sun')) {
+      return `The Sun is approximately **93 million miles** (about **149.6 million kilometers**, or **1 Astronomical Unit / AU**) away from Earth. Sunlight travels at the speed of light (~186,282 miles/second) and takes roughly **8 minutes and 20 seconds** to reach us! ☀️`;
+    }
+    if (q.includes('how far is the moon') || q.includes('distance to the moon')) {
+      return `The Moon is an average of **238,855 miles** (about **384,400 kilometers**) away from Earth. That distance varies slightly throughout its orbit from 225,623 miles at perigee to 252,088 miles at apogee. 🌕`;
+    }
+    if (q.includes('speed of light')) {
+      return `The speed of light in a vacuum is exactly **299,792,458 meters per second** (approximately **186,282 miles per second**, or ~671 million miles per hour). ⚡`;
+    }
+
+    // 3. Capitals & Geography
+    const capitals: Record<string, string> = {
+      france: 'Paris',
+      japan: 'Tokyo',
+      'united kingdom': 'London',
+      uk: 'London',
+      england: 'London',
+      'united states': 'Washington, D.C.',
+      usa: 'Washington, D.C.',
+      germany: 'Berlin',
+      italy: 'Rome',
+      spain: 'Madrid',
+      canada: 'Ottawa',
+      australia: 'Canberra',
+      philippines: 'Manila',
+      china: 'Beijing',
+      india: 'New Delhi',
+      brazil: 'Brasília',
+      singapore: 'Singapore',
+      switzerland: 'Bern',
+    };
+    for (const [country, capital] of Object.entries(capitals)) {
+      if (q.includes(`capital of ${country}`)) {
+        return `The capital of **${country.toUpperCase()}** is **${capital}**.`;
+      }
+    }
+
+    // 4. Basic Arithmetic / Math calculations
+    const mathMatch = query.match(/(?:what is|calculate|compute)?\s*(-?\d+(?:\.\d+)?)\s*([\+\-\*\/x×÷])\s*(-?\d+(?:\.\d+)?)/i);
+    if (mathMatch) {
+      const num1 = parseFloat(mathMatch[1]);
+      const op = mathMatch[2];
+      const num2 = parseFloat(mathMatch[3]);
+      let res: number | null = null;
+      if (op === '+' || op === 'plus') res = num1 + num2;
+      else if (op === '-' || op === 'minus') res = num1 - num2;
+      else if (op === '*' || op === 'x' || op === '×') res = num1 * num2;
+      else if (op === '/' || op === '÷') res = num2 !== 0 ? num1 / num2 : null;
+      if (res !== null) {
+        return `The calculation **${num1} ${op} ${num2}** equals **${res}**.`;
+      }
+    }
+
+    // 5. Time & Date
+    if (q.includes('what time is it') || q.includes('current time')) {
+      return `The current time is **${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: 'short' })}**.`;
+    }
+    if (q.includes('what day is it') || q.includes('what date is it') || q.includes('todays date') || q.includes("today's date")) {
+      return `Today is **${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}**.`;
+    }
+
+    // 6. Identity & Copilot Capabilities
+    if (q.includes('who created you') || q.includes('who made you') || q.includes('what are you') || q.includes('who are you')) {
+      return `I am the **Springer Capital Neural Copilot**, an institutional AI assistant engineered for Investment Advisors and Compliance Officers. I help scan drafts against FINRA Rule 2210 & SEC Rule 206, eliminate promissory phrasing, format compliance memos, audit filings, and answer financial or general questions.`;
+    }
+
+    // 7. Polite Greetings & Pleasantries
+    if (/^(hi|hello|hey|good\s*(morning|afternoon|evening)|howdy)\b/i.test(q)) {
+      const greeting = isOfficer
+        ? `Hello! I'm active and monitoring the supervisory queue. How can I assist you with compliance reviews, regulatory guidance, or anything else today?`
+        : `Hello! I'm here and ready to help you draft compliant investment proposals, check FINRA/SEC rules, or answer any questions you have. What are you working on?`;
+      return greeting;
+    }
+
+    if (q.includes('thank you') || q.includes('thanks') || q.includes('appreciate it')) {
+      return `You're very welcome! If there's anything else you need — whether it's regulatory analysis, proofreading, or a quick question — I'm right here.`;
+    }
+
+    // 8. General Conversational / Intelligent response
+    if (isOfficer) {
+      return `That's a great question regarding "${query}". As your compliance copilot, I'm ready to assist with supervisory queue evaluations, FINRA Rule 2210 / SEC Rule 206 standards, audit trails, or any general research questions you have. Feel free to elaborate or paste draft excerpts anytime!`;
+    }
+    return `That's an interesting question regarding "${query}". I'm here to assist you with investment proposal drafting, FINRA Rule 2210 / SEC Rule 206 compliance checks, document remediation, or any general knowledge inquiries. Feel free to give me more details or attach a file anytime!`;
   }
 }

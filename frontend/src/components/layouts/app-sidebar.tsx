@@ -118,36 +118,45 @@ export function AppSidebar({
         )}
       >
         {/* Brand Header */}
-        <div className="h-16 px-3 border-b border-[#E6E8E7] flex items-center justify-between gap-2 bg-[#FFFFFF] shrink-0">
-          {/* Logo: leaf icon always visible, text slides away when collapsed */}
-          <Link href="/" className="flex items-center gap-2 min-w-0">
-            {/* Leaf icon — always shown */}
-            <AILogo className="h-7 w-7 shrink-0" />
-            {/* "Springer Capital" text — collapses on desktop */}
-            <span
-              className={cn(
-                "flex items-baseline text-lg tracking-tight uppercase overflow-hidden whitespace-nowrap transition-all duration-300 ease-in-out",
-                isCollapsed ? "lg:max-w-0 lg:opacity-0" : "max-w-[160px] opacity-100"
-              )}
+        <div
+          className={cn(
+            "h-16 border-b border-[#E6E8E7] flex items-center bg-[#FFFFFF] shrink-0 transition-all",
+            isCollapsed ? "justify-center px-2" : "justify-between px-3.5 gap-2"
+          )}
+        >
+          {!isCollapsed ? (
+            <>
+              <Link href="/" className="flex items-center gap-2.5 min-w-0">
+                <AILogo className="h-7 w-7 shrink-0" />
+                <span className="flex items-baseline uppercase whitespace-nowrap">
+                  <span className="font-extrabold text-[15px] tracking-wide font-sans text-[#183028] select-none">
+                    Springer
+                  </span>
+                  <span className="font-semibold ml-1.5 text-[14px] font-sans tracking-wider text-[#183028] select-none">
+                    Capital
+                  </span>
+                </span>
+              </Link>
+              <button
+                onClick={onToggleCollapse}
+                aria-label="Collapse sidebar"
+                title="Collapse sidebar"
+                className="flex items-center justify-center h-7 w-7 rounded-lg border border-[#E6E8E7] bg-[#F8FAF9] text-[#183028]/70 hover:text-[#183028] hover:bg-[#C5E86C]/30 hover:border-[#C5E86C] transition-all cursor-pointer shrink-0"
+              >
+                <PanelLeftClose className="h-4 w-4" />
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={onToggleCollapse}
+              aria-label="Expand sidebar"
+              title="Expand sidebar (Springer Capital)"
+              className="group relative flex items-center justify-center h-9 w-9 rounded-xl border border-[#E6E8E7] bg-[#F8FAF9] hover:bg-[#C5E86C]/30 hover:border-[#C5E86C] transition-all cursor-pointer"
             >
-              <span className="font-extrabold tracking-wide font-sans text-[#183028] select-none">Springer</span>
-              <span className="font-semibold ml-1.5 font-sans tracking-wider text-[0.88em] text-[#183028] select-none">Capital</span>
-            </span>
-          </Link>
-
-          {/* Collapse Toggle Button — always visible */}
-          <button
-            onClick={onToggleCollapse}
-            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className="flex items-center justify-center h-7 w-7 rounded-lg border border-[#E6E8E7] bg-[#F8FAF9] text-[#183028]/70 hover:text-[#183028] hover:bg-[#C5E86C]/30 hover:border-[#C5E86C] transition-all duration-150 cursor-pointer shrink-0"
-          >
-            {isCollapsed ? (
-              <PanelLeftOpen className="h-4 w-4" />
-            ) : (
-              <PanelLeftClose className="h-4 w-4" />
-            )}
-          </button>
+              <AILogo className="h-5 w-5 group-hover:opacity-0 transition-opacity absolute" />
+              <PanelLeftOpen className="h-4 w-4 text-[#183028] opacity-0 group-hover:opacity-100 transition-opacity absolute" />
+            </button>
+          )}
         </div>
 
         {/* Navigation Links */}

@@ -89,11 +89,92 @@ export function isGrammarCheckQuery(text: string): boolean {
   );
 }
 
-/** Human conversational fallback response when backend is unreachable */
-function getConversationalFallback(role?: string, isLoginMode?: boolean): string {
+/** Human conversational fallback response when backend is unreachable or offline */
+function getConversationalFallback(
+  role?: string,
+  isLoginMode?: boolean,
+  userQuery?: string,
+  session?: UserSession | null
+): string {
   if (isLoginMode) {
     return "Hello! I am your Springer Capital Compliance Assistant. I can help answer questions regarding our platform review workflows, accepted filing formats, and FINRA 2210 / SEC 206 regulatory guidelines. What would you like to know?";
   }
+
+  if (userQuery) {
+    const q = userQuery.trim().toLowerCase();
+
+    // 1. User Identity / Account
+    if (
+      q.includes("my name") ||
+      q.includes("who am i") ||
+      q.includes("what is my role") ||
+      q.includes("what is my email") ||
+      q.includes("my account")
+    ) {
+      const email = session?.email || (role === "Officer" ? "officer@springercapital.com" : "advisor@springercapital.com");
+      const name = email.split("@")[0];
+      const formattedName = name.charAt(0).toUpperCase() + name.slice(1);
+      return `You are currently logged in as **${formattedName}** (${email}), serving as an institutional **${session?.role || role || "Advisor"}** at Springer Capital.`;
+    }
+
+    // 2. Specific known users
+    if (q.includes("officer@springercapital.com")) {
+      return "Yes! **officer@springercapital.com** is registered as the **Chief Compliance Officer** at Springer Capital with supervisory authority over the queue.";
+    }
+    if (q.includes("advisor@springercapital.com")) {
+      return "Yes! **advisor@springercapital.com** is registered as a **Senior Investment Advisor** authorized to draft and submit proposal documents for compliance review.";
+    }
+    if (q.includes("is there any user by the email") || q.includes("user with email")) {
+      const emailMatch = userQuery.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+      if (emailMatch) {
+        const found = emailMatch[0].toLowerCase();
+        if (found.endsWith("@springercapital.com")) {
+          return `The user **${found}** belongs to the Springer Capital internal institutional domain.`;
+        }
+        return `The address **${found}** is an external email address. Client PII is masked before supervisory review.`;
+      }
+      return "Please provide an email address to verify institutional registration.";
+    }
+
+    // 3. Astronomy & General Science
+    if (q.includes("how far is the sun") || q.includes("distance to the sun")) {
+      return "The Sun is approximately **93 million miles** (about **149.6 million kilometers**, or **1 AU**) away from Earth. Sunlight takes roughly **8 minutes and 20 seconds** to reach us! ☀️";
+    }
+    if (q.includes("how far is the moon") || q.includes("distance to the moon")) {
+      return "The Moon is an average of **238,855 miles** (about **384,400 kilometers**) away from Earth. 🌕";
+    }
+    if (q.includes("speed of light")) {
+      return "The speed of light in a vacuum is approximately **186,282 miles per second** (or **299,792,458 meters per second**). ⚡";
+    }
+
+    // 4. Basic math
+    const mathMatch = userQuery.match(/(?:what is|calculate|compute)?\s*(-?\d+(?:\.\d+)?)\s*([\+\-\*\/x×÷])\s*(-?\d+(?:\.\d+)?)/i);
+    if (mathMatch) {
+      const num1 = parseFloat(mathMatch[1]);
+      const op = mathMatch[2];
+      const num2 = parseFloat(mathMatch[3]);
+      let res: number | null = null;
+      if (op === "+" || op === "plus") res = num1 + num2;
+      else if (op === "-" || op === "minus") res = num1 - num2;
+      else if (op === "*" || op === "x" || op === "×") res = num1 * num2;
+      else if (op === "/" || op === "÷") res = num2 !== 0 ? num1 / num2 : null;
+      if (res !== null) {
+        return `The calculation **${num1} ${op} ${num2}** equals **${res}**.`;
+      }
+    }
+
+    // 5. Greetings
+    if (/^(hi|hello|hey|good\s*(morning|afternoon|evening)|howdy)\b/i.test(q)) {
+      return role === "Officer"
+        ? "Hello! I'm active and monitoring the supervisory queue. How can I assist you with compliance reviews, regulatory guidance, or anything else today?"
+        : "Hello! I'm here and ready to help you draft compliant investment proposals, check FINRA/SEC rules, or answer any questions you have. What are you working on?";
+    }
+
+    if (q.includes("thank you") || q.includes("thanks")) {
+      return "You're very welcome! Let me know if there's anything else you'd like to draft, audit, or discuss.";
+    }
+  }
+
   return role === "Officer"
     ? "I'm monitoring the supervisory review queue and ready to help evaluate filings, check regulatory rules, or assist with determinations. How can I help you today?"
     : "I'm here to help you track your proposal submissions, explain FINRA Rule 2210 & SEC Rule 206 rules, or scan and auto-fix any draft file you attach here with zero flags. What are you working on today?";
@@ -149,7 +230,7 @@ function resolveBotReply(rawText: string, isLoginMode: boolean, role?: string): 
     };
   }
 
-  return { text: getConversationalFallback(role, isLoginMode) };
+  return { text: getConversationalFallback(role, isLoginMode, rawText) };
 }
 
 /** Determines active suggested questions dynamically based on authentication state, user role, and active page */
@@ -431,12 +512,18 @@ export function ChatbotWidget() {
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [isAwaitingGrammarInput, setIsAwaitingGrammarInput] = useState(false);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageIdRef = useRef(0);
   const typingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const scrollToBottom = (smooth = true) => {
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior: smooth ? "smooth" : "auto",
+      });
+    }
   };
 
   useEffect(() => {
@@ -885,10 +972,10 @@ export function ChatbotWidget() {
       .then((res) => {
         // Reconcile quota with authoritative server value after response
         if (res?.quota) setQuota(res.quota);
-        return res?.reply || getConversationalFallback(userRole, isLoginMode);
+        return res?.reply || getConversationalFallback(userRole, isLoginMode, rawText, session);
       })
       .catch(() => {
-        return getConversationalFallback(userRole, isLoginMode);
+        return getConversationalFallback(userRole, isLoginMode, rawText, session);
       })
       .then((replyText) => {
         simulateTyping(botMsgId, replyText, timestamp);
@@ -903,34 +990,37 @@ export function ChatbotWidget() {
   }
 
   return (
-    <div
-      className={cn(
-        "print:hidden font-sans",
-        isFullscreen
-          ? "fixed inset-0 z-50 p-2 sm:p-5 md:p-6 bg-black/40 backdrop-blur-xs flex items-center justify-center animate-in fade-in duration-200"
-          : "fixed bottom-5 right-5 z-40"
-      )}
-    >
+    <div className="print:hidden font-sans">
       {/* Floating Trigger Button */}
       {!isOpen && (
-        <button
-          onClick={() => {
-            setIsOpen(true);
-            setIsFullscreen(false);
-          }}
-          className="flex items-center gap-2.5 bg-white hover:bg-[#FAFBFB] text-[#183028] border border-[#E6E8E7] hover:border-[#183028]/30 px-4 py-2.5 rounded-full shadow-xl shadow-[#183028]/10 text-xs font-bold transition-all hover:scale-105 active:scale-95 cursor-pointer group"
-          aria-label="Open Compliance Copilot"
-        >
-          <div className="relative flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
-          </div>
-          <Bot className="h-4 w-4 text-[#183028]" />
-          <span className="tracking-tight text-[#183028]">{isLoginMode ? "Compliance Help" : "Neural Copilot"}</span>
-          <span className="text-[9.5px] px-1.5 py-0.5 rounded font-extrabold bg-[#C5E86C] text-[#183028] border border-[#b4db53]">
-            Gemini 2.5
-          </span>
-        </button>
+        <div className="fixed bottom-5 right-5 z-40">
+          <button
+            onClick={() => {
+              setIsOpen(true);
+              setIsFullscreen(false);
+            }}
+            className="flex items-center gap-2.5 bg-white hover:bg-[#FAFBFB] text-[#183028] border border-[#E6E8E7] hover:border-[#183028]/30 px-4 py-2.5 rounded-full shadow-xl shadow-[#183028]/10 text-xs font-bold transition-all hover:scale-105 active:scale-95 cursor-pointer group"
+            aria-label="Open Compliance Copilot"
+          >
+            <div className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+            </div>
+            <Bot className="h-4 w-4 text-[#183028]" />
+            <span className="tracking-tight text-[#183028]">{isLoginMode ? "Compliance Help" : "Neural Copilot"}</span>
+            <span className="text-[9.5px] px-1.5 py-0.5 rounded font-extrabold bg-[#C5E86C] text-[#183028] border border-[#b4db53]">
+              Gemini 2.5
+            </span>
+          </button>
+        </div>
+      )}
+
+      {/* Fullscreen Backdrop Overlay */}
+      {isOpen && isFullscreen && (
+        <div
+          onClick={() => setIsFullscreen(false)}
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs transition-opacity duration-200 cursor-pointer"
+        />
       )}
 
       {/* Main Chatbot Window */}
@@ -940,10 +1030,10 @@ export function ChatbotWidget() {
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           className={cn(
-            "relative rounded-2xl flex flex-col overflow-hidden text-xs bg-white border border-[#E6E8E7] shadow-2xl transition-all duration-200 animate-in fade-in zoom-in-95",
+            "flex flex-col overflow-hidden text-xs bg-white border border-[#E6E8E7] shadow-2xl rounded-2xl transition-[width,height,transform] duration-200",
             isFullscreen
-              ? "w-full h-full max-w-6xl max-h-[96vh]"
-              : "w-[380px] sm:w-[500px] h-[640px] max-h-[85vh]",
+              ? "fixed inset-3 sm:inset-6 md:inset-10 z-50 max-w-6xl max-h-[92vh] m-auto"
+              : "fixed bottom-5 right-5 z-40 w-[calc(100vw-2.5rem)] sm:w-[480px] h-[600px] max-h-[calc(100vh-2.5rem)]",
             isDragging && "ring-2 ring-[#C5E86C] border-[#183028]"
           )}
         >
@@ -972,7 +1062,7 @@ export function ChatbotWidget() {
           />
 
           {/* Chat Messages Log */}
-          <div className="flex-1 p-3.5 overflow-y-auto space-y-3 bg-[#FAFBFB]/50">
+          <div ref={messagesContainerRef} className="flex-1 p-3.5 overflow-y-auto space-y-3 bg-[#FAFBFB]/50">
             {messages.map((message) => (
               <ChatMessageItem
                 key={message.id}
