@@ -247,3 +247,6 @@ railway.env
 .vscode/
 pyrightconfig.json
 
+
+# Lock files
+package-lock.json
