@@ -33,6 +33,9 @@ import {
   Layers,
   ChevronDown,
   ChevronUp,
+  Minus,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -244,9 +247,15 @@ function isDocumentSearchQuery(text: string): boolean {
     "documents",
     "proposals",
     "approved",
+    "approve",
     "pending",
     "needs revision",
+    "revision needed",
+    "revision",
+    "revisions",
+    "for revision",
     "rejected",
+    "reject",
     "my uploads",
     "my files",
     "this month",
@@ -283,12 +292,21 @@ function parseNaturalSearch(text: string): {
   else if (lower.includes("2026")) params.date_range = "2026";
   else if (lower.includes("2025")) params.date_range = "2025";
 
-  // Status detection
+  // Status detection (supports 'revision', 'needs revision', 'approve', 'approved', 'reject', 'rejected', 'pending')
   const statuses: string[] = [];
-  if (lower.includes("needs revision") || lower.includes("revision needed")) statuses.push("Needs Revision");
-  if (lower.includes("approved")) statuses.push("Approved");
-  if (lower.includes("pending")) statuses.push("Pending");
-  if (lower.includes("rejected")) statuses.push("Rejected");
+  if (
+    lower.includes("needs revision") ||
+    lower.includes("revision needed") ||
+    lower.includes("for revision") ||
+    lower.includes("revision only") ||
+    lower.includes("revision") ||
+    lower.includes("revisions")
+  ) {
+    statuses.push("Needs Revision");
+  }
+  if (lower.includes("approved") || lower.includes("approve")) statuses.push("Approved");
+  if (lower.includes("pending") || lower.includes("in review")) statuses.push("Pending");
+  if (lower.includes("rejected") || lower.includes("reject")) statuses.push("Rejected");
   if (statuses.length > 0) params.status = statuses;
 
   // Ownership
@@ -367,8 +385,10 @@ export function ChatbotWidget() {
   const isAuthPage = Boolean(pathname && (pathname.startsWith("/login") || pathname.startsWith("/signup")));
   const isLoginMode = !isAuthenticated || isAuthPage;
 
-  // Chatbot open state
+  // Chatbot open, minimize, and maximize state
   const [isOpen, setIsOpen] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [isMaximized, setIsMaximized] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -384,6 +404,8 @@ export function ChatbotWidget() {
   // Automatically close chatbot on route redirection or page navigation
   useEffect(() => {
     setIsOpen(false);
+    setIsMinimized(false);
+    setIsMaximized(false);
   }, [pathname]);
 
   // Messages state
@@ -397,6 +419,8 @@ export function ChatbotWidget() {
     setPrevIsLoginMode(isLoginMode);
     setMessages(isLoginMode ? LOGIN_INITIAL_MESSAGES : DASHBOARD_INITIAL_MESSAGES);
     setIsOpen(false);
+    setIsMinimized(false);
+    setIsMaximized(false);
   }
 
   const [inputValue, setInputValue] = useState("");
@@ -860,7 +884,10 @@ export function ChatbotWidget() {
       {/* Floating Trigger Button */}
       {!isOpen && (
         <button
-          onClick={() => setIsOpen(true)}
+          onClick={() => {
+            setIsOpen(true);
+            setIsMinimized(false);
+          }}
           className="flex items-center gap-2.5 bg-white hover:bg-[#FAFBFB] text-[#183028] border border-[#E6E8E7] hover:border-[#183028]/30 px-4 py-2.5 rounded-full shadow-xl shadow-[#183028]/10 text-xs font-bold transition-all hover:scale-105 active:scale-95 cursor-pointer group"
           aria-label="Open Compliance Copilot"
         >
@@ -876,14 +903,60 @@ export function ChatbotWidget() {
         </button>
       )}
 
+      {/* Minimized Dock Bar */}
+      {isOpen && isMinimized && (
+        <div className="flex items-center gap-2.5 bg-white text-[#183028] border border-[#E6E8E7] px-3.5 py-2 rounded-2xl shadow-xl shadow-[#183028]/10 text-xs font-bold transition-all animate-in fade-in slide-in-from-bottom-2 duration-150">
+          <button
+            onClick={() => setIsMinimized(false)}
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
+          >
+            <div className="relative h-6 w-6 rounded-lg bg-[#C5E86C]/30 border border-[#b4db53] flex items-center justify-center text-[#183028]">
+              <Bot className="h-3.5 w-3.5 text-[#183028]" />
+              <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            </div>
+            <span className="tracking-tight text-[#183028] text-xs font-bold">
+              {isLoginMode ? "Compliance Help" : "Neural Copilot"}
+            </span>
+            <span className="text-[8.5px] px-1.5 py-0.5 rounded font-extrabold uppercase bg-[#C5E86C] text-[#183028] border border-[#b4db53]">
+              Minimized
+            </span>
+          </button>
+          <div className="flex items-center gap-0.5 ml-1 pl-2 border-l border-[#E6E8E7]">
+            <button
+              onClick={() => setIsMinimized(false)}
+              className="p-1 rounded-md text-[#183028]/60 hover:text-[#183028] hover:bg-[#FAFBFB] cursor-pointer"
+              title="Restore window"
+              aria-label="Restore window"
+            >
+              <ChevronUp className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                setIsMinimized(false);
+                setIsMaximized(false);
+              }}
+              className="p-1 rounded-md text-[#183028]/60 hover:text-rose-600 hover:bg-rose-50 cursor-pointer"
+              title="Close"
+              aria-label="Close copilot window"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Main Chatbot Window */}
-      {isOpen && (
+      {isOpen && !isMinimized && (
         <div
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           className={cn(
-            "relative w-[380px] sm:w-[500px] h-[640px] rounded-2xl flex flex-col overflow-hidden text-xs bg-white border border-[#E6E8E7] shadow-2xl transition-all animate-in fade-in zoom-in-95 duration-200",
+            "relative rounded-2xl flex flex-col overflow-hidden text-xs bg-white border border-[#E6E8E7] shadow-2xl transition-all duration-200",
+            isMaximized
+              ? "w-[94vw] sm:w-[860px] md:w-[980px] h-[90vh] max-h-[92vh] max-w-[96vw]"
+              : "w-[380px] sm:w-[500px] h-[640px] max-h-[85vh]",
             isDragging && "ring-2 ring-[#C5E86C] border-[#183028]"
           )}
         >
@@ -903,7 +976,14 @@ export function ChatbotWidget() {
           <ChatHeader
             isLoginMode={isLoginMode}
             role={session?.role}
-            onClose={() => setIsOpen(false)}
+            isMaximized={isMaximized}
+            onToggleMaximize={() => setIsMaximized((prev) => !prev)}
+            onMinimize={() => setIsMinimized(true)}
+            onClose={() => {
+              setIsOpen(false);
+              setIsMinimized(false);
+              setIsMaximized(false);
+            }}
           />
 
           {/* Chat Messages Log */}
@@ -1150,10 +1230,20 @@ export function ChatbotWidget() {
 interface IChatHeaderProps {
   isLoginMode: boolean;
   role?: string;
+  isMaximized: boolean;
+  onToggleMaximize: () => void;
+  onMinimize: () => void;
   onClose: () => void;
 }
 
-function ChatHeader({ isLoginMode, role, onClose }: IChatHeaderProps) {
+function ChatHeader({
+  isLoginMode,
+  role,
+  isMaximized,
+  onToggleMaximize,
+  onMinimize,
+  onClose,
+}: IChatHeaderProps) {
   return (
     <div className="bg-white text-[#183028] px-4 py-3 flex items-center justify-between border-b border-[#E6E8E7] shrink-0">
       <div className="flex items-center space-x-2.5">
@@ -1179,13 +1269,41 @@ function ChatHeader({ isLoginMode, role, onClose }: IChatHeaderProps) {
         </div>
       </div>
 
-      <button
-        onClick={onClose}
-        className="p-1.5 rounded-lg text-[#183028]/60 hover:text-[#183028] hover:bg-[#FAFBFB] transition-colors cursor-pointer"
-        aria-label="Close copilot window"
-      >
-        <X className="h-4 w-4" />
-      </button>
+      <div className="flex items-center gap-1">
+        {/* Minimize Button */}
+        <button
+          onClick={onMinimize}
+          className="p-1.5 rounded-lg text-[#183028]/60 hover:text-[#183028] hover:bg-[#FAFBFB] transition-colors cursor-pointer"
+          aria-label="Minimize copilot window"
+          title="Minimize"
+        >
+          <Minus className="h-3.5 w-3.5" />
+        </button>
+
+        {/* Maximize / Restore Button */}
+        <button
+          onClick={onToggleMaximize}
+          className="p-1.5 rounded-lg text-[#183028]/60 hover:text-[#183028] hover:bg-[#FAFBFB] transition-colors cursor-pointer"
+          aria-label={isMaximized ? "Restore window size" : "Maximize copilot window"}
+          title={isMaximized ? "Restore down" : "Maximize"}
+        >
+          {isMaximized ? (
+            <Minimize2 className="h-3.5 w-3.5" />
+          ) : (
+            <Maximize2 className="h-3.5 w-3.5" />
+          )}
+        </button>
+
+        {/* Close Button */}
+        <button
+          onClick={onClose}
+          className="p-1.5 rounded-lg text-[#183028]/60 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+          aria-label="Close copilot window"
+          title="Close"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
     </div>
   );
 }
@@ -1566,6 +1684,11 @@ function TelemetrySearchCard({ result }: ITelemetryCardProps) {
         <span className="text-[9.5px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
           {analytics.breakdown_by_status.NeedsRevision} Needs Revision
         </span>
+        {analytics.breakdown_by_status.Rejected > 0 && (
+          <span className="text-[9.5px] font-semibold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800">
+            {analytics.breakdown_by_status.Rejected} Rejected
+          </span>
+        )}
         {analytics.regulatory_risk_summary > 0 && (
           <span className="text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 flex items-center gap-1">
             <ShieldAlert className="h-2.5 w-2.5" />

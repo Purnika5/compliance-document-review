@@ -184,6 +184,7 @@ Present this data to the user in a warm, conversational way. Use only the data l
       .replace(/\baprvd\b/gi, 'approved')
       .replace(/\bpndng\b/gi, 'pending')
       .replace(/\brevsn\b/gi, 'revision')
+      .replace(/\brjctd\b/gi, 'rejected')
       .replace(/\bdocumnts?\b/gi, 'documents')
       .replace(/\bsho\b/gi, 'show')
       .replace(/\bwat\b/gi, 'what')
@@ -296,10 +297,10 @@ Be warm and encouraging — like a knowledgeable colleague helping out, not a st
     }
 
     // ── Intent 1: Advisor: Check Document Status ────────────────────────────
-    // Trigger: advisor asks about "pending", "for revision", or "approved" documents.
+    // Trigger: advisor asks about "pending", "revision" / "needs revision", "approved" / "approve", or "rejected" / "reject".
     const isStatusQuery =
       isAdvisor &&
-      /\b(pending|for revision|needs revision|revision|approved|my status|status of my)\b/i.test(lower);
+      /\b(pending|for revision|needs revision|revision|revisions|approved|approve|rejected|reject|my status|status of my)\b/i.test(lower);
 
     if (isStatusQuery) {
       return await this.handleAdvisorStatusIntent(user, lower, correctedQuery);
@@ -407,9 +408,15 @@ Be warm and encouraging — like a knowledgeable colleague helping out, not a st
     }
 
     let targetStatus: string | null = null;
-    if (lower.includes('pending')) targetStatus = 'Pending';
-    else if (lower.includes('revision') || lower.includes('for revision')) targetStatus = 'Needs Revision';
-    else if (lower.includes('approved')) targetStatus = 'Approved';
+    if (lower.includes('pending')) {
+      targetStatus = 'Pending';
+    } else if (lower.includes('revision') || lower.includes('for revision') || lower.includes('needs revision')) {
+      targetStatus = 'Needs Revision';
+    } else if (lower.includes('approved') || lower.includes('approve')) {
+      targetStatus = 'Approved';
+    } else if (lower.includes('rejected') || lower.includes('reject')) {
+      targetStatus = 'Rejected';
+    }
 
     let sql: string;
     let params: any[];
@@ -767,7 +774,7 @@ Be warm and encouraging — like a knowledgeable colleague helping out, not a st
     const todayCount = todayRes.rows[0]?.count || 0;
 
     const dbSummary = `Supervisory review queue summary:\n- Pending officer review: ${counts['Pending'] || 0}\n- Requiring revision: ${counts['Needs Revision'] || 0}\n- Approved: ${counts['Approved'] || 0}\n- Rejected: ${counts['Rejected'] || 0}\n- Uploaded today: ${todayCount}`;
-    const fallback = `**Supervisory Review Queue Status:**\n- **${counts['Pending'] || 0}** pending officer determination\n- **${counts['Needs Revision'] || 0}** awaiting advisor revision\n- **${counts['Approved'] || 0}** approved filings\n- **${todayCount}** uploaded today\n\nWould you like me to inspect documents with compliance flags or filter by a specific advisor?`;
+    const fallback = `**Supervisory Review Queue Status:**\n- **${counts['Pending'] || 0}** pending officer determination\n- **${counts['Needs Revision'] || 0}** awaiting advisor revision\n- **${counts['Approved'] || 0}** approved filings\n- **${counts['Rejected'] || 0}** rejected filings\n- **${todayCount}** uploaded today\n\nWould you like me to inspect documents with compliance flags or filter by a specific advisor?`;
 
     const reply = await this.formatDbResultWithLlm(dbSummary, correctedQuery, 'Officer', fallback);
     return { reply, intent: 'officer_queue_overview', correctedQuery };
