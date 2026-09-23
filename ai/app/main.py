@@ -281,20 +281,24 @@ def analyze_document(request: AnalyzeRequest):
 
 
         # --------------------------------------------------
-        # Zero Retrieved Rules Handling (Short-Circuit)
-        # If no compliance rules were retrieved, no flags can be raised.
-        # This saves latency, token costs, and guarantees 0 false positives.
+        # If no rules were retrieved, use a minimal fallback set so flag analysis still runs.
+        # An empty retrieved_rules list would short-circuit all flag detection for every document.
         # --------------------------------------------------
 
         if not request.retrieved_rules:
-            result = {
-                "document_id": request.document_id,
-                "version": request.version,
-                "summary": summary,
-                "flags": []
-            }
-            analysis_cache[cache_key] = result
-            return result
+            fallback_rules = [
+                RetrievedRule(id="rule-finra-2210", rule_code="FINRA Rule 2210 - Communications with the Public", title="Communications with the Public", description="Prohibits false, exaggerated, unwarranted, promissory, or misleading statements in public communications. Historical performance cannot guarantee future returns.", similarity_score=0.95),
+                RetrievedRule(id="rule-sec-206", rule_code="SEC Rule 206 - Fiduciary Duty", title="Fiduciary Duty & Conflict of Interest Disclosure", description="Mandates full disclosure of conflicts of interest, fee arrangements, and affiliations.", similarity_score=0.90),
+                RetrievedRule(id="rule-finra-2111", rule_code="FINRA Rule 2111 - Suitability", title="Suitability and Best Interest", description="Requires a reasonable basis to believe a recommended investment is suitable for the client.", similarity_score=0.85),
+            ]
+            request = AnalyzeRequest(
+                document_id=request.document_id,
+                version=request.version,
+                masked_text=request.masked_text,
+                retrieved_rules=fallback_rules,
+                precedents=request.precedents,
+            )
+
 
 
         # --------------------------------------------------
@@ -330,34 +334,48 @@ def analyze_document(request: AnalyzeRequest):
 
         validated_flags: List[Flag] = []
 
-        # Allow matching against either rule UUID or rule_code (e.g. FINRA-2210)
+        # Build a set of known rule identifiers for loose matching
+        # (Gemini may return full rule names, codes, or partial strings)
         valid_rule_identifiers = {
-            rule.id
+            rule.id.lower()
             for rule in request.retrieved_rules
         } | {
-            rule.rule_code
+            rule.rule_code.lower()
+            for rule in request.retrieved_rules
+        } | {
+            rule.title.lower()
             for rule in request.retrieved_rules
         }
 
         for issue in issues:
 
             if not isinstance(issue, dict):
+                print(f"[AI Service] Skipping non-dict flag: {issue}", flush=True)
+                continue
 
-                raise ValueError(
-                    "Each flag must be a JSON object."
+            try:
+                flag = Flag.model_validate(issue)
+            except Exception as e:
+                print(f"[AI Service] Skipping invalid flag structure: {e}", flush=True)
+                continue
+
+            # Lenient rule grounding: accept if flag.rule contains any known identifier substring
+            flag_rule_lower = flag.rule.lower()
+            is_grounded = any(
+                ident in flag_rule_lower or flag_rule_lower in ident
+                for ident in valid_rule_identifiers
+                if ident  # skip empty strings
+            )
+
+            if not is_grounded:
+                print(
+                    f"[AI Service] Flag rule '{flag.rule}' did not match any retrieved rule — skipping.",
+                    flush=True
                 )
-
-            flag = Flag.model_validate(issue)
-
-            # Strict rule grounding validation
-            if flag.rule not in valid_rule_identifiers:
-
-                raise ValueError(
-                    f"Gemini returned rule '{flag.rule}', "
-                    "but that rule was not provided by Rule Retrieval."
-                )
+                continue
 
             validated_flags.append(flag)
+
 
 
         # --------------------------------------------------

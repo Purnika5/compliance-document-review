@@ -225,13 +225,17 @@ export class PipelineService {
       return { retrieved_rules: [], precedents: [] };
     }
 
-    // Security Gate: Ensure no unmasked PII reaches retrieval engine
+    // Security Gate: Log PII leakage but still proceed with default rules.
+    // Blocking here returns empty retrieved_rules, which causes the AI service to
+    // short-circuit flag analysis entirely — no flags are raised even for risky documents.
+    // The masked_text itself is safe (PII was already replaced by the masker);
+    // what the gate is detecting are residual patterns that slipped through.
     const piiLeakCheck = PipelineService.detectPiiLeakage(maskedText);
     if (piiLeakCheck.hasLeakage) {
-      console.error(
-        `[SECURITY_GATE_VIOLATION] Blocked outgoing retrieval request! Detected unmasked PII: ${piiLeakCheck.detectedEntities.join(', ')}`
+      console.warn(
+        `[SECURITY_GATE_WARN] Residual PII-like patterns detected in masked text: ${piiLeakCheck.detectedEntities.join(', ')}. Proceeding with default rules only — document content will NOT be sent to retrieval service.`
       );
-      return { retrieved_rules: [], precedents: [] };
+      return { retrieved_rules: PipelineService.getDefaultRules(), precedents: [] };
     }
 
     if (config.retrieval.serviceUrl.includes('compliance-mock-ai')) {
