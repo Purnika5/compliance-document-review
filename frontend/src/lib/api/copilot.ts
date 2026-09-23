@@ -19,7 +19,7 @@ export const copilotApi = {
   async sendChatMessage(
     message: string,
     role?: string,
-    context?: { pathname?: string; documentId?: string }
+    context?: { pathname?: string; documentId?: string; conversationHistory?: Array<{ role: string; content: string }> }
   ): Promise<{ reply: string; quota?: { used: number; limit: number; remaining: number; resetsAt: string; resetInDays: number }; quotaExceeded?: boolean }> {
     try {
       const response = await client.post<ApiResponse<{ reply: string; quota?: any; quotaExceeded?: boolean }>>("/api/chat", {
@@ -27,6 +27,7 @@ export const copilotApi = {
         role: role || "Advisor",
         pathname: context?.pathname,
         documentId: context?.documentId,
+        conversationHistory: context?.conversationHistory,
       });
       if (response && response.data && response.data.reply) {
         return { reply: response.data.reply, quota: (response.data as any).quota, quotaExceeded: (response.data as any).quotaExceeded };

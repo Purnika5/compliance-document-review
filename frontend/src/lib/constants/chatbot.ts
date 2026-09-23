@@ -56,7 +56,7 @@ export const DASHBOARD_INITIAL_MESSAGES: IChatMessage[] = [
   {
     id: "dash-greeting",
     sender: "bot",
-    text: "Hello! I'm your Neural Compliance Copilot. I'm here to help you navigate filings, answer regulatory questions, or scan and remediate any draft proposals before submission. What are you working on today?",
+    text: "Hello! I'm your Compliance Help. I'm here to help you navigate filings, answer regulatory questions, or scan and remediate any draft proposals before submission. What are you working on today?",
     timestamp: "Live",
   },
 ];

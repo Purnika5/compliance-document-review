@@ -68,6 +68,7 @@ export interface IAuditBreakdownItem {
   issue: string;
   fixed_passage: string;
   reason: string;
+  category?: 'PROHIBITED_CLAIM' | 'MISSING_DISCLOSURE' | 'SUITABILITY' | 'PRECEDENT_MATCH';
 }
 
 export interface IAuditAndFixResponse {

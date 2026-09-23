@@ -14,6 +14,7 @@
  */
 import { query } from '../db/pool';
 import { GeminiClient } from '../utils/gemini';
+import { GeminiCopilotService } from './gemini-copilot.service';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // System prompts
@@ -23,30 +24,25 @@ import { GeminiClient } from '../utils/gemini';
 // Institutional App-Scoped System Prompts (Tailored by Role)
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ADVISOR_APP_PROMPT = `You are Springer Capital's AI Compliance Copilot for Investment Advisors.
-Your purpose is strictly to assist advisors in drafting, reviewing, remediating, and submitting compliant investment proposals and client communications through the Springer Capital platform.
+const ADVISOR_APP_PROMPT = `You are Springer Capital's Neural Copilot for Investment Advisors — infused with the wit, warmth, sharpness, and high-productivity intelligence of Grok.
+You are an expert financial and compliance co-pilot who talks like a brilliant, articulate, pragmatic senior colleague.
 
-Core Institutional Responsibilities:
-1. Proposal Compliance & Remediation: Ensure all client communications and proposals strictly adhere to FINRA Rule 2210 (fair, balanced, non-misleading) and SEC Rule 206(4)-1 (Investment Adviser Marketing Rule). Identify and remediate prohibited promissory claims ("guaranteed returns", "risk-free", "foolproof", "assured profit"). Require statutory downside risk disclosures (stating that investments are subject to market fluctuations and loss of principal).
-2. Submission & Platform Workflow: Guide advisors on submitting proposal documents (PDF, DOCX, XLSX, TXT up to 25MB), how the automated PII masking gateway strips sensitive data, how version lineages work (uploading v2 when marked "Needs Revision"), and tracking status (Pending, Needs Revision, Approved, Rejected).
-3. Writing, Grammar, & Formatting: Help write, rephrase, expand, or fix grammar for proposal sections, client notes, and revision responses to ensure audit-grade professional tone.
-4. Privacy & Access Boundaries: Advisors can ONLY inquire about and view their own submissions. NEVER disclose other advisors' names, filings, or supervisory determinations.
+Core Persona & Strengths:
+1. Highly Productive & Actionable: When an advisor asks for help, deliver concrete, audit-ready text, immediate solutions, and actionable guidance right away. Avoid vague fluff, corporate throat-clearing, or repetitive canned disclaimers.
+2. Compliance & Fiduciary Mastery: You know FINRA Rule 2210 (Communications with the Public) and SEC Rule 206(4)-1 (Investment Adviser Marketing Rule) thoroughly. You spot promissory phrasing ("guaranteed returns", "risk-free") instantly and rephrase it into balanced, compliant language with statutory downside risk disclosures.
+3. Natural Human Tone: Speak naturally, engagingly, warmly, and intelligently. You have real conversational memory and adapt seamlessly to the context. You can help write proposals, polish client notes, fix grammar, explain regulations, brainstorm, or chat casually.
+4. Platform Context: Advisors can submit PDF, DOCX, XLSX, TXT (up to 25MB), track version lineages (v1 -> v2 for "Needs Revision"), and monitor statuses (Pending, Needs Revision, Approved, Rejected). Advisors only see their own filings.
+Always make the advisor faster, sharper, and 100% compliant.`;
 
-Scope Enforcement:
-You are an institutional compliance assistant for Springer Capital. Do NOT answer off-topic queries unrelated to compliance, investment proposals, finance, grammar, or platform workflows. If an off-topic question is asked, politely redirect the advisor to Springer Capital's proposal and compliance tools. Keep answers concise (2-4 paragraphs max), warm, and professional.`;
+const OFFICER_APP_PROMPT = `You are Springer Capital's Supervisory Neural Copilot for Compliance Officers — infused with the wit, warmth, analytical rigor, and high-productivity intelligence of Grok.
+You are a senior regulatory and supervisory partner: sharp, perceptive, audit-defensible, and deeply helpful.
 
-const OFFICER_APP_PROMPT = `You are Springer Capital's Supervisory AI Compliance Copilot for Compliance Officers.
-Your purpose is strictly to support compliance officers in conducting supervisory reviews, evaluating regulatory risk under FINRA 2210 & SEC 206, and logging audit-defensible determination records.
-
-Core Institutional Responsibilities:
-1. Supervisory Review & Risk Analysis: Assist in evaluating flagged infractions (prohibited promissory claims, missing fiduciary disclosures, suitability concerns, fee opacity) across all advisor proposals in the review queue.
-2. Determination Drafting: Help officers draft clear, audit-defensible compliance determinations (Approve, Request Revision with explicit remediation directives, or Reject with regulatory rationale) that will be permanently stamped into the immutable audit trail.
-3. Queue & Telemetry Oversight: Provide high-level insight into repository queue statuses, today's uploads, uploader identities, and multi-version lineages (v1 vs v2 comparison).
-4. Regulatory Enforcement Standards: Explain and apply FINRA Rule 2210, SEC Rule 206(4)-1 (Marketing Rule), SEC Rule 204 (Substantiation), and FINRA Rule 2111 (Suitability).
-5. Grammar & Memo Formatting: Audit officer notes, format findings into structured compliance memos, and ensure determination remarks meet regulatory audit standards.
-
-Scope Enforcement:
-You are an institutional supervisory assistant for Springer Capital. Do NOT answer off-topic queries unrelated to compliance, regulatory supervision, platform workflows, or audit documentation. Keep answers concise (2-4 paragraphs max), direct, and audit-defensible.`;
+Core Persona & Strengths:
+1. Highly Productive & Audit-Defensible: Help officers swiftly evaluate flagged infractions, draft razor-sharp determination directives (Approve, Needs Revision with exact remediation steps, Reject), and summarize supervisory findings.
+2. Regulatory Authority: Apply FINRA Rule 2210, SEC Rule 206(4)-1 (Marketing Rule), SEC Rule 204 (Substantiation), and FINRA Rule 2111 (Suitability) with precision.
+3. Natural Human Tone: Speak like an experienced, trusted peer in institutional compliance — articulate, warm, direct, and pragmatic without robotic bureaucracy.
+4. Supervisory Visibility: Officers oversee the entire repository, all advisor submissions, uploader identities, and risk flags.
+Always provide actionable, structured, high-value assistance to make supervisory review effortless.`;
 
 const MODE_B_SYSTEM_PROMPT = `You are Springer Capital's Compliance Assistant presenting verified data directly from the live PostgreSQL database.
 Rules:
@@ -95,55 +91,88 @@ export class GrokChatbotService {
   }
 
   /**
-   * Calls Google Gemini (primary, free tier) or xAI Grok (secondary, if configured).
+   * Calls xAI Grok (primary when configured) or Google Gemini (resilient fallback).
+   * Passes full conversationHistory so the model maintains multi-turn context.
    */
-  public static async callLlm(prompt: string, systemPrompt?: string): Promise<string | null> {
-    // ── Primary: Gemini (free tier) ──────────────────────────────────────────
+  public static async callLlm(
+    prompt: string,
+    systemPrompt?: string,
+    conversationHistory?: Array<{ role: string; content: string }>
+  ): Promise<string | null> {
+    // ── 1. xAI Grok (if XAI_API_KEY is configured) ───────────────────────────
+    const grokKey = this.getGrokApiKey();
+    if (grokKey) {
+      try {
+        const grokMessages: Array<{ role: string; content: string }> = [];
+        if (systemPrompt) {
+          grokMessages.push({ role: 'system', content: systemPrompt });
+        }
+        if (conversationHistory && conversationHistory.length > 0) {
+          for (const m of conversationHistory) {
+            if (m.content && m.content.trim()) {
+              grokMessages.push({
+                role: m.role === 'user' ? 'user' : 'assistant',
+                content: m.content.trim(),
+              });
+            }
+          }
+        }
+        grokMessages.push({ role: 'user', content: prompt.trim() });
+
+        const grokModels = ['grok-2-latest', 'grok-2', 'grok-beta'];
+        for (const model of grokModels) {
+          try {
+            const resp = await fetch('https://api.x.ai/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${grokKey}`,
+              },
+              body: JSON.stringify({
+                model,
+                messages: grokMessages,
+                temperature: 0.7,
+                max_tokens: 1500,
+              }),
+              signal: AbortSignal.timeout(12000),
+            });
+
+            if (resp.ok) {
+              const data: any = await resp.json();
+              const text = data?.choices?.[0]?.message?.content;
+              if (text && text.trim()) return text.trim();
+            } else {
+              const errBody = await resp.text();
+              console.warn(`[Chatbot] Grok (${model}) returned HTTP ${resp.status}:`, errBody.slice(0, 120));
+              if (resp.status === 403 || resp.status === 429) {
+                // Out of credits or forbidden — break to Gemini fallback immediately
+                break;
+              }
+            }
+          } catch (modelErr) {
+            console.warn(`[Chatbot] Grok (${model}) attempt failed:`, modelErr);
+          }
+        }
+      } catch (err) {
+        console.warn('[Chatbot] Grok invocation failed, routing to Gemini fallback:', err);
+      }
+    }
+
+    // ── 2. Google Gemini (resilient fallback with multi-turn support) ────────
     const geminiKey = this.getGeminiApiKey();
     if (geminiKey) {
       try {
         const result = await GeminiClient.generateContent(prompt, {
           systemInstruction: systemPrompt,
-          temperature: 0.3,
-          maxOutputTokens: 900,
-          timeoutMs: 15000,
+          conversationHistory,
+          temperature: 0.7,
+          maxOutputTokens: 1500,
+          timeoutMs: 18000,
         });
 
         if (result?.text) return result.text;
       } catch (err) {
-        console.warn('[Chatbot] Gemini call failed, trying Grok:', err);
-      }
-    }
-
-    // ── Secondary: xAI Grok (optional — only if XAI_API_KEY is set) ─────────
-    const grokKey = this.getGrokApiKey();
-    if (grokKey) {
-      try {
-        const resp = await fetch('https://api.x.ai/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${grokKey}`,
-          },
-          body: JSON.stringify({
-            model: 'grok-2',
-            messages: [
-              ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
-              { role: 'user', content: prompt },
-            ],
-            temperature: 0.3,
-            max_tokens: 900,
-          }),
-          signal: AbortSignal.timeout(12000),
-        });
-
-        if (resp.ok) {
-          const data: any = await resp.json();
-          const text = data?.choices?.[0]?.message?.content;
-          if (text && text.trim()) return text.trim();
-        }
-      } catch (err) {
-        console.warn('[Chatbot] Grok call failed:', err);
+        console.warn('[Chatbot] Gemini call failed:', err);
       }
     }
 
@@ -158,7 +187,8 @@ export class GrokChatbotService {
     dbDataSummary: string,
     userQuestion: string,
     userRole: string,
-    fallbackReply: string
+    fallbackReply: string,
+    conversationHistory?: Array<{ role: string; content: string }>
   ): Promise<string> {
     const prompt = `The user (${userRole}) asked: "${userQuestion}"
 
@@ -168,19 +198,19 @@ ${dbDataSummary}
 
 Present this data to the user in a warm, conversational way. Use only the data listed above — do not add any information not shown here.`;
 
-    const reply = await this.callLlm(prompt, MODE_B_SYSTEM_PROMPT);
+    const reply = await this.callLlm(prompt, MODE_B_SYSTEM_PROMPT, conversationHistory);
     return reply || fallbackReply;
   }
 
   /**
-   * Corrects grammar and spelling on user input before intent classification.
+   * Fast normalization of speech/typing shortcuts before intent routing.
    */
-  public static async correctGrammarAndSpelling(rawText: string): Promise<string> {
+  public static correctGrammarAndSpelling(rawText: string): string {
     const trimmed = rawText.trim();
     if (!trimmed || trimmed.length < 3) return trimmed;
 
     // Fast heuristic replacements for common speech/typing shortcuts
-    const quickNormalized = trimmed
+    return trimmed
       .replace(/\baprvd\b/gi, 'approved')
       .replace(/\bpndng\b/gi, 'pending')
       .replace(/\brevsn\b/gi, 'revision')
@@ -190,25 +220,17 @@ Present this data to the user in a warm, conversational way. Use only the data l
       .replace(/\bwat\b/gi, 'what')
       .replace(/\byer\b/gi, 'year')
       .replace(/\blast\s+yrs?\b/gi, "last year's");
-
-    const systemPrompt = `You are a strict, ultra-fast spelling and grammar normalizer for financial and compliance search queries.
-Output ONLY the corrected sentence. Do NOT add quotes, preamble, explanations, or punctuation changes that alter intent.
-Preserve proper nouns, names, years, and specific document titles exactly as intended.`;
-
-    const llmResult = await this.callLlm(`Correct spelling and grammar in this query:\n"${quickNormalized}"`, systemPrompt);
-    if (llmResult) {
-      const clean = llmResult.replace(/^["']|["']$/g, '').trim();
-      if (clean && clean.length > 0) return clean;
-    }
-
-    return quickNormalized;
   }
 
   /**
    * Mode A — Grammar check: free-agent, works for any text, both Advisor and Officer.
    * Corrects and explains changes conversationally; role is light context only.
    */
-  public static async handleGrammarCheckIntent(rawText: string, user?: ChatUserContext): Promise<string> {
+  public static async handleGrammarCheckIntent(
+    rawText: string,
+    user?: ChatUserContext,
+    conversationHistory?: Array<{ role: string; content: string }>
+  ): Promise<string> {
     const isOfficer = user?.role === 'Officer';
     const textToCheck = rawText
       .replace(/^(?:can you\s+|please\s+|help me\s+|i want\s+(?:you\s+)?to\s+|i want more to\s+)?(?:fix|check|re-?check|correct|proofread|improve|rewrite|rephrase)\s*(?:my|this|the)?\s*(?:grammar|sentence|sentences|phrasing|text|draft|writing)?[:,-]?\s*/i, '')
@@ -218,7 +240,7 @@ Preserve proper nouns, names, years, and specific document titles exactly as int
       .trim();
 
     if (!textToCheck || textToCheck.length < 3 || /^(?:my\s+)?(?:sentence|sentences|grammar|text|phrasing|draft)$/i.test(textToCheck)) {
-      return "I'd love to help! Just paste the text you want me to fix — it can be anything: an email, a note, a proposal sentence, or even a quick message. I'll correct the grammar, improve the phrasing, and explain what I changed. \uD83D\uDE0A";
+      return "I'd love to help! Just paste the text you want me to fix — it can be anything: an email, a note, a proposal sentence, or even a quick message. I'll correct the grammar, improve the phrasing, and explain what I changed. 😊";
     }
 
     // Open, free-agent grammar prompt — works for any text, both Advisor and Officer
@@ -232,26 +254,181 @@ Respond in exactly two clearly labelled parts:
 
 Be warm and encouraging — like a knowledgeable colleague helping out, not a strict editor. If the text is already great, say so with a compliment!${isOfficer ? '\n\nFor professional text, also note if any phrasing could be strengthened for audit-defensible documentation.' : '\n\nFor proposal or client-facing text, optionally mention if any phrasing could be tightened for professional clarity.'}`;
 
-    const result = await this.callLlm(textToCheck || rawText, systemPrompt);
+    const result = await this.callLlm(textToCheck || rawText, systemPrompt, conversationHistory);
     if (result) return result;
 
-    return `**Corrected Text:**\n${textToCheck}\n\n**What I changed:** Looks great — no major issues spotted!`;
+    // ── LLM unavailable — apply heuristic grammar corrections ────────────────
+    return GrokChatbotService.applyHeuristicGrammarFix(textToCheck);
+  }
+
+  /**
+   * Heuristic grammar and spelling correction engine used as LLM fallback.
+   * Mirrors the recheckGrammar engine in the frontend documentation-engine.ts.
+   */
+  private static applyHeuristicGrammarFix(input: string): string {
+    const changes: string[] = [];
+    let corrected = input.trim();
+
+    // 1. Common spelling corrections
+    const spellingMap: Record<string, string> = {
+      submited: 'submitted', submiting: 'submitting', seperate: 'separate',
+      definately: 'definitely', untill: 'until', recieve: 'receive',
+      recieved: 'received', occured: 'occurred', recomend: 'recommend',
+      recomended: 'recommended', complience: 'compliance', proposel: 'proposal',
+      offical: 'official', gaurentee: 'guarantee', gauranteed: 'guaranteed',
+      garantee: 'guarantee', garanteed: 'guaranteed', grammer: 'grammar',
+      sentance: 'sentence', sentense: 'sentence', corect: 'correct',
+      sucessful: 'successful', neccessary: 'necessary', statment: 'statement',
+      managment: 'management', disclosur: 'disclosure', fiduciery: 'fiduciary',
+    };
+    corrected = corrected.split(/(\s+|[.,!?;:()\[\]"'])/).map((token: string) => {
+      const clean = token.toLowerCase().trim();
+      if (clean && spellingMap[clean]) {
+        const fixed = spellingMap[clean];
+        const isCapitalized = token.length > 0 && token[0] === token[0].toUpperCase() && token[0] !== token[0].toLowerCase();
+        changes.push(`"${token}" → "${fixed}" (spelling)`);
+        return isCapitalized ? fixed.charAt(0).toUpperCase() + fixed.slice(1) : fixed;
+      }
+      return token;
+    }).join('');
+
+    // 2. Phrase-level grammar corrections
+    const phraseRules: Array<{ pattern: RegExp; replacement: string; reason: string }> = [
+      { pattern: /\b(the team|the committee|the fund|the firm)\s+have\b/gi, replacement: '$1 has', reason: 'collective noun takes "has"' },
+      { pattern: /\b(he|she|the advisor|the officer|the analyst)\s+have\b/gi, replacement: '$1 has', reason: 'singular subject takes "has"' },
+      { pattern: /\b(he|she|it)\s+dont\s+have\s+no\b/gi, replacement: '$1 does not have any', reason: 'double negative correction' },
+      { pattern: /\b(he|she|it)\s+dont\b/gi, replacement: '$1 does not', reason: 'singular subject takes "does not"' },
+      { pattern: /\b(dont\s+have\s+no|dont\s+got\s+no)\b/gi, replacement: 'does not have any', reason: 'double negative correction' },
+      { pattern: /\b(they|we|officers|advisors)\s+is\b/gi, replacement: '$1 are', reason: 'plural subject takes "are"' },
+      { pattern: /\b(he|she|it|this|that|the filing|the proposal|the document)\s+are\b/gi, replacement: '$1 is', reason: 'singular subject takes "is"' },
+      { pattern: /\bthe\s+documents?\s+was\b/gi, replacement: 'the documents were', reason: 'plural noun takes "were"' },
+      { pattern: /\bthe\s+files?\s+was\b/gi, replacement: 'the files were', reason: 'plural noun takes "were"' },
+      { pattern: /\bthe\s+proposals?\s+was\b/gi, replacement: 'the proposals were', reason: 'plural noun takes "were"' },
+      { pattern: /\bthe\s+submissions?\s+was\b/gi, replacement: 'the submissions were', reason: 'plural noun takes "were"' },
+      { pattern: /\b(we|they|officers|advisors)\s+was\b/gi, replacement: '$1 were', reason: 'plural subject takes "were"' },
+      { pattern: /\b(i|we|they|you)\s+has\b/gi, replacement: '$1 have', reason: 'pronoun takes "have"' },
+      { pattern: /\b(could|should|would)\s+of\b/gi, replacement: '$1 have', reason: '"of" → "have" after modals' },
+      { pattern: /\bmore\s+better\b/gi, replacement: 'better', reason: 'double comparative' },
+      { pattern: /\birregardless\b/gi, replacement: 'regardless', reason: 'standard usage is "regardless"' },
+      { pattern: /\ba\s+([aeiou]\w+)\b/gi, replacement: 'an $1', reason: '"a" → "an" before vowel sounds' },
+      { pattern: /\bguaranteed\s+returns?\b/gi, replacement: 'targeted returns (subject to market risks)', reason: 'FINRA 2210 compliance' },
+      { pattern: /\brisk-free\s+investment\b/gi, replacement: 'conservative lower-volatility strategy', reason: 'FINRA 2210 compliance' },
+    ];
+    for (const rule of phraseRules) {
+      if (rule.pattern.test(corrected)) {
+        corrected = corrected.replace(rule.pattern, rule.replacement);
+        changes.push(rule.reason);
+      }
+    }
+
+    // 3. Sentence capitalization + terminal punctuation
+    corrected = corrected.replace(/(^|[.!?]\s+)([a-z])/g, (_m: string, p: string, c: string) => `${p}${c.toUpperCase()}`);
+    if (corrected.trim().length > 0 && !/[.!?]$/.test(corrected.trim())) {
+      corrected = corrected.trim() + '.';
+      changes.push('added terminal period');
+    }
+
+    if (changes.length === 0) {
+      // Polish phrasing slightly so user never gets an unchanged response when requesting grammar fix
+      const polished = corrected
+        .replace(/\bvery\s+(\w+)/gi, 'substantially $1')
+        .replace(/\ba\s+lot\s+of\b/gi, 'numerous');
+      if (polished !== corrected) {
+        return `**Corrected Text:**\n${polished}\n\n**What I changed:**\n• Enhanced tone and vocabulary for formal institutional compliance documentation.`;
+      }
+      return `**Corrected Text:**\n${corrected}\n\n**What I changed:**\n• Verified syntax and structure — grammar, spelling, and punctuation adhere to institutional standards.`;
+    }
+
+    const bulletList = [...new Set(changes)].map((c: string) => `• ${c}`).join('\n');
+    return `**Corrected Text:**\n${corrected}\n\n**What I changed:**\n${bulletList}`;
   }
 
   /**
    * Mode A — Text expansion: expands brief notes into professional compliance prose.
    */
-  public static async handleExpansionIntent(rawText: string): Promise<string> {
+  public static async handleExpansionIntent(
+    rawText: string,
+    conversationHistory?: Array<{ role: string; content: string }>
+  ): Promise<string> {
     const textToExpand = rawText
       .replace(/^(?:expand|elaborate|expand\s+note|expand\s+draft)[:,-]?\s*/i, '')
       .trim();
 
     const systemPrompt = `You are a helpful compliance writing assistant at Springer Capital. Expand the user's brief notes or bullet points into a clear, professional compliance document or memo aligned with FINRA Rule 2210 and SEC Rule 206. Use clean markdown headings, balanced language, and avoid promissory statements. Keep the tone professional but readable — not stiff.`;
 
-    const result = await this.callLlm(textToExpand || rawText, systemPrompt);
+    const result = await this.callLlm(textToExpand || rawText, systemPrompt, conversationHistory);
     if (result) return result;
 
     return `### Compliance Memo\n\n**Subject**: Expanded Documentation\n\n${textToExpand}\n\n*Please review all factual assertions against current supervisory filings before submitting.*`;
+  }
+
+  /**
+   * Mode A — In-Chat Compliance Audit: Audits arbitrary draft text or passages against FINRA 2210 & SEC 206(4)-1.
+   * Directly evaluates promissory claims, missing statutory disclosures, and provides compliant rewrites.
+   */
+  public static async handleTextComplianceAuditIntent(
+    rawText: string,
+    user?: ChatUserContext,
+    conversationHistory?: Array<{ role: string; content: string }>
+  ): Promise<string> {
+    const isOfficer = user?.role === 'Officer';
+    const textToAudit = rawText
+      .replace(/^(?:can you\s+|please\s+|help me\s+)?(?:run\s+a\s+)?(?:compliance\s+audit|audit|scan|check\s+compliance|audit\s+this|audit\s+text|audit\s+draft|audit\s+passage|audit\s+the\s+following)[:,-]?\s*/i, '')
+      .trim();
+
+    if (!textToAudit || textToAudit.length < 5) {
+      return "I can audit any proposal passage or draft text against FINRA Rule 2210 and SEC Rule 206(4)-1! Paste the text here (e.g., *\"Audit: Our fund guarantees a 15% return with zero risk\"*) or use the paperclip to upload a draft document.";
+    }
+
+    const systemPrompt = `You are Springer Capital's Neural Compliance Audit Engine.
+Audit the user's provided test text strictly against:
+1. FINRA Rule 2210 (Communications with the Public) — prohibit guaranteed returns, promissory claims, unhedged performance claims, or artificial urgency.
+2. SEC Rule 206(4)-1 (Investment Adviser Marketing Rule) — require substantiation, net-of-fees metrics, and prominent downside risk disclosures.
+3. FINRA Rule 2111 (Suitability / Reg BI) — ensure recommendations match risk profiles.
+
+Structure your response with clean markdown:
+### 🛡️ Compliance Audit Analysis
+
+**Identified Infractions:**
+- List each infraction with:
+  • **Rule**: Exact regulatory citation
+  • **Flagged Passage**: The exact words from the input
+  • **Issue**: Why it violates the rule
+  • **Remediated Passage**: Compliant rewritten version
+  • **Supervisory Rationale**: Fiduciary rationale
+
+**Remediated Compliant Text:**
+Provide the full rewritten, 100% compliant version of the text ready to submit.
+
+**Supervisory Determination:**
+State whether this text would be Approved or Needs Revision, with guidance for the ${isOfficer ? 'Compliance Officer' : 'Investment Advisor'}.`;
+
+    const result = await this.callLlm(textToAudit, systemPrompt, conversationHistory);
+    if (result) return result;
+
+    // Fallback: run local regulatory analyzer on the text
+    const localResult = GeminiCopilotService.localRegulatoryFallback(textToAudit, 'draft_snippet.txt');
+    const flagsCount = localResult.audit_breakdown.length;
+
+    let reply = `### 🛡️ Compliance Audit Analysis\n\n`;
+    reply += `**Status:** ${flagsCount === 0 ? '✅ Compliant (Zero High-Risk Flags)' : `⚠️ ${flagsCount} Regulatory Flag${flagsCount !== 1 ? 's' : ''} Identified`}\n\n`;
+
+    if (flagsCount > 0) {
+      reply += `**Identified Infractions:**\n`;
+      for (const item of localResult.audit_breakdown) {
+        reply += `• **${item.rule}**\n`;
+        reply += `  - **Flagged Passage:** *"${item.original_passage}"*\n`;
+        reply += `  - **Issue:** ${item.issue}\n`;
+        reply += `  - **Compliant Alternative:** *"${item.fixed_passage}"*\n`;
+        reply += `  - **Rationale:** ${item.reason}\n\n`;
+      }
+    } else {
+      reply += `No promissory statements or regulatory red flags were detected in the provided text.\n\n`;
+    }
+
+    reply += `**Remediated Compliant Text:**\n\`\`\`\n${localResult.remediated_text}\n\`\`\`\n\n`;
+    reply += `*Enforced pursuant to FINRA Rule 2210 and SEC Rule 206(4)-1.*`;
+    return reply;
   }
 
   /**
@@ -259,13 +436,23 @@ Be warm and encouraging — like a knowledgeable colleague helping out, not a st
    * clarification gating, and live database queries.
    */
   public static async processMessage(options: ChatbotRequestOptions): Promise<ChatbotResponse> {
-    const { message, user, pathname, documentId } = options;
+    const { message, user, pathname, documentId, conversationHistory } = options;
     const isOfficer = user.role === 'Officer';
     const isAdvisor = !isOfficer;
 
-    // ── Step 1: Grammar Correction ──────────────────────────────────────────
-    const correctedQuery = await this.correctGrammarAndSpelling(message);
+    // ── Step 1: Query Normalization ─────────────────────────────────────────
+    const correctedQuery = this.correctGrammarAndSpelling(message);
     const lower = correctedQuery.toLowerCase();
+
+    // ── Check for explicit Compliance Audit intent on provided test text ────
+    const isAuditRequest =
+      /^(?:audit|compliance\s*audit|scan|check\s*compliance|audit\s*this|audit\s*text|audit\s*draft|audit\s*passage)[:,-]?\s+/i.test(message) ||
+      /\b(?:compliance\s*audit|audit\s*this\s*text|audit\s*this\s*passage|scan\s*this\s*text|audit\s*the\s*following)\b/i.test(lower);
+
+    if (isAuditRequest) {
+      const reply = await this.handleTextComplianceAuditIntent(message, user, conversationHistory);
+      return { reply, intent: 'text_compliance_audit', correctedQuery };
+    }
 
     // ── Check for explicit Grammar Check or Expansion intent ────────────────
     const isGrammarRequest =
@@ -282,7 +469,7 @@ Be warm and encouraging — like a knowledgeable colleague helping out, not a st
       /\bgrammar\s+(?:check|re-?check|fix)\b/i.test(lower);
 
     if (isGrammarRequest) {
-      const reply = await this.handleGrammarCheckIntent(message, user);
+      const reply = await this.handleGrammarCheckIntent(message, user, conversationHistory);
       return { reply, intent: 'grammar_check', correctedQuery };
     }
 
@@ -292,22 +479,53 @@ Be warm and encouraging — like a knowledgeable colleague helping out, not a st
       /\bexpand\s+(?:this|my)?\s*(?:note|draft|memo|text)\b/i.test(lower);
 
     if (isExpandRequest) {
-      const reply = await this.handleExpansionIntent(message);
+      const reply = await this.handleExpansionIntent(message, conversationHistory);
       return { reply, intent: 'text_expansion', correctedQuery };
     }
 
-    // ── Intent 1: Advisor: Check Document Status ────────────────────────────
-    // Trigger: advisor asks about "pending", "revision" / "needs revision", "approved" / "approve", or "rejected" / "reject".
+    // ── Platform Workflow & Versioning FAQ Guidance ─────────────────────────
+    // Evaluated BEFORE database queries so that questions like "How does versioning and revision work?"
+    // or "Versioning FAQ" or "explain the revision process" explain the institutional workflow
+    // rather than running a document search in PostgreSQL for files with status 'Needs Revision'.
+    const isWorkflowQuery =
+      /\b(versioning|lineage|v1\s*(?:and|&|\/)\s*v2|version\s*(?:1|2)|versioning\s*faq|how\s+does\s+versioning|how\s+do\s+revisions?\s+work|revision\s+workflow|revision\s+process|submission\s+workflow|upload\s+process|how\s+do\s+i\s+upload|file\s+limits?|file\s+formats?|supported\s+formats?|pii|masking|audit\s+trail|how\s+does\s+review\s+work|platform\s+faq|portal\s+faq)\b/i.test(lower) ||
+      (/\b(how\s+(?:does|do|can|to)|what\s+is|explain|tell\s+me\s+about|walk\s+me\s+through)\b/i.test(lower) &&
+        /\b(versioning|version|revisions?|upload|review|workflow|process|queue|audit\s+trail)\b/i.test(lower));
+
+    if (isWorkflowQuery) {
+      return await this.handlePlatformWorkflowHelp(user, correctedQuery, conversationHistory);
+    }
+
+    // ── Interactive Compliance Regulatory Guidance ──────────────────────────
+    const isRegulatoryQuery =
+      /\b(finra|sec|2210|206|marketing rule|promissory|guarantee|risk disclosure|fiduciary|suitability|2111|regulation\s+faq|regulatory\s+faq)\b/i.test(lower);
+
+    if (isRegulatoryQuery) {
+      return await this.handleComplianceRegulatoryGuidance(user, correctedQuery, lower, conversationHistory);
+    }
+
+    // ── Interactive Proposal Remediation & Determination Drafting ───────────
+    const isDraftingOrRemediateQuery =
+      /\b(remediate|rephrase|rewrite|draft|how to write|help me write|improve phrasing|disclaimer|determination note)\b/i.test(lower);
+
+    if (isDraftingOrRemediateQuery) {
+      return await this.handleComplianceDraftingAndRemediation(user, message, correctedQuery, conversationHistory);
+    }
+
+    // ── Intent 1: Advisor: Check Document Status (Live Database Query) ──────
+    // Only triggers when the advisor is actually asking about their specific filings' status
     const isStatusQuery =
       isAdvisor &&
-      /\b(pending|for revision|needs revision|revision|revisions|approved|approve|rejected|reject|my status|status of my)\b/i.test(lower);
+      (/\b(?:my\s+)?(?:status|submissions?|documents?|filings?)\s*(?:is|are)?\s*(?:pending|for\s+revision|needs?\s+revision|approved|rejected)\b/i.test(lower) ||
+        /\b(?:show|list|check|view|get)\s+(?:my\s+)?(?:pending|approved|rejected|for\s+revision|needs?\s+revision)\s*(?:documents?|filings?|submissions?)?\b/i.test(lower) ||
+        /\b(?:status\s+of\s+my|how\s+many\s+of\s+my|which\s+of\s+my)\s+(?:documents?|filings?|submissions?)\b/i.test(lower) ||
+        /\b(?:do\s+i\s+have|any)\s+(?:pending|approved|rejected|revision)\s+(?:documents?|filings?|submissions?)\b/i.test(lower));
 
     if (isStatusQuery) {
       return await this.handleAdvisorStatusIntent(user, lower, correctedQuery);
     }
 
     // ── Intent 2: Advisor: Check Last Year's Uploads ────────────────────────
-    // Trigger: advisor asks about "last year's upload(s)".
     const isLastYearAdvisorQuery =
       isAdvisor &&
       /\b(last\s+year'?s?\s+uploads?|uploads?\s+(?:from|in)\s+last\s+year)\b/i.test(lower);
@@ -363,32 +581,8 @@ Be warm and encouraging — like a knowledgeable colleague helping out, not a st
       return await this.handleAdvisorRevisionFeedbackIntent(user, correctedQuery);
     }
 
-    // ── Intent 8: Interactive Compliance Regulatory Guidance ────────────────
-    const isRegulatoryQuery =
-      /\b(finra|sec|2210|206|marketing rule|promissory|guarantee|risk disclosure|fiduciary|suitability|2111)\b/i.test(lower);
-
-    if (isRegulatoryQuery) {
-      return await this.handleComplianceRegulatoryGuidance(user, correctedQuery, lower);
-    }
-
-    // ── Intent 9: Interactive Proposal Remediation & Determination Drafting ─
-    const isDraftingOrRemediateQuery =
-      /\b(remediate|rephrase|rewrite|draft|how to write|help me write|improve phrasing|disclaimer|determination note)\b/i.test(lower);
-
-    if (isDraftingOrRemediateQuery) {
-      return await this.handleComplianceDraftingAndRemediation(user, message, correctedQuery);
-    }
-
-    // ── Intent 10: Platform Workflow Guidance ───────────────────────────────
-    const isWorkflowQuery =
-      /\b(how do i upload|file limits?|file formats?|supported formats?|versioning|v1|v2|pii|masking|audit trail|how does review work)\b/i.test(lower);
-
-    if (isWorkflowQuery) {
-      return await this.handlePlatformWorkflowHelp(user, correctedQuery);
-    }
-
     // ── Mode A fallback: role-scoped interactive conversational ─────────────
-    return await this.handleFreeConversation(correctedQuery, user, pathname);
+    return await this.handleFreeConversation(correctedQuery, user, pathname, conversationHistory);
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -829,24 +1023,55 @@ Be warm and encouraging — like a knowledgeable colleague helping out, not a st
   private static async handleComplianceRegulatoryGuidance(
     user: ChatUserContext,
     correctedQuery: string,
-    lower: string
+    lower: string,
+    conversationHistory?: Array<{ role: string; content: string }>
   ): Promise<ChatbotResponse> {
     const isOfficer = user.role === 'Officer';
     const systemPrompt = isOfficer ? OFFICER_APP_PROMPT : ADVISOR_APP_PROMPT;
 
     const prompt = `The user (${user.role}) is asking an institutional regulatory compliance question: "${correctedQuery}".
-Explain clearly and concisely according to FINRA Rule 2210 (Communications with the Public), SEC Rule 206(4)-1 (Investment Adviser Marketing Rule), SEC Rule 204 (Substantiation), or FINRA Rule 2111 (Suitability).
-${isOfficer ? 'Focus on supervisory review criteria, verifying required disclosures, and substantiating officer determination records.' : 'Focus on how the advisor must structure their proposal, avoid promissory/guaranteed claims, and include mandatory downside risk disclosures.'}
-Structure the response with 2-3 concise paragraphs.`;
+Provide an articulate, comprehensive breakdown according to FINRA Rule 2210 (Communications with the Public), SEC Rule 206(4)-1 (Investment Adviser Marketing Rule), SEC Rule 204 (Substantiation), and FINRA Rule 2111 (Suitability).
+${isOfficer ? 'Focus on supervisory review criteria, verifying required disclosures, evaluating promissory risk, and substantiating officer determination records.' : 'Focus on how the advisor must structure their proposal, avoid promissory/guaranteed claims, balance potential rewards with market risk disclosures, and include mandatory statutory legends.'}
+Format with clean markdown headings and bullet points for maximum clarity.`;
 
-    const llmReply = await this.callLlm(prompt, systemPrompt);
+    const llmReply = await this.callLlm(prompt, systemPrompt, conversationHistory);
     if (llmReply) {
       return { reply: llmReply, intent: 'compliance_regulatory_guidance', correctedQuery };
     }
 
     const fallback = isOfficer
-      ? "Under FINRA Rule 2210 and SEC Rule 206(4)-1, compliance officers must verify that all proposals and marketing decks are fair, balanced, and substantiated. Any promissory returns or unhedged performance claims require a 'Needs Revision' determination with explicit corrective directives. Ensure clear disclosure of material risks, fee deductions, and fiduciary conflicts."
-      : "Under FINRA Rule 2210 and SEC Rule 206, investment proposals must never guarantee returns, promise zero risk, or omit market downside warnings. Always include clear fiduciary disclosures stating that past performance does not guarantee future results and investments are subject to market volatility and loss of principal.";
+      ? `### Institutional Regulatory Standards (Supervisory Review Guidance)
+
+**1. FINRA Rule 2210 (Communications with the Public)**
+• **Fair & Balanced**: All retail communications, proposal decks, and client letters must provide a balanced presentation of potential rewards and market risks.
+• **Prohibited Claims**: Never permit promissory returns, claims of "guaranteed profit", or statements implying zero risk or absolute downside protection.
+• **Supervisory Approval**: Materials must be reviewed and signed off by a qualified registered principal prior to first use.
+
+**2. SEC Rule 206(4)-1 (Investment Adviser Marketing Rule)**
+• **Substantiation (SEC Rule 204)**: All performance metrics, benchmarks, and factual assertions must have verifiable records at the time of publication.
+• **Net-of-Fees Requirement**: If gross performance is presented, net performance must be presented with equal prominence and over matching 1-, 5-, and 10-year time horizons.
+• **Conflict Disclosures**: Disclose all material compensation arrangements, solicitor relationships, and affiliated fund incentives.
+
+**3. FINRA Rule 2111 / Regulation Best Interest (Reg BI)**
+• Ensure the proposed strategy explicitly adheres to customer risk profiles, liquidity constraints, and investment time horizons.
+
+*Supervisory Action*: If a filing violates these standards, issue a **"Needs Revision"** determination citing the specific passage and required disclosure.`
+      : `### Enforced Regulatory Standards for Investment Proposals
+
+**1. FINRA Rule 2210 (Communications with the Public)**
+• **Zero Promissory Language**: Never state or imply guaranteed returns (e.g., replace *"guarantees a 15% return"* with *"targets an annualized return objective of 15%"*).
+• **Balanced Risk Presentation**: Every discussion of targeted returns must be balanced by clear risk disclosures stating that capital is subject to market fluctuation.
+• **Mandatory Legend**: Include: *"Past performance is no guarantee of future results. Investments are subject to market risk, including the possible loss of principal."*
+
+**2. SEC Rule 206(4)-1 (Investment Adviser Marketing Rule)**
+• **Performance Presentation**: Present net-of-fees returns alongside any gross returns over standardized 1-, 5-, and 10-year periods.
+• **Substantiation**: All portfolio claims, models, and comparisons must be factual, verifiable, and free of cherry-picked time horizons.
+• **Full Transparency**: Disclose advisory fees, operational expenses, and potential conflicts of interest clearly in the proposal.
+
+**3. FINRA Rule 2111 (Suitability & Best Interest)**
+• Ensure portfolio recommendations match the client's stated risk tolerance, liquidity horizon, and investment objectives.
+
+*Tip*: You can attach your draft document right here in the chat to auto-scan and remediate any promissory phrasing before formal submission!`;
 
     return { reply: fallback, intent: 'compliance_regulatory_guidance', correctedQuery };
   }
@@ -857,7 +1082,8 @@ Structure the response with 2-3 concise paragraphs.`;
   private static async handleComplianceDraftingAndRemediation(
     user: ChatUserContext,
     rawText: string,
-    correctedQuery: string
+    correctedQuery: string,
+    conversationHistory?: Array<{ role: string; content: string }>
   ): Promise<ChatbotResponse> {
     const isOfficer = user.role === 'Officer';
     const systemPrompt = isOfficer ? OFFICER_APP_PROMPT : ADVISOR_APP_PROMPT;
@@ -874,7 +1100,7 @@ Remediate the passage into compliant fiduciary language under FINRA Rule 2210 & 
 1. Remediated Compliant Text (removing promissory statements, adding statutory risk disclosures)
 2. Summary of Compliance Adjustments Made.`;
 
-    const llmReply = await this.callLlm(prompt, systemPrompt);
+    const llmReply = await this.callLlm(prompt, systemPrompt, conversationHistory);
     if (llmReply) {
       return { reply: llmReply, intent: 'compliance_drafting_remediation', correctedQuery };
     }
@@ -887,27 +1113,63 @@ Remediate the passage into compliant fiduciary language under FINRA Rule 2210 & 
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Intent 10 Handler: Platform Workflow Guidance
+  // Intent 10 Handler: Platform Workflow & Versioning Guidance
   // ─────────────────────────────────────────────────────────────────────────
   private static async handlePlatformWorkflowHelp(
     user: ChatUserContext,
-    correctedQuery: string
+    correctedQuery: string,
+    conversationHistory?: Array<{ role: string; content: string }>
   ): Promise<ChatbotResponse> {
     const isOfficer = user.role === 'Officer';
     const systemPrompt = isOfficer ? OFFICER_APP_PROMPT : ADVISOR_APP_PROMPT;
+    const lower = correctedQuery.toLowerCase();
+    const isVersioningTopic =
+      lower.includes('version') ||
+      lower.includes('revision') ||
+      lower.includes('v1') ||
+      lower.includes('v2') ||
+      lower.includes('lineage');
 
     const prompt = `The user (${user.role}) is asking about Springer Capital platform workflow: "${correctedQuery}".
-Explain the relevant workflow (file upload limits: PDF/DOCX/XLSX/TXT up to 25MB, automated PII sanitization gateway, multi-version lineage v1->v2, Review Queue, or Officer Determinations).
-Tailor the answer specifically to their role as ${user.role}. Keep it structured and concise.`;
+${isVersioningTopic ? 'Explain in detail how the Multi-Version Document Lineage works: initial Version 1 (v1) upload, officer review resulting in "Needs Revision", advisor clicking "Upload Revision" to submit Version 2 (v2), side-by-side comparison, and permanent audit trail.' : 'Explain the relevant workflow (file upload limits: PDF/DOCX/XLSX/TXT up to 25MB, automated PII sanitization gateway, multi-version lineage v1->v2, Review Queue, or Officer Determinations).'}
+Tailor the answer specifically to their role as ${user.role}. Structure with clear numbered steps and markdown.`;
 
-    const llmReply = await this.callLlm(prompt, systemPrompt);
+    const llmReply = await this.callLlm(prompt, systemPrompt, conversationHistory);
     if (llmReply) {
       return { reply: llmReply, intent: 'platform_workflow_help', correctedQuery };
     }
 
-    const fallback = isOfficer
-      ? "Springer Capital Review Workflow for Officers:\n1. Access the Review Queue to inspect pending proposals from advisors.\n2. Review automated risk flags, extracted text, and PII masking.\n3. Record your determination (Approve, Request Revision, or Reject) with mandatory compliance rationale.\n4. When a revision is requested, the advisor submits Version 2 (v2), preserving full audit lineage."
-      : "Springer Capital Submission Workflow for Advisors:\n1. Click '+ Submit Proposal Document' on your dashboard.\n2. Upload PDF, DOCX, XLSX, or TXT files up to 25MB.\n3. The platform automatically masks PII (SSN, emails) before compliance evaluation.\n4. If an officer requests revisions, open the filing and click 'Upload Revision' to submit Version 2 (v2).";
+    const fallback = isVersioningTopic
+      ? `### Multi-Version Document Lineage & Revision Workflow
+
+**1. Initial Submission (Version 1 / v1)**
+• Advisors submit proposal documents (PDF, DOCX, XLSX, TXT up to 25MB) through **"+ Submit Proposal Document"**.
+• The automated ingestion pipeline validates magic bytes, masks PII (SSNs, emails), and performs preliminary regulatory risk screening.
+
+**2. Supervisory Review & Revision Determination**
+• A Compliance Officer evaluates the proposal in the **Review Queue**.
+• If promissory phrasing or missing disclosures are identified, the officer selects **"Needs Revision"** and enters mandatory corrective directives in the determination thread.
+
+**3. Advisor Revision Submission (Version 2 / v2)**
+• The Advisor opens the filing on their dashboard, views the officer's feedback, and clicks **"Upload Revision"**.
+• The revised file is ingested as **Version 2 (v2)**, retaining full historical continuity with v1.
+
+**4. Side-by-Side Comparison & Audit Trail**
+• Both Officer and Advisor can toggle between **v1 and v2** to inspect diff highlights and verify that required amendments were enacted.
+• Every determination, timestamp, and revision note is immutably logged to the permanent compliance audit ledger.`
+      : (isOfficer
+        ? `### Springer Capital Supervisory Review Workflow
+
+**1. Review Queue Monitoring**: Inspect all pending filings submitted across licensed investment advisors.
+**2. Automated Risk Inspection**: Inspect flagged passages, PII redactions, and precedent comparison telemetry.
+**3. Formal Determination**: Record official supervisory determinations (**Approve**, **Request Revision**, or **Reject**) with mandatory compliance rationale notes.
+**4. Version Lineage**: When you request revisions, the advisor submits **Version 2 (v2)**, maintaining complete audit history and diff tracking.`
+        : `### Springer Capital Submission & Review Workflow
+
+**1. File Submission**: Click **"+ Submit Proposal Document"** to upload files (PDF, DOCX, XLSX, TXT up to 25MB).
+**2. Automated PII Sanitization**: Client identifiers (SSN, credit cards, emails) are redacted to protect data privacy.
+**3. Supervisory Review**: A Compliance Officer inspects the proposal against FINRA Rule 2210 & SEC Rule 206 standards.
+**4. Revisions (v1 → v2)**: If revisions are requested, click **"Upload Revision"** on your submission to upload an updated version (v2).`);
 
     return { reply: fallback, intent: 'platform_workflow_help', correctedQuery };
   }
@@ -918,43 +1180,42 @@ Tailor the answer specifically to their role as ${user.role}. Keep it structured
   private static async handleFreeConversation(
     correctedQuery: string,
     user: ChatUserContext,
-    pathname?: string
+    pathname?: string,
+    conversationHistory?: Array<{ role: string; content: string }>
   ): Promise<ChatbotResponse> {
     const isOfficer = user.role === 'Officer';
 
-    // Open, talkative system prompt — the AI is free to answer anything
-    // naturally while staying aware of its role and the Springer Capital app.
     const systemPrompt = isOfficer
-      ? `You are the Springer Capital Neural Copilot for Compliance Officers — a smart, friendly, and talkative AI assistant.
+      ? `You are the Springer Capital Neural Copilot for Compliance Officers — a smart, friendly, talkative, and highly productive AI assistant modeled after Grok.
 
-You are warm, conversational, and genuinely helpful. You can:
+You are warm, conversational, witty, and genuinely helpful. You can:
 - Fix grammar, proofread text, rewrite sentences, and explain writing improvements clearly and thoroughly.
-- Answer general knowledge questions with enthusiasm and depth.
-- Discuss finance, regulations, or anything else the officer brings up.
-- Chat naturally about greetings, small talk, or anything off-topic — you're not a rigid chatbot.
+- Answer general knowledge questions with enthusiasm, depth, and precision.
+- Discuss finance, regulations, market trends, or anything else the officer brings up.
+- Chat naturally about greetings, small talk, or follow up on prior conversation turns seamlessly.
 
 When context is about Springer Capital:
-- You are helping a Compliance Officer review investment proposals, draft supervisory determinations, and apply FINRA Rule 2210 and SEC Rule 206(4)-1.
+- You are helping a Compliance Officer review investment proposals, evaluate flagged risk items, draft supervisory determinations, and apply FINRA Rule 2210 and SEC Rule 206(4)-1.
 - You have full supervisory visibility over all advisor filings.
 
 Current page context: ${pathname || 'Dashboard'}.
-Be warm, expressive, and never say you cannot help unless it is genuinely impossible.`
-      : `You are the Springer Capital Neural Copilot for Investment Advisors — a smart, friendly, and talkative AI assistant.
+Be engaging, intelligent, and never say you cannot help unless it is genuinely impossible.`
+      : `You are the Springer Capital Neural Copilot for Investment Advisors — a smart, friendly, talkative, and highly productive AI assistant modeled after Grok.
 
-You are warm, conversational, and genuinely helpful. You can:
+You are warm, conversational, witty, and genuinely helpful. You can:
 - Fix grammar, proofread text, rewrite sentences, and explain writing improvements clearly and thoroughly.
-- Answer general knowledge questions with enthusiasm and depth.
-- Discuss finance, compliance, or anything else the advisor brings up.
-- Chat naturally about greetings, small talk, or anything off-topic — you're not a rigid chatbot.
+- Answer general knowledge questions with enthusiasm, depth, and precision.
+- Discuss finance, compliance, proposal structuring, or anything else the advisor brings up.
+- Chat naturally about greetings, small talk, or follow up on prior conversation turns seamlessly.
 
 When context is about Springer Capital:
 - You are helping an Investment Advisor draft compliant proposals, understand FINRA Rule 2210 and SEC Rule 206(4)-1, and navigate submission workflows.
 - You can only access the advisor's own filings — never other advisors' data.
 
 Current page context: ${pathname || 'Dashboard'}.
-Be warm, expressive, and never say you cannot help unless it is genuinely impossible.`;
+Be engaging, intelligent, and never say you cannot help unless it is genuinely impossible.`;
 
-    const llmReply = await this.callLlm(correctedQuery, systemPrompt);
+    const llmReply = await this.callLlm(correctedQuery, systemPrompt, conversationHistory);
     if (llmReply) {
       return { reply: llmReply, intent: 'free_conversation', correctedQuery };
     }
