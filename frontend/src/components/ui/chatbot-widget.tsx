@@ -33,7 +33,6 @@ import {
   Layers,
   ChevronDown,
   ChevronUp,
-  Minus,
   Maximize2,
   Minimize2,
 } from "lucide-react";
@@ -385,10 +384,9 @@ export function ChatbotWidget() {
   const isAuthPage = Boolean(pathname && (pathname.startsWith("/login") || pathname.startsWith("/signup")));
   const isLoginMode = !isAuthenticated || isAuthPage;
 
-  // Chatbot open, minimize, and maximize state
+  // Chatbot open and fullscreen state
   const [isOpen, setIsOpen] = useState(false);
-  const [isMinimized, setIsMinimized] = useState(false);
-  const [isMaximized, setIsMaximized] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -404,8 +402,7 @@ export function ChatbotWidget() {
   // Automatically close chatbot on route redirection or page navigation
   useEffect(() => {
     setIsOpen(false);
-    setIsMinimized(false);
-    setIsMaximized(false);
+    setIsFullscreen(false);
   }, [pathname]);
 
   // Messages state
@@ -419,8 +416,7 @@ export function ChatbotWidget() {
     setPrevIsLoginMode(isLoginMode);
     setMessages(isLoginMode ? LOGIN_INITIAL_MESSAGES : DASHBOARD_INITIAL_MESSAGES);
     setIsOpen(false);
-    setIsMinimized(false);
-    setIsMaximized(false);
+    setIsFullscreen(false);
   }
 
   const [inputValue, setInputValue] = useState("");
@@ -880,13 +876,20 @@ export function ChatbotWidget() {
   }
 
   return (
-    <div className="fixed bottom-5 right-5 z-40 print:hidden font-sans">
+    <div
+      className={cn(
+        "print:hidden font-sans",
+        isFullscreen
+          ? "fixed inset-0 z-50 p-2 sm:p-5 md:p-6 bg-black/40 backdrop-blur-xs flex items-center justify-center animate-in fade-in duration-200"
+          : "fixed bottom-5 right-5 z-40"
+      )}
+    >
       {/* Floating Trigger Button */}
       {!isOpen && (
         <button
           onClick={() => {
             setIsOpen(true);
-            setIsMinimized(false);
+            setIsFullscreen(false);
           }}
           className="flex items-center gap-2.5 bg-white hover:bg-[#FAFBFB] text-[#183028] border border-[#E6E8E7] hover:border-[#183028]/30 px-4 py-2.5 rounded-full shadow-xl shadow-[#183028]/10 text-xs font-bold transition-all hover:scale-105 active:scale-95 cursor-pointer group"
           aria-label="Open Compliance Copilot"
@@ -903,59 +906,16 @@ export function ChatbotWidget() {
         </button>
       )}
 
-      {/* Minimized Dock Bar */}
-      {isOpen && isMinimized && (
-        <div className="flex items-center gap-2.5 bg-white text-[#183028] border border-[#E6E8E7] px-3.5 py-2 rounded-2xl shadow-xl shadow-[#183028]/10 text-xs font-bold transition-all animate-in fade-in slide-in-from-bottom-2 duration-150">
-          <button
-            onClick={() => setIsMinimized(false)}
-            className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
-          >
-            <div className="relative h-6 w-6 rounded-lg bg-[#C5E86C]/30 border border-[#b4db53] flex items-center justify-center text-[#183028]">
-              <Bot className="h-3.5 w-3.5 text-[#183028]" />
-              <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            </div>
-            <span className="tracking-tight text-[#183028] text-xs font-bold">
-              {isLoginMode ? "Compliance Help" : "Neural Copilot"}
-            </span>
-            <span className="text-[8.5px] px-1.5 py-0.5 rounded font-extrabold uppercase bg-[#C5E86C] text-[#183028] border border-[#b4db53]">
-              Minimized
-            </span>
-          </button>
-          <div className="flex items-center gap-0.5 ml-1 pl-2 border-l border-[#E6E8E7]">
-            <button
-              onClick={() => setIsMinimized(false)}
-              className="p-1 rounded-md text-[#183028]/60 hover:text-[#183028] hover:bg-[#FAFBFB] cursor-pointer"
-              title="Restore window"
-              aria-label="Restore window"
-            >
-              <ChevronUp className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={() => {
-                setIsOpen(false);
-                setIsMinimized(false);
-                setIsMaximized(false);
-              }}
-              className="p-1 rounded-md text-[#183028]/60 hover:text-rose-600 hover:bg-rose-50 cursor-pointer"
-              title="Close"
-              aria-label="Close copilot window"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Main Chatbot Window */}
-      {isOpen && !isMinimized && (
+      {isOpen && (
         <div
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           className={cn(
-            "relative rounded-2xl flex flex-col overflow-hidden text-xs bg-white border border-[#E6E8E7] shadow-2xl transition-all duration-200",
-            isMaximized
-              ? "w-[94vw] sm:w-[860px] md:w-[980px] h-[90vh] max-h-[92vh] max-w-[96vw]"
+            "relative rounded-2xl flex flex-col overflow-hidden text-xs bg-white border border-[#E6E8E7] shadow-2xl transition-all duration-200 animate-in fade-in zoom-in-95",
+            isFullscreen
+              ? "w-full h-full max-w-6xl max-h-[96vh]"
               : "w-[380px] sm:w-[500px] h-[640px] max-h-[85vh]",
             isDragging && "ring-2 ring-[#C5E86C] border-[#183028]"
           )}
@@ -976,13 +936,11 @@ export function ChatbotWidget() {
           <ChatHeader
             isLoginMode={isLoginMode}
             role={session?.role}
-            isMaximized={isMaximized}
-            onToggleMaximize={() => setIsMaximized((prev) => !prev)}
-            onMinimize={() => setIsMinimized(true)}
+            isFullscreen={isFullscreen}
+            onToggleFullscreen={() => setIsFullscreen((prev) => !prev)}
             onClose={() => {
               setIsOpen(false);
-              setIsMinimized(false);
-              setIsMaximized(false);
+              setIsFullscreen(false);
             }}
           />
 
@@ -1230,18 +1188,16 @@ export function ChatbotWidget() {
 interface IChatHeaderProps {
   isLoginMode: boolean;
   role?: string;
-  isMaximized: boolean;
-  onToggleMaximize: () => void;
-  onMinimize: () => void;
+  isFullscreen: boolean;
+  onToggleFullscreen: () => void;
   onClose: () => void;
 }
 
 function ChatHeader({
   isLoginMode,
   role,
-  isMaximized,
-  onToggleMaximize,
-  onMinimize,
+  isFullscreen,
+  onToggleFullscreen,
   onClose,
 }: IChatHeaderProps) {
   return (
@@ -1261,6 +1217,11 @@ function ChatHeader({
                 {role}
               </span>
             )}
+            {isFullscreen && (
+              <span className="text-[8.5px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider bg-[#183028] text-white">
+                Fullscreen
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-1.5 text-[9.5px] text-[#183028]/70 mt-0.5 font-medium">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
@@ -1269,28 +1230,24 @@ function ChatHeader({
         </div>
       </div>
 
-      <div className="flex items-center gap-1">
-        {/* Minimize Button */}
+      <div className="flex items-center gap-1.5">
+        {/* Fullscreen / Back to Normal Button */}
         <button
-          onClick={onMinimize}
-          className="p-1.5 rounded-lg text-[#183028]/60 hover:text-[#183028] hover:bg-[#FAFBFB] transition-colors cursor-pointer"
-          aria-label="Minimize copilot window"
-          title="Minimize"
+          onClick={onToggleFullscreen}
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[#183028] hover:bg-[#FAFBFB] bg-[#FAFBFB]/70 border border-[#E6E8E7] hover:border-[#183028]/30 transition-all cursor-pointer font-bold text-[10px] shadow-2xs"
+          aria-label={isFullscreen ? "Back to normal chatbot size" : "Expand chatbot to fullscreen"}
+          title={isFullscreen ? "Back to normal size" : "Fullscreen mode"}
         >
-          <Minus className="h-3.5 w-3.5" />
-        </button>
-
-        {/* Maximize / Restore Button */}
-        <button
-          onClick={onToggleMaximize}
-          className="p-1.5 rounded-lg text-[#183028]/60 hover:text-[#183028] hover:bg-[#FAFBFB] transition-colors cursor-pointer"
-          aria-label={isMaximized ? "Restore window size" : "Maximize copilot window"}
-          title={isMaximized ? "Restore down" : "Maximize"}
-        >
-          {isMaximized ? (
-            <Minimize2 className="h-3.5 w-3.5" />
+          {isFullscreen ? (
+            <>
+              <Minimize2 className="h-3.5 w-3.5 text-[#183028]" />
+              <span>Back to normal</span>
+            </>
           ) : (
-            <Maximize2 className="h-3.5 w-3.5" />
+            <>
+              <Maximize2 className="h-3.5 w-3.5 text-[#183028]" />
+              <span>Fullscreen</span>
+            </>
           )}
         </button>
 
