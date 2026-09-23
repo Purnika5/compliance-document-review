@@ -1,6 +1,6 @@
 import React, { useSyncExternalStore } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { authStore, type UserSession } from "@/lib/auth/auth-store";
 import { CompanyLogo } from "@/components/ui/brand-logos";
 import { cn } from "@/lib/utils";
@@ -10,18 +10,23 @@ import {
   ChevronRight,
   Settings,
   History,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 
 export interface AppSidebarProps {
   isOpenMobile?: boolean;
   onCloseMobile?: () => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 export function AppSidebar({
   isOpenMobile = false,
   onCloseMobile,
+  isCollapsed = false,
+  onToggleCollapse,
 }: AppSidebarProps) {
-  const router = useRouter();
   const pathname = usePathname();
   const session = useSyncExternalStore<UserSession | null>(
     authStore.subscribe,
@@ -103,19 +108,47 @@ export function AppSidebar({
       {/* Sidebar Container */}
       <aside
         className={cn(
-          "fixed top-0 bottom-0 left-0 z-50 w-64 bg-[#FFFFFF] border-r border-[#E6E8E7] flex flex-col shadow-xs transition-transform duration-200 ease-in-out lg:translate-x-0 pointer-events-auto",
-          isOpenMobile ? "translate-x-0" : "-translate-x-full"
+          "fixed top-0 bottom-0 left-0 z-50 flex flex-col bg-[#FFFFFF] border-r border-[#E6E8E7] shadow-xs transition-all duration-300 ease-in-out pointer-events-auto",
+          // Mobile: slide in/out
+          isOpenMobile ? "translate-x-0" : "-translate-x-full",
+          // Desktop: always visible, width depends on collapse state
+          isCollapsed ? "lg:translate-x-0 lg:w-16" : "lg:translate-x-0 lg:w-64",
+          // Mobile always full width
+          "w-64"
         )}
       >
         {/* Brand Header */}
-        <div className="h-16 px-4 border-b border-[#E6E8E7] flex items-center justify-between gap-2 bg-[#FFFFFF]">
-          <Link href="/" className="flex items-center gap-2.5 min-w-0">
+        <div className="h-16 px-4 border-b border-[#E6E8E7] flex items-center justify-between gap-2 bg-[#FFFFFF] shrink-0 overflow-hidden">
+          <Link
+            href="/"
+            className={cn(
+              "flex items-center gap-2.5 min-w-0 transition-all duration-300",
+              isCollapsed ? "lg:opacity-0 lg:pointer-events-none lg:w-0 lg:overflow-hidden" : "opacity-100"
+            )}
+          >
             <CompanyLogo inverted={false} />
           </Link>
+
+          {/* Collapse Toggle — desktop only */}
+          <button
+            onClick={onToggleCollapse}
+            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className={cn(
+              "hidden lg:flex items-center justify-center h-7 w-7 rounded-lg text-[#183028]/60 hover:text-[#183028] hover:bg-[#C5E86C]/20 transition-all duration-150 cursor-pointer shrink-0",
+              isCollapsed && "mx-auto"
+            )}
+          >
+            {isCollapsed ? (
+              <PanelLeftOpen className="h-4 w-4" />
+            ) : (
+              <PanelLeftClose className="h-4 w-4" />
+            )}
+          </button>
         </div>
 
         {/* Navigation Links */}
-        <div className="flex-1 py-3 px-3 overflow-y-auto space-y-1.5">
+        <div className="flex-1 py-3 px-2 overflow-y-auto space-y-1.5">
           {navItems.map((item, idx) => {
             const Icon = item.icon;
 
@@ -127,13 +160,26 @@ export function AppSidebar({
                     if (onCloseMobile) onCloseMobile();
                     item.action?.();
                   }}
-                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-[#183028] hover:bg-[#C5E86C]/20 transition-all cursor-pointer text-left group"
+                  title={isCollapsed ? item.label : undefined}
+                  className={cn(
+                    "w-full flex items-center px-2 py-2.5 rounded-xl text-xs font-semibold text-[#183028] hover:bg-[#C5E86C]/20 transition-all cursor-pointer text-left group",
+                    isCollapsed ? "lg:justify-center" : "justify-between"
+                  )}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className={cn("flex items-center gap-3", isCollapsed && "lg:gap-0")}>
                     <Icon className="h-4 w-4 shrink-0 text-[#183028]/70 group-hover:text-[#183028] transition-colors" />
-                    <span>{item.label}</span>
+                    <span
+                      className={cn(
+                        "truncate transition-all duration-300 overflow-hidden",
+                        isCollapsed ? "lg:w-0 lg:opacity-0" : "w-auto opacity-100"
+                      )}
+                    >
+                      {item.label}
+                    </span>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-[#183028]/50 group-hover:text-[#183028] group-hover:translate-x-0.5 transition-all" />
+                  {!isCollapsed && (
+                    <ChevronRight className="h-4 w-4 text-[#183028]/50 group-hover:text-[#183028] group-hover:translate-x-0.5 transition-all shrink-0 hidden lg:block" />
+                  )}
                 </button>
               );
             }
@@ -145,37 +191,48 @@ export function AppSidebar({
                 onClick={() => {
                   if (onCloseMobile) onCloseMobile();
                 }}
+                title={isCollapsed ? item.label : undefined}
                 className={cn(
-                  "group flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all duration-150 cursor-pointer select-none",
+                  "group flex items-center px-2 py-2.5 rounded-xl text-xs transition-all duration-150 cursor-pointer select-none",
+                  isCollapsed ? "lg:justify-center" : "justify-between",
                   item.active
                     ? "bg-[#C5E86C] text-[#183028] font-bold shadow-xs"
                     : "text-[#183028] font-semibold hover:bg-[#C5E86C]/20"
                 )}
               >
-                <div className="flex items-center gap-3">
+                <div className={cn("flex items-center gap-3", isCollapsed && "lg:gap-0")}>
                   <Icon
                     className={cn(
                       "h-4 w-4 shrink-0 transition-colors",
                       item.active ? "text-[#183028]" : "text-[#183028]/70 group-hover:text-[#183028]"
                     )}
                   />
-                  <span className="truncate">{item.label}</span>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {item.badge && (
-                    <span className="px-1.5 py-0.2 text-[10px] font-bold rounded border border-[#E6E8E7] bg-[#FFFFFF] text-[#183028]">
-                      {item.badge}
-                    </span>
-                  )}
-                  <ChevronRight
+                  <span
                     className={cn(
-                      "h-4 w-4 transition-all",
-                      item.active
-                        ? "text-[#183028]"
-                        : "text-[#183028]/40 group-hover:text-[#183028] group-hover:translate-x-0.5"
+                      "truncate transition-all duration-300 overflow-hidden",
+                      isCollapsed ? "lg:w-0 lg:opacity-0" : "w-auto opacity-100"
                     )}
-                  />
+                  >
+                    {item.label}
+                  </span>
                 </div>
+                {!isCollapsed && (
+                  <div className="flex items-center gap-1.5 shrink-0 hidden lg:flex">
+                    {item.badge && (
+                      <span className="px-1.5 py-0.2 text-[10px] font-bold rounded border border-[#E6E8E7] bg-[#FFFFFF] text-[#183028]">
+                        {item.badge}
+                      </span>
+                    )}
+                    <ChevronRight
+                      className={cn(
+                        "h-4 w-4 transition-all",
+                        item.active
+                          ? "text-[#183028]"
+                          : "text-[#183028]/40 group-hover:text-[#183028] group-hover:translate-x-0.5"
+                      )}
+                    />
+                  </div>
+                )}
               </Link>
             );
           })}

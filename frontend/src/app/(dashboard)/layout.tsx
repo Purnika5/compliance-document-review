@@ -10,7 +10,7 @@ import { Loader2 } from "lucide-react";
 /**
  * DOCU: Provides the authenticated dashboard shell with navigation and copilot access.
  * Enforces session authentication guard across all protected dashboard routes.
- * Last Updated Date: September 21, 2026
+ * Last Updated Date: September 24, 2026
  * @param children - Rendered dashboard route content.
  * @returns The dashboard layout or loading spinner while verifying authentication.
  * @author Keith
@@ -19,6 +19,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const [isClient, setIsClient] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const session = useSyncExternalStore<UserSession | null>(
     authStore.subscribe,
@@ -31,7 +32,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (!authStore.isAuthenticated()) {
       router.replace("/login");
     }
+    // Restore collapse preference from localStorage
+    const saved = localStorage.getItem("sidebar-collapsed");
+    if (saved === "true") setSidebarCollapsed(true);
   }, [session, router]);
+
+  const handleToggleCollapse = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem("sidebar-collapsed", String(next));
+      return next;
+    });
+  };
 
   // Prevent flashing protected content before authentication is verified
   if (!isClient || !session) {
@@ -49,11 +61,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <AppSidebar
           isOpenMobile={mobileSidebarOpen}
           onCloseMobile={() => setMobileSidebarOpen(false)}
+          isCollapsed={sidebarCollapsed}
+          onToggleCollapse={handleToggleCollapse}
         />
       </div>
 
-      {/* Main Workspace Area (offset by 64 / 16rem on desktop) */}
-      <div className="flex-1 flex flex-col min-w-0 lg:pl-64 print:pl-0 print:m-0 print:w-full">
+      {/* Main Workspace Area — offset shifts based on collapse state */}
+      <div
+        className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out print:pl-0 print:m-0 print:w-full ${
+          sidebarCollapsed ? "lg:pl-16" : "lg:pl-64"
+        }`}
+      >
         {/* App Top Header */}
         <div className="print:hidden">
           <AppHeader onToggleSidebarMobile={() => setMobileSidebarOpen((prev) => !prev)} />
@@ -64,7 +82,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {children}
         </main>
       </div>
-
     </div>
   );
 }
