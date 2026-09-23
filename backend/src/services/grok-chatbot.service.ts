@@ -512,14 +512,14 @@ Keep the tone warm — like a helpful colleague reviewing a draft, not a strict 
   // Intent 4 Handler: Officer Filter Uploads by Year
   // ─────────────────────────────────────────────────────────────────────────
   private static async handleOfficerFilterByYearIntent(
-    lower: string,
-    correctedQuery: string
+    correctedQuery: string,
+    lower: string
   ): Promise<ChatbotResponse> {
     // Extract year
     const yearMatch = correctedQuery.match(/\b(20\d\d)\b/);
     if (!yearMatch) {
       return {
-        reply: "Which year would you like to filter the uploads by?",
+        reply: "Which year do you want me to filter by?",
         intent: 'officer_filter_by_year',
         isClarification: true,
         correctedQuery,
@@ -571,24 +571,27 @@ Keep the tone warm — like a helpful colleague reviewing a draft, not a strict 
     const res = await query<any>(sql, params);
 
     if (res.rows.length === 0) {
-      const advNotice = advisorFilter ? ` for advisor "${advisorFilter}"` : '';
+      const advPart = advisorFilter ? ` for "${advisorFilter}"` : '';
       return {
-        reply: `No documents were found in the database for the year ${targetYear}${advNotice}.`,
+        reply: `I couldn't find any documents from ${targetYear}${advPart}. Want me to try a different year?`,
         intent: 'officer_filter_by_year',
         correctedQuery,
       };
     }
 
-    const lines = res.rows.map((doc: any, idx: number) => {
+    const docLines = res.rows.map((doc: any) => {
       const dateStr = new Date(doc.created_at).toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
         year: 'numeric',
       });
-      return `${idx + 1}. **${doc.title}** — Advisor: ${doc.advisor_name} — Date: ${dateStr}`;
-    });
+      return `- Title: "${doc.title}" | Advisor: ${doc.advisor_name} | Date: ${dateStr}`;
+    }).join('\n');
 
-    const reply = `**Uploads for ${targetYear}** (${res.rows.length} document${res.rows.length > 1 ? 's' : ''}):\n\n${lines.join('\n')}`;
+    const dbSummary = `${res.rows.length} document(s) found for ${targetYear}:\n${docLines}`;
+    const fallback = `**Documents from ${targetYear}** (${res.rows.length} found):\n\n${docLines}`;
+
+    const reply = await this.formatDbResultWithLlm(dbSummary, correctedQuery, 'Officer', fallback);
     return { reply, intent: 'officer_filter_by_year', correctedQuery };
   }
 
