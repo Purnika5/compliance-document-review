@@ -38,7 +38,9 @@ services:
       - key: SUPABASE_JWKS_URL
         value: https://wpvchfdjirdxtcxorzjb.supabase.co/auth/v1/.well-known/jwks.json
       - key: DATABASE_URL
-        sync: postgresql://postgres:x5dU6l1vSxvpmA2G@db.wpvchfdjirdxtcxorzjb.supabase.co:5432/postgres
+        value: postgresql://postgres:x5dU6l1vSxvpmA2G@db.wpvchfdjirdxtcxorzjb.supabase.co:5432/postgres
+      - key: SKIP_MIGRATIONS
+        value: "false"
       - key: GEMINI_API_KEY
         value: AQ.Ab8RN6K25AMITEVj7ZHf0vuU86-YQzdmYfj6uRfe7q-1EqEW9w
 

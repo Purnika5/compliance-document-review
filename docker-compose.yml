@@ -58,12 +58,8 @@ services:
     environment:
       PORT: 5000
       NODE_ENV: production
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: ${DB_NAME:-compliance_doc_review}
-      DB_USER: ${DB_USER:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-postgres}
-      DB_SSL: "false"
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:x5dU6l1vSxvpmA2G@db.wpvchfdjirdxtcxorzjb.supabase.co:5432/postgres}
+      DB_SSL: "true"
       JWT_SECRET: ${JWT_SECRET:-super-secret-compliance-jwt-key-change-in-production-2026!}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       UPLOAD_DIR: uploads/documents
@@ -74,8 +70,6 @@ services:
     volumes:
       - backend_uploads:/app/uploads/documents
     depends_on:
-      postgres:
-        condition: service_healthy
       mock-ai-api:
         condition: service_started
       pii-masker:
