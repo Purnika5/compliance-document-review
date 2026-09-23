@@ -58,7 +58,7 @@ services:
     environment:
       PORT: 5000
       NODE_ENV: production
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:x5dU6l1vSxvpmA2G@db.wpvchfdjirdxtcxorzjb.supabase.co:5432/postgres}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:x5dU6l1vSxvpmA2G@db.wpvchfdjirdxtcxorzjb.supabase.co:5432/postgres?sslmode=require}
       DB_SSL: "true"
       JWT_SECRET: ${JWT_SECRET:-super-secret-compliance-jwt-key-change-in-production-2026!}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
