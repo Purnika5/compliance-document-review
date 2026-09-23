@@ -5,7 +5,7 @@ import crypto from 'crypto';
 export const pool = new Pool(config.db);
 
 let memAdapterPool: any = null;
-let useMemFallback = process.env.NODE_ENV === 'test';
+let useMemFallback = false;
 
 export const isMemFallbackActive = (): boolean => useMemFallback;
 
