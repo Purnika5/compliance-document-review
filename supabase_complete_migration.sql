@@ -1,7 +1,7 @@
 -- ==========================================================================
 -- COMPLETE SPRINGER CAPITAL COMPLIANCE DATABASE SCHEMA FOR SUPABASE
 -- Project: wpvchfdjirdxtcxorzjb
--- Generated: 2026-09-23
+-- Generated: 2026-09-23 (Standard PostgreSQL schema - Vector-free)
 -- Instructions:
 -- 1. Open Supabase Dashboard: https://supabase.com/dashboard/project/wpvchfdjirdxtcxorzjb/sql/new
 -- 2. Paste this entire script into the SQL Editor
@@ -141,69 +141,7 @@ CREATE INDEX IF NOT EXISTS idx_document_analyses_doc_ver ON document_analyses(do
 
 
 -- ==========================================================
--- Migration: 005_vector_store.sql
--- ==========================================================
--- Migration 005: pgvector store for Compliance Rules, Precedents, and Document Passages
-
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-CREATE EXTENSION IF NOT EXISTS vector;
-
--- Compliance rules corpus (used by Rule Retrieval)
-CREATE TABLE IF NOT EXISTS rules (
-    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    rule_code       VARCHAR(50) NOT NULL UNIQUE,
-    title           VARCHAR(255) NOT NULL,
-    description     TEXT NOT NULL,
-    embedding       VECTOR(128) NOT NULL,
-    created_at      TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_rules_embedding
-    ON rules USING ivfflat (embedding vector_cosine_ops) WITH (lists = 10);
-
--- Past documents / decisions corpus (used by Precedent Search)
-CREATE TABLE IF NOT EXISTS precedent_decisions (
-    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    document_id     UUID REFERENCES documents(id) ON DELETE CASCADE,
-    passage         TEXT NOT NULL,
-    outcome         VARCHAR(20) NOT NULL CHECK (outcome IN ('flagged', 'cleared')),
-    explanation     TEXT NOT NULL,
-    embedding       VECTOR(128) NOT NULL,
-    created_at      TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_precedent_decisions_embedding
-    ON precedent_decisions USING ivfflat (embedding vector_cosine_ops) WITH (lists = 10);
-
-CREATE INDEX IF NOT EXISTS idx_precedent_decisions_document
-    ON precedent_decisions(document_id);
-
--- Document passages ingested from submitted documents (used for Absence Detection)
-CREATE TABLE IF NOT EXISTS document_passages (
-    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    document_id     UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
-    version         INT NOT NULL,
-    passage         TEXT NOT NULL,
-    embedding       VECTOR(128) NOT NULL,
-    created_at      TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_document_passages_embedding
-    ON document_passages USING ivfflat (embedding vector_cosine_ops) WITH (lists = 10);
-
-CREATE INDEX IF NOT EXISTS idx_document_passages_document
-    ON document_passages(document_id, version);
-
--- Required disclosures subset for Absence Detection
-CREATE TABLE IF NOT EXISTS required_disclosures (
-    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    rule_id         UUID NOT NULL REFERENCES rules(id) ON DELETE CASCADE,
-    description     TEXT NOT NULL
-);
-
-
--- ==========================================================
--- Migration: 006_user_quotas.sql
+-- Migration: 005_user_quotas.sql
 -- ==========================================================
 -- User quota tracking table for Advisor-side rate limiting
 -- File analyses: 2 per 4-day period | Chat messages: 20 per 4-day period
@@ -235,8 +173,7 @@ INSERT INTO schema_migrations (migration_name) VALUES ('001_initial_schema.sql')
 INSERT INTO schema_migrations (migration_name) VALUES ('002_versioning_and_revisions.sql') ON CONFLICT (migration_name) DO NOTHING;
 INSERT INTO schema_migrations (migration_name) VALUES ('003_audit_trail_and_notifications.sql') ON CONFLICT (migration_name) DO NOTHING;
 INSERT INTO schema_migrations (migration_name) VALUES ('004_document_analysis.sql') ON CONFLICT (migration_name) DO NOTHING;
-INSERT INTO schema_migrations (migration_name) VALUES ('005_vector_store.sql') ON CONFLICT (migration_name) DO NOTHING;
-INSERT INTO schema_migrations (migration_name) VALUES ('006_user_quotas.sql') ON CONFLICT (migration_name) DO NOTHING;
+INSERT INTO schema_migrations (migration_name) VALUES ('005_user_quotas.sql') ON CONFLICT (migration_name) DO NOTHING;
 
 -- ==========================================================
 -- Seed Institutional Users (Password is: Password123!)

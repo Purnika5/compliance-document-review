@@ -39,7 +39,7 @@ export const hasExistingTables = async (): Promise<{ exists: boolean; tables: st
       SELECT table_name 
       FROM information_schema.tables 
       WHERE table_schema = 'public' 
-        AND table_name IN ('users', 'documents', 'schema_migrations', 'rules', 'document_revisions', 'audit_trail', 'notifications')
+        AND table_name IN ('users', 'documents', 'schema_migrations', 'document_revisions', 'audit_trail', 'notifications', 'user_quotas')
     `);
     const tables: string[] = res.rows.map((r: any) => r.table_name);
 
@@ -65,63 +65,63 @@ export const hasExistingTables = async (): Promise<{ exists: boolean; tables: st
  * Determines whether database migrations should be skipped.
  */
 export const shouldSkipMigrations = async (): Promise<{ skip: boolean; reason?: string }> => {
-  // 0. ALWAYS run if the database is completely empty — nothing to protect.
-  //    This fires first before any env flags, ensuring a fresh Supabase project gets its schema.
-  try {
-    const { publicCount } = await hasExistingTables();
-    if (publicCount === 0) {
-      console.log('[Migration] Database is empty (0 public tables). Running initial schema setup regardless of env flags.');
-      return { skip: false };
-    }
-  } catch (emptyCheckErr: any) {
-    // If we can't even query information_schema, try to run migrations anyway
-    console.warn('[Migration] Could not inspect table count, proceeding with migrations:', emptyCheckErr?.message);
-    return { skip: false };
-  }
-
-  // 1. Explicit opt-out flags — only honoured when tables already exist
+  // 1. Explicit opt-out flags via environment variables
   if (
     process.env.SKIP_MIGRATIONS === 'true' ||
     process.env.RUN_MIGRATIONS === 'false' ||
-    process.env.DISABLE_MIGRATIONS === 'true' ||
-    process.env.SUPABASE_EXISTING_DB === 'true'
+    process.env.DISABLE_MIGRATIONS === 'true'
   ) {
     return {
       skip: true,
-      reason: 'Migrations skipped via environment flag (SKIP_MIGRATIONS / RUN_MIGRATIONS=false / SUPABASE_EXISTING_DB). Tables already exist so data is safe.'
+      reason: 'Migrations skipped via configuration flag (SKIP_MIGRATIONS / RUN_MIGRATIONS=false / DISABLE_MIGRATIONS).'
     };
   }
 
-  // 2. Supabase detected with existing tables — skip to prevent data loss on deploys.
-  if (isSupabaseDatabase()) {
+  if (process.env.SUPABASE_EXISTING_DB === 'true') {
     return {
       skip: true,
-      reason:
-        'Supabase database detected with existing tables. Automated migrations are disabled to protect production data. ' +
-        'Apply schema changes manually via the Supabase SQL Editor or Supabase CLI. ' +
-        'To override (dangerous), set FORCE_MIGRATIONS=true.'
+      reason: 'Migrations bypassed because SUPABASE_EXISTING_DB=true is configured.'
     };
   }
 
-  // 3. Allow unit tests and in-memory fallbacks to run migrations freely
-  if (process.env.NODE_ENV === 'test' || isMemFallbackActive()) {
+  // 2. Allow unit tests to run migrations freely
+  if (process.env.NODE_ENV === 'test') {
     return { skip: false };
   }
 
-  // 4. Non-Supabase: check if core tables already exist to avoid re-running on restart
+  // 3. Inspect existing tables in the database
   try {
-    const { tables } = await hasExistingTables();
+    const { exists, tables, publicCount } = await hasExistingTables();
+
+    // If completely empty, always run migrations to initialize schema
+    if (publicCount === 0 && !exists) {
+      console.log('[Migration] Database is empty (0 public tables). Running initial schema setup.');
+      return { skip: false };
+    }
+
+    // Supabase detected with existing tables — skip to prevent data loss on deploys
+    if (isSupabaseDatabase()) {
+      if (tables.length > 0 || publicCount > 0) {
+        return {
+          skip: true,
+          reason: `Existing database in Supabase detected (found ${tables.join(', ') || publicCount + ' tables'}). Automated migrations are disabled to protect production data. Apply schema changes manually via the Supabase SQL Editor or Supabase CLI. To override (dangerous), set FORCE_MIGRATIONS=true.`
+        };
+      }
+    }
+
+    // Non-Supabase: core tables already present with migration history
     if (tables.includes('users') && tables.includes('documents') && tables.includes('schema_migrations')) {
       return {
         skip: true,
         reason: `Core tables already present with migration history (found: ${tables.join(', ')}). Skipping to avoid re-running applied migrations.`
       };
     }
-    // Core tables exist but no migration tracker — pre-existing DB, skip to be safe
+
+    // Core tables exist but no migration tracker
     if (tables.includes('users') && tables.includes('documents') && !tables.includes('schema_migrations')) {
       return {
         skip: true,
-        reason: 'Core tables (users, documents) found without schema_migrations tracker. Skipping to prevent collision on pre-existing database.'
+        reason: 'Existing database with core tables (users, documents) detected without migration history table. Bypassing migrations to prevent table collision.'
       };
     }
   } catch (checkErr: any) {
@@ -170,35 +170,16 @@ export const runMigrations = async (): Promise<void> => {
       
       const client = await pool.connect();
       try {
-        let hasVector = false;
-        try {
-          const extRes = await client.query("SELECT 1 FROM pg_available_extensions WHERE name = 'vector'");
-          hasVector = extRes.rows.length > 0;
-        } catch {
-          hasVector = false;
-        }
-
         await client.query('BEGIN');
         
-        let processedSql = sql;
-        if (!hasVector || process.env.NODE_ENV === 'test' || isMemFallbackActive()) {
-          // Remove vector extension creation and fallback VECTOR(dim) to TEXT
-          processedSql = processedSql
-            .replace(/CREATE\s+EXTENSION\s+IF\s+NOT\s+EXISTS\s+vector\s*;/gi, '')
-            .replace(/VECTOR\(\d+\)/gi, 'TEXT');
-        }
-
         // Split statements and execute
-        const statements = processedSql
+        const statements = sql
           .split(';')
           .map((s) => s.trim())
           .filter((s) => s.length > 0);
 
         for (const stmt of statements) {
           const lower = stmt.toLowerCase();
-          if ((!hasVector || process.env.NODE_ENV === 'test' || isMemFallbackActive()) && lower.includes('using ivfflat')) {
-            continue;
-          }
           if ((process.env.NODE_ENV === 'test' || isMemFallbackActive()) && lower.includes('create extension')) {
             continue;
           }
@@ -207,20 +188,9 @@ export const runMigrations = async (): Promise<void> => {
           } catch (stmtErr) {
             if (
               lower.includes('create extension') ||
-              lower.includes('using ivfflat') ||
-              lower.includes('vector(') ||
               (stmtErr as any)?.message?.includes('Extension does not exist') ||
               (stmtErr as any)?.message?.includes('pg-mem')
             ) {
-              // If VECTOR type table creation failed in pg-mem, attempt sanitized schema replacing VECTOR(128) with TEXT
-              if (lower.includes('create table') && lower.includes('vector(')) {
-                try {
-                  const sanitizedStmt = stmt.replace(/VECTOR\(\d+\)/gi, 'TEXT');
-                  await client.query(sanitizedStmt);
-                } catch (fallbackErr) {
-                  // Ignore fallback failure in pg-mem mode
-                }
-              }
               continue;
             }
             throw stmtErr;
