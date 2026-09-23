@@ -465,17 +465,11 @@ Return ONLY valid JSON — no prose outside the JSON object:
       const disclaimer =
         '\n\nInstitutional Regulatory Disclosure (FINRA Rule 2210 / SEC Rule 206): Past performance does not guarantee future results. Investments are subject to market risks, including the possible loss of principal. Securities offered through Springer Capital Compliance Platform.';
       remediated += disclaimer;
-      if (breakdown.length === 0) {
-        breakdown.push({
-          rule: 'FINRA Rule 2210 & SEC Rule 206 Disclosures',
-          original_passage: 'Document lacked mandatory fiduciary risk warning.',
-          issue: 'Absence of institutional risk suitability disclaimer.',
-          fixed_passage: disclaimer.trim(),
-          reason: 'Appended required statutory risk disclosure.',
-          category: 'MISSING_DISCLOSURE',
-        });
-      }
+      // Only add a flag if the regex patterns above actually found a real violation.
+      // Do NOT inject a fabricated generic flag for every document — that would
+      // display "Missing standard statutory risk disclosure" even on compliant docs.
     }
+
 
     const titleBase = path.parse(filename).name;
     const cleanTitle = `${titleBase.replace(/[_-]/g, ' ')} (Compliance Remediated)`;
