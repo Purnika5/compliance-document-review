@@ -468,20 +468,44 @@ Return ONLY valid JSON — no prose outside the JSON object:
       }
     }
 
-    if (!remediated.toLowerCase().includes('loss of principal')) {
+    // === Smart Missing Disclosure Detection ===
+    // Only flag a missing risk disclosure when the document is substantively financial
+    // (i.e., it discusses returns, investments, performance, or strategies) and genuinely
+    // omits a statutory downside / past-performance warning.
+    const lowerRemediated = remediated.toLowerCase();
+    const isFinancialDocument =
+      /\b(return|invest|portfolio|fund|capital|allocation|performance|yield|strategy|advisor|advisory|proposal|equit|bond|asset)\b/.test(lowerRemediated);
+
+    if (isFinancialDocument && !lowerRemediated.includes('loss of principal') && !lowerRemediated.includes('past performance')) {
+      // Locate the closest investment-claim sentence to use as the real original passage
+      const sentencePattern = /[^.!?\n]{20,}(?:return|yield|performance|profit|gain|invest)[^.!?\n]{0,200}[.!?]/gi;
+      const claimMatches: string[] = [];
+      let sm: RegExpExecArray | null;
+      while ((sm = sentencePattern.exec(text)) !== null && claimMatches.length < 2) {
+        const candidate = sm[0].trim();
+        if (candidate.length > 20) claimMatches.push(candidate);
+      }
+
+      const anchorPassage =
+        claimMatches.length > 0
+          ? claimMatches.join(' … ')
+          : text.trim().slice(0, 220).replace(/\s+/g, ' ');  // fallback: first 220 chars of real document
+
       const disclaimer =
         '\n\nInstitutional Regulatory Disclosure (FINRA Rule 2210 / SEC Rule 206): Past performance does not guarantee future results. Investments are subject to market risks, including the possible loss of principal. Securities offered through Springer Capital Compliance Platform.';
       remediated += disclaimer;
-      if (breakdown.length > 0) {
-        breakdown.push({
-          rule: 'FINRA Rule 2210 / SEC Rule 206(4)-1',
-          original_passage: '[Missing statutory risk warning in draft text]',
-          issue: 'Omission of mandatory downside risk and past performance disclosure.',
-          fixed_passage: 'Past performance does not guarantee future results. Investments are subject to market risks, including the possible loss of principal.',
-          reason: 'Statutory requirement for all financial communications and advisory proposals under SEC Rule 206 and FINRA Rule 2210.',
-          category: 'MISSING_DISCLOSURE',
-        });
-      }
+
+      breakdown.push({
+        rule: 'FINRA Rule 2210 / SEC Rule 206(4)-1',
+        original_passage: anchorPassage,
+        issue:
+          'Document contains investment performance or return language but omits the mandatory statutory past-performance and downside-risk disclosure required for all investor-facing communications.',
+        fixed_passage:
+          'Past performance does not guarantee future results. Investments are subject to market risks, including the possible loss of principal.',
+        reason:
+          'SEC Rule 206(4)-1 and FINRA Rule 2210 require all advisory communications that discuss returns, yield, or performance to include a conspicuous downside risk and past-performance caveat.',
+        category: 'MISSING_DISCLOSURE',
+      });
     }
 
 
