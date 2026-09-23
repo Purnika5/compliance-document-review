@@ -1164,14 +1164,17 @@ function ChatHeader({ isLoginMode, role, onClose }: IChatHeaderProps) {
         <div>
           <div className="flex items-center gap-1.5">
             <h3 className="font-bold text-[#183028] tracking-tight">
-              {isLoginMode ? "Compliance Help" : "Compliance Help"}
+              {isLoginMode ? "Compliance Help" : "Neural Copilot"}
             </h3>
-            <span className="text-[9px] px-1.5 py-0.5 rounded font-extrabold uppercase tracking-wider bg-[#C5E86C] text-[#183028] border border-[#b4db53]">
-              {isLoginMode ? "Guidance" : role || "Staff"}
-            </span>
+            {!isLoginMode && role && (
+              <span className="text-[9px] px-1.5 py-0.5 rounded font-extrabold uppercase tracking-wider bg-[#C5E86C] text-[#183028] border border-[#b4db53]">
+                {role}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-1.5 text-[9.5px] text-[#183028]/70 mt-0.5 font-medium">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            <span>Online</span>
           </div>
         </div>
       </div>

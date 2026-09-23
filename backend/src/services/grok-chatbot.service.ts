@@ -204,9 +204,8 @@ Preserve proper nouns, names, years, and specific document titles exactly as int
   }
 
   /**
-   * Mode A — Grammar check: corrects and explains changes conversationally.
-   * Uses role-scoped system prompts so grammar corrections are tailored to
-   * the user's compliance role (Advisor → proposal language, Officer → audit notes).
+   * Mode A — Grammar check: free-agent, works for any text, both Advisor and Officer.
+   * Corrects and explains changes conversationally; role is light context only.
    */
   public static async handleGrammarCheckIntent(rawText: string, user?: ChatUserContext): Promise<string> {
     const isOfficer = user?.role === 'Officer';
@@ -218,25 +217,24 @@ Preserve proper nouns, names, years, and specific document titles exactly as int
       .trim();
 
     if (!textToCheck || textToCheck.length < 3 || /^(?:my\s+)?(?:sentence|sentences|grammar|text|phrasing|draft)$/i.test(textToCheck)) {
-      return isOfficer
-        ? "I'd be glad to help polish your text! Please paste or type the supervisory determination note, audit remark, or compliance memo you'd like me to review (for example: *\"The advisor have not complied with the required disclosure\"*), and I'll ensure it is grammatically flawless and meets institutional audit documentation standards."
-        : "I'd be glad to help fix your sentence! Please paste or type the proposal text, client note, or revision response you'd like me to audit (for example: *\"The investment team have submited the proposal\"* or *\"Our fund guarantees 10% return\"*), and I'll correct its grammar, spelling, and ensure it complies with FINRA 2210 & SEC 206 rules.";
+      return "I'd love to help! Just paste the text you want me to fix — it can be anything: an email, a note, a proposal sentence, or even a quick message. I'll correct the grammar, improve the phrasing, and explain what I changed. \uD83D\uDE0A";
     }
 
-    // Use role-scoped base prompt + grammar-specific instructions
-    const roleBase = isOfficer ? OFFICER_APP_PROMPT : ADVISOR_APP_PROMPT;
-    const systemPrompt = `${roleBase}
+    // Open, free-agent grammar prompt — works for any text, both Advisor and Officer
+    const systemPrompt = `You are a warm, expressive, and highly skilled writing assistant for Springer Capital's ${isOfficer ? 'Compliance Officers' : 'Investment Advisors'}.
 
-Additionally, you are now acting as a grammar and writing editor. The user has pasted text they want corrected. Correct any grammar, spelling, punctuation, tone, or style issues and give your response in two parts:
-- **Corrected Text**: the fully fixed, polished version ready for ${isOfficer ? 'audit documentation' : 'client-facing compliance submission'}
-- **What I changed**: a brief, friendly bullet list of what you improved
+You can fix grammar, spelling, punctuation, tone, clarity, and style for ANY text the user gives you — emails, proposals, notes, memos, casual messages, or anything else. Never refuse to fix text.
 
-Keep the tone warm — like a helpful colleague reviewing a draft, not a strict teacher grading an essay.${isOfficer ? ' Ensure the corrected text meets audit-defensible documentation standards.' : ' Ensure the corrected text meets FINRA 2210 and SEC 206 compliance standards.'}`;
+Respond in exactly two clearly labelled parts:
+- **Corrected Text**: the fully fixed, polished version
+- **What I changed**: a friendly, conversational bullet list explaining what you improved and why
+
+Be warm and encouraging — like a knowledgeable colleague helping out, not a strict editor. If the text is already great, say so with a compliment!${isOfficer ? '\n\nFor professional text, also note if any phrasing could be strengthened for audit-defensible documentation.' : '\n\nFor proposal or client-facing text, optionally mention if any phrasing could be tightened for professional clarity.'}`;
 
     const result = await this.callLlm(textToCheck || rawText, systemPrompt);
     if (result) return result;
 
-    return `**Corrected Text:**\n${textToCheck}\n\n**What I changed:** Looks good — no major issues spotted!`;
+    return `**Corrected Text:**\n${textToCheck}\n\n**What I changed:** Looks great — no major issues spotted!`;
   }
 
   /**
@@ -908,7 +906,7 @@ Tailor the answer specifically to their role as ${user.role}. Keep it structured
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Mode A — Role-Scoped Interactive Conversational Fallback
+  // Mode A — Free-Agent Conversational Fallback (open, talkative, role-aware)
   // ─────────────────────────────────────────────────────────────────────────
   private static async handleFreeConversation(
     correctedQuery: string,
@@ -916,19 +914,49 @@ Tailor the answer specifically to their role as ${user.role}. Keep it structured
     pathname?: string
   ): Promise<ChatbotResponse> {
     const isOfficer = user.role === 'Officer';
-    const systemPrompt = isOfficer ? OFFICER_APP_PROMPT : ADVISOR_APP_PROMPT;
-    const enrichedSystemPrompt = `${systemPrompt}\n\nContext: Current page: ${pathname || 'Dashboard'}.`;
 
-    const llmReply = await this.callLlm(correctedQuery, enrichedSystemPrompt);
+    // Open, talkative system prompt — the AI is free to answer anything
+    // naturally while staying aware of its role and the Springer Capital app.
+    const systemPrompt = isOfficer
+      ? `You are the Springer Capital Neural Copilot for Compliance Officers — a smart, friendly, and talkative AI assistant.
+
+You are warm, conversational, and genuinely helpful. You can:
+- Fix grammar, proofread text, rewrite sentences, and explain writing improvements clearly and thoroughly.
+- Answer general knowledge questions with enthusiasm and depth.
+- Discuss finance, regulations, or anything else the officer brings up.
+- Chat naturally about greetings, small talk, or anything off-topic — you're not a rigid chatbot.
+
+When context is about Springer Capital:
+- You are helping a Compliance Officer review investment proposals, draft supervisory determinations, and apply FINRA Rule 2210 and SEC Rule 206(4)-1.
+- You have full supervisory visibility over all advisor filings.
+
+Current page context: ${pathname || 'Dashboard'}.
+Be warm, expressive, and never say you cannot help unless it is genuinely impossible.`
+      : `You are the Springer Capital Neural Copilot for Investment Advisors — a smart, friendly, and talkative AI assistant.
+
+You are warm, conversational, and genuinely helpful. You can:
+- Fix grammar, proofread text, rewrite sentences, and explain writing improvements clearly and thoroughly.
+- Answer general knowledge questions with enthusiasm and depth.
+- Discuss finance, compliance, or anything else the advisor brings up.
+- Chat naturally about greetings, small talk, or anything off-topic — you're not a rigid chatbot.
+
+When context is about Springer Capital:
+- You are helping an Investment Advisor draft compliant proposals, understand FINRA Rule 2210 and SEC Rule 206(4)-1, and navigate submission workflows.
+- You can only access the advisor's own filings — never other advisors' data.
+
+Current page context: ${pathname || 'Dashboard'}.
+Be warm, expressive, and never say you cannot help unless it is genuinely impossible.`;
+
+    const llmReply = await this.callLlm(correctedQuery, systemPrompt);
     if (llmReply) {
-      return { reply: llmReply, intent: 'compliance_interactive_guidance', correctedQuery };
+      return { reply: llmReply, intent: 'free_conversation', correctedQuery };
     }
 
     // Static fallback when both LLMs are unavailable
     const fallbackReply = isOfficer
-      ? "I'm monitoring the supervisory review queue. You can ask me to check pending filings, review uploader identities, evaluate document risk scores under FINRA 2210 & SEC 206, or draft determination directives."
-      : "I'm here to assist with your proposal submissions. You can ask me about your pending filings, check officer feedback on revisions, or ask how to remediate proposals to meet FINRA 2210 & SEC 206 rules.";
+      ? "Hey! I'm here and ready to help. You can ask me anything — grammar fixes, regulatory questions, queue overviews, or just chat. What's on your mind?"
+      : "Hey! I'm here and ready to help. Ask me anything — grammar fixes, compliance questions, proposal tips, or just a quick chat. What are you working on?";
 
-    return { reply: fallbackReply, intent: 'compliance_interactive_guidance', correctedQuery };
+    return { reply: fallbackReply, intent: 'free_conversation', correctedQuery };
   }
 }
