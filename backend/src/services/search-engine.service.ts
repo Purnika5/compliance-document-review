@@ -362,9 +362,24 @@ export class SearchEngineService {
       })),
     };
 
-    // Call AI microservice for conversational executive summary
-    let conversationalReply = '';
-    let suggestedChips: string[] = ['Show high-risk flags', 'Fix flagged document', 'My submissions this month'];
+    // Role-aware and status-context-aware suggested chips
+    let suggestedChips: string[] = [];
+    const isOfficerRole = (user?.role || 'Advisor') === 'Officer';
+    const statusFilter = Array.isArray(status) ? status : (status ? [status] : []);
+
+    if (isOfficerRole) {
+      suggestedChips = [
+        'List all pending documents awaiting my determination',
+        'Show high-risk submissions across all advisors',
+        'Show documents uploaded today',
+      ];
+    } else {
+      suggestedChips = [
+        'Show my submissions from this month',
+        'Show filings that need revision',
+        'Show approved documents',
+      ];
+    }
 
     try {
       const aiEndpoint = `${config.services.aiServiceUrl}/copilot-search-summary`;
@@ -399,7 +414,14 @@ export class SearchEngineService {
     if (!conversationalReply) {
       const datePart = date_range ? ` for ${date_range}` : '';
       const queryPart = titleQuery ? ` matching "${titleQuery}"` : '';
-      conversationalReply = `I located ${totalMatches} filing${totalMatches !== 1 ? 's' : ''}${queryPart}${datePart}. Status distribution: ${breakdown.Approved} Approved, ${breakdown.Pending} Pending, and ${breakdown.NeedsRevision} Needs Revision. ${flaggedCount > 0 ? `${flaggedCount} document(s) have active compliance risk flags under FINRA 2210 / SEC 206.` : 'All matches comply with baseline regulatory standards.'}`;
+
+      // If filtering by a single status, focus the reply on just that status
+      if (statusFilter.length === 1) {
+        const singleStatus = statusFilter[0];
+        conversationalReply = `I found ${totalMatches} ${singleStatus} filing${totalMatches !== 1 ? 's' : ''}${queryPart}${datePart}. ${flaggedCount > 0 ? `${flaggedCount} document(s) have active compliance risk flags under FINRA 2210 / SEC 206.` : 'All matches comply with baseline regulatory standards.'}`;
+      } else {
+        conversationalReply = `I located ${totalMatches} filing${totalMatches !== 1 ? 's' : ''}${queryPart}${datePart}. Status distribution: ${breakdown.Approved} Approved, ${breakdown.Pending} Pending, and ${breakdown.NeedsRevision} Needs Revision. ${flaggedCount > 0 ? `${flaggedCount} document(s) have active compliance risk flags under FINRA 2210 / SEC 206.` : 'All matches comply with baseline regulatory standards.'}`;
+      }
     }
 
     return {
