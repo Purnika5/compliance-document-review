@@ -384,34 +384,6 @@ export function UploadDocumentModal({
             </div>
 
             <div className="space-y-1.5 min-w-0">
-              <div className="flex items-center justify-between">
-                <label className="block text-xs font-semibold text-[#183028]">
-                  Classification Category <span className="text-rose-500">*</span>
-                </label>
-
-              </div>
-
-              <div className="relative">
-                <Input
-                  value={category}
-                  onChange={(e) => {
-                    setCategory(e.target.value);
-                    if (formErrors.category) {
-                      setFormErrors((prev) => ({ ...prev, category: "" }));
-                    }
-                  }}
-                  placeholder="e.g. Compliance Document, Investment Proposal..."
-                  className={cn(
-                    "h-9 text-xs rounded-xl bg-white border border-[#E6E8E7] text-[#183028] focus:border-[#183028] focus:ring-1 focus:ring-[#183028] transition-colors shadow-2xs w-full min-w-0",
-                    formErrors.category && "border-rose-500 ring-1 ring-rose-500"
-                  )}
-                />
-              </div>
-
-
-            </div>
-
-            <div className="space-y-1.5 min-w-0">
               <label className="block text-xs font-semibold text-[#183028]">
                 Advisor Overview Notes (Optional)
               </label>
