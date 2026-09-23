@@ -1,5 +1,5 @@
 /**
- * DOCU: Proxies chatbot requests from the frontend to Google Gemini and live PostgreSQL data.
+ * DOCU: Proxies chatbot requests from the frontend to Grok (xAI) / Google Gemini and live PostgreSQL data.
  * Scopes all responses to real database filings and institutional FINRA 2210 & SEC 206 rules.
  * Last Updated Date: September 23, 2026
  * @author Keith
@@ -10,6 +10,7 @@ import { optionalAuth } from '../middleware/auth.middleware';
 import { uploadDocumentFile } from '../middleware/upload.middleware';
 import { DocumentController } from '../controllers/document.controller';
 import { QuotaService } from '../services/quota.service';
+import { GrokChatbotService } from '../services/grok-chatbot.service';
 
 const router = Router();
 
@@ -210,6 +211,53 @@ router.post('/', optionalAuth, async (req: Request, res: Response) => {
   const userRole: string = user?.role || role || 'Advisor';
   const userId: string | undefined = user?.id;
   const isOfficer = userRole === 'Officer';
+
+  // ── 0. Grok Intent Router — grammar, expansion, and all DB-grounded queries ─
+  // These intents are intercepted and fully handled before telemetry/Gemini fallback.
+  try {
+    const grokResult = await GrokChatbotService.processMessage({
+      message: cleanMessage,
+      user: { id: userId, role: userRole },
+      pathname,
+      documentId,
+    });
+
+    const isSpecificIntent =
+      grokResult.intent !== 'general_conversational' && !grokResult.isClarification;
+    const isClarification = grokResult.isClarification === true;
+
+    if (isSpecificIntent || isClarification) {
+      // Consume quota only for non-clarification AI-handled intents
+      if (!isClarification && userId) {
+        await QuotaService.consumeChatMessage(userId, userRole);
+      }
+      const quotaInfo = userId ? await QuotaService.getQuotaInfo(userId, userRole) : null;
+      res.status(200).json({
+        success: true,
+        reply: grokResult.reply,
+        correctedQuery: grokResult.correctedQuery,
+        intent: grokResult.intent,
+        isClarification: grokResult.isClarification || false,
+        quota: quotaInfo
+          ? {
+              used: quotaInfo.chatMessages.used,
+              limit: quotaInfo.chatMessages.limit,
+              remaining: quotaInfo.chatMessages.remaining,
+              resetsAt: quotaInfo.resetsAt,
+              resetInDays: quotaInfo.resetInDays,
+            }
+          : undefined,
+      });
+      return;
+    }
+
+    // If grammar was corrected, use corrected text for downstream processing
+    if (grokResult.correctedQuery && grokResult.correctedQuery !== cleanMessage) {
+      Object.assign(req.body, { _correctedQuery: grokResult.correctedQuery });
+    }
+  } catch (grokErr) {
+    console.warn('[Chat] Grok intent router error, falling through to Gemini:', grokErr);
+  }
 
   // ── 1. Live Database Telemetry ──────────────────────────────────────────────
   const telemetryData: LiveTelemetryData = {
