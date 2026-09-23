@@ -397,6 +397,7 @@ export function ChatbotWidget() {
     if (!isOpen || !isAuthenticated) return;
     const userId = session?.email || "anonymous";
 
+
     // 1. Immediately apply localStorage quota (works without Supabase table)
     const localQ = getLocalQuota(userId);
     setFileQuota((prev) => {
