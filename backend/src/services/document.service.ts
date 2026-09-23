@@ -42,6 +42,9 @@ export class DocumentService {
    * creating a synthetic or matching user record if needed to prevent foreign key violations.
    */
   public static async ensureValidAdvisorId(advisorId?: string, userEmail?: string): Promise<string> {
+    if (advisorId === '00000000-0000-0000-0000-000000000000') {
+      return advisorId;
+    }
     const isUuid = (id?: string) => Boolean(id && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(id));
 
     // 1. If advisorId is provided and exists in users, use it directly
@@ -323,7 +326,7 @@ export class DocumentService {
         documentId,
         title: `Document Status Updated: ${newStatus}`,
         message: `Your document status has been updated to '${newStatus}'.${remarkText}`,
-        type: newStatus === 'Needs Revision' ? 'REVISION_COMMENT' : 'STATUS_CHANGE'
+        type: 'STATUS_CHANGE'
       });
     } catch (err) {
       console.error('[DocumentService] Failed to send automated notification:', err);

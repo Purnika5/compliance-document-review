@@ -37,7 +37,7 @@ IGNORE_EXTENSIONS = {
 }
 
 IGNORE_DIRS = {
-    '.git', 'node_modules', '.next', 'dist', 'build', '__pycache__', '.venv', 'env'
+    '.git', 'node_modules', '.next', 'dist', 'build', '__pycache__', '.venv', 'venv', 'env'
 }
 
 def scan_string(content, filename="<unknown>"):

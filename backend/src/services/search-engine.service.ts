@@ -363,6 +363,7 @@ export class SearchEngineService {
     };
 
     // Role-aware and status-context-aware suggested chips
+    let conversationalReply = '';
     let suggestedChips: string[] = [];
     const isOfficerRole = (user?.role || 'Advisor') === 'Officer';
     const statusFilter = Array.isArray(status) ? status : (status ? [status] : []);

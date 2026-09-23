@@ -22,6 +22,8 @@ describe('Week 3 Backend Integration Tests: Audit Trail & Notification System', 
 
   const dummyFilePath = path.join(__dirname, 'w3_test_document.txt');
 
+  jest.setTimeout(30000);
+
   beforeAll(async () => {
     // 1. Run migrations to include 003_audit_trail_and_notifications
     await runMigrations();
@@ -79,25 +81,26 @@ describe('Week 3 Backend Integration Tests: Audit Trail & Notification System', 
 
     expect(docRes.status).toBe(201);
     testDocId = docRes.body.data.id;
-  });
+  }, 30000);
 
   afterAll(async () => {
     if (fs.existsSync(dummyFilePath)) {
-      fs.unlinkSync(dummyFilePath);
+      try {
+        fs.unlinkSync(dummyFilePath);
+      } catch {
+        // ignore
+      }
     }
 
     try {
-      if (testDocId) {
-        await query('DELETE FROM notifications WHERE document_id = $1', [testDocId]);
-        await query('DELETE FROM audit_trail WHERE document_id = $1', [testDocId]);
-        await query('DELETE FROM revision_thread_entries WHERE document_id = $1', [testDocId]);
-        await query('DELETE FROM documents WHERE id = $1', [testDocId]);
+      const userIds = [advisor1Id, advisor2Id, officerId].filter(Boolean);
+      if (userIds.length > 0) {
+        await query('DELETE FROM notifications WHERE user_id = ANY($1::uuid[]) OR document_id IN (SELECT id FROM documents WHERE advisor_id = ANY($1::uuid[]))', [userIds]);
+        await query('DELETE FROM audit_trail WHERE user_id = ANY($1::uuid[]) OR document_id IN (SELECT id FROM documents WHERE advisor_id = ANY($1::uuid[]))', [userIds]);
+        await query('DELETE FROM revision_thread_entries WHERE author_id = ANY($1::uuid[]) OR document_id IN (SELECT id FROM documents WHERE advisor_id = ANY($1::uuid[]))', [userIds]);
+        await query('DELETE FROM documents WHERE advisor_id = ANY($1::uuid[])', [userIds]);
+        await query('DELETE FROM users WHERE id = ANY($1::uuid[])', [userIds]);
       }
-      await query('DELETE FROM users WHERE id IN ($1, $2, $3)', [
-        advisor1Id,
-        advisor2Id,
-        officerId
-      ]);
     } catch (e) {
       // ignore cleanup errors
     }

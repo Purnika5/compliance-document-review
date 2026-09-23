@@ -10,12 +10,10 @@ export const isSupabaseDatabase = (): boolean => {
   const dbUrl = (
     process.env.DATABASE_URL ||
     process.env.SUPABASE_DB_URL ||
-    config.db.connectionString ||
     ''
   ).toLowerCase();
   const dbHost = (
     process.env.DB_HOST ||
-    config.db.host ||
     ''
   ).toLowerCase();
 
