@@ -14,6 +14,7 @@ import { aiCircuitBreaker } from '../utils/circuitBreaker';
 import { AppError } from '../middleware/error.middleware';
 import { query } from '../db/pool';
 import { DocumentService } from './document.service';
+import { GeminiClient } from '../utils/gemini';
 
 export interface AuditBreakdownItem {
   rule: string;
@@ -103,8 +104,6 @@ export class GeminiCopilotService {
 
     if (geminiApiKey && !geminiApiKey.includes('your_gemini') && !geminiApiKey.includes('test-ci')) {
       try {
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
-
         // System instruction separated from document content to avoid empty-candidate errors
         const auditSystemInstruction = `You are reviewing a client-facing financial document submitted by an advisor for compliance officer review. You receive a MASKED version of the document (all client PII has been replaced with placeholder tokens — never attempt to infer, reconstruct, or output real PII, even inside quoted passages).
 
@@ -166,53 +165,16 @@ Return ONLY valid JSON — no prose outside the JSON object:
   "suggested_title": "string"
 }`;
 
-        const gResp = await fetch(geminiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            system_instruction: {
-              parts: [{ text: auditSystemInstruction }],
-            },
-            contents: [
-              {
-                role: 'user',
-                parts: [{ text: `DOCUMENT TEXT TO AUDIT AND REMEDIATE:\n\n${maskedText}` }],
-              },
-            ],
-            generationConfig: {
-              temperature: 0.1,
-              responseMimeType: 'application/json',
-              maxOutputTokens: 3000,
-            },
-            safetySettings: [
-              { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
-              { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
-              { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
-              { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
-            ],
-          }),
-          signal: AbortSignal.timeout(20000),
+        const gResult = await GeminiClient.generateContent(`DOCUMENT TEXT TO AUDIT AND REMEDIATE:\n\n${maskedText}`, {
+          systemInstruction: auditSystemInstruction,
+          responseMimeType: 'application/json',
+          temperature: 0.1,
+          maxOutputTokens: 3000,
+          timeoutMs: 25000,
         });
 
-        if (gResp.ok) {
-          const gResult: any = await gResp.json();
-          const candidate = gResult?.candidates?.[0];
-          const finishReason = candidate?.finishReason;
-          const jsonText = candidate?.content?.parts?.[0]?.text;
-
-          if (finishReason && finishReason !== 'STOP') {
-            console.warn(`[GeminiCopilot] Non-STOP finishReason: ${finishReason}`, JSON.stringify(candidate?.safetyRatings || []));
-          }
-
-          if (jsonText) {
-            aiData = JSON.parse(jsonText);
-          } else {
-            const errBody = await gResp.text().catch(() => '');
-            console.warn('[GeminiCopilot] Gemini audit returned empty text. promptFeedback:', JSON.stringify(gResult?.promptFeedback || {}));
-          }
-        } else {
-          const errBody = await gResp.text().catch(() => '');
-          console.warn(`[GeminiCopilot] Gemini responded with ${gResp.status}:`, errBody.slice(0, 300));
+        if (gResult?.text) {
+          aiData = JSON.parse(gResult.text);
         }
       } catch (geminiErr) {
         console.warn('[GeminiCopilot] Direct Gemini REST call warning, checking AI microservice:', geminiErr);

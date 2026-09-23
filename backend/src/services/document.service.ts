@@ -770,29 +770,34 @@ export class DocumentService {
 
   public static async getDocumentAnalysis(
     documentId: string,
-    user: AuthTokenPayload
+    user: AuthTokenPayload,
+    force: boolean = false
   ): Promise<DocumentAnalysis> {
     const doc = await this.getDocumentById(documentId, user);
 
-    try {
-      const sql = `
-        SELECT * FROM document_analyses
-        WHERE document_id = $1 AND version = $2
-      `;
-      const res = await query<DocumentAnalysis>(sql, [doc.id, doc.version]);
+    if (!force) {
+      try {
+        const sql = `
+          SELECT * FROM document_analyses
+          WHERE document_id = $1 AND version = $2
+        `;
+        const res = await query<DocumentAnalysis>(sql, [doc.id, doc.version]);
 
-      if (
-        res.rows.length > 0 &&
-        !(res.rows[0] as any).is_degraded &&
-        !res.rows[0].summary?.includes('degradation') &&
-        res.rows[0].summary !== 'AI analysis could not be completed for this document.' &&
-        // Re-analyze if flags are empty and AI circuit has recent failures (stale degraded result)
-        !(Array.isArray(res.rows[0].flags) && res.rows[0].flags.length === 0 && aiCircuitBreaker.getMetrics().failureCount > 0)
-      ) {
-        return res.rows[0];
+        if (
+          res.rows.length > 0 &&
+          !(res.rows[0] as any).is_degraded &&
+          !res.rows[0].summary?.includes('degradation') &&
+          res.rows[0].summary !== 'AI analysis could not be completed for this document.' &&
+          // Re-analyze if flags are empty and AI circuit has recent failures (stale degraded result)
+          !(Array.isArray(res.rows[0].flags) && res.rows[0].flags.length === 0 && aiCircuitBreaker.getMetrics().failureCount > 0)
+        ) {
+          return res.rows[0];
+        }
+      } catch (dbErr) {
+        console.warn('[DocumentService] Failed to query existing document_analyses:', dbErr);
       }
-    } catch (dbErr) {
-      console.warn('[DocumentService] Failed to query existing document_analyses:', dbErr);
+    } else {
+      aiCircuitBreaker.reset();
     }
 
     // Re-process with live compliance engine

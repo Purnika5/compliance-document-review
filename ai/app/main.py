@@ -252,26 +252,36 @@ def analyze_document(request: AnalyzeRequest):
     )
 
 
-    # Use the correct Gemini model — gemini-2.0-flash is the current stable fast model
-    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+    # Use active Gemini models with multi-model fallback
+    GEMINI_MODELS = [
+        os.getenv("GEMINI_MODEL", "gemini-3.6-flash"),
+        "gemini-3.5-flash",
+        "gemini-3.1-flash-lite",
+    ]
 
     def call_gemini(model_prompt: str, is_json: bool = False):
         max_retries = 3
         for attempt in range(max_retries):
-            try:
-                active_client = get_client()
-                cfg = {"response_mime_type": "application/json"} if is_json else None
-                return active_client.models.generate_content(
-                    model=GEMINI_MODEL,
-                    contents=model_prompt,
-                    config=cfg
-                )
-            except Exception as e:
-                err_text = str(e)
-                if ("503" in err_text or "UNAVAILABLE" in err_text or "429" in err_text or "demand" in err_text.lower()) and attempt < max_retries - 1:
-                    time.sleep(1.0 * (attempt + 1))
-                    continue
-                raise
+            for model_name in GEMINI_MODELS:
+                try:
+                    active_client = get_client()
+                    cfg = {"response_mime_type": "application/json"} if is_json else None
+                    return active_client.models.generate_content(
+                        model=model_name,
+                        contents=model_prompt,
+                        config=cfg
+                    )
+                except Exception as e:
+                    err_text = str(e)
+                    if "404" in err_text or "not found" in err_text.lower():
+                        continue
+                    if ("503" in err_text or "UNAVAILABLE" in err_text or "429" in err_text or "demand" in err_text.lower()):
+                        if model_name != GEMINI_MODELS[-1]:
+                            continue
+                        if attempt < max_retries - 1:
+                            time.sleep(1.0 * (attempt + 1))
+                            break
+                    raise
 
     try:
 
@@ -699,7 +709,7 @@ def audit_and_fix_endpoint(request: AuditAndFixRequest):
     full_prompt = f"{AUDIT_AND_FIX_SYSTEM_PROMPT}\n\nDocument Filename: {request.original_filename or 'draft_document.docx'}{custom_notes}\n\nDocument Text to Audit:\n{raw_text}\n\nJSON Output:"
 
     # Attempt Gemini LLM structured audit
-    for model_name in ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]:
+    for model_name in ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.1-flash-lite"]:
         try:
             active_client = get_client()
             resp = active_client.models.generate_content(
@@ -842,7 +852,7 @@ Return ONLY a JSON object with:
 - suggested_chips (array of 3 strings)
 """
 
-    for model_name in ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]:
+    for model_name in ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.1-flash-lite"]:
         try:
             active_client = get_client()
             resp = active_client.models.generate_content(
@@ -900,11 +910,18 @@ def chat_endpoint(request: ChatRequest):
 
     try:
         active_client = get_client()
-        response = active_client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=full_prompt
-        )
-        reply_text = response.text.strip() if response.text else "I'm unable to process that request right now."
+        response = None
+        for m in ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.1-flash-lite"]:
+            try:
+                response = active_client.models.generate_content(
+                    model=m,
+                    contents=full_prompt
+                )
+                if response and response.text:
+                    break
+            except Exception:
+                continue
+        reply_text = response.text.strip() if response and response.text else "I'm unable to process that request right now."
         reply_text = clean_grammar_notes(reply_text)
         return ChatResponse(reply=reply_text)
     except Exception as e:

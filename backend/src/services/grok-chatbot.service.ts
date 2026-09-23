@@ -13,6 +13,7 @@
  * @author Keith
  */
 import { query } from '../db/pool';
+import { GeminiClient } from '../utils/gemini';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // System prompts
@@ -101,23 +102,14 @@ export class GrokChatbotService {
     const geminiKey = this.getGeminiApiKey();
     if (geminiKey) {
       try {
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`;
-        const resp = await fetch(geminiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            system_instruction: systemPrompt ? { parts: [{ text: systemPrompt }] } : undefined,
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.3, maxOutputTokens: 900 },
-          }),
-          signal: AbortSignal.timeout(12000),
+        const result = await GeminiClient.generateContent(prompt, {
+          systemInstruction: systemPrompt,
+          temperature: 0.3,
+          maxOutputTokens: 900,
+          timeoutMs: 15000,
         });
 
-        if (resp.ok) {
-          const data: any = await resp.json();
-          const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (text && text.trim()) return text.trim();
-        }
+        if (result?.text) return result.text;
       } catch (err) {
         console.warn('[Chatbot] Gemini call failed, trying Grok:', err);
       }

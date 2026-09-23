@@ -211,7 +211,7 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
   const handleRefreshAnalysis = () => {
     setIsLoadingAnalysis(true);
     documentService
-      .getAnalysis(activeDocId)
+      .getAnalysis(activeDocId, true)
       .then((res) => {
         setAnalysisFlags(res.flags);
         setIsAiDegraded(res.isDegraded);

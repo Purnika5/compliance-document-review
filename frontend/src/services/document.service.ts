@@ -188,9 +188,12 @@ export class DocumentService {
    * @returns Promise resolving to array of IAIFlagItem flags.
    * @author Keith
    */
-  public async getAnalysis(id: string): Promise<DocumentAnalysisResult> {
+  public async getAnalysis(id: string, force: boolean = false): Promise<DocumentAnalysisResult> {
     try {
-      const envelope = await this.client.get<ApiResponseEnvelope<Record<string, unknown>>>(API_ENDPOINTS.DOCUMENTS.ANALYSIS(id));
+      const endpoint = force
+        ? `${API_ENDPOINTS.DOCUMENTS.ANALYSIS(id)}?rerun=true`
+        : API_ENDPOINTS.DOCUMENTS.ANALYSIS(id);
+      const envelope = await this.client.get<ApiResponseEnvelope<Record<string, unknown>>>(endpoint);
       const rawFlags = Array.isArray(envelope?.data?.flags)
         ? (envelope.data.flags as Record<string, unknown>[])
         : Array.isArray(envelope?.data)

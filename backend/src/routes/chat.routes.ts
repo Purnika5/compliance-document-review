@@ -11,6 +11,7 @@ import { uploadDocumentFile } from '../middleware/upload.middleware';
 import { DocumentController } from '../controllers/document.controller';
 import { QuotaService } from '../services/quota.service';
 import { GrokChatbotService } from '../services/grok-chatbot.service';
+import { GeminiClient } from '../utils/gemini';
 
 const router = Router();
 
@@ -400,8 +401,6 @@ Risk Flags: ${telemetryData.activeDoc.flag_count} flag${telemetryData.activeDoc.
   const geminiApiKey = process.env.GEMINI_API_KEY?.trim();
   if (geminiApiKey && !geminiApiKey.includes('your_gemini') && !geminiApiKey.includes('test-ci')) {
     try {
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
-
       const systemInstruction = `You are Springer Capital's Neural Compliance Copilot — a knowledgeable, articulate, and friendly senior Wall Street compliance director and trusted colleague.
 
 Your tone is warm, conversational, and direct. Speak in natural sentences — no robotic templates, no rigid headers, no corporate openers like "Thank you for your inquiry...".
@@ -435,59 +434,34 @@ CRITICAL RULES:
 - Do not hallucinate document titles, advisor names, or risk flags not in the telemetry.
 - If "today's uploads" is empty, say so clearly and naturally.`;
 
-      const gResp = await fetch(geminiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_instruction: {
-            parts: [{ text: systemInstruction }],
-          },
-          contents: [
-            {
-              role: 'user',
-              parts: [{ text: cleanMessage }],
-            },
-          ],
-          generationConfig: {
-            temperature: 0.4,
-            maxOutputTokens: 700,
-            candidateCount: 1,
-          },
-          safetySettings: [
-            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
-            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
-            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
-            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
-          ],
-        }),
-        signal: AbortSignal.timeout(12000),
+      const gResult = await GeminiClient.generateContent(cleanMessage, {
+        systemInstruction,
+        temperature: 0.4,
+        maxOutputTokens: 700,
+        timeoutMs: 15000,
       });
 
-      if (gResp.ok) {
-        const gData: any = await gResp.json();
-        const candidate = gData?.candidates?.[0];
-        const finishReason = candidate?.finishReason;
-        const textReply = candidate?.content?.parts?.[0]?.text;
-
-        if (finishReason && finishReason !== 'STOP') {
-          console.warn(`[Chat] Gemini non-STOP finishReason: ${finishReason}`, JSON.stringify(candidate?.safetyRatings || []));
-        }
-
-        if (textReply && textReply.trim()) {
-          // Consume quota after successful AI response
-          if (userId) await QuotaService.consumeChatMessage(userId, userRole);
-          const quotaInfo = userId ? await QuotaService.getQuotaInfo(userId, userRole) : null;
-          res.status(200).json({ success: true, reply: textReply.trim(), quota: quotaInfo ? { used: quotaInfo.chatMessages.used, limit: quotaInfo.chatMessages.limit, remaining: quotaInfo.chatMessages.remaining, resetsAt: quotaInfo.resetsAt, resetInDays: quotaInfo.resetInDays } : undefined });
-          return;
-        }
-
-        console.warn('[Chat] Gemini returned candidate with no text. finishReason:', finishReason, 'promptFeedback:', JSON.stringify(gData?.promptFeedback || {}));
-      } else {
-        const errBody = await gResp.text().catch(() => '');
-        console.warn(`[Chat] Gemini responded with ${gResp.status}:`, errBody.slice(0, 300));
+      if (gResult?.text) {
+        // Consume quota after successful AI response
+        if (userId) await QuotaService.consumeChatMessage(userId, userRole);
+        const quotaInfo = userId ? await QuotaService.getQuotaInfo(userId, userRole) : null;
+        res.status(200).json({
+          success: true,
+          reply: gResult.text,
+          quota: quotaInfo
+            ? {
+                used: quotaInfo.chatMessages.used,
+                limit: quotaInfo.chatMessages.limit,
+                remaining: quotaInfo.chatMessages.remaining,
+                resetsAt: quotaInfo.resetsAt,
+                resetInDays: quotaInfo.resetInDays,
+              }
+            : undefined,
+        });
+        return;
       }
     } catch (gErr) {
-      console.warn('[Chat] Direct Gemini REST call timed out or failed, using institutional data-grounded fallback:', gErr);
+      console.warn('[Chat] Direct Gemini call failed, using institutional data-grounded fallback:', gErr);
     }
   }
 

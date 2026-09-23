@@ -97,7 +97,8 @@ export class DocumentController {
 
   public static getAnalysis = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
-    const analysis = await DocumentService.getDocumentAnalysis(id, (req as any).user);
+    const force = req.query.force === 'true' || req.query.rerun === 'true';
+    const analysis = await DocumentService.getDocumentAnalysis(id, (req as any).user, force);
     sendSuccess(res, analysis, 200, 'Document analysis retrieved successfully');
   });
 
