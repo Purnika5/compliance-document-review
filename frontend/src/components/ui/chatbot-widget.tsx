@@ -806,13 +806,22 @@ export function ChatbotWidget() {
     const docMatch = pathname ? pathname.match(/\/documents\/([0-9a-fA-F-]+)/) : null;
     const documentId = docMatch ? docMatch[1] : undefined;
 
+    // Optimistically increment quota counter immediately for realtime feedback
+    if (userRole === "Advisor") {
+      setQuota((prev) =>
+        prev
+          ? { ...prev, used: prev.used + 1, remaining: Math.max(0, prev.remaining - 1) }
+          : null
+      );
+    }
+
     copilotApi
       .sendChatMessage(rawText, userRole, {
         pathname: pathname || undefined,
         documentId,
       })
       .then((res) => {
-        // Capture quota from response
+        // Reconcile quota with authoritative server value after response
         if (res?.quota) setQuota(res.quota);
         return res?.reply || getConversationalFallback(userRole, isLoginMode);
       })
@@ -1044,7 +1053,7 @@ export function ChatbotWidget() {
                     />
                   </div>
                   <span className={cn("text-[9px] font-bold shrink-0", quota.remaining === 0 ? "text-red-500" : "text-[#183028]/60")}>
-                    {quota.remaining}/{quota.limit}
+                    {quota.used}/{quota.limit}
                   </span>
                 </div>
               )}
@@ -1064,7 +1073,7 @@ export function ChatbotWidget() {
                     />
                   </div>
                   <span className={cn("text-[9px] font-bold shrink-0", fileQuota.remaining === 0 ? "text-red-500" : "text-[#183028]/60")}>
-                    {fileQuota.remaining}/{fileQuota.limit}
+                    {fileQuota.used}/{fileQuota.limit}
                   </span>
                 </div>
               )}
