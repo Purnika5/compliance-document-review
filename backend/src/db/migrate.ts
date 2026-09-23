@@ -65,7 +65,21 @@ export const hasExistingTables = async (): Promise<{ exists: boolean; tables: st
  * Determines whether database migrations should be skipped.
  */
 export const shouldSkipMigrations = async (): Promise<{ skip: boolean; reason?: string }> => {
-  // 1. Explicit opt-out flags — always check first
+  // 0. ALWAYS run if the database is completely empty — nothing to protect.
+  //    This fires first before any env flags, ensuring a fresh Supabase project gets its schema.
+  try {
+    const { publicCount } = await hasExistingTables();
+    if (publicCount === 0) {
+      console.log('[Migration] Database is empty (0 public tables). Running initial schema setup regardless of env flags.');
+      return { skip: false };
+    }
+  } catch (emptyCheckErr: any) {
+    // If we can't even query information_schema, try to run migrations anyway
+    console.warn('[Migration] Could not inspect table count, proceeding with migrations:', emptyCheckErr?.message);
+    return { skip: false };
+  }
+
+  // 1. Explicit opt-out flags — only honoured when tables already exist
   if (
     process.env.SKIP_MIGRATIONS === 'true' ||
     process.env.RUN_MIGRATIONS === 'false' ||
@@ -74,18 +88,16 @@ export const shouldSkipMigrations = async (): Promise<{ skip: boolean; reason?: 
   ) {
     return {
       skip: true,
-      reason: 'Migrations skipped via environment flag (SKIP_MIGRATIONS / RUN_MIGRATIONS=false / SUPABASE_EXISTING_DB).'
+      reason: 'Migrations skipped via environment flag (SKIP_MIGRATIONS / RUN_MIGRATIONS=false / SUPABASE_EXISTING_DB). Tables already exist so data is safe.'
     };
   }
 
-  // 2. Supabase detected — always skip without querying DB.
-  //    Supabase schemas must be managed via the Supabase dashboard or CLI, not auto-migrated.
-  //    This prevents data loss on every Render/Railway deploy.
+  // 2. Supabase detected with existing tables — skip to prevent data loss on deploys.
   if (isSupabaseDatabase()) {
     return {
       skip: true,
       reason:
-        'Supabase database detected. Automated migrations are disabled to protect your production data. ' +
+        'Supabase database detected with existing tables. Automated migrations are disabled to protect production data. ' +
         'Apply schema changes manually via the Supabase SQL Editor or Supabase CLI. ' +
         'To override (dangerous), set FORCE_MIGRATIONS=true.'
     };
@@ -118,6 +130,7 @@ export const shouldSkipMigrations = async (): Promise<{ skip: boolean; reason?: 
 
   return { skip: false };
 };
+
 
 export const runMigrations = async (): Promise<void> => {
   const skipCheck = await shouldSkipMigrations();
