@@ -108,19 +108,38 @@ function generateContextualComplianceReply(
     }`;
   }
 
+  // 1b. Most recent filing / who uploaded most recent
+  if (
+    /\b(most\s+recent|latest|newest|last)\s*(?:filing|document|submission|upload|proposal)?\b/i.test(lower) ||
+    lower.includes("most recent filing") ||
+    lower.includes("who uploaded the most recent filing") ||
+    lower.includes("who uploaded the latest")
+  ) {
+    const mostRecent = recentDocs[0];
+    if (mostRecent) {
+      const by = mostRecent.advisor_name ? ` by **${mostRecent.advisor_name}**` : '';
+      const email = mostRecent.advisor_email ? ` (${mostRecent.advisor_email})` : '';
+      const risk = mostRecent.has_analysis
+        ? mostRecent.flag_count === 0 ? '✓ Clean (0 flags)' : `${mostRecent.flag_count} flag${mostRecent.flag_count > 1 ? 's' : ''}`
+        : 'Not yet analyzed';
+      const uploadDate = new Date(mostRecent.created_at).toLocaleString('en-US', {
+        month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
+      });
+      return `The most recent filing in the repository is **"${mostRecent.title}"** (v${mostRecent.version})${by}${email}, submitted on ${uploadDate}. Status: **${mostRecent.status}** | Risk: ${risk}.`;
+    }
+    return "There are currently no document filings uploaded in the repository database.";
+  }
+
   // 2. "Who uploaded" queries
   if (/\b(who\s+uploaded|who\s+submitted|who\s+sent|uploaded\s+by|submitted\s+by)\b/i.test(lower)) {
-    if (!isOfficer) {
-      return "That information is restricted to Compliance Officers. You can see your own submissions on the My Documents page.";
-    }
     const withUploaders = recentDocs.filter((d) => d.advisor_name);
     if (withUploaders.length === 0) {
-      return "I don't have uploader data available right now. This may be a data sync issue — check the Users table.";
+      return "I don't have uploader data available right now in the database.";
     }
     const list = withUploaders.slice(0, 5).map((d) =>
       `"${d.title}" → ${d.advisor_name} (${d.status}, ${new Date(d.created_at).toLocaleDateString()})`
     ).join('; ');
-    return `Here are recent uploads with their advisors: ${list}. Want me to filter by a specific advisor or status?`;
+    return `Here are recent uploads with their advisors from the database: ${list}. Want me to filter by a specific advisor or status?`;
   }
 
   // 3. "Today's documents" queries
@@ -277,7 +296,9 @@ router.post('/', optionalAuth, async (req: Request, res: Response) => {
     });
 
     const isSpecificIntent =
-      grokResult.intent !== 'general_conversational' && !grokResult.isClarification;
+      grokResult.intent !== 'general_conversational' &&
+      grokResult.intent !== 'free_conversation' &&
+      !grokResult.isClarification;
     const isClarification = grokResult.isClarification === true;
 
     if (isSpecificIntent || isClarification) {

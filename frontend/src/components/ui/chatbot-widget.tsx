@@ -321,7 +321,8 @@ function isDocumentSearchQuery(text: string): boolean {
   if (
     /\b(how\s+(?:does|do|can|to)|what\s+is|explain|tell\s+me\s+about|walk\s+me\s+through|faq|workflow|guidelines?)\b/i.test(lower) ||
     /\b(versioning|lineage|pii|masking|file\s+format|file\s+limit|standard|rule)\b/i.test(lower) ||
-    /^(?:audit|compliance\s*audit|scan|check\s*compliance|fix|check\s*grammar|grammar)[:,-]?\s+/i.test(lower)
+    /^(?:audit|compliance\s*audit|scan|check\s*compliance|fix|check\s*grammar|grammar)[:,-]?\s+/i.test(lower) ||
+    /\b(who\s+(?:uploaded|submitted|filed)|most\s+recent\s+filing|latest\s+upload|attestation|audit\s+trail|audit\s+history)\b/i.test(lower)
   ) {
     return false;
   }

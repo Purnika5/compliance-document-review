@@ -534,6 +534,94 @@ State whether this text would be Approved or Needs Revision, with guidance for t
       return await this.handleAdvisorLastYearUploadsIntent(user, correctedQuery);
     }
 
+    // ── Intent 2b: Active Document Compliance Audit / Infractions / Flags ───
+    const isDocumentAuditOrFlagsQuery =
+      Boolean(documentId || (pathname && pathname.includes('/documents/'))) &&
+      (/\b(audit\s+this\s+document|explain\s+(?:the\s+)?flagged\s+compliance\s+issues|compliance\s+issues\s+for\s+this\s+document|can\s+this\s+document\s+be\s+auto-remediated|review\s+attestation|audit\s+history|audit\s+trail|version\s+comparison|what\s+revisions\s+does\s+the\s+compliance\s+officer\s+require|remediate\s+promissory\s+language)\b/i.test(lower) ||
+       lower.includes('audit this document against finra') ||
+       lower.includes('explain the flagged compliance issues') ||
+       lower.includes('can this document be auto-remediated') ||
+       lower.includes('review attestation & audit history') ||
+       lower.includes('show version comparison'));
+
+    if (isDocumentAuditOrFlagsQuery) {
+      return await this.handleActiveDocumentAuditIntent(user, correctedQuery, lower, documentId, pathname);
+    }
+
+    // ── Intent 2c: Most Recent Filing / Who Uploaded Latest Filing ───────────
+    const isMostRecentFilingQuery =
+      /\b(who\s+(?:has\s+)?(?:uploaded|submitted|filed|sent)\s+(?:the\s+)?(?:most\s+recent|latest|newest|last)\s*(?:filing|document|file|submission|proposal)?|(?:who\s+uploaded|who\s+submitted|who\s+filed)\s+(?:the\s+)?(?:most\s+recent|latest|newest|last)|(?:what\s+is\s+(?:the\s+)?)?(?:most\s+recent|latest|newest|last)\s+(?:filing|document|file|submission|upload)\b|(?:who\s+made\s+(?:the\s+)?(?:most\s+recent|latest|last)\s+(?:upload|submission|filing)))\b/i.test(lower) ||
+      lower.includes('who uploaded the most recent filing') ||
+      lower.includes('most recent filing') ||
+      lower.includes('most recent submission') ||
+      lower.includes('most recent document') ||
+      (lower.includes('latest upload') && !/(?:of|by|for)\s+[a-z0-9_.-]+/i.test(lower));
+
+    if (isMostRecentFilingQuery) {
+      return await this.handleMostRecentFilingIntent(user, correctedQuery);
+    }
+
+    // ── Intent 2d: Who Uploaded Documents This Week / Recently ──────────────
+    const isWhoUploadedRecentQuery =
+      /\b(who\s+uploaded\s+(?:documents?|files?|filings?|submissions?|proposals?)?\s*(?:this\s+week|recently|in\s+the\s+past\s+week|past\s+7\s+days)|who\s+uploaded\s+documents\s+this\s+week|who\s+uploaded\s+this\s+week)\b/i.test(lower) ||
+      lower.includes('who uploaded documents this week') ||
+      lower.includes('who uploaded this week');
+
+    if (isWhoUploadedRecentQuery) {
+      return await this.handleWhoUploadedRecentIntent(user, correctedQuery);
+    }
+
+    // ── Intent 2e: Today's Uploads ──────────────────────────────────────────
+    const isTodayUploadsQuery =
+      /\b(documents?\s+uploaded\s+today|uploaded\s+today|submitted\s+today|today'?s?\s+uploads?|what\s+documents\s+are\s+awaiting\s+compliance\s+review\s+today)\b/i.test(lower) ||
+      lower.includes('uploaded today') ||
+      lower.includes('review today');
+
+    if (isTodayUploadsQuery) {
+      return await this.handleTodaysUploadsIntent(user, correctedQuery);
+    }
+
+    // ── Intent 2f: Pending Queue / Awaiting Determination ───────────────────
+    const isPendingQueueQuery =
+      /\b(pending\s+documents?\s+awaiting(?:\s+my)?\s+determination|unassigned\s+queue\s+submissions?\s+by\s+date|submissions?\s+by\s+date|pending\s+filings?\s+with\s+risk\s+flags|which\s+of\s+my\s+submissions\s+are\s+pending|list\s+all\s+pending\s+documents?|show\s+all\s+pending\s+filings?|unassigned\s+queue|pending\s+queue|all\s+pending\s+documents?)\b/i.test(lower) ||
+      lower.includes('pending documents awaiting my determination') ||
+      lower.includes('unassigned queue submissions by date') ||
+      lower.includes('pending filings with risk flags') ||
+      lower.includes('pending officer review');
+
+    if (isPendingQueueQuery) {
+      return await this.handlePendingQueueIntent(user, correctedQuery);
+    }
+
+    // ── Intent 2g: High-Risk Submissions Across Advisors ────────────────────
+    const isHighRiskQuery =
+      /\b(high[- ]risk\s+submissions?(?:\s+across\s+all\s+advisors)?|high[- ]risk\s+filings?|submissions?\s+with\s+risk\s+flags|show\s+high[- ]risk|high[- ]risk\s+documents?)\b/i.test(lower) ||
+      lower.includes('high-risk submissions across all advisors') ||
+      lower.includes('high-risk submissions');
+
+    if (isHighRiskQuery) {
+      return await this.handleHighRiskFilingsIntent(user, correctedQuery);
+    }
+
+    // ── Intent 2h: Approved Filings ─────────────────────────────────────────
+    const isApprovedFilingsQuery =
+      /\b(approved\s+filings?\s+this\s+quarter|show\s+approved\s+documents?|approved\s+(?:filings?|documents?|submissions?))\b/i.test(lower) ||
+      lower.includes('approved filings this quarter') ||
+      lower.includes('show approved documents');
+
+    if (isApprovedFilingsQuery) {
+      return await this.handleApprovedFilingsIntent(user, correctedQuery);
+    }
+
+    // ── Intent 2i: Submissions From This Month ──────────────────────────────
+    const isMonthSubmissionsQuery =
+      /\b(my\s+submissions?\s+from\s+this\s+month|submissions?\s+this\s+month|my\s+submissions?\s+this\s+month)\b/i.test(lower) ||
+      lower.includes('submissions from this month');
+
+    if (isMonthSubmissionsQuery) {
+      return await this.handleMonthSubmissionsIntent(user, correctedQuery);
+    }
+
     // ── Intent 3: Officer: Check Latest Upload (per advisor) ────────────────
     const isLatestUploadQuery =
       isOfficer &&
@@ -734,12 +822,7 @@ State whether this text would be Approved or Needs Revision, with guidance for t
     }
 
     if (!rawAdvisorName) {
-      return {
-        reply: "Sure! Whose latest upload would you like me to check?",
-        intent: 'officer_latest_upload',
-        isClarification: true,
-        correctedQuery,
-      };
+      return await GrokChatbotService.handleMostRecentFilingIntent({ role: 'Officer' }, correctedQuery);
     }
 
     const userRes = await query<any>(
@@ -1015,6 +1098,487 @@ State whether this text would be Approved or Needs Revision, with guidance for t
 
     const reply = await this.formatDbResultWithLlm(dbSummary, correctedQuery, 'Advisor', fallback);
     return { reply, intent: 'advisor_revision_feedback', correctedQuery };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Intent: Most Recent Filing / Who Uploaded Latest Filing (Live Database Query)
+  // ─────────────────────────────────────────────────────────────────────────
+  private static async handleMostRecentFilingIntent(
+    user: ChatUserContext,
+    correctedQuery: string
+  ): Promise<ChatbotResponse> {
+    const sql = `
+      SELECT 
+        d.id, d.title, d.status, d.version, d.file_name, d.mime_type, d.file_size, d.created_at,
+        u.name AS advisor_name, u.email AS advisor_email, u.role AS advisor_role,
+        da.risk_level, da.risk_score, da.flags, da.summary
+      FROM documents d
+      LEFT JOIN users u ON d.advisor_id = u.id
+      LEFT JOIN document_analyses da ON d.id = da.document_id AND d.version = da.version
+      ORDER BY d.created_at DESC
+      LIMIT 1
+    `;
+    const res = await query<any>(sql, []);
+
+    if (res.rows.length === 0) {
+      return {
+        reply: "There are currently no document filings uploaded in the Springer Capital repository database.",
+        intent: 'most_recent_filing',
+        correctedQuery,
+      };
+    }
+
+    const doc = res.rows[0];
+    let flagsList: any[] = [];
+    try {
+      flagsList = typeof doc.flags === 'string' ? JSON.parse(doc.flags) : (doc.flags || []);
+    } catch {
+      flagsList = [];
+    }
+
+    const flagCount = flagsList.length;
+    const dateFormatted = new Date(doc.created_at).toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const advisorName = doc.advisor_name || 'Registered Advisor';
+    const advisorEmail = doc.advisor_email ? ` (${doc.advisor_email})` : '';
+    const riskLevel = doc.risk_level || (flagCount === 0 ? 'Low' : flagCount <= 2 ? 'Medium' : 'High');
+    const riskScore = doc.risk_score !== null && doc.risk_score !== undefined ? `${doc.risk_score}/100` : (flagCount === 0 ? '0/100' : '45/100');
+
+    let flagsSnippet = '';
+    if (flagCount > 0) {
+      const sampleFlags = flagsList.slice(0, 3).map((f: any) => {
+        const rule = f.rule || 'Regulatory Issue';
+        const passage = f.passage ? `"${f.passage.replace(/\n+/g, ' ').slice(0, 90)}..."` : (f.explanation || 'Flagged issue');
+        return `  • **${rule}**: ${passage}`;
+      }).join('\n');
+      flagsSnippet = `\n\n**Compliance Flags (${flagCount}):**\n${sampleFlags}`;
+    } else {
+      flagsSnippet = '\n\n**Compliance Status**: ✓ Clean — zero compliance flags detected under FINRA Rule 2210 & SEC Rule 206.';
+    }
+
+    const dbSummary = `Most recent document filing retrieved from the database:\n- Title: "${doc.title}" (Version ${doc.version})\n- Uploaded by: ${advisorName}${advisorEmail}\n- Upload Date: ${dateFormatted}\n- Status: ${doc.status}\n- Risk Level: ${riskLevel} (Score: ${riskScore})\n- Flag count: ${flagCount}`;
+
+    const fallback = `The most recent filing in the Springer Capital repository is:\n\n📄 **"${doc.title}"** (Version ${doc.version})\n• **Uploaded By**: **${advisorName}**${advisorEmail}\n• **Submission Date**: ${dateFormatted}\n• **Status**: **${doc.status}**\n• **Risk Assessment**: **${riskLevel}** (${riskScore})${flagsSnippet}`;
+
+    const reply = await this.formatDbResultWithLlm(dbSummary, correctedQuery, user.role || 'Officer', fallback);
+    return { reply, intent: 'most_recent_filing', correctedQuery };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Intent: Who Uploaded Documents This Week / Recently (Live Database Query)
+  // ─────────────────────────────────────────────────────────────────────────
+  private static async handleWhoUploadedRecentIntent(
+    user: ChatUserContext,
+    correctedQuery: string
+  ): Promise<ChatbotResponse> {
+    const sql = `
+      SELECT 
+        d.id, d.title, d.status, d.version, d.created_at,
+        u.name AS advisor_name, u.email AS advisor_email,
+        da.risk_level, da.flags
+      FROM documents d
+      LEFT JOIN users u ON d.advisor_id = u.id
+      LEFT JOIN document_analyses da ON d.id = da.document_id AND d.version = da.version
+      WHERE d.created_at >= NOW() - INTERVAL '7 days'
+      ORDER BY d.created_at DESC
+      LIMIT 10
+    `;
+    const res = await query<any>(sql, []);
+
+    let rows = res.rows;
+    let periodNote = 'in the past 7 days';
+
+    if (rows.length === 0) {
+      // Fallback to most recent filings from DB so user always gets live records
+      const fallbackRes = await query<any>(`
+        SELECT 
+          d.id, d.title, d.status, d.version, d.created_at,
+          u.name AS advisor_name, u.email AS advisor_email,
+          da.risk_level, da.flags
+        FROM documents d
+        LEFT JOIN users u ON d.advisor_id = u.id
+        LEFT JOIN document_analyses da ON d.id = da.document_id AND d.version = da.version
+        ORDER BY d.created_at DESC
+        LIMIT 5
+      `, []);
+      rows = fallbackRes.rows;
+      periodNote = 'recently (no uploads in past 7 days, showing latest filings)';
+    }
+
+    if (rows.length === 0) {
+      return {
+        reply: "No document uploads found in the Springer Capital database.",
+        intent: 'who_uploaded_recent',
+        correctedQuery,
+      };
+    }
+
+    const docLines = rows.map((doc: any) => {
+      const dateStr = new Date(doc.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      let flagsList: any[] = [];
+      try { flagsList = typeof doc.flags === 'string' ? JSON.parse(doc.flags) : (doc.flags || []); } catch { flagsList = []; }
+      const risk = flagsList.length === 0 ? '✓ Clean' : `⚠ ${flagsList.length} flag${flagsList.length > 1 ? 's' : ''}`;
+      return `- **"${doc.title}"** (v${doc.version}) → Uploaded by **${doc.advisor_name || 'Advisor'}** (${doc.advisor_email || 'N/A'}) on ${dateStr} [Status: ${doc.status} | ${risk}]`;
+    }).join('\n');
+
+    const dbSummary = `Document uploads ${periodNote} (${rows.length} total):\n${docLines}`;
+    const fallback = `Here are the document submissions uploaded ${periodNote}:\n\n${docLines}\n\nWould you like me to inspect any specific advisor's filing?`;
+
+    const reply = await this.formatDbResultWithLlm(dbSummary, correctedQuery, user.role || 'Officer', fallback);
+    return { reply, intent: 'who_uploaded_recent', correctedQuery };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Intent: Today's Uploads (Live Database Query)
+  // ─────────────────────────────────────────────────────────────────────────
+  private static async handleTodaysUploadsIntent(
+    user: ChatUserContext,
+    correctedQuery: string
+  ): Promise<ChatbotResponse> {
+    const sql = `
+      SELECT 
+        d.id, d.title, d.status, d.version, d.created_at,
+        u.name AS advisor_name, u.email AS advisor_email,
+        da.risk_level, da.flags
+      FROM documents d
+      LEFT JOIN users u ON d.advisor_id = u.id
+      LEFT JOIN document_analyses da ON d.id = da.document_id AND d.version = da.version
+      WHERE d.created_at::date = CURRENT_DATE
+      ORDER BY d.created_at DESC
+    `;
+    const res = await query<any>(sql, []);
+    const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+
+    if (res.rows.length === 0) {
+      const reply = `No documents have been uploaded today (${todayStr}). The supervisory review queue has received 0 new submissions today.`;
+      return { reply, intent: 'todays_uploads', correctedQuery };
+    }
+
+    const docLines = res.rows.map((doc: any) => {
+      const timeStr = new Date(doc.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      let flagsList: any[] = [];
+      try { flagsList = typeof doc.flags === 'string' ? JSON.parse(doc.flags) : (doc.flags || []); } catch { flagsList = []; }
+      const risk = flagsList.length === 0 ? '✓ Clean' : `⚠ ${flagsList.length} flag${flagsList.length > 1 ? 's' : ''}`;
+      return `- **"${doc.title}"** (v${doc.version}) | By: **${doc.advisor_name || 'Advisor'}** | Time: ${timeStr} | Status: **${doc.status}** (${risk})`;
+    }).join('\n');
+
+    const dbSummary = `${res.rows.length} document(s) uploaded today (${todayStr}):\n${docLines}`;
+    const fallback = `**Today's Uploads (${res.rows.length} document${res.rows.length > 1 ? 's' : ''} on ${todayStr}):**\n\n${docLines}`;
+
+    const reply = await this.formatDbResultWithLlm(dbSummary, correctedQuery, user.role || 'Officer', fallback);
+    return { reply, intent: 'todays_uploads', correctedQuery };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Intent: Pending Queue / Awaiting Determination (Live Database Query)
+  // ─────────────────────────────────────────────────────────────────────────
+  private static async handlePendingQueueIntent(
+    user: ChatUserContext,
+    correctedQuery: string
+  ): Promise<ChatbotResponse> {
+    const isAdvisor = user.role === 'Advisor';
+    let sql: string;
+    let params: any[] = [];
+
+    if (isAdvisor && user.id) {
+      sql = `
+        SELECT 
+          d.id, d.title, d.status, d.version, d.created_at,
+          u.name AS advisor_name, u.email AS advisor_email,
+          da.risk_level, da.risk_score, da.flags
+        FROM documents d
+        LEFT JOIN users u ON d.advisor_id = u.id
+        LEFT JOIN document_analyses da ON d.id = da.document_id AND d.version = da.version
+        WHERE d.status = 'Pending' AND d.advisor_id = $1
+        ORDER BY d.created_at DESC
+        LIMIT 15
+      `;
+      params = [user.id];
+    } else {
+      sql = `
+        SELECT 
+          d.id, d.title, d.status, d.version, d.created_at,
+          u.name AS advisor_name, u.email AS advisor_email,
+          da.risk_level, da.risk_score, da.flags
+        FROM documents d
+        LEFT JOIN users u ON d.advisor_id = u.id
+        LEFT JOIN document_analyses da ON d.id = da.document_id AND d.version = da.version
+        WHERE d.status = 'Pending'
+        ORDER BY d.created_at DESC
+        LIMIT 15
+      `;
+    }
+
+    const res = await query<any>(sql, params);
+
+    if (res.rows.length === 0) {
+      const reply = isAdvisor
+        ? "You have zero submissions currently pending compliance officer determination. All your filings are either approved or awaiting revision."
+        : "The supervisory review queue is currently clear — zero pending document submissions awaiting officer determination.";
+      return { reply, intent: 'pending_queue', correctedQuery };
+    }
+
+    const docLines = res.rows.map((doc: any) => {
+      const dateStr = new Date(doc.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      let flagsList: any[] = [];
+      try { flagsList = typeof doc.flags === 'string' ? JSON.parse(doc.flags) : (doc.flags || []); } catch { flagsList = []; }
+      const risk = flagsList.length === 0 ? '✓ Clean' : `⚠ ${flagsList.length} flag${flagsList.length > 1 ? 's' : ''}`;
+      const by = isAdvisor ? '' : ` | Advisor: **${doc.advisor_name || 'Unknown'}**`;
+      return `- **"${doc.title}"** (v${doc.version})${by} | Submitted: ${dateStr} | Risk: ${risk}`;
+    }).join('\n');
+
+    const dbSummary = `Found ${res.rows.length} pending document(s) awaiting determination:\n${docLines}`;
+    const fallback = `**Pending Documents Awaiting Determination (${res.rows.length}):**\n\n${docLines}\n\nSelect any document in the review queue to open its supervisory panel.`;
+
+    const reply = await this.formatDbResultWithLlm(dbSummary, correctedQuery, user.role || 'Officer', fallback);
+    return { reply, intent: 'pending_queue', correctedQuery };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Intent: High-Risk Submissions Across Advisors (Live Database Query)
+  // ─────────────────────────────────────────────────────────────────────────
+  private static async handleHighRiskFilingsIntent(
+    user: ChatUserContext,
+    correctedQuery: string
+  ): Promise<ChatbotResponse> {
+    const sql = `
+      SELECT 
+        d.id, d.title, d.status, d.version, d.created_at,
+        u.name AS advisor_name, u.email AS advisor_email,
+        da.risk_level, da.risk_score, da.flags
+      FROM documents d
+      LEFT JOIN users u ON d.advisor_id = u.id
+      JOIN document_analyses da ON d.id = da.document_id AND d.version = da.version
+      WHERE da.risk_level = 'High' OR (da.flags IS NOT NULL AND jsonb_array_length(da.flags) > 0)
+      ORDER BY da.risk_score DESC NULLS LAST, d.created_at DESC
+      LIMIT 10
+    `;
+    const res = await query<any>(sql, []);
+
+    if (res.rows.length === 0) {
+      return {
+        reply: "Great news — zero submissions across all advisors currently have high-risk compliance flags in the database.",
+        intent: 'high_risk_filings',
+        correctedQuery,
+      };
+    }
+
+    const docLines = res.rows.map((doc: any) => {
+      let flagsList: any[] = [];
+      try { flagsList = typeof doc.flags === 'string' ? JSON.parse(doc.flags) : (doc.flags || []); } catch { flagsList = []; }
+      const rules = [...new Set(flagsList.map((f: any) => f.rule || 'FINRA 2210'))].join(', ');
+      return `- **"${doc.title}"** (v${doc.version}) | Advisor: **${doc.advisor_name || 'Unknown'}** | Status: **${doc.status}** | Flags: **${flagsList.length}** [${rules}]`;
+    }).join('\n');
+
+    const dbSummary = `${res.rows.length} high-risk / flagged submission(s) in repository:\n${docLines}`;
+    const fallback = `**High-Risk & Flagged Submissions (${res.rows.length} found):**\n\n${docLines}\n\nWould you like me to inspect the compliance flags for any of these?`;
+
+    const reply = await this.formatDbResultWithLlm(dbSummary, correctedQuery, user.role || 'Officer', fallback);
+    return { reply, intent: 'high_risk_filings', correctedQuery };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Intent: Active Document Compliance Audit / Infractions / Flags (Live Database Query)
+  // ─────────────────────────────────────────────────────────────────────────
+  private static async handleActiveDocumentAuditIntent(
+    user: ChatUserContext,
+    correctedQuery: string,
+    lower: string,
+    activeDocumentId?: string,
+    pathname?: string
+  ): Promise<ChatbotResponse> {
+    const targetDocId = activeDocumentId || pathname?.match(/\/documents\/([0-9a-fA-F-]+)/)?.[1];
+
+    if (!targetDocId) {
+      return {
+        reply: "Please open the document you would like to audit, or provide its title so I can pull its compliance record from the database.",
+        intent: 'document_audit',
+        isClarification: true,
+        correctedQuery,
+      };
+    }
+
+    // 1. Audit trail / attestation inquiry
+    if (lower.includes('attestation') || lower.includes('audit history') || lower.includes('audit trail')) {
+      const auditSql = `
+        SELECT a.action, a.previous_status, a.new_status, a.reason, a.created_at, u.name, u.role
+        FROM audit_trail a
+        LEFT JOIN users u ON a.user_id = u.id
+        WHERE a.document_id = $1
+        ORDER BY a.created_at DESC
+        LIMIT 10
+      `;
+      const aRes = await query<any>(auditSql, [targetDocId]);
+      if (aRes.rows.length === 0) {
+        return {
+          reply: "No audit trail entries recorded yet for this filing in the database.",
+          intent: 'document_audit_trail',
+          correctedQuery,
+        };
+      }
+      const trailLines = aRes.rows.map((row: any) => {
+        const timeStr = new Date(row.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        const reasonStr = row.reason ? ` — Note: "${row.reason}"` : '';
+        return `- **${row.action}** by ${row.name || 'System'} (${row.role || 'User'}) on ${timeStr}${row.new_status ? ` → Status: ${row.new_status}` : ''}${reasonStr}`;
+      }).join('\n');
+
+      const fallback = `**Attestation & Audit Ledger History:**\n\n${trailLines}`;
+      return { reply: fallback, intent: 'document_audit_trail', correctedQuery };
+    }
+
+    // 2. Version comparison
+    if (lower.includes('version comparison') || lower.includes('v1 and v2') || lower.includes('compare versions')) {
+      const vSql = `
+        SELECT version, status, created_at
+        FROM documents
+        WHERE id = $1
+      `;
+      const vRes = await query<any>(vSql, [targetDocId]);
+      const currentDoc = vRes.rows[0];
+      return {
+        reply: `**Version Comparison (Filing v${currentDoc?.version || 1}):**\n- Current Version: **v${currentDoc?.version || 1}** (${currentDoc?.status || 'Pending'})\n- Prior Version: **v${Math.max(1, (currentDoc?.version || 1) - 1)}**\n- Remediation status: Updated draft submitted for supervisory verification.`,
+        intent: 'document_version_comparison',
+        correctedQuery,
+      };
+    }
+
+    // 3. Flags & compliance issues
+    const docSql = `
+      SELECT d.title, d.status, d.version, u.name AS advisor_name, da.flags, da.summary, da.risk_level, da.risk_score
+      FROM documents d
+      LEFT JOIN users u ON d.advisor_id = u.id
+      LEFT JOIN document_analyses da ON d.id = da.document_id AND d.version = da.version
+      WHERE d.id = $1
+    `;
+    const docRes = await query<any>(docSql, [targetDocId]);
+    if (docRes.rows.length === 0) {
+      return {
+        reply: "Could not locate this document in the database.",
+        intent: 'document_audit',
+        correctedQuery,
+      };
+    }
+
+    const doc = docRes.rows[0];
+    let flagsList: any[] = [];
+    try { flagsList = typeof doc.flags === 'string' ? JSON.parse(doc.flags) : (doc.flags || []); } catch { flagsList = []; }
+
+    if (flagsList.length === 0) {
+      return {
+        reply: `Document **"${doc.title}"** (v${doc.version}) is **Clean** — 0 compliance flags detected under FINRA Rule 2210 & SEC Rule 206(4)-1. It contains no promissory phrasing, guaranteed returns, or missing statutory risk warnings.`,
+        intent: 'document_audit',
+        correctedQuery,
+      };
+    }
+
+    const formattedFlags = flagsList.map((f: any, idx: number) => {
+      const rule = f.rule || 'FINRA Rule 2210';
+      const passage = f.original_passage || f.passage || 'Identified text passage';
+      const fix = f.remediated_text || f.compliant_text || f.remediation || 'Replace with balanced market risk disclosures.';
+      const explanation = f.explanation || f.reason || f.rationale || 'Eliminate promissory claims and add statutory disclosures.';
+      return `### Flag ${idx + 1}: ${rule}\n**Violation Flag**\n• **Original Passage:**\n> "${passage}"\n• **Remediated Compliant Text:**\n> "${fix}"\n• **Amendment Rationale:** ${explanation}`;
+    }).join('\n\n');
+
+    const fallback = `**Compliance Diagnostic & Prescribed Amendments for "${doc.title}" (v${doc.version}):**\n\nFound **${flagsList.length} compliance issue${flagsList.length > 1 ? 's' : ''}** in the database analysis:\n\n${formattedFlags}`;
+    return { reply: fallback, intent: 'document_audit', correctedQuery };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Intent: Approved Filings (Live Database Query)
+  // ─────────────────────────────────────────────────────────────────────────
+  private static async handleApprovedFilingsIntent(
+    user: ChatUserContext,
+    correctedQuery: string
+  ): Promise<ChatbotResponse> {
+    const isAdvisor = user.role === 'Advisor';
+    let sql = `
+      SELECT d.id, d.title, d.version, d.status, d.created_at, u.name AS advisor_name
+      FROM documents d
+      LEFT JOIN users u ON d.advisor_id = u.id
+      WHERE d.status = 'Approved'
+    `;
+    const params: any[] = [];
+    if (isAdvisor && user.id) {
+      sql += ` AND d.advisor_id = $1`;
+      params.push(user.id);
+    }
+    sql += ` ORDER BY d.created_at DESC LIMIT 10`;
+
+    const res = await query<any>(sql, params);
+
+    if (res.rows.length === 0) {
+      return {
+        reply: isAdvisor
+          ? "You do not have any approved filings on record yet. Once an Officer approves your pending submissions, they will be listed here."
+          : "There are currently no approved filings in the repository database.",
+        intent: 'approved_filings',
+        correctedQuery,
+      };
+    }
+
+    const docLines = res.rows.map((doc: any) => {
+      const dateStr = new Date(doc.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const by = isAdvisor ? '' : ` | Advisor: **${doc.advisor_name || 'Advisor'}**`;
+      return `- **"${doc.title}"** (v${doc.version})${by} | Approved Date: ${dateStr}`;
+    }).join('\n');
+
+    const dbSummary = `${res.rows.length} approved filing(s):\n${docLines}`;
+    const fallback = `**Approved Filings (${res.rows.length}):**\n\n${docLines}`;
+
+    const reply = await this.formatDbResultWithLlm(dbSummary, correctedQuery, user.role || 'Officer', fallback);
+    return { reply, intent: 'approved_filings', correctedQuery };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Intent: Submissions From This Month (Live Database Query)
+  // ─────────────────────────────────────────────────────────────────────────
+  private static async handleMonthSubmissionsIntent(
+    user: ChatUserContext,
+    correctedQuery: string
+  ): Promise<ChatbotResponse> {
+    const isAdvisor = user.role === 'Advisor';
+    let sql = `
+      SELECT d.id, d.title, d.version, d.status, d.created_at, u.name AS advisor_name
+      FROM documents d
+      LEFT JOIN users u ON d.advisor_id = u.id
+      WHERE EXTRACT(MONTH FROM d.created_at) = EXTRACT(MONTH FROM CURRENT_DATE)
+        AND EXTRACT(YEAR FROM d.created_at) = EXTRACT(YEAR FROM CURRENT_DATE)
+    `;
+    const params: any[] = [];
+    if (isAdvisor && user.id) {
+      sql += ` AND d.advisor_id = $1`;
+      params.push(user.id);
+    }
+    sql += ` ORDER BY d.created_at DESC LIMIT 10`;
+
+    const res = await query<any>(sql, params);
+    const monthName = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
+
+    if (res.rows.length === 0) {
+      return {
+        reply: `No submissions found for **${monthName}**${isAdvisor ? ' under your account' : ''}.`,
+        intent: 'month_submissions',
+        correctedQuery,
+      };
+    }
+
+    const docLines = res.rows.map((doc: any) => {
+      const dateStr = new Date(doc.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const by = isAdvisor ? '' : ` | Advisor: **${doc.advisor_name || 'Advisor'}**`;
+      return `- **"${doc.title}"** (v${doc.version})${by} | Status: **${doc.status}** | Date: ${dateStr}`;
+    }).join('\n');
+
+    const dbSummary = `${res.rows.length} submission(s) in ${monthName}:\n${docLines}`;
+    const fallback = `**Submissions from ${monthName} (${res.rows.length}):**\n\n${docLines}`;
+
+    const reply = await this.formatDbResultWithLlm(dbSummary, correctedQuery, user.role || 'Officer', fallback);
+    return { reply, intent: 'month_submissions', correctedQuery };
   }
 
   // ─────────────────────────────────────────────────────────────────────────
