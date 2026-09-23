@@ -118,24 +118,24 @@ export function AppSidebar({
         )}
       >
         {/* Brand Header */}
-        <div className="h-16 px-4 border-b border-[#E6E8E7] flex items-center justify-between gap-2 bg-[#FFFFFF] shrink-0 overflow-hidden">
+        <div className="h-16 px-3 border-b border-[#E6E8E7] flex items-center justify-between gap-2 bg-[#FFFFFF] shrink-0">
           <Link
             href="/"
             className={cn(
-              "flex items-center gap-2.5 min-w-0 transition-all duration-300",
-              isCollapsed ? "lg:opacity-0 lg:pointer-events-none lg:w-0 lg:overflow-hidden" : "opacity-100"
+              "flex items-center gap-2.5 min-w-0 transition-all duration-300 overflow-hidden",
+              isCollapsed ? "lg:w-0 lg:opacity-0 lg:pointer-events-none" : "w-auto opacity-100"
             )}
           >
             <CompanyLogo inverted={false} />
           </Link>
 
-          {/* Collapse Toggle — desktop only */}
+          {/* Collapse Toggle Button */}
           <button
             onClick={onToggleCollapse}
             aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             className={cn(
-              "hidden lg:flex items-center justify-center h-7 w-7 rounded-lg text-[#183028]/60 hover:text-[#183028] hover:bg-[#C5E86C]/20 transition-all duration-150 cursor-pointer shrink-0",
+              "flex items-center justify-center h-7 w-7 rounded-lg border border-[#E6E8E7] bg-[#F8FAF9] text-[#183028]/70 hover:text-[#183028] hover:bg-[#C5E86C]/30 hover:border-[#C5E86C] transition-all duration-150 cursor-pointer shrink-0",
               isCollapsed && "mx-auto"
             )}
           >
