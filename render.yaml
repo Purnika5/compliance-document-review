@@ -37,8 +37,14 @@ services:
         value: sb_secret_Ovwel5u9oBp5SC985OZaxw_A0rsPrQw
       - key: SUPABASE_JWKS_URL
         value: https://wpvchfdjirdxtcxorzjb.supabase.co/auth/v1/.well-known/jwks.json
+      - key: DATABASE_URL
+        value: postgresql://postgres.wpvchfdjirdxtcxorzjb:Oip5gBebGAi6T6bQ@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres
+      - key: SKIP_MIGRATIONS
+        value: "false"
       - key: GEMINI_API_KEY
         value: AQ.Ab8RN6K25AMITEVj7ZHf0vuU86-YQzdmYfj6uRfe7q-1EqEW9w
+      - key: XAI_API_KEY
+        value: xai-umv2W8VWjJU3nTxafcMOcINKqiPlUsw72o1bEZY0RnQr281O86Nz1RgGx0qnC573aonAjqC8DLWa0fTw
 
   # ----------------------------------------------------------------------------
   # 2. PII Masking Engine (Private Microservice)

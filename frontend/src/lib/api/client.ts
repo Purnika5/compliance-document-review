@@ -8,8 +8,11 @@ import { authStore } from "@/lib/auth/auth-store";
 
 export const getBaseBackendUrl = (): string => {
   const envUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (envUrl && !envUrl.includes("localhost") && !envUrl.includes("127.0.0.1")) {
-    return envUrl.replace(/\/api\/?$/, "").replace(/\/$/, "");
+  if (envUrl && envUrl.trim()) {
+    return envUrl.replace(/\/api\/v1\/?$/, "").replace(/\/api\/?$/, "").replace(/\/$/, "");
+  }
+  if (typeof window !== "undefined" && window.location.hostname === "localhost") {
+    return "http://localhost:5000";
   }
   return "https://compliance-document-review-494m.onrender.com";
 };

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { DocumentController } from '../controllers/document.controller';
-import { authenticateToken, requireAdvisor, requireOfficer } from '../middleware/auth.middleware';
+import { authenticateToken, optionalAuth, requireAdvisor, requireOfficer } from '../middleware/auth.middleware';
 import { uploadDocumentFile } from '../middleware/upload.middleware';
 import { validate } from '../middleware/validate.middleware';
 import {
@@ -62,20 +62,47 @@ router.patch(
   DocumentController.updateStatus
 );
 
-// Get document version history
-router.get(
-  '/:id/versions',
-  authenticateToken,
-  validate({ params: documentIdParamSchema }),
-  DocumentController.getVersions
-);
-
 // List advisor submissions alias
 router.get(
   '/my-submissions',
   authenticateToken,
   validate({ query: documentQuerySchema }),
   DocumentController.list
+);
+
+// High-density filterable repository search & analytics endpoint
+router.post(
+  '/search',
+  optionalAuth,
+  DocumentController.search
+);
+
+// In-chat file compliance audit & automated remediation endpoint
+router.post(
+  '/audit-and-fix',
+  optionalAuth,
+  uploadDocumentFile.single('file'),
+  DocumentController.auditAndFix
+);
+
+// Download compliant remediated document (public token authentication)
+router.get(
+  '/download-remediated',
+  DocumentController.downloadRemediated
+);
+
+// 1-Click submit remediated document
+router.post(
+  '/submit-remediated',
+  authenticateToken,
+  DocumentController.submitRemediated
+);
+
+// AI Document Category Classification
+router.post(
+  '/classify',
+  optionalAuth,
+  DocumentController.classify
 );
 
 // List documents
@@ -86,6 +113,14 @@ router.get(
   DocumentController.list
 );
 
+// Get document version history
+router.get(
+  '/:id/versions',
+  authenticateToken,
+  validate({ params: documentIdParamSchema }),
+  DocumentController.getVersions
+);
+
 // Get document analysis
 router.get(
   '/:id/analysis',
@@ -94,20 +129,20 @@ router.get(
   DocumentController.getAnalysis
 );
 
-// Get single document detail
-router.get(
-  '/:id',
-  authenticateToken,
-  validate({ params: documentIdParamSchema }),
-  DocumentController.getById
-);
-
 // Stream document file content (inline view / download)
 router.get(
   '/:id/file',
   authenticateToken,
   validate({ params: documentIdParamSchema }),
   DocumentController.downloadFile
+);
+
+// Get single document detail (MUST BE LAST GET ROUTE WITH :id)
+router.get(
+  '/:id',
+  authenticateToken,
+  validate({ params: documentIdParamSchema }),
+  DocumentController.getById
 );
 
 export default router;

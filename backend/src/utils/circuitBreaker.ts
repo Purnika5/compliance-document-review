@@ -198,7 +198,7 @@ export class CircuitBreaker {
 // Global instance for AI service
 export const aiCircuitBreaker = new CircuitBreaker({
   name: 'ai-analysis-service',
-  failureThreshold: 3,
-  cooldownMs: 30000,
-  timeoutMs: 10000,
+  failureThreshold: 4,
+  cooldownMs: 20000,
+  timeoutMs: 30000,
 });

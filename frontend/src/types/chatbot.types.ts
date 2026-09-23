@@ -4,6 +4,7 @@
  * @author Keith
  */
 import type { IGrammarResult, IDocumentationResult } from "@/lib/chatbot/documentation-engine";
+import type { ISearchResponse, IAuditAndFixResponse } from "./copilot.types";
 
 export interface IChatMessage {
   /** Stable identifier for the message. */
@@ -20,4 +21,13 @@ export interface IChatMessage {
   grammarResult?: IGrammarResult;
   /** Optional structured documentation enhancement result for rich rendering. */
   documentationResult?: IDocumentationResult;
+  /** Optional multi-dimensional repository search telemetry and document result. */
+  searchResult?: ISearchResponse;
+  /** Optional in-chat compliance audit & automated remediation result. */
+  auditResult?: IAuditAndFixResponse;
+  /** Dynamic contextual suggestion chips. */
+  suggestedChips?: string[];
+  /** Set when the remediated version has been submitted — holds the submission timestamp. */
+  submittedAt?: string;
 }
+

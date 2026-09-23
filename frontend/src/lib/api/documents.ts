@@ -44,14 +44,22 @@ interface ApiDocument {
  * @author Keith
  */
 function mapApiDocumentToItem(doc: ApiDocument): DocumentItem {
+  const fileFormat = doc.mime_type?.includes("pdf")
+    ? "PDF"
+    : doc.mime_type?.includes("word") || doc.file_name?.endsWith(".docx")
+      ? "DOCX"
+      : doc.mime_type?.includes("text") || doc.file_name?.endsWith(".txt")
+        ? "TXT"
+        : "Document";
+
   return {
     id: doc.id,
     title: doc.title,
-    category: doc.mime_type?.includes("pdf")
-      ? "PDF"
-      : doc.mime_type?.includes("word") || doc.file_name?.endsWith(".docx")
-        ? "DOCX"
-        : "Document",
+    // category is the institutional classification (e.g. Regulatory Filing).
+    // We default to "Document" here; the AI classify endpoint or upload form
+    // provides the real institutional category when available.
+    category: "Document",
+    fileFormat,
     submittedBy: doc.advisor_name || "Advisor",
     advisorEmail: doc.advisor_email,
     submittedAt: doc.created_at,

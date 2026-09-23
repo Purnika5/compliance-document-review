@@ -59,7 +59,7 @@ import { cn } from "@/lib/utils";
 import { MetricLineChart } from "@/components/shared/metric-line-chart";
 import { showInfoToast } from "@/components/ui/toast";
 import { FileTypeIcon } from "@/components/shared/file-type-icon";
-import { DateFilterModal, type DateFilterPreset } from "./date-filter-modal";
+import { ComplianceCalendar, type DateFilterPreset } from "./compliance-calendar";
 import { generateMetricTrends } from "../utils/metric-trend.util";
 import { SubmissionsSkeleton } from "./submissions-skeleton";
 import { DashboardSkeleton } from "./dashboard-skeleton";
@@ -116,38 +116,10 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
     return sizes[index % sizes.length];
   };
 
-  // Date Filter Modal & Range States
-  const [isDateModalOpen, setIsDateModalOpen] = useState(false);
+  // Unified Date Filter State (Managed via ComplianceCalendar)
   const [dateFilterPreset, setDateFilterPreset] = useState<DateFilterPreset>("All");
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
-  const [calendarMonthOffset, setCalendarMonthOffset] = useState(0);
-
-  const baseDate = new Date();
-  const viewedCalendarDate = new Date(baseDate.getFullYear(), baseDate.getMonth() + calendarMonthOffset, 1);
-  const currentMonth = viewedCalendarDate.getMonth();
-  const currentYear = viewedCalendarDate.getFullYear();
-  const monthLabel = viewedCalendarDate.toLocaleDateString(undefined, { month: "long", year: "numeric" });
-
-  const firstDayOffset = new Date(currentYear, currentMonth, 1).getDay();
-  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-  const calendarCells = Array.from({ length: firstDayOffset + daysInMonth }, (_, i) =>
-    i < firstDayOffset ? null : i - firstDayOffset + 1
-  );
-
-  const docsByDay = React.useMemo(() => {
-    const map = new Map<number, DocumentItem[]>();
-    documents.forEach((doc) => {
-      const d = new Date(doc.submittedAt);
-      if (d.getFullYear() === currentYear && d.getMonth() === currentMonth) {
-        const day = d.getDate();
-        const list = map.get(day) || [];
-        list.push(doc);
-        map.set(day, list);
-      }
-    });
-    return map;
-  }, [documents, currentYear, currentMonth]);
 
 
   const filteredDocuments = documents.filter((doc) => {
@@ -333,15 +305,22 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
             </div>
 
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsDateModalOpen(true)}
-                className="h-8 px-2.5 text-xs rounded-xl border-[#E6E8E7] text-[#183028] hover:bg-[#C5E86C]/10 cursor-pointer"
-              >
-                <Filter className="h-3.5 w-3.5 mr-1 text-[#183028]/60" />
-                <span>{dateFilterPreset !== "All" ? `Date: ${dateFilterPreset}` : "Date Filter"}</span>
-              </Button>
+              {dateFilterPreset !== "All" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setDateFilterPreset("All");
+                    setDateFilter("All");
+                    setCustomStartDate("");
+                    setCustomEndDate("");
+                    setCurrentPage(1);
+                  }}
+                  className="h-8 px-2.5 text-xs rounded-xl border-[#E6E8E7] bg-[#C5E86C]/20 text-[#183028] hover:bg-[#C5E86C]/30 cursor-pointer font-semibold"
+                >
+                  <span>Date: {dateFilterPreset} (Clear)</span>
+                </Button>
+              )}
 
               <div className="relative w-48 sm:w-64">
                 <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-[#183028]/50" />
@@ -527,47 +506,8 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                 </p>
               </div>
 
-              {/* Date Filter Presets & Controls + Upload Document Action */}
-              <div className="flex flex-wrap items-center gap-2.5">
-                {/* Date presets selector */}
-                <div className="flex items-center bg-[#FAFBFB] p-1 rounded-xl border border-[#E6E8E7] gap-0.5">
-                  {(["All", "Today", "Past 7 Days", "This Month", "Past 90 Days"] as const).map((preset) => {
-                    const isSelected = dateFilterPreset === preset || (preset === "All" && dateFilterPreset === "All");
-                    return (
-                      <button
-                        key={preset}
-                        type="button"
-                        onClick={() => {
-                          setDateFilterPreset(preset as DateFilterPreset);
-                          setDateFilter(preset);
-                        }}
-                        className={cn(
-                          "px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-all cursor-pointer whitespace-nowrap",
-                          isSelected
-                            ? "bg-[#183028] text-white shadow-2xs"
-                            : "text-[#183028]/70 hover:text-[#183028] hover:bg-[#C5E86C]/25"
-                        )}
-                      >
-                        {preset === "All" ? "All Time" : preset}
-                      </button>
-                    );
-                  })}
-                  <button
-                    type="button"
-                    onClick={() => setIsDateModalOpen(true)}
-                    className={cn(
-                      "px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-all cursor-pointer whitespace-nowrap flex items-center gap-1",
-                      dateFilterPreset === "Custom" || (dateFilterPreset !== "All" && !["Today", "Past 7 Days", "This Month", "Past 90 Days"].includes(dateFilterPreset))
-                        ? "bg-[#183028] text-white shadow-2xs"
-                        : "text-[#183028]/70 hover:text-[#183028] hover:bg-[#C5E86C]/25"
-                    )}
-                  >
-                    <Filter className="h-3 w-3" />
-                    <span>Custom</span>
-                  </button>
-                </div>
-
-                {/* Upload Document Button */}
+              {/* Upload Document Action */}
+              <div className="flex items-center gap-2.5">
                 <Button
                   onClick={openModal}
                   size="sm"
@@ -918,100 +858,33 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
 
             {/* Right (col-span-4): Compliance Calendar */}
             <div className="lg:col-span-4 space-y-3.5">
-              {/* Submission Calendar Card */}
-              <div className="bg-[#FFFFFF] rounded-2xl p-5 border border-[#E6E8E7] shadow-2xs">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#183028]/50">
-                  Compliance Calendar
-                </span>
-                <div className="flex items-center justify-between mt-1 mb-3">
-                  <h3 className="text-sm font-bold text-[#183028]">
-                    {monthLabel}
-                  </h3>
-                  <div className="flex items-center gap-1">
-                    {calendarMonthOffset !== 0 && (
-                      <button
-                        onClick={() => setCalendarMonthOffset(0)}
-                        className="px-1.5 py-0.5 text-[10px] font-semibold text-[#183028] bg-[#E6E8E7]/60 hover:bg-[#C5E86C]/20 rounded-md cursor-pointer transition-colors"
-                        title="Return to Current Month"
-                      >
-                        Today
-                      </button>
-                    )}
-                    <button
-                      onClick={() => setCalendarMonthOffset((p) => p - 1)}
-                      className="p-1 rounded text-[#183028]/50 hover:text-[#183028] hover:bg-[#C5E86C]/20 cursor-pointer transition-colors"
-                      title="Previous Month"
-                    >
-                      <ChevronLeft className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      onClick={() => setCalendarMonthOffset((p) => p + 1)}
-                      className="p-1 rounded text-[#183028]/50 hover:text-[#183028] hover:bg-[#C5E86C]/20 cursor-pointer transition-colors"
-                      title="Next Month"
-                    >
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      onClick={() => setIsDateModalOpen(true)}
-                      className="p-1 rounded text-[#183028] hover:bg-[#C5E86C]/20 cursor-pointer transition-colors ml-0.5"
-                      title="Filter by Custom Date"
-                    >
-                      <CalendarDays className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Calendar Weekday Row */}
-                <div className="grid grid-cols-7 text-center text-[10px] font-semibold text-[#183028]/45 mb-1.5 uppercase">
-                  <span>S</span>
-                  <span>M</span>
-                  <span>T</span>
-                  <span>W</span>
-                  <span>T</span>
-                  <span>F</span>
-                  <span>S</span>
-                </div>
-
-                {/* Calendar Days Grid (Dynamically Computed) */}
-                <div className="grid grid-cols-7 gap-1 text-center text-xs">
-                  {calendarCells.map((day, idx) => {
-                    if (!day) {
-                      return <span key={`pad-${idx}`} className="h-7 w-full" />;
-                    }
-
-                    const dayDocs = docsByDay.get(day) || [];
-                    const hasDocs = dayDocs.length > 0;
-                    const isToday =
-                      baseDate.getDate() === day &&
-                      baseDate.getMonth() === currentMonth &&
-                      baseDate.getFullYear() === currentYear;
-
-                    return (
-                      <div
-                        key={`day-${day}`}
-                        className={cn(
-                          "h-7 w-full flex flex-col items-center justify-center rounded-lg text-xs font-medium transition-all relative select-none",
-                          hasDocs
-                            ? "bg-[#C5E86C]/25 text-[#183028] font-bold border border-[#C5E86C]"
-                            : "text-[#183028]/75",
-                          isToday && "ring-1 ring-[#183028]/40"
-                        )}
-                        title={
-                          hasDocs
-                            ? `${dayDocs.length} uploaded file${dayDocs.length > 1 ? "s" : ""} on ${monthLabel.split(" ")[0]} ${day}`
-                            : `${monthLabel.split(" ")[0]} ${day}`
-                        }
-                      >
-                        <span>{day}</span>
-                        {hasDocs && (
-                          <span className="h-1 w-1 rounded-full absolute bottom-0.5 bg-[#183028]" />
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
+              <ComplianceCalendar
+                documents={documents}
+                activePreset={dateFilterPreset}
+                customStartDate={customStartDate}
+                customEndDate={customEndDate}
+                onSelectPreset={(preset) => {
+                  setDateFilterPreset(preset);
+                  setDateFilter(preset);
+                  setCustomStartDate("");
+                  setCustomEndDate("");
+                  setCurrentPage(1);
+                }}
+                onSelectCustomRange={(start, end) => {
+                  setDateFilterPreset("Custom");
+                  setDateFilter("Custom");
+                  setCustomStartDate(start);
+                  setCustomEndDate(end);
+                  setCurrentPage(1);
+                }}
+                onClear={() => {
+                  setDateFilterPreset("All");
+                  setDateFilter("All");
+                  setCustomStartDate("");
+                  setCustomEndDate("");
+                  setCurrentPage(1);
+                }}
+              />
             </div>
           </div>
         </div>
@@ -1038,27 +911,6 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
         isOpen={!!resubmitDoc}
         onClose={() => setResubmitDoc(null)}
         onSuccess={() => refetch()}
-      />
-
-      <DateFilterModal
-        isOpen={isDateModalOpen}
-        onClose={() => setIsDateModalOpen(false)}
-        onApply={(preset, start, end) => {
-          setDateFilterPreset(preset);
-          setCustomStartDate(start);
-          setCustomEndDate(end);
-          setCurrentPage(1);
-        }}
-        onReset={() => {
-          setDateFilterPreset("All");
-          setDateFilter("All");
-          setCustomStartDate("");
-          setCustomEndDate("");
-          setCurrentPage(1);
-        }}
-        currentPreset={dateFilterPreset}
-        currentStartDate={customStartDate}
-        currentEndDate={customEndDate}
       />
     </div>
   );

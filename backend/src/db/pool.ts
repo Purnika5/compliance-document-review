@@ -5,7 +5,11 @@ import crypto from 'crypto';
 export const pool = new Pool(config.db);
 
 let memAdapterPool: any = null;
-let useMemFallback = process.env.NODE_ENV === 'test';
+
+// Only allow pg-mem fallback when NO real database URL is configured.
+// If DATABASE_URL is explicitly set, failures must throw so they are visible in logs.
+const hasRealDatabase = Boolean(process.env.DATABASE_URL || process.env.SUPABASE_DB_URL);
+let useMemFallback = !hasRealDatabase;
 
 export const isMemFallbackActive = (): boolean => useMemFallback;
 
@@ -52,6 +56,12 @@ pool.connect = (async (...args: any[]) => {
   try {
     return await (originalConnect as Function)(...args);
   } catch (err: any) {
+    if (hasRealDatabase) {
+      // Real DB is configured — surface the actual error, do NOT fall back to memory
+      console.error('[DB] Connection to configured database failed:', err?.message || err);
+      throw err;
+    }
+    console.warn('[DB] No real database configured. Falling back to in-memory database (pg-mem)...');
     useMemFallback = true;
     const adapter = getMemAdapter();
     return await adapter.connect();
@@ -77,6 +87,11 @@ export const query = async <T extends QueryResultRow = any>(
     }
     return res;
   } catch (error: any) {
+    if (hasRealDatabase) {
+      // Real DB is configured — surface the actual error, do NOT fall back to memory
+      console.error('[DB] Query failed against configured database:', error?.message || error);
+      throw error;
+    }
     if (
       error.code === 'ECONNREFUSED' ||
       error.code === '28P01' ||
@@ -84,7 +99,7 @@ export const query = async <T extends QueryResultRow = any>(
       error.message?.includes('password authentication') ||
       error.name === 'AggregateError'
     ) {
-      console.warn('[DB] PostgreSQL connection/auth unavailable on port 5432. Falling back to in-memory database (pg-mem)...');
+      console.warn('[DB] No real database configured. Falling back to in-memory database (pg-mem)...');
       useMemFallback = true;
       const adapter = getMemAdapter();
       const res = await adapter.query(text, params);

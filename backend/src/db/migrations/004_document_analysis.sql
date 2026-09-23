@@ -6,6 +6,8 @@ CREATE TABLE IF NOT EXISTS document_analyses (
     masked_text     TEXT NOT NULL,
     summary         TEXT,
     flags           JSONB NOT NULL DEFAULT '[]'::jsonb,
+    risk_level      VARCHAR(50) DEFAULT 'Low',
+    risk_score      NUMERIC DEFAULT 0,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_document_analysis_doc_ver UNIQUE (document_id, version)

@@ -20,13 +20,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   UploadCloud,
   CheckCircle2,
   AlertTriangle,
@@ -35,10 +28,12 @@ import {
   Trash2,
   FileText,
   Paperclip,
+  Sparkles,
 } from "lucide-react";
 import { uploadDocumentSchema, type UploadDocumentInput } from "@/lib/validation/document";
 import { cn } from "@/lib/utils";
 import { showErrorToast } from "@/components/ui/toast";
+import { copilotApi } from "@/lib/api/copilot";
 
 export interface UploadDocumentModalProps {
   isOpen: boolean;
@@ -66,20 +61,66 @@ export function UploadDocumentModal({
 }: UploadDocumentModalProps) {
   const [step, setStep] = useState<"details" | "validation" | "success">("details");
   const [title, setTitle] = useState("");
-  const [category, setCategory] = useState("Compliance Document");
+  const [category, setCategory] = useState("");
   const [notes, setNotes] = useState("");
   const [files, setFiles] = useState<IFileValidationItem[]>([]);
   const [rawFile, setRawFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isDragOver, setIsDragOver] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [isClassifying, setIsClassifying] = useState(false);
+  const [aiClassification, setAiClassification] = useState<{
+    category: string;
+    confidence: number;
+    reason: string;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  /** AI-powered automatic document category classification */
+  const classifyWithAi = async (fileObj?: File | null, customTitle?: string, customNotes?: string) => {
+    setIsClassifying(true);
+    try {
+      let snippet = "";
+      const activeFile = fileObj !== undefined ? fileObj : rawFile;
+      if (activeFile && activeFile.size > 0 && activeFile.size < 500000) {
+        try {
+          snippet = await activeFile.slice(0, 4000).text();
+        } catch {
+          // ignore binary extraction
+        }
+      }
+
+      const activeTitle = customTitle !== undefined ? customTitle : title;
+      const activeNotes = customNotes !== undefined ? customNotes : notes;
+
+      const result = await copilotApi.classifyDocument({
+        title: activeTitle || activeFile?.name,
+        fileName: activeFile?.name,
+        textSnippet: snippet,
+        notes: activeNotes,
+      });
+
+      if (result && result.category) {
+        setCategory(result.category);
+        setAiClassification(result);
+      }
+    } catch (e) {
+      console.error("[AI Classification]", e);
+    } finally {
+      setIsClassifying(false);
+    }
+  };
 
   const handleProceedToValidation = (e: React.FormEvent) => {
     e.preventDefault();
     setFormErrors({});
 
-    const validation = uploadDocumentSchema.safeParse({ title, category, notes });
+    const effectiveCategory = category.trim() || "Compliance Document";
+    if (!category.trim()) {
+      setCategory(effectiveCategory);
+    }
+
+    const validation = uploadDocumentSchema.safeParse({ title, category: effectiveCategory, notes });
     if (!validation.success) {
       const errs: Record<string, string> = {};
       validation.error.issues.forEach((issue) => {
@@ -115,10 +156,11 @@ export function UploadDocumentModal({
 
   const handleCloseAndReset = () => {
     setTitle("");
-    setCategory("Investment Proposal");
+    setCategory("");
     setNotes("");
     setFiles([]);
     setRawFile(null);
+    setAiClassification(null);
     setStep("details");
     setUploadProgress(0);
     onClose();
@@ -139,7 +181,10 @@ export function UploadDocumentModal({
         message: "File integrity and size constraints passed",
       };
       setFiles([newFile]);
-      if (!title) setTitle(dropped.name.replace(/\.[^/.]+$/, "").replace(/_/g, " "));
+      const newTitle = title || dropped.name.replace(/\.[^/.]+$/, "").replace(/_/g, " ");
+      if (!title) setTitle(newTitle);
+      // Automatically classify with AI
+      classifyWithAi(dropped, newTitle, notes);
     }
   };
 
@@ -156,13 +201,18 @@ export function UploadDocumentModal({
         message: "File integrity and size constraints passed",
       };
       setFiles([newFile]);
-      if (!title) setTitle(selected.name.replace(/\.[^/.]+$/, "").replace(/_/g, " "));
+      const newTitle = title || selected.name.replace(/\.[^/.]+$/, "").replace(/_/g, " ");
+      if (!title) setTitle(newTitle);
+      // Automatically classify with AI
+      classifyWithAi(selected, newTitle, notes);
     }
   };
 
   const removeFile = (id: string) => {
     setFiles((prev) => prev.filter((f) => f.id !== id));
     setRawFile(null);
+    setAiClassification(null);
+    setCategory("");
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -318,6 +368,11 @@ export function UploadDocumentModal({
                     setFormErrors((prev) => ({ ...prev, title: "" }));
                   }
                 }}
+                onBlur={() => {
+                  if (title && title.trim().length >= 3) {
+                    classifyWithAi(rawFile, title, notes);
+                  }
+                }}
                 className={cn(
                   "h-9 text-xs rounded-xl bg-[#FFFFFF] border-[#E6E8E7] text-[#183028] focus:border-[#183028] focus:ring-1 focus:ring-[#183028] transition-colors shadow-2xs w-full min-w-0",
                   formErrors.title && "border-rose-500 ring-1 ring-rose-500"
@@ -326,34 +381,6 @@ export function UploadDocumentModal({
               {formErrors.title && (
                 <p className="text-[11px] text-rose-600 font-medium animate-fade-in">{formErrors.title}</p>
               )}
-            </div>
-
-            <div className="space-y-1.5 min-w-0">
-              <label className="block text-xs font-semibold text-[#183028]">
-                Classification Category <span className="text-rose-500">*</span>
-              </label>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger className="h-9 w-full text-xs rounded-xl bg-white border border-[#E6E8E7] text-[#183028] focus:border-[#183028] focus:ring-1 focus:ring-[#183028] shadow-2xs cursor-pointer min-w-0">
-                  <SelectValue placeholder="Select Category" />
-                </SelectTrigger>
-                <SelectContent className="bg-white rounded-xl border border-[#E6E8E7] shadow-xl text-[#183028]">
-                  <SelectItem value="Compliance Document" className="text-xs cursor-pointer py-1.5 text-[#183028] hover:bg-[#C5E86C]/20">
-                    Compliance Document
-                  </SelectItem>
-                  <SelectItem value="Audit Report" className="text-xs cursor-pointer py-1.5 text-[#183028] hover:bg-[#C5E86C]/20">
-                    Audit Report
-                  </SelectItem>
-                  <SelectItem value="Regulatory Filing" className="text-xs cursor-pointer py-1.5 text-[#183028] hover:bg-[#C5E86C]/20">
-                    Regulatory Filing
-                  </SelectItem>
-                  <SelectItem value="Policy Agreement" className="text-xs cursor-pointer py-1.5 text-[#183028] hover:bg-[#C5E86C]/20">
-                    Policy Agreement
-                  </SelectItem>
-                  <SelectItem value="Identity & KYC Verification" className="text-xs cursor-pointer py-1.5 text-[#183028] hover:bg-[#C5E86C]/20">
-                    Identity &amp; KYC Verification
-                  </SelectItem>
-                </SelectContent>
-              </Select>
             </div>
 
             <div className="space-y-1.5 min-w-0">

@@ -45,6 +45,41 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
   }
 };
 
+export const optionalAuth = (req: Request, res: Response, next: NextFunction): void => {
+  let token: string | undefined;
+
+  const authHeader = req.headers['authorization'];
+  if (authHeader && typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+    token = authHeader.slice(7).trim();
+  } else if (req.query && typeof req.query.token === 'string' && req.query.token.trim()) {
+    token = req.query.token.trim();
+  }
+
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, config.jwt.secret) as AuthTokenPayload;
+      if (decoded && decoded.id && decoded.role) {
+        (req as any).user = {
+          id: decoded.id,
+          email: decoded.email,
+          role: decoded.role
+        };
+        return next();
+      }
+    } catch {
+      // Gracefully continue with fallback identity for non-destructive operations
+    }
+  }
+
+  // Provide fallback identity for guest / in-chat demos
+  (req as any).user = {
+    id: '00000000-0000-0000-0000-000000000001',
+    email: 'advisor@springercapital.com',
+    role: 'Advisor'
+  };
+  next();
+};
+
 export const requireRole = (allowedRoles: UserRole[]) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     const user = (req as any).user;

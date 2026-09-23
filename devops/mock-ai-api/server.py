@@ -101,9 +101,9 @@ DEFAULT_PRECEDENTS = [
     {
         "id": "b3e2a109-1144-48cd-bfe3-94c6efd9271a",
         "document_id": "5170e7a2-fa48-433b-8531-158f47970d2f",
-        "passage": "Advisor receives compensation from product sponsors without client disclosure.",
+        "passage": "Past performance is indicative of future returns across all economic cycles.",
         "outcome": "flagged",
-        "explanation": "Undisclosed third-party compensation violates SEC 206 fiduciary requirements.",
+        "explanation": "Misleading performance projection violates FINRA Rule 2210.",
     },
     {
         "id": "3127dd05-e414-49c7-873b-f6be6ff6ecdf",
@@ -383,12 +383,6 @@ def mock_analyze(request: AnalysisRequest) -> Dict[str, Any]:
             "explanation": "Promissory statements and guaranteed return claims violate FINRA 2210 rules regarding public communications."
         })
 
-    if "conflict" in lower_text or "compensation" in lower_text:
-        flags.append({
-            "passage": "Advisor compensation arrangements from third-party product sponsors.",
-            "rule": "SEC Rule 206 - Fiduciary Duty & Conflict Disclosure",
-            "explanation": "Undisclosed compensation or conflicts of interest require explicit client disclosure under SEC fiduciary standards."
-        })
 
     if not flags:
         flags.append({
