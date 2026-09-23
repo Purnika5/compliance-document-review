@@ -25,6 +25,8 @@ export interface IChatMessage {
   searchResult?: ISearchResponse;
   /** Optional in-chat compliance audit & automated remediation result. */
   auditResult?: IAuditAndFixResponse;
+  /** Optional in-chat compliance flag scan result rendered for Officers (supervisory view, no download/submit). */
+  officerAuditResult?: IAuditAndFixResponse;
   /** Dynamic contextual suggestion chips. */
   suggestedChips?: string[];
   /** Set when the remediated version has been submitted — holds the submission timestamp. */

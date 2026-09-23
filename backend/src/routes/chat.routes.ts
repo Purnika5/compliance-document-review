@@ -189,11 +189,12 @@ function generateContextualComplianceReply(
 // POST /api/chat
 // ─────────────────────────────────────────────────────────────────────────────
 router.post('/', optionalAuth, async (req: Request, res: Response) => {
-  const { message, role, pathname, documentId } = req.body as {
+  const { message, role, pathname, documentId, conversationHistory } = req.body as {
     message?: string;
     role?: string;
     pathname?: string;
     documentId?: string;
+    conversationHistory?: Array<{ role: string; content: string }>;
   };
 
   if (!message || !message.trim()) {
@@ -215,6 +216,7 @@ router.post('/', optionalAuth, async (req: Request, res: Response) => {
       user: { id: userId, role: userRole },
       pathname,
       documentId,
+      conversationHistory,
     });
 
     const isSpecificIntent =

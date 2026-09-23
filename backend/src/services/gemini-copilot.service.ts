@@ -14,7 +14,7 @@ import { aiCircuitBreaker } from '../utils/circuitBreaker';
 import { AppError } from '../middleware/error.middleware';
 import { query } from '../db/pool';
 import { DocumentService } from './document.service';
-import { GeminiClient } from '../utils/gemini';
+import { GeminiClient, stripJsonFences } from '../utils/gemini';
 
 export interface AuditBreakdownItem {
   rule: string;
@@ -174,7 +174,8 @@ Return ONLY valid JSON — no prose outside the JSON object:
         });
 
         if (gResult?.text) {
-          aiData = JSON.parse(gResult.text);
+          const cleaned = stripJsonFences(gResult.text);
+          aiData = JSON.parse(cleaned);
         }
       } catch (geminiErr) {
         console.warn('[GeminiCopilot] Direct Gemini REST call warning, checking AI microservice:', geminiErr);
@@ -380,29 +381,73 @@ Return ONLY valid JSON — no prose outside the JSON object:
         regex: /(?:our\s+[\w\s]+\s+)?guarantees?\s+(?:a\s+)?(?:net\s+)?(?:annualized\s+)?return\s+of\s+([0-9]+(?:\.[0-9]+)?%)[^.\n]*/gi,
         rule: 'FINRA Rule 2210 - Communications with the Public',
         issue: 'Promissory return guarantee and complete omission of downside risk disclosures.',
-        replace: (m: string, p1: string) => `targets an annualized return benchmark of ${p1}. Capital allocations remain subject to market fluctuation and risk of loss of principal.`,
+        replace: (m: string, p1?: string) => `targets an annualized return benchmark of ${p1 || 'target percentage'}. Capital allocations remain subject to market fluctuation and risk of loss of principal.`,
         reason: 'Replaced absolute return claim with benchmark objective and inserted statutory risk warning.',
+        category: 'PROHIBITED_CLAIM' as const,
       },
       {
-        regex: /\bwithout\s+downside\s+(?:market\s+)?risk\b/gi,
+        regex: /\b(?:guaranteed|promise(?:d|s)?|assure(?:d|s)?)\s+(?:a\s+)?(?:fixed\s+|minimum\s+)?(?:annual(?:ized)?\s+)?return(?:s)?(?:\s+of\s+[0-9]+(?:\.[0-9]+)?%?)?/gi,
+        rule: 'FINRA Rule 2210 - Communications with the Public',
+        issue: 'Promissory return language violates FINRA prohibition against guaranteed outcomes.',
+        replace: () => 'targeted annualized investment objective, subject to market fluctuation and risks',
+        reason: 'Eliminated promissory guarantee and added required volatility disclosures.',
+        category: 'PROHIBITED_CLAIM' as const,
+      },
+      {
+        regex: /\bwithout\s+(?:any\s+)?downside\s+(?:market\s+)?risk\b/gi,
         rule: 'FINRA Rule 2210 - Balanced Presentation & Suitability',
         issue: 'Misleading statement asserting complete elimination of investment risk.',
         replace: () => 'with structured risk mitigation controls, though loss of capital remains possible',
         reason: 'Clarified that downside risk controls do not guarantee protection from loss.',
+        category: 'PROHIBITED_CLAIM' as const,
       },
       {
-        regex: /\bguaranteed\s+returns?\b/gi,
+        regex: /\bguaranteed\s+(?:returns?|profit|yield|gains?)\b/gi,
         rule: 'FINRA Rule 2210 - Communications with the Public',
         issue: 'Promissory performance guarantee.',
         replace: () => 'targeted investment objectives',
         reason: 'Eliminated promissory guarantee per institutional communication standards.',
+        category: 'PROHIBITED_CLAIM' as const,
       },
       {
-        regex: /\brisk-free\s+investment\b/gi,
+        regex: /\b(?:risk[- ]free|zero[- ]risk|no[- ]risk)\s*(?:investment|portfolio|strategy|opportunity|returns?)?\b/gi,
         rule: 'SEC Rule 206(4)-1 - Investment Adviser Marketing',
-        issue: 'Prohibited mischaracterization of investment risk.',
+        issue: 'Prohibited mischaracterization asserting absence of investment risk.',
         replace: () => 'institutionally risk-managed portfolio strategy',
         reason: 'Enforced fiduciary tone and removed ungrounded risk-free assertion.',
+        category: 'PROHIBITED_CLAIM' as const,
+      },
+      {
+        regex: /\b(?:100%\s+safe|loss\s+impossible|cannot\s+lose|fully\s+protected\s+from\s+loss)\b/gi,
+        rule: 'FINRA Rule 2210 - Balanced Presentation',
+        issue: 'Unsubstantiated absolute safety claim violating balanced communication rules.',
+        replace: () => 'structured to manage downside volatility',
+        reason: 'Replaced absolute safety claim with balanced volatility management disclosure.',
+        category: 'PROHIBITED_CLAIM' as const,
+      },
+      {
+        regex: /\bnever\s+lost\s+money\b/gi,
+        rule: 'SEC Rule 206(4)-1 - Performance Claims',
+        issue: 'Absolute historical performance claim without required context or methodology.',
+        replace: () => 'has demonstrated historical resilience during past market cycles',
+        reason: 'Qualified historical performance claim per SEC substantiation standards.',
+        category: 'PROHIBITED_CLAIM' as const,
+      },
+      {
+        regex: /\balways\s+(?:outperforms?|beats?|exceeds?)\s+the\s+market\b/gi,
+        rule: 'SEC Rule 206(4)-1 - Marketing Rule (Substantiation)',
+        issue: 'Unfalsifiable outperformance claim lacking time-horizon and benchmark metrics.',
+        replace: () => 'seeks to achieve risk-adjusted outperformance against designated market benchmarks',
+        reason: 'Replaced categorical outperformance assertion with objective-based fiduciary wording.',
+        category: 'PROHIBITED_CLAIM' as const,
+      },
+      {
+        regex: /\b(?:act\s+now|limited\s+time\s+offer)\s+to\s+lock\s+in\b/gi,
+        rule: 'FINRA Rule 2210 - Fair & Balanced Communications',
+        issue: 'Artificial urgency and pressure language inappropriate for fiduciary advisory documents.',
+        replace: () => 'advisable to review current allocation parameters',
+        reason: 'Eliminated high-pressure sales tactic in favor of objective advisory guidance.',
+        category: 'PROHIBITED_CLAIM' as const,
       },
     ];
 
@@ -410,14 +455,14 @@ Return ONLY valid JSON — no prose outside the JSON object:
       let match;
       while ((match = p.regex.exec(remediated)) !== null) {
         const orig = match[0];
-        const fixed = p.replace(orig, match[1]);
+        const fixed = typeof p.replace === 'function' ? p.replace(orig, match[1]) : p.replace;
         breakdown.push({
           rule: p.rule,
           original_passage: orig,
           issue: p.issue,
           fixed_passage: fixed,
           reason: p.reason,
-          category: 'PROHIBITED_CLAIM',
+          category: p.category,
         });
         remediated = remediated.replace(orig, fixed);
       }
@@ -427,9 +472,16 @@ Return ONLY valid JSON — no prose outside the JSON object:
       const disclaimer =
         '\n\nInstitutional Regulatory Disclosure (FINRA Rule 2210 / SEC Rule 206): Past performance does not guarantee future results. Investments are subject to market risks, including the possible loss of principal. Securities offered through Springer Capital Compliance Platform.';
       remediated += disclaimer;
-      // Only add a flag if the regex patterns above actually found a real violation.
-      // Do NOT inject a fabricated generic flag for every document — that would
-      // display "Missing standard statutory risk disclosure" even on compliant docs.
+      if (breakdown.length > 0) {
+        breakdown.push({
+          rule: 'FINRA Rule 2210 / SEC Rule 206(4)-1',
+          original_passage: '[Missing statutory risk warning in draft text]',
+          issue: 'Omission of mandatory downside risk and past performance disclosure.',
+          fixed_passage: 'Past performance does not guarantee future results. Investments are subject to market risks, including the possible loss of principal.',
+          reason: 'Statutory requirement for all financial communications and advisory proposals under SEC Rule 206 and FINRA Rule 2210.',
+          category: 'MISSING_DISCLOSURE',
+        });
+      }
     }
 
 

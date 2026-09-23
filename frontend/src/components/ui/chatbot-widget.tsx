@@ -235,6 +235,16 @@ function getPlaceholderText(isLoginMode: boolean, isTyping: boolean, isUploading
 /** Detects if query looks like a document search request */
 function isDocumentSearchQuery(text: string): boolean {
   const lower = text.toLowerCase();
+
+  // Questions explaining workflows, FAQs, guidelines, or auditing are NOT document searches
+  if (
+    /\b(how\s+(?:does|do|can|to)|what\s+is|explain|tell\s+me\s+about|walk\s+me\s+through|faq|workflow|guidelines?)\b/i.test(lower) ||
+    /\b(versioning|lineage|pii|masking|file\s+format|file\s+limit|standard|rule)\b/i.test(lower) ||
+    /^(?:audit|compliance\s*audit|scan|check\s*compliance|fix|check\s*grammar|grammar)[:,-]?\s+/i.test(lower)
+  ) {
+    return false;
+  }
+
   const searchKeywords = [
     "show",
     "list",
@@ -250,9 +260,8 @@ function isDocumentSearchQuery(text: string): boolean {
     "pending",
     "needs revision",
     "revision needed",
-    "revision",
-    "revisions",
     "for revision",
+    "my revisions",
     "rejected",
     "reject",
     "my uploads",
@@ -592,8 +601,13 @@ export function ChatbotWidget() {
           text: auditResponse.conversational_summary,
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
           auditResult: session?.role === "Officer" ? undefined : auditResponse,
+          officerAuditResult: session?.role === "Officer" ? auditResponse : undefined,
           suggestedChips: session?.role === "Officer"
-            ? undefined
+            ? [
+              "Show all pending documents in queue",
+              "Show high-risk submissions across all advisors",
+              "What FINRA 2210 rules apply to this type of filing?",
+            ]
             : [
               "Submit remediated version",
               "Show my submissions from this month",
@@ -807,8 +821,20 @@ export function ChatbotWidget() {
       { id: botMsgId, sender: "bot", text: "", timestamp, isTyping: true },
     ]);
 
-    // 2. Repository Search Intent Routing
-    if (isAuthenticated && isDocumentSearchQuery(rawText)) {
+    // 2a. Workflow / FAQ guard — these must reach the backend AI, NOT the search engine.
+    const isWorkflowFaqQuery =
+      /\b(versioning|lineage|v1\s*(?:and|&|\/)\s*v2|version\s*(?:1|2)|versioning\s*faq|faq|workflow|guidelines|regulations?\s*faq)\b/i.test(rawText) ||
+      /\b(how\s+(does|do|can|to)|what\s+is|explain|tell me about|what are)\b.{0,60}\b(versioning|version|v1|v2|revisions?|upload|submission|review|pii|masking|audit\s+trail|file\s+limit|file\s+format|supported\s+format|standards?|rules?|finra|sec)\b/i.test(rawText) ||
+      /\b(how\s+does\s+(versioning|the\s+review|submission|upload|revision)\s+work)\b/i.test(rawText) ||
+      /\b(what\s+(happens|is\s+the\s+process|are\s+the\s+steps)\s+(when|after|for|if)\b)/i.test(rawText) ||
+      /\b(walk\s+me\s+through|step[- ]by[- ]step|explain\s+the\s+(workflow|process|steps))/i.test(rawText);
+
+    const isAuditTextQuery =
+      /^(?:audit|compliance\s*audit|scan|check\s*compliance|audit\s*this|audit\s*text|audit\s*draft|audit\s*passage)[:,-]?\s+/i.test(rawText) ||
+      /\b(?:compliance\s*audit|audit\s*this\s*text|audit\s*this\s*passage|scan\s*this\s*text)\b/i.test(rawText);
+
+    // 2b. Repository Search Intent Routing (skip if it's a workflow FAQ or text audit)
+    if (isAuthenticated && !isWorkflowFaqQuery && !isAuditTextQuery && isDocumentSearchQuery(rawText)) {
       try {
         const searchParams = parseNaturalSearch(rawText);
         const searchResult = await copilotApi.searchDocuments({
@@ -854,6 +880,7 @@ export function ChatbotWidget() {
       .sendChatMessage(rawText, userRole, {
         pathname: pathname || undefined,
         documentId,
+        conversationHistory: messages.slice(-6).map((m) => ({ role: m.sender === 'user' ? 'user' : 'assistant', content: m.text })),
       })
       .then((res) => {
         // Reconcile quota with authoritative server value after response
@@ -1326,6 +1353,11 @@ function ChatMessageItem({
           />
         )}
 
+        {/* Officer Supervisory Compliance Flag Scan Card */}
+        {!isUser && message.officerAuditResult && !isCurrentlyTyping && (
+          <OfficerFlagScanCard result={message.officerAuditResult} />
+        )}
+
         {/* Rich Repository Search Telemetry Card */}
         {!isUser && message.searchResult && !isCurrentlyTyping && (
           <TelemetrySearchCard result={message.searchResult} />
@@ -1610,6 +1642,141 @@ function AuditResultCard({ result, isCopied, onCopy }: IAuditCardProps) {
             <FileText className="h-3.5 w-3.5 text-[#C5E86C]" />
             <span>Open Remediated Document in Review Workspace →</span>
           </Link>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Supervisory compliance flag scan card rendered for Officers when they scan a file */
+function OfficerFlagScanCard({ result }: { result: IAuditAndFixResponse }) {
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+  const flagCount = result.audit_breakdown.length;
+
+  const categoryColors: Record<string, string> = {
+    PROHIBITED_CLAIM: "bg-rose-100 text-rose-800 border-rose-300",
+    MISSING_DISCLOSURE: "bg-amber-100 text-amber-800 border-amber-300",
+    SUITABILITY: "bg-orange-100 text-orange-800 border-orange-300",
+    PRECEDENT_MATCH: "bg-sky-100 text-sky-800 border-sky-300",
+  };
+
+  const categoryLabel: Record<string, string> = {
+    PROHIBITED_CLAIM: "Prohibited Claim",
+    MISSING_DISCLOSURE: "Missing Disclosure",
+    SUITABILITY: "Suitability Risk",
+    PRECEDENT_MATCH: "Precedent Match",
+  };
+
+  return (
+    <div className="mt-3 pt-3 border-t border-[#E6E8E7] space-y-2.5 text-[#183028]">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <ShieldAlert className="h-4 w-4 text-amber-600" />
+          <span className="text-[10.5px] font-bold uppercase tracking-wider text-[#183028]">
+            Supervisory Compliance Scan
+          </span>
+        </div>
+        <span
+          className={`text-[9px] px-2 py-0.5 rounded-full font-bold border shadow-2xs ${
+            flagCount === 0
+              ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+              : "bg-rose-100 text-rose-800 border-rose-300"
+          }`}
+        >
+          {flagCount === 0 ? "No Flags" : `${flagCount} Flag${flagCount !== 1 ? "s" : ""} Found`}
+        </span>
+      </div>
+
+      {/* File meta */}
+      <div className="flex items-center gap-2 p-1.5 bg-[#FAFBFB] rounded-lg border border-[#E6E8E7] text-[10px]">
+        <FileText className="h-3.5 w-3.5 text-[#183028]/60" />
+        <span className="font-semibold text-[#183028] truncate max-w-[220px]">
+          {result.file_meta.original_filename}
+        </span>
+        <span className="text-[#183028]/50">({Math.round(result.file_meta.file_size / 1024)} KB)</span>
+      </div>
+
+      {/* Compliant — no flags */}
+      {flagCount === 0 && (
+        <div className="flex items-center gap-2 p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-[10px] text-emerald-800">
+          <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
+          <span className="font-semibold">
+            No FINRA 2210 / SEC 206(4)-1 infractions detected. Document appears compliant for supervisory review.
+          </span>
+        </div>
+      )}
+
+      {/* Flag breakdown */}
+      {flagCount > 0 && (
+        <div className="space-y-2 pt-0.5">
+          <span className="text-[10px] font-bold text-[#183028] flex items-center gap-1">
+            <AlertTriangle className="h-3 w-3 text-amber-600" />
+            Regulatory Infractions Identified:
+          </span>
+
+          <div className="space-y-2">
+            {result.audit_breakdown.map((item, i) => {
+              const catColor = categoryColors[(item as any).category] || "bg-gray-100 text-gray-800 border-gray-300";
+              const catLabel = categoryLabel[(item as any).category] || (item as any).category || "Flag";
+              const isExpanded = expandedIndex === i;
+              return (
+                <div
+                  key={i}
+                  className="bg-white border border-[#E6E8E7] rounded-xl shadow-2xs overflow-hidden"
+                >
+                  {/* Flag header row — always visible */}
+                  <button
+                    type="button"
+                    onClick={() => setExpandedIndex(isExpanded ? null : i)}
+                    className="w-full flex items-center justify-between p-2.5 text-left cursor-pointer hover:bg-[#FAFBFB] transition-colors"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className={`text-[8.5px] font-extrabold uppercase px-1.5 py-0.5 rounded border shrink-0 ${catColor}`}>
+                        {catLabel}
+                      </span>
+                      <span className="text-[9.5px] font-bold text-[#183028] truncate">
+                        {item.rule}
+                      </span>
+                    </div>
+                    {isExpanded ? (
+                      <ChevronUp className="h-3 w-3 text-[#183028]/50 shrink-0 ml-1" />
+                    ) : (
+                      <ChevronDown className="h-3 w-3 text-[#183028]/50 shrink-0 ml-1" />
+                    )}
+                  </button>
+
+                  {/* Expanded detail — original passage + issue + recommendation */}
+                  {isExpanded && (
+                    <div className="px-2.5 pb-2.5 space-y-1.5 border-t border-[#E6E8E7]">
+                      <p className="text-[9.5px] text-[#183028]/80 pt-2">
+                        <span className="font-bold text-rose-700">Issue: </span>
+                        {item.issue}
+                      </p>
+
+                      <div className="p-1.5 bg-rose-50/80 border border-rose-200 rounded text-[9.5px] text-rose-900 leading-relaxed">
+                        <span className="font-bold text-rose-700 block text-[8.5px] uppercase mb-0.5">Flagged Passage:</span>
+                        <span className="font-mono">{item.original_passage}</span>
+                      </div>
+
+                      <div className="p-1.5 bg-emerald-50/80 border border-emerald-200 rounded text-[9.5px] text-emerald-900 leading-relaxed">
+                        <span className="font-bold text-emerald-700 block text-[8.5px] uppercase mb-0.5">Recommended Remediation:</span>
+                        <span className="font-semibold">{item.fixed_passage}</span>
+                      </div>
+
+                      <p className="text-[8.5px] text-[#183028]/60 italic">
+                        <strong>Rationale:</strong> {item.reason}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <p className="text-[9px] text-[#183028]/50 italic pt-1">
+            Based on FINRA Rule 2210 (Communications with the Public), SEC Rule 206(4)-1 (Investment Adviser Marketing Rule), and FINRA Rule 2111 (Suitability). Advisor must remediate all flagged passages before re-submission.
+          </p>
         </div>
       )}
     </div>
