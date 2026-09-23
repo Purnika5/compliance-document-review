@@ -419,15 +419,15 @@ export class PipelineService {
           lowerText.includes('compliance remediated') ||
           lowerText.includes('neural copilot');
 
-        // Check for explicit promissory statements (not disclaimed)
+        // 1. Check for explicit promissory statements (not disclaimed)
         const isExplicitPromissory =
-          /\b(guarantees?\s+(?:a\s+)?(?:net\s+)?(?:annualized\s+)?return|guaranteed\s+returns?|risk-free\s+investment|zero\s+(?:downside\s+)?risk|100%\s+safe|assured\s+profit)\b/i.test(
+          /\b(guarantees?\s+(?:a\s+)?(?:net\s+)?(?:annualized\s+)?returns?|guaranteed\s+returns?|risk-free\s+investment|zero\s+(?:downside\s+)?risk|100%\s+safe|assured\s+profit|foolproof|can't\s+lose)\b/i.test(
             maskedText
           ) && !/\b(?:does\s+not\s+guarantee|no\s+guarantee|not\s+guaranteed)\b/i.test(maskedText);
 
         if (isExplicitPromissory && !hasFiduciaryDisclaimer) {
           const passage =
-            maskedText.split('.').find((s) => /\b(guarantee|risk-free|assured)\b/i.test(s))?.trim() ||
+            maskedText.split('.').find((s) => /\b(guarantee|risk-free|assured|foolproof|can't lose)\b/i.test(s))?.trim() ||
             '[Promissory statement detected — see document for exact passage]';
           fallbackFlags.push({
             passage: `${passage}.`,
@@ -437,13 +437,42 @@ export class PipelineService {
           });
         }
 
+        // 2. Check for testimonials / endorsements without required disclosures
+        const hasTestimonial = /\b(client\s+testimonial|client\s+reviews?|endorsed\s+by|customer\s+satisfaction\s+rating\s+of\s+100%)\b/i.test(maskedText);
+        const hasTestimonialDisclosure = lowerText.includes('compensation') || lowerText.includes('material conflict') || lowerText.includes('testimonial disclosure');
+        if (hasTestimonial && !hasTestimonialDisclosure) {
+          const passage =
+            maskedText.split('.').find((s) => /\b(testimonial|review|endorsed)\b/i.test(s))?.trim() ||
+            '[Client testimonial reference detected without SEC Marketing Rule disclosures]';
+          fallbackFlags.push({
+            passage: `${passage}.`,
+            rule: 'SEC Rule 206(4)-1 - Investment Adviser Marketing Rule',
+            explanation:
+              'Testimonials and endorsements must clearly disclose whether compensation was provided and if material conflicts of interest exist.',
+          });
+        }
+
+        // 3. Check for performance claims without risk disclosure
+        const hasPerformanceClaims = /\b(annualized\s+return\s+of\s+\d+|outperformed\s+the\s+market|benchmark\s+beating)\b/i.test(maskedText);
+        if (hasPerformanceClaims && !hasFiduciaryDisclaimer) {
+          const passage =
+            maskedText.split('.').find((s) => /\b(annualized return|outperformed|benchmark)\b/i.test(s))?.trim() ||
+            '[Performance claim detected without statutory risk disclosures]';
+          fallbackFlags.push({
+            passage: `${passage}.`,
+            rule: 'SEC Rule 206(4)-1 & FINRA Rule 2210(d)(1) - Fair and Balanced Communications',
+            explanation:
+              'Performance presentations must be accompanied by prominent disclosures that past performance does not guarantee future results and investments are subject to risk.',
+          });
+        }
+
         return {
           summary:
             fallbackFlags.length === 0
               ? 'AI Compliance Analysis: Document evaluated against FINRA 2210 and SEC 206 rules. Fiduciary disclosures, risk suitability, and fee transparencies verified. Zero compliance flags.'
               : 'AI Compliance Analysis: Document evaluated against FINRA/SEC regulatory rules. Disclosures, fee schedules, and performance claim checks completed.',
           flags: fallbackFlags,
-          isDegraded: false,
+          isDegraded: true,
           circuitState: aiCircuitBreaker.getState(),
         };
       }
@@ -564,7 +593,7 @@ export class PipelineService {
         version,
         masked_text: maskedText,
         summary: summary || 'AI compliance analysis is temporarily unavailable. Graceful degradation active.',
-        flags: [],
+        flags: flags || [],
         created_at: new Date(),
         updated_at: new Date(),
         status: 'unavailable',

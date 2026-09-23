@@ -13,6 +13,7 @@ import {
   FileCheck,
   Loader2,
   AlertTriangle,
+  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -90,18 +91,28 @@ export function AIAssistPanel({
               </div>
             ) : isDegraded ? (
               <div className="flex flex-col items-center justify-center h-full text-center p-6 space-y-3 animate-fade-in">
-                <div className="h-10 w-10 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center">
+                <div className="h-10 w-10 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-700 flex items-center justify-center">
                   <AlertTriangle className="h-5 w-5" />
                 </div>
                 <div className="space-y-1.5 max-w-xs">
-                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[10px] font-mono uppercase tracking-wider font-semibold">
-                    Graceful Degradation Active
+                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-mono uppercase tracking-wider font-semibold">
+                    AI Service Temporarily Unavailable
                   </div>
-                  <h4 className="text-xs font-bold text-foreground">AI Review Engine Offline</h4>
-                  <p className="text-[11px] text-muted-foreground leading-normal">
+                  <h4 className="text-xs font-bold text-[#183028]">AI Review Engine Offline</h4>
+                  <p className="text-[11px] text-[#183028]/60 leading-normal">
                     Automated rule scanning is temporarily paused due to upstream resilience fail-safe. Document review, decision logging, and audit trails remain fully functional.
                   </p>
                 </div>
+                {onRefresh && (
+                  <button
+                    type="button"
+                    onClick={onRefresh}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-[#183028] text-white hover:bg-[#23453a] transition-all cursor-pointer shadow-2xs"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    Re-run Analysis
+                  </button>
+                )}
               </div>
             ) : flags.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center p-6 space-y-3">
@@ -114,6 +125,16 @@ export function AIAssistPanel({
                     This document has no automated regulatory flags. The compliance officer may proceed with manual review and determination.
                   </p>
                 </div>
+                {onRefresh && (
+                  <button
+                    type="button"
+                    onClick={onRefresh}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white border border-[#E6E8E7] text-[#183028] hover:bg-[#C5E86C]/20 hover:border-[#183028] transition-all cursor-pointer shadow-2xs"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    Re-run Analysis
+                  </button>
+                )}
               </div>
             ) : (
               <>

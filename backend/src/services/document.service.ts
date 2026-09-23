@@ -785,7 +785,9 @@ export class DocumentService {
         res.rows.length > 0 &&
         !(res.rows[0] as any).is_degraded &&
         !res.rows[0].summary?.includes('degradation') &&
-        res.rows[0].summary !== 'AI analysis could not be completed for this document.'
+        res.rows[0].summary !== 'AI analysis could not be completed for this document.' &&
+        // Re-analyze if flags are empty and AI circuit has recent failures (stale degraded result)
+        !(Array.isArray(res.rows[0].flags) && res.rows[0].flags.length === 0 && aiCircuitBreaker.getMetrics().failureCount > 0)
       ) {
         return res.rows[0];
       }

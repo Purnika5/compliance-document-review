@@ -252,6 +252,9 @@ def analyze_document(request: AnalyzeRequest):
     )
 
 
+    # Use the correct Gemini model — gemini-2.0-flash is the current stable fast model
+    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+
     def call_gemini(model_prompt: str, is_json: bool = False):
         max_retries = 3
         for attempt in range(max_retries):
@@ -259,7 +262,7 @@ def analyze_document(request: AnalyzeRequest):
                 active_client = get_client()
                 cfg = {"response_mime_type": "application/json"} if is_json else None
                 return active_client.models.generate_content(
-                    model="gemini-3.6-flash",
+                    model=GEMINI_MODEL,
                     contents=model_prompt,
                     config=cfg
                 )
