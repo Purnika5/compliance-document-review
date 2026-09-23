@@ -287,8 +287,8 @@ function parseNaturalSearch(text: string): {
 // Works even if the user_quotas Supabase table doesn't exist yet.
 // ─────────────────────────────────────────────────────────────────────────────
 const LOCAL_QUOTA_KEY = "sc_file_scan_quota";
-const LOCAL_QUOTA_LIMIT = 2;
-const LOCAL_QUOTA_PERIOD_DAYS = 4;
+const LOCAL_QUOTA_LIMIT: number = 2;
+const LOCAL_QUOTA_PERIOD_DAYS: number = 4;
 
 interface LocalQuota {
   used: number;
@@ -395,7 +395,7 @@ export function ChatbotWidget() {
   // Pre-load quota when chatbot opens — localStorage is instant, server is async
   useEffect(() => {
     if (!isOpen || !isAuthenticated) return;
-    const userId = session?.id || session?.email || "anonymous";
+    const userId = session?.email || "anonymous";
 
     // 1. Immediately apply localStorage quota (works without Supabase table)
     const localQ = getLocalQuota(userId);
@@ -427,7 +427,7 @@ export function ChatbotWidget() {
         setFileQuota({ used: effectiveUsed, limit: info.fileAnalyses.limit, remaining: effectiveRemaining, resetsAt: info.resetsAt, resetInDays: info.resetInDays });
       }).catch(() => { /* silent — localStorage gate still works */ });
     }
-  }, [isOpen, isAuthenticated, session?.id, session?.role]);
+  }, [isOpen, isAuthenticated, session?.email, session?.role]);
 
 
   useEffect(() => {
@@ -499,7 +499,7 @@ export function ChatbotWidget() {
 
     try {
       // ── Local quota gate (works even without Supabase table) ──────────────
-      const userId = session?.id || session?.email || "anonymous";
+      const userId = session?.email || "anonymous";
       const localQ = getLocalQuota(userId);
       const localExhausted = localQ.used >= LOCAL_QUOTA_LIMIT;
 
@@ -550,14 +550,13 @@ export function ChatbotWidget() {
           suggestedChips: session?.role === "Officer"
             ? undefined
             : [
-                "Submit remediated version",
-                "Show my submissions from this month",
-                "Download remediated file",
-              ],
+              "Submit remediated version",
+              "Show my submissions from this month",
+              "Download remediated file",
+            ],
         },
       ]);
       // Increment LOCAL quota counter on every successful scan/fix
-      const userId = session?.id || session?.email || "anonymous";
       const updatedLocal = incrementLocalQuota(userId);
       // Also sync server quota
       if ((auditResponse as any)?.quota) {
@@ -579,7 +578,7 @@ export function ChatbotWidget() {
         const quotaData = err?.data?.quota;
         const resetDate = quotaData?.resetsAt
           ? new Date(quotaData.resetsAt).toLocaleDateString("en-US", { month: "long", day: "numeric" })
-          : getLocalQuotaResetDate(session?.id || session?.email || "anonymous");
+          : getLocalQuotaResetDate(session?.email || "anonymous");
         const resetInDays = quotaData?.resetInDays ?? LOCAL_QUOTA_PERIOD_DAYS;
         const limitNum = quotaData?.limit ?? LOCAL_QUOTA_LIMIT;
         const roleMsg = session?.role === "Officer"
@@ -659,14 +658,14 @@ export function ChatbotWidget() {
           return prev.map((msg) =>
             msg.id === botMsgId
               ? {
-                  ...msg,
-                  text: "",
-                  isTyping: true,
-                  grammarResult: extras?.grammarResult,
-                  documentationResult: extras?.documentationResult,
-                  searchResult: extras?.searchResult,
-                  suggestedChips: extras?.suggestedChips,
-                }
+                ...msg,
+                text: "",
+                isTyping: true,
+                grammarResult: extras?.grammarResult,
+                documentationResult: extras?.documentationResult,
+                searchResult: extras?.searchResult,
+                suggestedChips: extras?.suggestedChips,
+              }
               : msg
           );
         }
@@ -786,12 +785,12 @@ export function ChatbotWidget() {
           prev.map((msg) =>
             msg.id === botMsgId
               ? {
-                  ...msg,
-                  text: searchResult.conversational_reply,
-                  isTyping: false,
-                  searchResult,
-                  suggestedChips: searchResult.suggested_chips,
-                }
+                ...msg,
+                text: searchResult.conversational_reply,
+                isTyping: false,
+                searchResult,
+                suggestedChips: searchResult.suggested_chips,
+              }
               : msg
           )
         );
