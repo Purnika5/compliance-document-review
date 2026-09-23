@@ -388,25 +388,7 @@ export function UploadDocumentModal({
                 <label className="block text-xs font-semibold text-[#183028]">
                   Classification Category <span className="text-rose-500">*</span>
                 </label>
-                <button
-                  type="button"
-                  onClick={() => classifyWithAi()}
-                  disabled={isClassifying}
-                  title="Ask Google Gemini AI to inspect document details and auto-classify"
-                  className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#C5E86C]/40 hover:bg-[#C5E86C] text-[#183028] border border-[#b4db53] transition-all cursor-pointer shadow-2xs group disabled:opacity-60"
-                >
-                  {isClassifying ? (
-                    <>
-                      <Loader2 className="h-3 w-3 animate-spin text-[#183028]" />
-                      <span>Classifying with AI...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="h-3 w-3 text-[#183028] group-hover:scale-110 transition-transform" />
-                      <span>AI Auto-Classify</span>
-                    </>
-                  )}
-                </button>
+
               </div>
 
               <div className="relative">
@@ -418,24 +400,12 @@ export function UploadDocumentModal({
                       setFormErrors((prev) => ({ ...prev, category: "" }));
                     }
                   }}
-                  placeholder={
-                    isClassifying
-                      ? "✨ AI is analyzing document & autofilling category..."
-                      : "AI will autofill category, or type custom classification..."
-                  }
+                  placeholder="e.g. Compliance Document, Investment Proposal..."
                   className={cn(
-                    "h-9 text-xs rounded-xl bg-white border border-[#E6E8E7] text-[#183028] focus:border-[#183028] focus:ring-1 focus:ring-[#183028] transition-colors shadow-2xs w-full min-w-0 pr-8",
-                    formErrors.category && "border-rose-500 ring-1 ring-rose-500",
-                    isClassifying && "bg-emerald-50/50 animate-pulse border-emerald-400"
+                    "h-9 text-xs rounded-xl bg-white border border-[#E6E8E7] text-[#183028] focus:border-[#183028] focus:ring-1 focus:ring-[#183028] transition-colors shadow-2xs w-full min-w-0",
+                    formErrors.category && "border-rose-500 ring-1 ring-rose-500"
                   )}
                 />
-                <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none">
-                  {isClassifying ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-600" />
-                  ) : (
-                    <Sparkles className="h-3.5 w-3.5 text-[#183028]/40" />
-                  )}
-                </div>
               </div>
 
 
