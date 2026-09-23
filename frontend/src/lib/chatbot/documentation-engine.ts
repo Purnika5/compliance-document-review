@@ -111,6 +111,20 @@ const COMMON_SPELLING_MAP: Record<string, string> = {
   plz: "please",
   pls: "please",
   thx: "thank you",
+  grammer: "grammar",
+  gramar: "grammar",
+  gramer: "grammar",
+  sentance: "sentence",
+  sentense: "sentence",
+  prooffread: "proofread",
+  corect: "correct",
+  sucessful: "successful",
+  neccessary: "necessary",
+  unfortuantly: "unfortunately",
+  statment: "statement",
+  managment: "management",
+  disclosur: "disclosure",
+  fiduciery: "fiduciary",
 };
 
 /** Common grammatical phrase replacements */
@@ -120,6 +134,36 @@ const PHRASE_CORRECTIONS: Array<{
   reason: string;
   type: "grammar" | "style";
 }> = [
+  {
+    pattern: /\bi\s+want\s+more\s+to\s+fix\b/gi,
+    replacement: "I would like to fix",
+    reason: "Phrasing: 'I would like to fix' provides clearer, more natural phrasing.",
+    type: "grammar",
+  },
+  {
+    pattern: /\bi\s+is\b/gi,
+    replacement: "I am",
+    reason: "Subject-verb agreement: first-person singular 'I' takes 'am'.",
+    type: "grammar",
+  },
+  {
+    pattern: /\b(we|they|officers|advisors)\s+is\b/gi,
+    replacement: "$1 are",
+    reason: "Subject-verb agreement: plural subjects take 'are'.",
+    type: "grammar",
+  },
+  {
+    pattern: /\b(he|she|it|this|that|the filing|the proposal|the document)\s+are\b/gi,
+    replacement: "$1 is",
+    reason: "Subject-verb agreement: singular subjects take 'is'.",
+    type: "grammar",
+  },
+  {
+    pattern: /\b(the team|the committee|the fund|the firm)\s+have\b/gi,
+    replacement: "$1 has",
+    reason: "Subject-verb agreement: collective entities take 'has' in formal writing.",
+    type: "grammar",
+  },
   {
     pattern: /\b(we|they|officers|advisors)\s+was\b/gi,
     replacement: "$1 were",
@@ -163,6 +207,18 @@ const PHRASE_CORRECTIONS: Array<{
     type: "grammar",
   },
   {
+    pattern: /\b(dont|does not|doesn't)\s+have\s+no\b/gi,
+    replacement: "does not have any",
+    reason: "Double negative: replace with 'does not have any'.",
+    type: "grammar",
+  },
+  {
+    pattern: /\b(could|should|would)\s+of\b/gi,
+    replacement: "$1 have",
+    reason: "Grammatical confusion: use 'have' instead of 'of' after modal auxiliaries.",
+    type: "grammar",
+  },
+  {
     pattern: /\btheir\s+(is|are|was|were)\b/gi,
     replacement: "there $1",
     reason: "Homophone confusion: 'there' indicates existence, 'their' indicates possession.",
@@ -180,6 +236,18 @@ const PHRASE_CORRECTIONS: Array<{
     reason: "Contraction confusion: 'it's' represents 'it is'.",
     type: "grammar",
   },
+  {
+    pattern: /\bguaranteed\s+returns?\b/gi,
+    replacement: "targeted returns (subject to market risks)",
+    reason: "FINRA Rule 2210 & SEC Rule 206: Prohibits guaranteed performance claims in public communications.",
+    type: "style",
+  },
+  {
+    pattern: /\brisk-free\s+investment\b/gi,
+    replacement: "conservative lower-volatility strategy",
+    reason: "FINRA Rule 2210: Investment products cannot be characterized as 'risk-free'.",
+    type: "style",
+  },
 ];
 
 /**
@@ -191,9 +259,10 @@ export function recheckGrammar(text: string): IGrammarResult {
   const issues: IGrammarIssue[] = [];
   // Strip trigger command phrases so user commands do not get treated as draft text
   const cleanInput = text
-    .replace(/\b(?:please\s+)?(?:re-?check|check|fix)\s+grammar\b[:,-]?/gi, "")
-    .replace(/\bgrammar\s+(?:check|re-?check)\b[:,-]?/gi, "")
-    .replace(/^(?:grammar|check|audit\s*note|fix)[:,-]?\s*/i, "")
+    .replace(/^(?:can you\s+|please\s+|help me\s+|i want\s+(?:you\s+)?to\s+|i want more to\s+)?(?:fix|check|re-?check|correct|proofread|improve|rewrite|rephrase)\s*(?:my|this|the)?\s*(?:grammar|sentence|sentences|phrasing|text|draft|writing)?[:,-]?\s*/i, "")
+    .replace(/\b(?:please\s+)?(?:re-?check|check|fix)\s+(?:grammar|sentence|sentences)\b[:,-]?/gi, "")
+    .replace(/\b(?:grammar|sentence|sentences)\s+(?:check|re-?check)\b[:,-]?/gi, "")
+    .replace(/^(?:grammar|sentence|check|audit\s*note|fix)[:,-]?\s*/i, "")
     .replace(/\s{2,}/g, " ")
     .trim();
 

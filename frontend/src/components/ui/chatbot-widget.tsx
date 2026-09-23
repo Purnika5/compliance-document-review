@@ -63,6 +63,28 @@ interface IResolvedBotReply {
   text: string;
   grammarResult?: IGrammarResult;
   documentationResult?: IDocumentationResult;
+  suggestedChips?: string[];
+}
+
+/** Determines whether a user input is asking to check, fix, or polish grammar/sentences */
+export function isGrammarCheckQuery(text: string): boolean {
+  const l = text.toLowerCase().trim();
+  return (
+    l.startsWith("check grammar:") ||
+    l.startsWith("grammar:") ||
+    l.startsWith("check:") ||
+    l.startsWith("audit note:") ||
+    l.startsWith("fix:") ||
+    l.startsWith("fix grammar") ||
+    l.startsWith("fix sentence") ||
+    l.startsWith("fix my sentence") ||
+    l.startsWith("fix my grammar") ||
+    /\b(?:check|fix|correct|improve|polish|rephrase|rewrite)\s+(?:my\s+|this\s+|the\s+)?(?:grammar|sentence|sentences|phrasing|wording)\b/i.test(l) ||
+    /\b(?:i\s+want\s+(?:more\s+)?to\s+fix\s+(?:my\s+)?(?:sentence|grammar|writing))\b/i.test(l) ||
+    /\b(?:help\s+me\s+fix\s+(?:my\s+)?(?:sentence|grammar))\b/i.test(l) ||
+    /\bgrammar\s+(?:check|re-?check|fix)\b/i.test(l) ||
+    /\b(check\s+grammar|proofread|audit\s+draft\s+note)\b/i.test(l)
+  );
 }
 
 /** Human conversational fallback response when backend is unreachable */
@@ -97,31 +119,32 @@ function resolveBotReply(rawText: string, isLoginMode: boolean, role?: string): 
   }
 
   // 2. Grammar Recheck intent
-  const isGrammarExplicit =
-    lower.startsWith("check grammar:") ||
-    lower.startsWith("grammar:") ||
-    lower.startsWith("check:") ||
-    lower.startsWith("audit note:") ||
-    lower.startsWith("fix:") ||
-    lower.includes("check grammar") ||
-    lower.includes("grammar check") ||
-    lower.includes("proofread") ||
-    lower.includes("audit draft note");
-
-  if (isGrammarExplicit) {
+  if (isGrammarCheckQuery(rawText)) {
     const cleanDraft = rawText
-      .replace(/\b(?:please\s+)?(?:re-?check|check|fix)\s+grammar\b[:,-]?/gi, "")
-      .replace(/\bgrammar\s+(?:check|re-?check)\b[:,-]?/gi, "")
-      .replace(/^(?:grammar|check|audit\s*note|fix)[:,-]?\s*/i, "")
+      .replace(/^(?:can you\s+|please\s+|help me\s+|i want\s+(?:you\s+)?to\s+|i want more to\s+)?(?:fix|check|re-?check|correct|proofread|improve|rewrite|rephrase)\s*(?:my|this|the)?\s*(?:grammar|sentence|sentences|phrasing|text|draft|writing)?[:,-]?\s*/i, "")
+      .replace(/\b(?:please\s+)?(?:re-?check|check|fix)\s+(?:grammar|sentence|sentences)\b[:,-]?/gi, "")
+      .replace(/\b(?:grammar|sentence|sentences)\s+(?:check|re-?check)\b[:,-]?/gi, "")
+      .replace(/^(?:grammar|sentence|check|audit\s*note|fix)[:,-]?\s*/i, "")
       .replace(/\s{2,}/g, " ")
       .trim();
-    if (cleanDraft && cleanDraft.length > 2) {
+
+    if (cleanDraft && cleanDraft.length > 2 && !/^(?:sentence|sentences|grammar|text|phrasing|draft)$/i.test(cleanDraft)) {
       const grammarResult = recheckGrammar(cleanDraft);
       return {
         text: grammarResult.summary,
         grammarResult,
       };
     }
+
+    // No text provided yet — prompt the user to provide the sentence or draft
+    return {
+      text: "I'd be glad to help fix your sentence! Please paste or type the sentence or draft note you'd like me to audit (for example: *\"The investment team have submited the proposal\"* or *\"Our fund guarantees 10% return\"*), and I will correct its grammar, spelling, and regulatory tone for you.",
+      suggestedChips: [
+        "Fix: The investment team have submited the proposal.",
+        "Fix: Our fund guarantees a 12% return with zero risk.",
+        "Fix: He dont have no files uploaded yet.",
+      ],
+    };
   }
 
   return { text: getConversationalFallback(role, isLoginMode) };
@@ -378,6 +401,7 @@ export function ChatbotWidget() {
 
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [isAwaitingGrammarInput, setIsAwaitingGrammarInput] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageIdRef = useRef(0);
   const typingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -737,15 +761,8 @@ export function ChatbotWidget() {
 
     // 1. Grammar / enhance check (run locally)
     const isGrammar =
-      lower.startsWith("check grammar:") ||
-      lower.startsWith("grammar:") ||
-      lower.startsWith("check:") ||
-      lower.startsWith("audit note:") ||
-      lower.startsWith("fix:") ||
-      lower.includes("check grammar") ||
-      lower.includes("grammar check") ||
-      lower.includes("proofread") ||
-      lower.includes("audit draft note");
+      isGrammarCheckQuery(rawText) ||
+      (isAwaitingGrammarInput && !isDocumentSearchQuery(rawText) && !lower.startsWith("/"));
 
     const isEnhance =
       lower.startsWith("enhance:") ||
@@ -755,11 +772,18 @@ export function ChatbotWidget() {
       lower.includes("format as memo");
 
     if (isGrammar || isEnhance) {
+      if (isAwaitingGrammarInput) {
+        setIsAwaitingGrammarInput(false);
+      }
       setTimeout(() => {
         const reply = resolveBotReply(rawText, isLoginMode, session?.role);
+        if (reply.suggestedChips && !reply.grammarResult) {
+          setIsAwaitingGrammarInput(true);
+        }
         simulateTyping(botMsgId, reply.text, timestamp, {
           grammarResult: reply.grammarResult,
           documentationResult: reply.documentationResult,
+          suggestedChips: reply.suggestedChips,
         });
       }, 200);
       return;
@@ -1149,7 +1173,7 @@ function ChatHeader({ isLoginMode, role, onClose }: IChatHeaderProps) {
         <div>
           <div className="flex items-center gap-1.5">
             <h3 className="font-bold text-[#183028] tracking-tight">
-              {isLoginMode ? "Compliance Help" : "Neural Compliance Copilot"}
+              {isLoginMode ? "Compliance Help" : "Compliance Help"}
             </h3>
             <span className="text-[9px] px-1.5 py-0.5 rounded font-extrabold uppercase tracking-wider bg-[#C5E86C] text-[#183028] border border-[#b4db53]">
               {isLoginMode ? "Guidance" : role || "Staff"}
@@ -1157,7 +1181,6 @@ function ChatHeader({ isLoginMode, role, onClose }: IChatHeaderProps) {
           </div>
           <div className="flex items-center gap-1.5 text-[9.5px] text-[#183028]/70 mt-0.5 font-medium">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            <span className="text-emerald-700 font-semibold">Google Gemini Engine: Active</span>
           </div>
         </div>
       </div>

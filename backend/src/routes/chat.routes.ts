@@ -184,7 +184,12 @@ function generateContextualComplianceReply(
     return "FINRA Rule 2210 and SEC Rule 206 require all marketing communications and proposals to be fair, balanced, and free from guaranteed-return or promissory language. You must always include downside risk disclosures — stating that investments are subject to market volatility and loss of principal. Attach a draft here and I'll scan it against exactly these rules.";
   }
 
-  // 8. Default
+  // 8. Grammar / sentence fixing
+  if (/\b(grammar|sentence|sentences|fix\s+my|fix\s+this|correct\s+my|correct\s+this|proofread|rephrase|rewrite|spelling|phrasing)\b/i.test(lower)) {
+    return "I'd be glad to help fix your sentence! Please paste or type the sentence or draft note you'd like me to audit (for example: 'check grammar: <your sentence>'), and I will correct its grammar, spelling, and regulatory tone for you.";
+  }
+
+  // 9. Default
   return isOfficer
     ? "I'm monitoring the full compliance queue. You can ask me about today's uploads, who submitted what, risk flags on specific documents, or pending review status. What do you need?"
     : "I'm here to help with your compliance workflows. Ask about your submissions, attach a draft to scan or auto-fix, or ask me any FINRA 2210 / SEC 206 question. What would you like to explore?";

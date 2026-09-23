@@ -199,10 +199,15 @@ Preserve proper nouns, names, years, and specific document titles exactly as int
    */
   public static async handleGrammarCheckIntent(rawText: string): Promise<string> {
     const textToCheck = rawText
-      .replace(/\b(?:check|fix|re-?check)\s+grammar\b[:,-]?/gi, '')
-      .replace(/\bgrammar\s+(?:check|re-?check)\b[:,-]?/gi, '')
-      .replace(/^(?:grammar|check|proofread)[:,-]?\s*/i, '')
+      .replace(/^(?:can you\s+|please\s+|help me\s+|i want\s+(?:you\s+)?to\s+|i want more to\s+)?(?:fix|check|re-?check|correct|proofread|improve|rewrite|rephrase)\s*(?:my|this|the)?\s*(?:grammar|sentence|sentences|phrasing|text|draft|writing)?[:,-]?\s*/i, '')
+      .replace(/\b(?:please\s+)?(?:re-?check|check|fix)\s+(?:grammar|sentence|sentences)\b[:,-]?/gi, '')
+      .replace(/\b(?:grammar|sentence|sentences)\s+(?:check|re-?check)\b[:,-]?/gi, '')
+      .replace(/^(?:grammar|sentence|check|proofread|audit\s*note|fix)[:,-]?\s*/i, '')
       .trim();
+
+    if (!textToCheck || textToCheck.length < 3 || /^(?:my\s+)?(?:sentence|sentences|grammar|text|phrasing|draft)$/i.test(textToCheck)) {
+      return "I'd be glad to help fix your sentence! Please paste or type the sentence or draft note you'd like me to audit (for example: *\"The investment team have submited the proposal\"* or *\"Our fund guarantees 10% return\"*), and I will correct its grammar, spelling, and regulatory tone for you.";
+    }
 
     const systemPrompt = `You are a friendly, expert editor helping a user clean up their text. Correct any grammar, spelling, or style issues and give your response in two parts:
 - **Corrected Text**: the fixed version
@@ -250,7 +255,14 @@ Keep the tone warm — like a helpful colleague reviewing a draft, not a strict 
       lower.startsWith('check grammar') ||
       lower.startsWith('grammar:') ||
       lower.startsWith('proofread') ||
-      /\b(check|fix)\s+my\s+grammar\b/i.test(lower);
+      lower.startsWith('fix grammar') ||
+      lower.startsWith('fix sentence') ||
+      lower.startsWith('fix my sentence') ||
+      lower.startsWith('fix my grammar') ||
+      /\b(?:check|fix|correct|improve|polish|rephrase|rewrite)\s+(?:my\s+|this\s+|the\s+)?(?:grammar|sentence|sentences|phrasing|wording)\b/i.test(lower) ||
+      /\b(?:i\s+want\s+(?:more\s+)?to\s+fix\s+(?:my\s+)?(?:sentence|grammar|writing))\b/i.test(lower) ||
+      /\b(?:help\s+me\s+fix\s+(?:my\s+)?(?:sentence|grammar))\b/i.test(lower) ||
+      /\bgrammar\s+(?:check|re-?check|fix)\b/i.test(lower);
 
     if (isGrammarRequest) {
       const reply = await this.handleGrammarCheckIntent(message);
