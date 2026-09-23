@@ -147,17 +147,29 @@ export function AppSidebar({
               </button>
             </>
           ) : (
+            <Link
+              href="/"
+              title="Springer Capital"
+              className="flex items-center justify-center h-9 w-9 rounded-xl hover:bg-[#C5E86C]/20 transition-all cursor-pointer"
+            >
+              <AILogo className="h-7 w-7 shrink-0" />
+            </Link>
+          )}
+        </div>
+
+        {/* Collapsed Mode Dedicated Expand Button */}
+        {isCollapsed && (
+          <div className="px-2 pt-2 pb-1 border-b border-[#E6E8E7]/60">
             <button
               onClick={onToggleCollapse}
               aria-label="Expand sidebar"
-              title="Expand sidebar (Springer Capital)"
-              className="group relative flex items-center justify-center h-9 w-9 rounded-xl border border-[#E6E8E7] bg-[#F8FAF9] hover:bg-[#C5E86C]/30 hover:border-[#C5E86C] transition-all cursor-pointer"
+              title="Expand sidebar"
+              className="w-full flex items-center justify-center h-8 rounded-xl border border-[#E6E8E7] bg-[#F8FAF9] text-[#183028]/70 hover:text-[#183028] hover:bg-[#C5E86C]/30 hover:border-[#C5E86C] transition-all cursor-pointer"
             >
-              <AILogo className="h-5 w-5 group-hover:opacity-0 transition-opacity absolute" />
-              <PanelLeftOpen className="h-4 w-4 text-[#183028] opacity-0 group-hover:opacity-100 transition-opacity absolute" />
+              <PanelLeftOpen className="h-4 w-4" />
             </button>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Navigation Links */}
         <div className="flex-1 py-3 px-2 overflow-y-auto space-y-1.5">
