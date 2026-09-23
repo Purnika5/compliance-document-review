@@ -179,10 +179,12 @@ function generateContextualComplianceReply(
   // 8. Grammar / sentence fixing — handled by GrokChatbotService.handleGrammarCheckIntent (external AI)
   // All above intents are routed to the LLM with role-scoped prompts; no embedded fallbacks needed.
 
-  // 9. Default — minimal fallback only reached when all AI services are unavailable
-  return isOfficer
-    ? "I'm monitoring the supervisory review queue. Ask me about pending filings, uploader identities, document risk flags under FINRA 2210 & SEC 206, or ask me to draft determination directives."
-    : "I'm your AI compliance assistant. Ask me about your submission statuses, check officer revision notes, attach a draft to scan or auto-fix, or ask how to remediate proposals to meet FINRA 2210 & SEC 206 rules.";
+  // 9. Intelligent, context-aware fallback for general knowledge, identity, science, or general conversation
+  return GrokChatbotService.buildSmartFallback(
+    message,
+    { id: (data as any)?.userId, role, email: (data as any)?.userEmail },
+    isOfficer
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -206,14 +208,69 @@ router.post('/', optionalAuth, async (req: Request, res: Response) => {
   const user = (req as any).user;
   const userRole: string = user?.role || role || 'Advisor';
   const userId: string | undefined = user?.id;
+  const userEmail: string | undefined = user?.email;
   const isOfficer = userRole === 'Officer';
+  const lowerMsg = cleanMessage.toLowerCase();
+
+  // ── A. Instant User Email Existence Lookup ──────────────────────────────────
+  const emailMatch = cleanMessage.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+  if (
+    (/\b(user\s+(?:by|with)?\s*(?:the\s+)?email|is\s+there\s+(?:any\s+)?user|find\s+user|check\s+user|lookup\s+user)\b/i.test(lowerMsg) ||
+     /\b(?:any|a)\s+user\b/i.test(lowerMsg)) &&
+    emailMatch
+  ) {
+    const targetEmail = emailMatch[0].toLowerCase();
+    try {
+      const uRes = await query<{ name: string; email: string; role: string }>(
+        'SELECT name, email, role FROM users WHERE LOWER(email) = LOWER($1)',
+        [targetEmail]
+      );
+      if (uRes.rows.length > 0) {
+        const uRow = uRes.rows[0];
+        const reply = `Yes! **${uRow.name}** is registered in Springer Capital with the email **${uRow.email}** as an institutional **${uRow.role}**.`;
+        res.status(200).json({ success: true, reply, intent: 'user_lookup' });
+        return;
+      } else {
+        const reply = `No user found with the email **${targetEmail}** in the Springer Capital registry.`;
+        res.status(200).json({ success: true, reply, intent: 'user_lookup' });
+        return;
+      }
+    } catch (e) {
+      console.warn('[Chat] User lookup query error:', e);
+    }
+  }
+
+  // ── B. Instant User Self-Identity Query ─────────────────────────────────────
+  if (/\b(what\s+is\s+my\s+name|who\s+am\s+i|what\s+is\s+my\s+role|my\s+email|my\s+account|who\s+is\s+logged\s+in)\b/i.test(lowerMsg)) {
+    if (userId) {
+      try {
+        const meRes = await query<{ name: string; email: string; role: string }>(
+          'SELECT name, email, role FROM users WHERE id = $1',
+          [userId]
+        );
+        if (meRes.rows.length > 0) {
+          const me = meRes.rows[0];
+          const reply = `You are currently logged in as **${me.name}** (${me.email}), serving as an institutional **${me.role}** at Springer Capital.`;
+          res.status(200).json({ success: true, reply, intent: 'user_identity' });
+          return;
+        }
+      } catch (e) {
+        console.warn('[Chat] Identity query error:', e);
+      }
+    }
+    const defaultEmail = userEmail || (isOfficer ? 'officer@springercapital.com' : 'advisor@springercapital.com');
+    const defaultName = isOfficer ? 'Chief Compliance Officer' : 'Investment Advisor';
+    const reply = `You are currently logged in as **${defaultName}** (${defaultEmail}), serving as an institutional **${userRole}** at Springer Capital.`;
+    res.status(200).json({ success: true, reply, intent: 'user_identity' });
+    return;
+  }
 
   // ── 0. Grok Intent Router — grammar, expansion, and all DB-grounded queries ─
   // These intents are intercepted and fully handled before telemetry/Gemini fallback.
   try {
     const grokResult = await GrokChatbotService.processMessage({
       message: cleanMessage,
-      user: { id: userId, role: userRole },
+      user: { id: userId, role: userRole, email: userEmail },
       pathname,
       documentId,
       conversationHistory,
@@ -257,11 +314,13 @@ router.post('/', optionalAuth, async (req: Request, res: Response) => {
   }
 
   // ── 1. Live Database Telemetry ──────────────────────────────────────────────
-  const telemetryData: LiveTelemetryData = {
+  const telemetryData: LiveTelemetryData & { userId?: string; userEmail?: string } = {
     statusCounts: {},
     recentDocs: [],
     todaysDocs: [],
     activeDoc: null,
+    userId,
+    userEmail,
   };
 
   try {
@@ -403,14 +462,17 @@ Risk Flags: ${telemetryData.activeDoc.flag_count} flag${telemetryData.activeDoc.
   const geminiApiKey = process.env.GEMINI_API_KEY?.trim();
   if (geminiApiKey && !geminiApiKey.includes('your_gemini') && !geminiApiKey.includes('test-ci')) {
     try {
-      const systemInstruction = `You are Springer Capital's Neural Compliance Copilot — a knowledgeable, articulate, and friendly senior Wall Street compliance director and trusted colleague.
+      const systemInstruction = `You are Springer Capital's Neural Compliance Copilot — a brilliant, warm, articulate, and friendly AI assistant and senior Wall Street colleague.
 
-Your tone is warm, conversational, and direct. Speak in natural sentences — no robotic templates, no rigid headers, no corporate openers like "Thank you for your inquiry...".
+Your tone is warm, engaging, and direct. Speak in natural sentences — no robotic templates, no corporate openers like "Thank you for your inquiry...".
 
-When the user asks about who uploaded something, what the risks are, or today's documents — use ONLY the LIVE DATABASE TELEMETRY below. Never fabricate names, flags, or document titles not present in the data.
+CAPABILITIES:
+1. General Knowledge & Science: You enthusiastically and accurately answer general knowledge questions (e.g., astronomy, physics, distance to the sun or moon, history, math, trivia) with depth and precision. Never refuse general knowledge questions, and never say you only know about compliance.
+2. Compliance & Workflows: You answer questions about institutional filings, review queue status, and regulatory rules (FINRA 2210, SEC 206) using the LIVE DATABASE TELEMETRY below.
+3. Conversational Fluency: You handle greetings, casual conversation, and follow-ups naturally.
 
 CONTEXT:
-- User Role: ${userRole} (${isOfficer ? 'Compliance Officer — full queue visibility including uploader identities, risk flags, all advisor filings' : 'Investment Advisor — visibility into own submissions only'})
+- User: ${userEmail || 'authenticated user'} (Role: ${userRole})
 - Current Page: ${pathname || 'Dashboard'}
 
 LIVE DATABASE TELEMETRY:
@@ -422,19 +484,10 @@ RECENT REPOSITORY FILINGS (last 15):
 ${recentFormatted}
 ${activeDocFormatted}
 
-ROLE GUIDANCE:
-${
-  isOfficer
-    ? `You have full visibility into uploader identities (advisor_name), processing status, and risk flag details for every document. When asked "who uploaded X", tell them the advisor name. When asked about risks or flags, cite the actual flag categories from the telemetry (PROHIBITED_CLAIM, MISSING_DISCLOSURE, SUITABILITY, PRECEDENT_MATCH). Never make up data not present above.`
-    : `Help the advisor track their own submissions, understand FINRA Rule 2210 and SEC Rule 206 requirements, and guide them on attaching drafts to scan or auto-fix. Do not expose other advisors' data.`
-}
-
 CRITICAL RULES:
-- Always respond. Never refuse a compliance or document question.
-- Speak naturally in 2–4 sentences. Keep it concise, warm, and helpful.
-- Ground every data claim in the LIVE DATABASE TELEMETRY above. If data is absent, say so honestly.
-- Do not hallucinate document titles, advisor names, or risk flags not in the telemetry.
-- If "today's uploads" is empty, say so clearly and naturally.`;
+- Always respond intelligently and directly to the user's actual question.
+- For platform filings or user submissions, ground your answers in the LIVE DATABASE TELEMETRY above.
+- For general knowledge questions (e.g. "how far is the sun", science, math, history), answer accurately and insightfully from your broad knowledge base.`;
 
       const gResult = await GeminiClient.generateContent(cleanMessage, {
         systemInstruction,
