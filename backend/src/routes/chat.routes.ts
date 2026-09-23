@@ -172,31 +172,13 @@ function generateContextualComplianceReply(
       : `Your filings: ${countsSummary}. Recent: ${docList}. Want me to check any of these or scan a new draft?`;
   }
 
-  // 6. Greetings
-  if (/\b(hi|hello|hey|good\s+morning|good\s+afternoon|good\s+evening|greetings|who\s+are\s+you)\b/i.test(lower)) {
-    return isOfficer
-      ? "Hey! I'm your Neural Compliance Copilot. I have live access to the full review queue, uploader identities, risk flags, and document histories. What do you want to look into?"
-      : "Hey! I'm your Neural Compliance Copilot. I can track your submissions, explain FINRA 2210 & SEC 206, or scan and auto-fix any draft you drop here. What are you working on?";
-  }
-
-  // 7. Regulatory rules
-  if (/\b(finra|sec|2210|206|rule|rules|regulation|regulatory|promissory|guarantee)\b/i.test(lower)) {
-    return isOfficer
-      ? "Under FINRA Rule 2210 & SEC Rule 206, officers must verify all filings are fair, balanced, and substantiated. Check that proposals contain statutory downside risk warnings and zero promissory claims before granting approval. If unhedged claims exist, issue a 'Needs Revision' determination."
-      : "Under FINRA Rule 2210 and SEC Rule 206, your proposal must be fair and balanced. You must eliminate all guaranteed or promissory return statements and include mandatory risk disclosures: 'Investments are subject to market risk and loss of principal; past performance does not guarantee future results.'";
-  }
-
-  // 7b. Proposal remediation & determination drafting
-  if (/\b(remediate|rephrase|rewrite|draft|how to write|help me write|improve phrasing|disclaimer|determination note)\b/i.test(lower)) {
-    return isOfficer
-      ? "To draft an audit-defensible determination note, structure it with: (1) Determinative Action (Approve / Needs Revision / Reject), (2) Regulatory Citation (FINRA 2210 / SEC 206), (3) Identified Factual Infraction, and (4) Specific Remediation Directive for the advisor."
-      : "To remediate a proposal for compliance: (1) Replace promissory claims like 'guaranteed returns' with 'targeted investment objectives', and (2) Always append: 'Past performance is no guarantee of future results. Investments are subject to market volatility and potential loss of principal.'";
-  }
-
+  // 6. Greetings — handled by GrokChatbotService.handleFreeConversation (external AI with role-scoped prompts)
+  // 7. Regulatory rules — handled by GrokChatbotService.handleComplianceRegulatoryGuidance (external AI)
+  // 7b. Remediation & drafting — handled by GrokChatbotService.handleComplianceDraftingAndRemediation (external AI)
   // 8. Grammar / sentence fixing — handled by GrokChatbotService.handleGrammarCheckIntent (external AI)
-  // This fallback is intentionally omitted; grammar requests are routed to the LLM with role-scoped prompts.
+  // All above intents are routed to the LLM with role-scoped prompts; no embedded fallbacks needed.
 
-  // 9. Default
+  // 9. Default — minimal fallback only reached when all AI services are unavailable
   return isOfficer
     ? "I'm monitoring the supervisory review queue. Ask me about pending filings, uploader identities, document risk flags under FINRA 2210 & SEC 206, or ask me to draft determination directives."
     : "I'm your AI compliance assistant. Ask me about your submission statuses, check officer revision notes, attach a draft to scan or auto-fix, or ask how to remediate proposals to meet FINRA 2210 & SEC 206 rules.";
