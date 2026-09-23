@@ -366,7 +366,7 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
   }, [isOfficer, isUnmasked, currentDocItem.maskedText, currentDocItem.originalText, piiMap]);
 
   const isDocx = Boolean(
-    currentDocItem.category === "DOCX" ||
+    currentDocItem.fileFormat === "DOCX" ||
     currentDocItem.mimeType?.includes("word") ||
     currentDocItem.fileName?.toLowerCase().endsWith(".docx") ||
     currentDocItem.fileName?.toLowerCase().endsWith(".doc") ||
@@ -375,15 +375,14 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
   );
 
   const isPdf = Boolean(
-    currentDocItem.category === "PDF" ||
+    currentDocItem.fileFormat === "PDF" ||
     currentDocItem.mimeType?.includes("pdf") ||
     currentDocItem.fileName?.toLowerCase().endsWith(".pdf") ||
     currentDocItem.fileUrl?.toLowerCase().endsWith(".pdf")
   );
 
   const isText = Boolean(
-    currentDocItem.category === "TXT" ||
-    currentDocItem.category === "Text" ||
+    currentDocItem.fileFormat === "TXT" ||
     currentDocItem.mimeType?.includes("text") ||
     currentDocItem.fileName?.toLowerCase().endsWith(".txt") ||
     currentDocItem.fileUrl?.toLowerCase().endsWith(".txt") ||

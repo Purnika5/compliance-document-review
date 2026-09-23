@@ -578,8 +578,16 @@ export class DocumentService {
 
     const doc = existing.rows[0];
 
-    if (user.role === 'Advisor' && doc.advisor_id && doc.advisor_id.toLowerCase() !== user.id.toLowerCase()) {
-      throw new AppError('Forbidden: You do not have permission to view this document lineage', 403, 'FORBIDDEN');
+    if (user.role === 'Advisor' && doc.advisor_id) {
+      const idMatch = doc.advisor_id.toLowerCase() === user.id.toLowerCase();
+      // Also allow if the document advisor email matches the user's email
+      // (handles cases where ensureValidAdvisorId resolved a different UUID during upload)
+      const advisorRow = await query<{ email: string }>('SELECT email FROM users WHERE id = $1', [doc.advisor_id]);
+      const advisorEmail = advisorRow.rows[0]?.email || '';
+      const emailMatch = user.email ? advisorEmail.toLowerCase() === user.email.toLowerCase() : false;
+      if (!idMatch && !emailMatch) {
+        throw new AppError('Forbidden: You do not have permission to view this document lineage', 403, 'FORBIDDEN');
+      }
     }
 
     const rootDocumentId = doc.original_document_id || doc.id;
@@ -723,8 +731,15 @@ export class DocumentService {
 
     const doc = result.rows[0];
 
-    if (user.role === 'Advisor' && doc.advisor_id && doc.advisor_id.toLowerCase() !== user.id.toLowerCase()) {
-      throw new AppError('Forbidden: You do not have permission to view this document', 403, 'FORBIDDEN');
+    if (user.role === 'Advisor' && doc.advisor_id) {
+      const idMatch = doc.advisor_id.toLowerCase() === user.id.toLowerCase();
+      // Also allow if the document advisor email matches the user's email
+      // (handles cases where ensureValidAdvisorId resolved a different UUID during upload)
+      const advisorEmail = (doc as any).advisor_email || '';
+      const emailMatch = user.email ? advisorEmail.toLowerCase() === user.email.toLowerCase() : false;
+      if (!idMatch && !emailMatch) {
+        throw new AppError('Forbidden: You do not have permission to view this document', 403, 'FORBIDDEN');
+      }
     }
 
     // Hydrate document text: extract from disk if available, or fallback to database masked_text

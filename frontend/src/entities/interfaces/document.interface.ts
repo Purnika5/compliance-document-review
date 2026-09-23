@@ -48,8 +48,10 @@ export interface DocumentItem {
   id: string;
   /** Title of the document submission. */
   title: string;
-  /** Document category or file format. */
+  /** Institutional document category classification (e.g., Regulatory Filing, Audit Report). */
   category: string;
+  /** Raw file format derived from MIME type: "PDF" | "DOCX" | "TXT" | "Document". */
+  fileFormat?: string;
   /** Submitting advisor name. */
   submittedBy: string;
   /** Submitting advisor email. */
