@@ -1,6 +1,7 @@
 import { SearchEngineService } from '../src/services/search-engine.service';
 import { GeminiCopilotService } from '../src/services/gemini-copilot.service';
 import { GrokChatbotService } from '../src/services/grok-chatbot.service';
+import { PipelineService } from '../src/services/pipeline.service';
 
 describe('Neural Compliance Copilot - Search & Audit Services', () => {
   describe('SearchEngineService.resolveDateRange', () => {
@@ -48,6 +49,37 @@ describe('Neural Compliance Copilot - Search & Audit Services', () => {
       const allTime = SearchEngineService.resolveDateRange('all time');
       expect(allTime.startDate).toBeNull();
       expect(allTime.endDate).toBeNull();
+    });
+  });
+
+  describe('PipelineService.auditDocumentRules', () => {
+    it('should extract authentic full sentences and NEVER output placeholder strings', () => {
+      const sampleDocText = `
+        Ms. Whitfield can expect a guaranteed return of 18% annualized on this structured credit sleeve regardless of market downturns.
+        We have achieved an audited 45% return year-to-date across all discretionary managed portfolios.
+        Client testimonials consistently praise our risk-free execution.
+      `;
+
+      const { flags, summary, remediatedText } = PipelineService.auditDocumentRules(sampleDocText);
+      expect(flags.length).toBeGreaterThanOrEqual(3);
+      expect(summary).toBeDefined();
+      expect(remediatedText).toBeDefined();
+
+      for (const flag of flags) {
+        expect(flag.passage).not.toContain('[Promissory statement detected');
+        expect(flag.passage).not.toContain('[Client testimonial');
+        expect(flag.passage).not.toContain('[Performance claim');
+        expect(flag.passage.length).toBeGreaterThan(15);
+      }
+
+      // Check that the guaranteed return sentence preserved the honorific "Ms. Whitfield"
+      const promissoryFlag = flags.find((f: any) => f.passage.includes('guaranteed return'));
+      expect(promissoryFlag).toBeDefined();
+      expect(promissoryFlag!.passage).toContain('Ms. Whitfield');
+      expect(promissoryFlag!.passage).toContain('regardless of market downturns');
+      expect(promissoryFlag!.rule).toContain('FINRA Rule 2210');
+      expect(promissoryFlag!.severity).toBe('HIGH');
+      expect(promissoryFlag!.fixed_passage).toBeDefined();
     });
   });
 
