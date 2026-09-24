@@ -35,6 +35,11 @@ import {
   ChevronUp,
   Maximize2,
   Minimize2,
+  Command,
+  MessageSquare,
+  BookOpen,
+  RotateCcw,
+  ListOrdered,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,7 +49,7 @@ import type { ISearchResponse, IAuditAndFixResponse, IAuditBreakdownItem, ISearc
 import { authStore, type UserSession } from "@/lib/auth/auth-store";
 import { getBaseBackendUrl } from "@/lib/api/client";
 import { copilotApi } from "@/lib/api/copilot";
-import { showSuccessToast, showErrorToast } from "@/components/ui/toast";
+import { showSuccessToast, showErrorToast, showInfoToast } from "@/components/ui/toast";
 import {
   LOGIN_INITIAL_MESSAGES,
   LOGIN_SUGGESTED_QUESTIONS,
@@ -58,6 +63,95 @@ import {
   type IDocumentationResult,
 } from "@/lib/chatbot/documentation-engine";
 import { markFileAsScanned, isScannedFile } from "@/lib/scanned-files";
+
+export interface ISlashCommand {
+  command: string;
+  name: string;
+  description: string;
+  category: "Embedded AI" | "Free AI" | "Audit Tool" | "Workflow";
+  badge: string;
+  placeholder?: string;
+  requiresInput?: boolean;
+  sampleExample?: string;
+}
+
+export const SLASH_COMMANDS: ISlashCommand[] = [
+  {
+    command: "/grammar",
+    name: "Fix Grammar & Polish",
+    description: "Proofread sentence, fix grammar & polish regulatory tone",
+    category: "Embedded AI",
+    badge: "Embedded",
+    placeholder: "/grammar The investment team have submited the proposal.",
+    requiresInput: true,
+    sampleExample: "The investment team have submited the proposal.",
+  },
+  {
+    command: "/free",
+    name: "Free Communication AI",
+    description: "Open-ended conversational AI assistance without repository search constraints",
+    category: "Free AI",
+    badge: "Free AI",
+    placeholder: "/free Explain FINRA Rule 2210 in simple terms",
+    requiresInput: true,
+    sampleExample: "Explain FINRA Rule 2210 in simple terms",
+  },
+  {
+    command: "/enhance",
+    name: "Enhance Documentation Rules",
+    description: "Transform rough notes into institutional compliance memos",
+    category: "Embedded AI",
+    badge: "Embedded",
+    placeholder: "/enhance Approved Q3 client pitch with required statutory disclaimers.",
+    requiresInput: true,
+    sampleExample: "Approved Q3 client pitch with required statutory disclaimers.",
+  },
+  {
+    command: "/scan",
+    name: "Scan Attached File",
+    description: "Audit draft file (.pdf, .docx, .txt) against FINRA 2210 & SEC 206 rules",
+    category: "Audit Tool",
+    badge: "Audit",
+    placeholder: "/scan",
+    requiresInput: false,
+  },
+  {
+    command: "/remediate",
+    name: "Auto-Fix & Remediate File",
+    description: "Automatically rewrite flagged draft passages into a compliant proposal",
+    category: "Audit Tool",
+    badge: "Audit",
+    placeholder: "/remediate",
+    requiresInput: false,
+  },
+  {
+    command: "/findings",
+    name: "List Scanned Findings",
+    description: "Display all detailed infractions, rules, passages, and remediations",
+    category: "Audit Tool",
+    badge: "Audit",
+    placeholder: "/findings",
+    requiresInput: false,
+  },
+  {
+    command: "/rules",
+    name: "Regulatory Guidance",
+    description: "Lookup statutory requirements for FINRA Rule 2210 & SEC Rule 206",
+    category: "Workflow",
+    badge: "Guide",
+    placeholder: "/rules FINRA 2210",
+    requiresInput: false,
+  },
+  {
+    command: "/clear",
+    name: "Clear Conversation",
+    description: "Reset chat history and clear active scanned document context",
+    category: "Workflow",
+    badge: "Reset",
+    placeholder: "/clear",
+    requiresInput: false,
+  },
+];
 
 /** Typing speed in milliseconds per character */
 const TYPING_SPEED_MS = 14;
@@ -590,10 +684,49 @@ export function ChatbotWidget() {
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [isAwaitingGrammarInput, setIsAwaitingGrammarInput] = useState(false);
+  const [isSlashMenuOpen, setIsSlashMenuOpen] = useState(false);
+  const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageIdRef = useRef(0);
   const typingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Slash commands filtering logic
+  const isSlashActive = inputValue.startsWith("/");
+  const slashQueryText = isSlashActive ? inputValue.slice(1).split(" ")[0].toLowerCase() : "";
+  const isTypingArguments = isSlashActive && inputValue.includes(" ");
+
+  const filteredSlashCommands = SLASH_COMMANDS.filter((cmd) => {
+    if (!slashQueryText) return true;
+    return (
+      cmd.command.toLowerCase().includes("/" + slashQueryText) ||
+      cmd.name.toLowerCase().includes(slashQueryText) ||
+      cmd.description.toLowerCase().includes(slashQueryText)
+    );
+  });
+
+  useEffect(() => {
+    if (isSlashActive && !isTypingArguments && filteredSlashCommands.length > 0) {
+      setIsSlashMenuOpen(true);
+      setSelectedCommandIndex(0);
+    } else if (!isSlashActive || isTypingArguments) {
+      setIsSlashMenuOpen(false);
+    }
+  }, [inputValue, isSlashActive, isTypingArguments, filteredSlashCommands.length]);
+
+  const handleSelectSlashCommand = (cmd: ISlashCommand) => {
+    setIsSlashMenuOpen(false);
+    if (cmd.requiresInput) {
+      setInputValue(`${cmd.command} `);
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 50);
+    } else {
+      setInputValue("");
+      handleSend(cmd.command);
+    }
+  };
 
   const scrollToBottom = (smooth = true) => {
     if (messagesContainerRef.current) {
@@ -995,6 +1128,241 @@ export function ChatbotWidget() {
 
     const botMsgId = `bot-${++messageIdRef.current}`;
     const lower = rawText.toLowerCase();
+
+    // Slash Command Execution Interceptor
+    if (rawText.startsWith("/")) {
+      const slashParts = rawText.split(" ");
+      const cmdKey = slashParts[0].toLowerCase();
+      const cmdArg = slashParts.slice(1).join(" ").trim();
+
+      // /clear
+      if (cmdKey === "/clear") {
+        setMessages(isLoginMode ? LOGIN_INITIAL_MESSAGES : DASHBOARD_INITIAL_MESSAGES);
+        setActiveScannedDoc(null);
+        setPendingFile(null);
+        showInfoToast("Chat cleared", "Conversation history and active scanned document context reset.");
+        return;
+      }
+
+      // /grammar
+      if (cmdKey === "/grammar") {
+        if (!cmdArg) {
+          setTimeout(() => {
+            simulateTyping(
+              botMsgId,
+              "**Embedded AI: Fix Grammar & Polish Mode** ✍️\n\nPlease provide the sentence or draft statement you'd like to check and polish. For example:\n`/grammar The investment team have submited the proposal.`\n\nI will audit spelling, grammatical agreement, and elevate the tone to comply with FINRA Rule 2210 & SEC Rule 206 standards.",
+              timestamp,
+              {
+                suggestedChips: [
+                  "/grammar The investment team have submited the proposal.",
+                  "/grammar Our fund guarantees a 12% return with zero risk.",
+                  "/grammar He dont have no files uploaded yet.",
+                ],
+              }
+            );
+          }, 150);
+          return;
+        }
+
+        setTimeout(() => {
+          const grammarResult = recheckGrammar(cmdArg);
+          simulateTyping(botMsgId, grammarResult.summary, timestamp, {
+            grammarResult,
+          });
+        }, 200);
+        return;
+      }
+
+      // /enhance
+      if (cmdKey === "/enhance") {
+        if (!cmdArg) {
+          setTimeout(() => {
+            simulateTyping(
+              botMsgId,
+              "**Embedded AI: Enhance for Documentation Rules** 🏛️\n\nPlease provide draft bullets or rough notes to structure into an institutional compliance memo under FINRA 2210 & SEC 206 standards.\n\nExample:\n`/enhance Approved Q3 client pitch with required statutory disclaimers.`",
+              timestamp,
+              {
+                suggestedChips: [
+                  "/enhance Approved Q3 client pitch with required statutory disclaimers.",
+                  "/enhance Replaced guaranteed return with benchmark objective and downside disclosures.",
+                ],
+              }
+            );
+          }, 150);
+          return;
+        }
+
+        setTimeout(() => {
+          const docResult = enhanceForDocumentation(cmdArg);
+          simulateTyping(
+            botMsgId,
+            "I have audited and enhanced your draft according to institutional documentation rules (FINRA 2210 & SEC 206).",
+            timestamp,
+            { documentationResult: docResult }
+          );
+        }, 200);
+        return;
+      }
+
+      // /free or /chat
+      if (cmdKey === "/free" || cmdKey === "/chat") {
+        if (!cmdArg) {
+          setTimeout(() => {
+            simulateTyping(
+              botMsgId,
+              "**Free Communication AI Mode** 💬\n\nYou are in free-form AI communication mode! In this mode, Springer Neural Copilot is unconstrained by document search filters and can discuss any compliance topic, regulatory nuance, draft revision, or open-ended analytical scenario.\n\nHow can I assist you right now?",
+              timestamp,
+              {
+                suggestedChips: [
+                  "/free Explain FINRA Rule 2210 in simple terms",
+                  "/free How to write a compliant performance disclaimer?",
+                  "/free What are key differences between FINRA and SEC marketing rules?",
+                ],
+              }
+            );
+          }, 150);
+          return;
+        }
+
+        const userRole = session?.role || "Advisor";
+        const docMatch = pathname ? pathname.match(/\/documents\/([0-9a-fA-F-]+)/) : null;
+        const documentId = docMatch ? docMatch[1] : undefined;
+
+        if (userRole === "Advisor") {
+          setQuota((prev) =>
+            prev ? { ...prev, used: prev.used + 1, remaining: Math.max(0, prev.remaining - 1) } : null
+          );
+        }
+
+        setIsTyping(true);
+        copilotApi
+          .sendChatMessage(
+            `[Free Conversational AI Assistance]: ${cmdArg}`,
+            userRole,
+            {
+              pathname: pathname || undefined,
+              documentId,
+              conversationHistory: messages.slice(-8).map((m) => ({
+                role: m.sender === "user" ? "user" : "assistant",
+                content: m.text,
+              })),
+              scannedDocument: activeScannedDoc || undefined,
+            }
+          )
+          .then((res) => {
+            if (res?.quota) setQuota(res.quota);
+            return res?.reply || getConversationalFallback(userRole, isLoginMode, cmdArg, session, activeScannedDoc);
+          })
+          .catch(() => getConversationalFallback(userRole, isLoginMode, cmdArg, session, activeScannedDoc))
+          .then((replyText) => {
+            simulateTyping(botMsgId, replyText, timestamp);
+          });
+        return;
+      }
+
+      // /scan
+      if (cmdKey === "/scan") {
+        if (pendingFile) {
+          handleExecuteFileAudit(pendingFile, "scan", cmdArg || undefined);
+          return;
+        }
+        setTimeout(() => {
+          simulateTyping(
+            botMsgId,
+            "**Audit Attached File** 🔍\n\nPlease select and attach a draft document (.pdf, .docx, or .txt) using the paperclip button to run a full regulatory compliance audit against FINRA Rule 2210 & SEC Rule 206.",
+            timestamp
+          );
+          fileInputRef.current?.click();
+        }, 150);
+        return;
+      }
+
+      // /remediate
+      if (cmdKey === "/remediate") {
+        if (pendingFile) {
+          handleExecuteFileAudit(pendingFile, "remediate", cmdArg || undefined);
+          return;
+        }
+        if (activeScannedDoc && activeScannedDoc.auditBreakdown && activeScannedDoc.auditBreakdown.length > 0) {
+          const findingsCount = activeScannedDoc.auditBreakdown.length;
+          const targetFileName = activeScannedDoc.fileName;
+          setTimeout(() => {
+            simulateTyping(
+              botMsgId,
+              `**Auto-Remediation for "${targetFileName}"** 🪄\n\nI have identified ${findingsCount} compliance findings in your active document. You can attach the file again or review the recommended remediations in the findings cards.`,
+              timestamp,
+              {
+                suggestedChips: [
+                  "List all findings with severity, applicable rules and remediation",
+                  "What FINRA 2210 & SEC 206 rules were violated?",
+                ],
+              }
+            );
+          }, 150);
+          return;
+        }
+        setTimeout(() => {
+          simulateTyping(
+            botMsgId,
+            "**Auto-Fix & Remediate File** 🪄\n\nPlease attach a draft proposal (.pdf, .docx, .txt) with the paperclip button to automatically rewrite promissory claims and insert statutory disclaimers.",
+            timestamp
+          );
+          fileInputRef.current?.click();
+        }, 150);
+        return;
+      }
+
+      // /findings
+      if (cmdKey === "/findings") {
+        if (activeScannedDoc) {
+          setTimeout(() => {
+            simulateTyping(botMsgId, formatScannedFindingsMarkdown(activeScannedDoc), timestamp, {
+              suggestedChips: [
+                "What FINRA 2210 & SEC 206 rules were violated?",
+                "How do I remediate the high-risk findings?",
+              ],
+            });
+          }, 150);
+          return;
+        }
+        setTimeout(() => {
+          simulateTyping(
+            botMsgId,
+            "**Scanned Document Findings** 📋\n\nNo document has been scanned in this chat session yet. Please attach or upload a file (.pdf, .docx, or .txt) using the paperclip button to view comprehensive compliance findings.",
+            timestamp
+          );
+        }, 150);
+        return;
+      }
+
+      // /rules
+      if (cmdKey === "/rules") {
+        setTimeout(() => {
+          simulateTyping(
+            botMsgId,
+            `### Regulatory Standards Guide\n\n` +
+            `• **FINRA Rule 2210 (Communications with the Public)**:\n` +
+            `  - Prohibits false, exaggerated, unwarranted, promissory or misleading statements.\n` +
+            `  - Demands sound basis for evaluating the facts and balanced presentation of risks vs. potential returns.\n` +
+            `  - Prohibits predictions or projections of investment performance.\n\n` +
+            `• **SEC Rule 206(4)-1 (Investment Adviser Marketing Rule)**:\n` +
+            `  - Governs advertisements and communications by investment advisers.\n` +
+            `  - Mandates clear and prominent disclosure of risks and material limitations.\n` +
+            `  - Prohibits unsubstantiated claims of superior investment skill or risk-free returns.\n\n` +
+            `• **FINRA Rule 2111 (Suitability)**:\n` +
+            `  - Mandates that investment recommendations must be suitable based on client financial profile, objectives, and risk tolerance.`,
+            timestamp,
+            {
+              suggestedChips: [
+                "How does FINRA 2210 apply to client emails?",
+                "What are required downside disclaimers?",
+              ],
+            }
+          );
+        }, 150);
+        return;
+      }
+    }
 
     // 1. Documentation enhancement (local only — grammar/polish goes to backend AI)
     const isEnhance =
@@ -1423,8 +1791,90 @@ export function ChatbotWidget() {
             </div>
           )}
 
-          {/* Message Input Box with Attachment Clip */}
+          {/* Slash Commands Dropdown Menu */}
+          {isSlashMenuOpen && filteredSlashCommands.length > 0 && (
+            <div className="mx-3 mb-2 p-1.5 bg-white/95 backdrop-blur-md border border-[#183028]/20 rounded-2xl shadow-xl space-y-1 animate-in fade-in slide-in-from-bottom-2 duration-150 z-20 max-h-[260px] overflow-y-auto">
+              <div className="px-2 py-1 flex items-center justify-between border-b border-[#E6E8E7] text-[9.5px]">
+                <span className="font-extrabold uppercase tracking-wider text-[#183028]/70 flex items-center gap-1">
+                  <Sparkles className="h-3 w-3 text-emerald-600" />
+                  Available AI Commands ({filteredSlashCommands.length})
+                </span>
+                <span className="text-[#183028]/50 text-[9px] font-mono">
+                  ↑↓ Navigate • Enter or Tab to Select • Esc to Close
+                </span>
+              </div>
 
+              <div className="space-y-0.5 pt-0.5">
+                {filteredSlashCommands.map((cmd, idx) => {
+                  const isSelected = idx === selectedCommandIndex;
+                  return (
+                    <button
+                      key={cmd.command}
+                      type="button"
+                      onClick={() => handleSelectSlashCommand(cmd)}
+                      onMouseEnter={() => setSelectedCommandIndex(idx)}
+                      className={cn(
+                        "w-full text-left px-2.5 py-1.5 rounded-xl transition-all flex items-center justify-between gap-2 cursor-pointer group",
+                        isSelected
+                          ? "bg-[#183028] text-white shadow-2xs"
+                          : "hover:bg-[#FAFBFB] text-[#183028]"
+                      )}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          className={cn(
+                            "font-mono font-bold text-xs px-1.5 py-0.5 rounded-md shrink-0 transition-colors",
+                            isSelected
+                              ? "bg-[#C5E86C] text-[#183028]"
+                              : "bg-[#183028]/5 text-[#183028] group-hover:bg-[#C5E86C]/30"
+                          )}
+                        >
+                          {cmd.command}
+                        </span>
+                        <div className="min-w-0">
+                          <span
+                            className={cn(
+                              "text-[11px] font-bold block truncate",
+                              isSelected ? "text-white" : "text-[#183028]"
+                            )}
+                          >
+                            {cmd.name}
+                          </span>
+                          <span
+                            className={cn(
+                              "text-[9.5px] block truncate",
+                              isSelected ? "text-white/80" : "text-[#183028]/60"
+                            )}
+                          >
+                            {cmd.description}
+                          </span>
+                        </div>
+                      </div>
+
+                      <span
+                        className={cn(
+                          "text-[8.5px] font-extrabold uppercase px-1.5 py-0.5 rounded-full shrink-0 tracking-wider",
+                          isSelected
+                            ? "bg-white/20 text-[#C5E86C]"
+                            : cmd.badge === "Embedded"
+                            ? "bg-emerald-100 text-emerald-800"
+                            : cmd.badge === "Free AI"
+                            ? "bg-purple-100 text-purple-800"
+                            : cmd.badge === "Audit"
+                            ? "bg-amber-100 text-amber-800"
+                            : "bg-slate-100 text-slate-800"
+                        )}
+                      >
+                        {cmd.badge}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Message Input Box with Attachment Clip & Slash Button */}
           <div className="p-3 bg-white border-t border-[#E6E8E7] flex items-center space-x-2 shrink-0">
             {isAuthenticated && (
               <Button
@@ -1440,17 +1890,67 @@ export function ChatbotWidget() {
               </Button>
             )}
 
+            {/* Dedicated Slash Command Launcher Button */}
+            <button
+              type="button"
+              disabled={isTyping || isUploading}
+              onClick={() => {
+                if (isSlashMenuOpen) {
+                  setIsSlashMenuOpen(false);
+                } else {
+                  setInputValue("/");
+                  setIsSlashMenuOpen(true);
+                  setTimeout(() => inputRef.current?.focus(), 50);
+                }
+              }}
+              title="Explore all slash commands (/grammar, /free AI, /scan, /rules)"
+              className={cn(
+                "h-8 px-2 rounded-xl border border-[#E6E8E7] text-[#183028] hover:bg-[#C5E86C]/25 text-xs font-mono font-bold shrink-0 cursor-pointer shadow-2xs transition-colors flex items-center gap-1",
+                isSlashMenuOpen && "bg-[#183028] text-[#C5E86C] border-[#183028]"
+              )}
+            >
+              <Command className="h-3 w-3" />
+              <span>/</span>
+            </button>
+
             <Input
+              ref={inputRef}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={(e) => {
+                if (isSlashMenuOpen && filteredSlashCommands.length > 0) {
+                  if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    setSelectedCommandIndex((prev) => (prev + 1) % filteredSlashCommands.length);
+                    return;
+                  }
+                  if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    setSelectedCommandIndex((prev) => (prev - 1 + filteredSlashCommands.length) % filteredSlashCommands.length);
+                    return;
+                  }
+                  if (e.key === "Escape") {
+                    e.preventDefault();
+                    setIsSlashMenuOpen(false);
+                    return;
+                  }
+                  if (e.key === "Tab" || (e.key === "Enter" && !inputValue.trim().includes(" "))) {
+                    e.preventDefault();
+                    const selected = filteredSlashCommands[selectedCommandIndex] || filteredSlashCommands[0];
+                    if (selected) {
+                      handleSelectSlashCommand(selected);
+                      return;
+                    }
+                  }
+                }
+
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
                   handleSend();
                 }
               }}
               disabled={isTyping || isUploading}
-              placeholder={pendingFile ? "Type optional instructions or hit send..." : currentPlaceholder}
+              placeholder={pendingFile ? "Type optional instructions or hit send..." : isSlashActive ? "Select a command or type..." : currentPlaceholder}
               className="bg-[#FAFBFB] border-[#E6E8E7] text-[#183028] placeholder:text-[#183028]/45 h-8 text-xs rounded-xl focus-visible:ring-1 focus-visible:ring-[#183028] disabled:opacity-60"
             />
 
