@@ -946,7 +946,6 @@ export function ChatbotWidget() {
             ]
             : [
               findingsChip,
-              "Submit remediated version",
               "Download remediated file",
             ],
         },
@@ -2143,26 +2142,9 @@ function ChatMessageItem({
         {/* Dynamic Contextual Suggestion Bubbles */}
         {!isUser && message.suggestedChips && message.suggestedChips.length > 0 && !isCurrentlyTyping && (
           <div className="mt-3 pt-2 border-t border-[#E6E8E7] flex flex-wrap gap-1.5 items-center">
-            {message.submittedAt ? (
-              // Already submitted — show badge, hide submit chip to prevent spam
-              <>
-                <span className="flex items-center gap-1 text-[9.5px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
-                  ✓ Submitted at {message.submittedAt}
-                </span>
-                {message.suggestedChips
-                  .filter((chip) => chip !== "Submit remediated version")
-                  .map((chip) => (
-                    <button
-                      key={chip}
-                      onClick={() => onExecuteChip?.(chip)}
-                      className="text-[9.5px] font-semibold text-[#183028] hover:bg-[#C5E86C] bg-[#FAFBFB] border border-[#183028]/20 px-2 py-0.5 rounded-lg transition-colors cursor-pointer shadow-2xs"
-                    >
-                      ↳ {chip}
-                    </button>
-                  ))}
-              </>
-            ) : (
-              message.suggestedChips.map((chip) => (
+            {message.suggestedChips
+              .filter((chip) => chip !== "Submit remediated version")
+              .map((chip) => (
                 <button
                   key={chip}
                   onClick={() => onExecuteChip?.(chip)}
@@ -2170,8 +2152,7 @@ function ChatMessageItem({
                 >
                   ↳ {chip}
                 </button>
-              ))
-            )}
+              ))}
           </div>
         )}
       </div>
