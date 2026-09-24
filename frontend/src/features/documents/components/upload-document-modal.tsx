@@ -160,7 +160,10 @@ export function UploadDocumentModal({
       return;
     }
     try {
-      await onUpload({ title, category, notes, file: rawFile || undefined });
+      const result = await onUpload({ title, category, notes, file: rawFile || undefined });
+      if (result === null) {
+        return;
+      }
       setStep("success");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Upload failed.";

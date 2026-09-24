@@ -39,7 +39,6 @@ export function useUploadDocument(onSuccess?: (doc: DocumentItem) => void) {
     try {
       const doc = await uploadDocumentAction(data);
       setIsPending(false);
-      setIsOpen(false);
       showSuccessToast("Document Uploaded", `"${doc.title}" was successfully submitted for review.`);
       if (onSuccess) onSuccess(doc);
       return doc;
@@ -48,7 +47,7 @@ export function useUploadDocument(onSuccess?: (doc: DocumentItem) => void) {
       const msg = err instanceof Error ? err.message : "Document upload failed.";
       setError(msg);
       showErrorToast("Submission Failed", msg);
-      return null;
+      throw err;
     }
   };
 
