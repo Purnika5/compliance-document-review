@@ -42,17 +42,33 @@ export function ResubmitRevisionModal({
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB
+
   const handleFileDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      setSelectedFile(e.dataTransfer.files[0]);
+      const file = e.dataTransfer.files[0];
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        const mb = (file.size / (1024 * 1024)).toFixed(1);
+        showErrorToast("File Too Large", `"${file.name}" is ${mb} MB. Maximum allowed size is 25 MB.`);
+        return;
+      }
+      setSelectedFile(file);
     }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      setSelectedFile(e.target.files[0]);
+      const file = e.target.files[0];
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        const mb = (file.size / (1024 * 1024)).toFixed(1);
+        showErrorToast("File Too Large", `"${file.name}" is ${mb} MB. Maximum allowed size is 25 MB.`);
+        e.target.value = "";
+        return;
+      }
+      setSelectedFile(file);
+      e.target.value = "";
     }
   };
 
@@ -68,6 +84,12 @@ export function ResubmitRevisionModal({
     if (!documentItem) return;
     if (!selectedFile) {
       showErrorToast("File Required", "Please attach a revised document file.");
+      return;
+    }
+
+    if (selectedFile.size > MAX_FILE_SIZE_BYTES) {
+      const mb = (selectedFile.size / (1024 * 1024)).toFixed(1);
+      showErrorToast("File Too Large", `Selected file is ${mb} MB. Maximum allowed size is 25 MB.`);
       return;
     }
 

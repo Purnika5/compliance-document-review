@@ -66,6 +66,11 @@ export const copilotApi = {
     file: File,
     options?: { targetDocumentId?: string; instructions?: string }
   ): Promise<IAuditAndFixResponse> {
+    if (file && file.size > 25 * 1024 * 1024) {
+      const mb = (file.size / (1024 * 1024)).toFixed(1);
+      throw new Error(`File "${file.name}" exceeds the maximum allowed size of 25 MB (${mb} MB).`);
+    }
+
     const formData = new FormData();
     formData.append("file", file);
     if (options?.targetDocumentId) {

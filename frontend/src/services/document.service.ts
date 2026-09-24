@@ -134,6 +134,11 @@ export class DocumentService {
    * @author Keith
    */
   public async uploadDocument(data: UploadDocumentInput & { file?: File }): Promise<DocumentItem> {
+    if (data.file && data.file.size > 25 * 1024 * 1024) {
+      const mb = (data.file.size / (1024 * 1024)).toFixed(1);
+      throw new Error(`File "${data.file.name}" exceeds the maximum allowed size of 25 MB (${mb} MB).`);
+    }
+
     const formData = new FormData();
     formData.append("title", data.title);
     formData.append("category", data.category);
@@ -246,6 +251,11 @@ export class DocumentService {
    * @author Keith
    */
   public async resubmitDocument(id: string, file: File, notes?: string): Promise<DocumentItem> {
+    if (file && file.size > 25 * 1024 * 1024) {
+      const mb = (file.size / (1024 * 1024)).toFixed(1);
+      throw new Error(`File "${file.name}" exceeds the maximum allowed size of 25 MB (${mb} MB).`);
+    }
+
     const formData = new FormData();
     formData.append("file", file);
     if (notes) {

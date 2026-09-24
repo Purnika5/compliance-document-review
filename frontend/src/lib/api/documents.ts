@@ -209,6 +209,11 @@ export async function fetchDocumentVersionsRequest(documentId: string): Promise<
  * @author Keith
  */
 export async function uploadDocumentRequest(data: UploadDocumentInput): Promise<DocumentItem> {
+  if (data.file && data.file.size > 25 * 1024 * 1024) {
+    const mb = (data.file.size / (1024 * 1024)).toFixed(1);
+    throw new Error(`File "${data.file.name}" exceeds the maximum allowed size of 25 MB (${mb} MB).`);
+  }
+
   const formData = new FormData();
   formData.append("title", data.title);
   if (data.notes) formData.append("description", data.notes);
