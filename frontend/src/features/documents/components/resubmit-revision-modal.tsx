@@ -22,6 +22,7 @@ import type { DocumentItem } from "@/entities/interfaces/document.interface";
 import { documentService } from "@/services/document.service";
 import { showSuccessToast, showErrorToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { isScannedFile } from "@/lib/scanned-files";
 
 export interface ResubmitRevisionModalProps {
   isOpen: boolean;
@@ -219,7 +220,15 @@ export function ResubmitRevisionModal({
                     <div className="flex items-center gap-2.5 min-w-0">
                       <FileText className="h-5 w-5 text-[#183028] shrink-0" />
                       <div className="text-left min-w-0">
-                        <p className="font-semibold text-[#183028] truncate text-xs">{selectedFile.name}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-semibold text-[#183028] truncate text-xs">{selectedFile.name}</p>
+                          {isScannedFile(selectedFile.name) && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-[#C5E86C]/40 text-[#183028] border border-[#C5E86C] shrink-0">
+                              <span className="h-1 w-1 rounded-full bg-[#183028]" />
+                              Scanned
+                            </span>
+                          )}
+                        </div>
                         <p className="text-[10px] text-[#183028]/60 font-mono">
                           {(selectedFile.size / 1024).toFixed(1)} KB
                         </p>

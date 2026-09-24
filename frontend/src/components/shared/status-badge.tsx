@@ -22,7 +22,8 @@ export type ExtendedStatusType =
   | "Draft"
   | "Submitted"
   | "Under Review"
-  | "In Review";
+  | "In Review"
+  | "Scanned";
 
 const statusBadgeVariants = cva(
   "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold tracking-tight select-none transition-all animate-fade-in shadow-2xs",
@@ -45,6 +46,8 @@ const statusBadgeVariants = cva(
           "bg-rose-50 text-rose-950 border-rose-200",
         Draft:
           "bg-[#FAFBFB] text-[#183028]/70 border-[#E6E8E7]",
+        Scanned:
+          "bg-[#C5E86C]/35 text-[#183028] border-[#C5E86C]",
       },
     },
     defaultVariants: {
@@ -65,6 +68,7 @@ const statusIcons: Record<
   "Needs Revision": AlertCircle,
   Rejected:        XCircle,
   Draft:           FileEdit,
+  Scanned:         CheckCircle2,
 };
 
 /** Statuses that get a pulsing dot indicator */
@@ -80,6 +84,7 @@ const statusDotColor: Record<string, string> = {
   Rejected:         "bg-rose-500",
   Draft:            "bg-[#183028]/40",
   Submitted:        "bg-[#183028]/60",
+  Scanned:          "bg-[#183028]",
 };
 
 export interface StatusBadgeProps extends React.HTMLAttributes<HTMLSpanElement> {

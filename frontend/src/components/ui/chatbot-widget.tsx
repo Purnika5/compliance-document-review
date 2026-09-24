@@ -57,6 +57,7 @@ import {
   type IGrammarResult,
   type IDocumentationResult,
 } from "@/lib/chatbot/documentation-engine";
+import { markFileAsScanned, isScannedFile } from "@/lib/scanned-files";
 
 /** Typing speed in milliseconds per character */
 const TYPING_SPEED_MS = 14;
@@ -778,6 +779,7 @@ export function ChatbotWidget() {
         },
       };
       setActiveScannedDoc(newScannedDoc);
+      markFileAsScanned(file.name, file.size);
 
       const findingsCount = auditResponse.audit_breakdown?.length || 0;
       const findingsChip = findingsCount > 0
@@ -1293,7 +1295,15 @@ export function ChatbotWidget() {
                     <FileText className="h-3.5 w-3.5" />
                   </div>
                   <div className="truncate">
-                    <p className="text-[11px] font-bold text-[#183028] truncate">{pendingFile.name}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-[11px] font-bold text-[#183028] truncate">{pendingFile.name}</p>
+                      {isScannedFile(pendingFile.name) && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-[#C5E86C]/40 text-[#183028] border border-[#C5E86C] shrink-0">
+                          <span className="h-1 w-1 rounded-full bg-[#183028]" />
+                          Scanned
+                        </span>
+                      )}
+                    </div>
                     <p className="text-[9.5px] text-[#183028]/60">{Math.round(pendingFile.size / 1024)} KB • Attached draft</p>
                   </div>
                 </div>
@@ -1771,13 +1781,19 @@ function AuditResultCard({ result, isCopied, onCopy }: IAuditCardProps) {
       </div>
 
       {/* File meta tag */}
-      <div className="flex items-center gap-2 p-1.5 bg-[#FAFBFB] rounded-lg border border-[#E6E8E7] text-[10px]">
-        <FileText className="h-3.5 w-3.5 text-[#183028]/60" />
-        <span className="font-semibold text-[#183028] truncate max-w-[220px]">
-          {result.file_meta.original_filename}
-        </span>
-        <span className="text-[#183028]/50">
-          ({Math.round(result.file_meta.file_size / 1024)} KB)
+      <div className="flex items-center justify-between gap-2 p-1.5 bg-[#FAFBFB] rounded-lg border border-[#E6E8E7] text-[10px]">
+        <div className="flex items-center gap-2 min-w-0 flex-1 truncate">
+          <FileText className="h-3.5 w-3.5 text-[#183028]/60 shrink-0" />
+          <span className="font-semibold text-[#183028] truncate max-w-[180px] sm:max-w-[220px]" title={result.file_meta.original_filename}>
+            {result.file_meta.original_filename}
+          </span>
+          <span className="text-[#183028]/50 shrink-0">
+            ({Math.round(result.file_meta.file_size / 1024)} KB)
+          </span>
+        </div>
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#C5E86C]/40 text-[#183028] border border-[#C5E86C] shrink-0 shadow-2xs">
+          <span className="h-1.5 w-1.5 rounded-full bg-[#183028]" />
+          Scanned
         </span>
       </div>
 
@@ -2021,12 +2037,18 @@ function OfficerFlagScanCard({ result }: { result: IAuditAndFixResponse }) {
       </div>
 
       {/* File meta */}
-      <div className="flex items-center gap-2 p-1.5 bg-[#FAFBFB] rounded-lg border border-[#E6E8E7] text-[10px]">
-        <FileText className="h-3.5 w-3.5 text-[#183028]/60" />
-        <span className="font-semibold text-[#183028] truncate max-w-[220px]">
-          {result.file_meta.original_filename}
+      <div className="flex items-center justify-between gap-2 p-1.5 bg-[#FAFBFB] rounded-lg border border-[#E6E8E7] text-[10px]">
+        <div className="flex items-center gap-2 min-w-0 flex-1 truncate">
+          <FileText className="h-3.5 w-3.5 text-[#183028]/60 shrink-0" />
+          <span className="font-semibold text-[#183028] truncate max-w-[180px] sm:max-w-[220px]" title={result.file_meta.original_filename}>
+            {result.file_meta.original_filename}
+          </span>
+          <span className="text-[#183028]/50 shrink-0">({Math.round(result.file_meta.file_size / 1024)} KB)</span>
+        </div>
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-[#C5E86C]/40 text-[#183028] border border-[#C5E86C] shrink-0 shadow-2xs">
+          <span className="h-1.5 w-1.5 rounded-full bg-[#183028]" />
+          Scanned
         </span>
-        <span className="text-[#183028]/50">({Math.round(result.file_meta.file_size / 1024)} KB)</span>
       </div>
 
       {/* Compliant — no flags */}

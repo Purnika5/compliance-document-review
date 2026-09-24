@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { useDocuments } from "../hooks/use-documents";
 import { DecisionDialog } from "@/features/review/components/decision-dialog";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { isScannedFile } from "@/lib/scanned-files";
 import { EmptyState } from "@/components/shared/empty-state";
 import { LoadingState } from "@/components/shared/loading-state";
 import {
@@ -482,9 +483,17 @@ export function DocumentQueueTable() {
 
                       <TableCell className="py-5 px-4">
                         <div className="space-y-1">
-                          <p className="font-semibold text-sm text-[#183028] leading-snug group-hover:text-[#183028] transition-colors line-clamp-1">
-                            {doc.title}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold text-sm text-[#183028] leading-snug group-hover:text-[#183028] transition-colors line-clamp-1">
+                              {doc.title}
+                            </p>
+                            {isScannedFile(doc.fileName || (doc as any).file_name || doc.title) && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-[#C5E86C]/40 text-[#183028] border border-[#C5E86C] shrink-0" title="Scanned via Springer Neural Copilot">
+                                <span className="h-1 w-1 rounded-full bg-[#183028]" />
+                                Scanned
+                              </span>
+                            )}
+                          </div>
                           <div className="flex items-center gap-2 text-xs text-[#183028]/60">
                             <span className="font-medium text-[#183028]/70">
                               {doc.category || "Unclassified Filing"}

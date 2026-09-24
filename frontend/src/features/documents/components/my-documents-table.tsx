@@ -14,6 +14,7 @@ import { UploadDocumentModal } from "./upload-document-modal";
 import { EditDocumentModal } from "./edit-document-modal";
 import { ResubmitRevisionModal } from "./resubmit-revision-modal";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { isScannedFile } from "@/lib/scanned-files";
 import { EmptyState } from "@/components/shared/empty-state";
 import { LoadingState } from "@/components/shared/loading-state";
 import { Button } from "@/components/ui/button";
@@ -748,9 +749,17 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                               <div className="flex items-center gap-3">
                                 <FileTypeIcon title={doc.title} category={doc.category} />
                                 <div className="min-w-0">
-                                  <p className="font-semibold text-[#183028] leading-snug truncate max-w-[200px] sm:max-w-[260px]">
-                                    {doc.title}
-                                  </p>
+                                  <div className="flex items-center gap-1.5">
+                                    <p className="font-semibold text-[#183028] leading-snug truncate max-w-[200px] sm:max-w-[260px]">
+                                      {doc.title}
+                                    </p>
+                                    {isScannedFile(doc.fileName || doc.title) && (
+                                      <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-[#C5E86C]/40 text-[#183028] border border-[#C5E86C] shrink-0" title="Scanned via Springer Neural Copilot">
+                                        <span className="h-1 w-1 rounded-full bg-[#183028]" />
+                                        Scanned
+                                      </span>
+                                    )}
+                                  </div>
                                   <p className="text-[11px] text-[#183028]/60 mt-0.5 truncate max-w-[200px] sm:max-w-[260px]">
                                     {doc.category || "Compliance Document"}
                                   </p>

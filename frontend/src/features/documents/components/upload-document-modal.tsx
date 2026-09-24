@@ -34,6 +34,7 @@ import { uploadDocumentSchema, type UploadDocumentInput } from "@/lib/validation
 import { cn } from "@/lib/utils";
 import { showErrorToast } from "@/components/ui/toast";
 import { copilotApi } from "@/lib/api/copilot";
+import { isScannedFile } from "@/lib/scanned-files";
 
 export interface UploadDocumentModalProps {
   isOpen: boolean;
@@ -408,6 +409,12 @@ export function UploadDocumentModal({
                                 {f.name}
                               </span>
                               <span className={cn("text-[10px] font-mono shrink-0", f.status === "invalid" ? "text-rose-600 font-bold" : "text-[#183028]/60")}>({f.size})</span>
+                              {f.status !== "invalid" && isScannedFile(f.name) && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-[#C5E86C]/40 text-[#183028] border border-[#C5E86C] shrink-0">
+                                  <span className="h-1 w-1 rounded-full bg-[#183028]" />
+                                  Scanned
+                                </span>
+                              )}
                             </div>
                             {f.status === "invalid" && (
                               <p className="text-[10px] text-rose-600 font-semibold mt-0.5">{f.message}</p>
@@ -530,7 +537,15 @@ export function UploadDocumentModal({
                       {file.type}
                     </div>
                     <div className="min-w-0">
-                      <p className="font-semibold text-[#183028] truncate">{file.name}</p>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <p className="font-semibold text-[#183028] truncate">{file.name}</p>
+                        {file.status !== "invalid" && isScannedFile(file.name) && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-[#C5E86C]/40 text-[#183028] border border-[#C5E86C] shrink-0">
+                            <span className="h-1 w-1 rounded-full bg-[#183028]" />
+                            Scanned
+                          </span>
+                        )}
+                      </div>
                       <p className="text-[10px] text-[#183028]/60 mt-0.5">{file.message}</p>
                     </div>
                   </div>
