@@ -293,15 +293,25 @@ function resolveBotReply(rawText: string, isLoginMode: boolean, role?: string): 
 }
 
 /** Determines active suggested questions dynamically based on authentication state, user role, and active page */
-function getSuggestedQuestions(isLoginMode: boolean, role?: string, pathname?: string, hasScannedDoc = false): string[] {
+function getSuggestedQuestions(
+  isLoginMode: boolean,
+  role?: string,
+  pathname?: string,
+  hasScannedDoc = false,
+  scannedFindingsCount = 0
+): string[] {
   if (isLoginMode) {
     return LOGIN_SUGGESTED_QUESTIONS;
   }
 
   // 0. Active Scanned Document Follow-up Questions
   if (hasScannedDoc) {
+    const findingsQuery = scannedFindingsCount > 0
+      ? `List all ${scannedFindingsCount} findings with severity, applicable rules and remediation`
+      : "Explain compliance audit evaluation";
+
     return [
-      "List all 9 findings with severity, applicable rules and remediation",
+      findingsQuery,
       "What FINRA 2210 & SEC 206 rules were violated?",
       "How do I remediate the high-risk findings?",
       "Can this scanned file be submitted directly?",
@@ -1089,11 +1099,22 @@ export function ChatbotWidget() {
       });
   };
 
+  const lastAuditMessage = [...messages].reverse().find((m) => m.auditResult || m.officerAuditResult);
+  const lastScannedFindingsCount =
+    activeScannedDoc?.auditBreakdown?.length ??
+    lastAuditMessage?.auditResult?.audit_breakdown?.length ??
+    lastAuditMessage?.officerAuditResult?.audit_breakdown?.length ??
+    0;
+  const hasScannedDoc = Boolean(
+    activeScannedDoc || (lastAuditMessage && lastScannedFindingsCount > 0)
+  );
+
   const currentSuggestedQuestions = getSuggestedQuestions(
     isLoginMode,
     session?.role,
     pathname,
-    Boolean(activeScannedDoc && activeScannedDoc.auditBreakdown && activeScannedDoc.auditBreakdown.length > 0)
+    hasScannedDoc,
+    lastScannedFindingsCount
   );
   const currentPlaceholder = getPlaceholderText(isLoginMode, isTyping, isUploading);
 
