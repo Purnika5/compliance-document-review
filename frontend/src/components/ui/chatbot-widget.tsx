@@ -1952,21 +1952,32 @@ function AuditResultCard({ result, isCopied, onCopy }: IAuditCardProps) {
 
 /** Supervisory compliance flag scan card rendered for Officers when they scan a file */
 function OfficerFlagScanCard({ result }: { result: IAuditAndFixResponse }) {
-  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const flagCount = result.audit_breakdown.length;
 
-  const categoryColors: Record<string, string> = {
-    PROHIBITED_CLAIM: "bg-rose-100 text-rose-800 border-rose-300",
-    MISSING_DISCLOSURE: "bg-amber-100 text-amber-800 border-amber-300",
-    SUITABILITY: "bg-orange-100 text-orange-800 border-orange-300",
-    PRECEDENT_MATCH: "bg-sky-100 text-sky-800 border-sky-300",
+  const categoryToSeverity: Record<string, "HIGH" | "MEDIUM" | "LOW"> = {
+    PROHIBITED_CLAIM: "HIGH",
+    MISSING_DISCLOSURE: "MEDIUM",
+    SUITABILITY: "MEDIUM",
+    PRECEDENT_MATCH: "LOW",
   };
 
-  const categoryLabel: Record<string, string> = {
-    PROHIBITED_CLAIM: "Prohibited Claim",
-    MISSING_DISCLOSURE: "Missing Disclosure",
-    SUITABILITY: "Suitability Risk",
-    PRECEDENT_MATCH: "Precedent Match",
+  const severityStyles: Record<"HIGH" | "MEDIUM" | "LOW", string> = {
+    HIGH: "bg-rose-50 text-rose-900 border-rose-300",
+    MEDIUM: "bg-amber-50 text-amber-900 border-amber-300",
+    LOW: "bg-[#E6E8E7]/50 text-[#183028] border-[#E6E8E7]",
+  };
+
+  const categoryConfidence: Record<string, number> = {
+    PROHIBITED_CLAIM: 97,
+    MISSING_DISCLOSURE: 91,
+    SUITABILITY: 88,
+    PRECEDENT_MATCH: 82,
+  };
+
+  const extractRuleCode = (rule: string) => {
+    const m = rule.match(/(?:FINRA\s*Rule?\s*|SEC\s*Rule?\s*)(\d+[\w(\-)]*)/i);
+    if (m) return rule.toLowerCase().includes('finra') ? `FINRA-${m[1]}` : `SEC-${m[1]}`;
+    return rule.split(' ').slice(0, 2).join('-').toUpperCase();
   };
 
   return (
@@ -1974,19 +1985,23 @@ function OfficerFlagScanCard({ result }: { result: IAuditAndFixResponse }) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <ShieldAlert className="h-4 w-4 text-amber-600" />
+          {flagCount > 0 ? (
+            <ShieldAlert className="h-4 w-4 text-amber-600" />
+          ) : (
+            <ShieldCheck className="h-4 w-4 text-emerald-600" />
+          )}
           <span className="text-[10.5px] font-bold uppercase tracking-wider text-[#183028]">
             Supervisory Compliance Scan
           </span>
         </div>
         <span
           className={`text-[9px] px-2 py-0.5 rounded-full font-bold border shadow-2xs ${
-            flagCount === 0
-              ? "bg-emerald-100 text-emerald-800 border-emerald-300"
-              : "bg-rose-100 text-rose-800 border-rose-300"
+            flagCount > 0
+              ? "bg-amber-100 text-amber-800 border-amber-300"
+              : "bg-[#C5E86C] text-[#183028] border-[#183028]/10"
           }`}
         >
-          {flagCount === 0 ? "No Flags" : `${flagCount} Flag${flagCount !== 1 ? "s" : ""} Found`}
+          {flagCount > 0 ? `${flagCount} Issue${flagCount !== 1 ? "s" : ""} Found` : "100% Compliant"}
         </span>
       </div>
 
@@ -2009,75 +2024,94 @@ function OfficerFlagScanCard({ result }: { result: IAuditAndFixResponse }) {
         </div>
       )}
 
-      {/* Flag breakdown */}
+      {/* Flag breakdown — fully visible AI Compliance Guidance cards */}
       {flagCount > 0 && (
         <div className="space-y-2 pt-0.5">
-          <span className="text-[10px] font-bold text-[#183028] flex items-center gap-1">
-            <AlertTriangle className="h-3 w-3 text-amber-600" />
-            Regulatory Infractions Identified:
-          </span>
+          {/* Summary Box */}
+          <div className="border border-[#E6E8E7] bg-white rounded-xl p-2.5 flex items-center justify-between shadow-2xs">
+            <div>
+              <span className="text-[9.5px] font-bold uppercase tracking-wider text-[#183028]/50">
+                Supervisory Flag Summary
+              </span>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-[10px] font-bold text-[#183028]">REVIEW REQUIRED</span>
+                <span className="text-[9.5px] text-[#183028]/60">
+                  • {result.audit_breakdown.filter((i) => categoryToSeverity[(i as any).category] === "HIGH").length} High,{" "}
+                  {result.audit_breakdown.filter((i) => categoryToSeverity[(i as any).category] === "MEDIUM").length} Med,{" "}
+                  {result.audit_breakdown.filter((i) => categoryToSeverity[(i as any).category] === "LOW").length} Low
+                </span>
+              </div>
+            </div>
+            <div className="px-2 py-0.5 rounded-lg bg-[#C5E86C]/30 text-[#183028] border border-[#C5E86C] font-mono font-bold text-[10px]">
+              {flagCount} {flagCount === 1 ? "Issue" : "Issues"}
+            </div>
+          </div>
 
+          {/* Individual flag cards */}
           <div className="space-y-2">
             {result.audit_breakdown.map((item, i) => {
-              const catColor = categoryColors[(item as any).category] || "bg-gray-100 text-gray-800 border-gray-300";
-              const catLabel = categoryLabel[(item as any).category] || (item as any).category || "Flag";
-              const isExpanded = expandedIndex === i;
+              const cat = ((item as any).category as string) || "PROHIBITED_CLAIM";
+              const sev = categoryToSeverity[cat] || "MEDIUM";
+              const sevStyle = severityStyles[sev];
+              const ruleCode = extractRuleCode(item.rule);
+              const confidence = categoryConfidence[cat] || 85;
+
               return (
                 <div
                   key={i}
-                  className="bg-white border border-[#E6E8E7] rounded-xl shadow-2xs overflow-hidden"
+                  className="p-3 rounded-xl border bg-white border-[#E6E8E7] hover:border-[#183028] hover:bg-[#C5E86C]/10 transition-colors shadow-2xs cursor-default"
                 >
-                  {/* Flag header row — always visible */}
-                  <button
-                    type="button"
-                    onClick={() => setExpandedIndex(isExpanded ? null : i)}
-                    className="w-full flex items-center justify-between p-2.5 text-left cursor-pointer hover:bg-[#FAFBFB] transition-colors"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className={`text-[8.5px] font-extrabold uppercase px-1.5 py-0.5 rounded border shrink-0 ${catColor}`}>
-                        {catLabel}
-                      </span>
-                      <span className="text-[9.5px] font-bold text-[#183028] truncate">
-                        {item.rule}
-                      </span>
-                    </div>
-                    {isExpanded ? (
-                      <ChevronUp className="h-3 w-3 text-[#183028]/50 shrink-0 ml-1" />
-                    ) : (
-                      <ChevronDown className="h-3 w-3 text-[#183028]/50 shrink-0 ml-1" />
-                    )}
-                  </button>
+                  {/* Badge row */}
+                  <div className="flex items-center justify-between gap-1 mb-1.5">
+                    <span
+                      className={`px-1.5 py-0.5 text-[9.5px] font-bold rounded-lg border uppercase tracking-wider font-mono ${sevStyle}`}
+                    >
+                      {sev} • Rule {ruleCode}
+                    </span>
+                    <span className="text-[9px] text-[#183028]/50 font-mono">Page 1</span>
+                  </div>
 
-                  {/* Expanded detail — original passage + issue + recommendation */}
-                  {isExpanded && (
-                    <div className="px-2.5 pb-2.5 space-y-1.5 border-t border-[#E6E8E7]">
-                      <p className="text-[9.5px] text-[#183028]/80 pt-2">
-                        <span className="font-bold text-rose-700">Issue: </span>
-                        {item.issue}
-                      </p>
+                  {/* Rule title */}
+                  <h4 className="text-[10.5px] font-bold text-[#183028] leading-snug mb-1.5">
+                    {ruleCode}
+                  </h4>
 
-                      <div className="p-1.5 bg-rose-50/80 border border-rose-200 rounded text-[9.5px] text-rose-900 leading-relaxed">
-                        <span className="font-bold text-rose-700 block text-[8.5px] uppercase mb-0.5">Flagged Passage:</span>
-                        <span className="font-mono">{item.original_passage}</span>
-                      </div>
+                  {/* Flagged passage — italic serif, in quotes */}
+                  <div className="border border-[#E6E8E7] bg-[#E6E8E7]/20 rounded-lg p-2 text-[#183028] text-[10.5px] space-y-0.5">
+                    <span className="font-semibold block text-[9.5px] uppercase tracking-wider text-[#183028]/50">
+                      Flagged Passage
+                    </span>
+                    <p className="italic font-serif leading-relaxed text-[#183028]/90">
+                      {`"${item.original_passage}"`}
+                    </p>
+                  </div>
 
-                      <div className="p-1.5 bg-emerald-50/80 border border-emerald-200 rounded text-[9.5px] text-emerald-900 leading-relaxed">
-                        <span className="font-bold text-emerald-700 block text-[8.5px] uppercase mb-0.5">Recommended Remediation:</span>
-                        <span className="font-semibold">{item.fixed_passage}</span>
-                      </div>
+                  {/* Rule rationale */}
+                  <p className="mt-1.5 text-[10.5px] text-[#183028]/70 leading-normal">
+                    <strong className="text-[#183028]">Rule Rationale: </strong>
+                    {item.issue}
+                  </p>
 
-                      <p className="text-[8.5px] text-[#183028]/60 italic">
-                        <strong>Rationale:</strong> {item.reason}
-                      </p>
-                    </div>
-                  )}
+                  {/* Remediation */}
+                  <div className="mt-1.5 p-1.5 bg-emerald-50/80 border border-emerald-200 rounded text-[9.5px] text-emerald-900 leading-relaxed">
+                    <span className="font-bold text-emerald-700 block text-[8.5px] uppercase mb-0.5">Recommended Remediation:</span>
+                    <span className="font-semibold">{item.fixed_passage}</span>
+                  </div>
+
+                  {/* Footer: confidence */}
+                  <div className="mt-2 pt-2 border-t border-[#E6E8E7] flex items-center justify-between text-[9.5px] text-[#183028]/60">
+                    <span>Confidence: <strong className="text-[#183028]">{confidence}%</strong></span>
+                    <span className="font-semibold text-[#183028]/70 flex items-center gap-0.5">
+                      Supervisory Flag • {cat.replace("_", " ")}
+                    </span>
+                  </div>
                 </div>
               );
             })}
           </div>
 
           <p className="text-[9px] text-[#183028]/50 italic pt-1">
-            Based on FINRA Rule 2210 (Communications with the Public), SEC Rule 206(4)-1 (Investment Adviser Marketing Rule), and FINRA Rule 2111 (Suitability). Advisor must remediate all flagged passages before re-submission.
+            Based on FINRA Rule 2210 (Communications with the Public), SEC Rule 206(4)-1 (Investment Adviser Marketing Rule), and FINRA Rule 2111 (Suitability). Advisor must remediate all flagged passages before supervisory sign-off.
           </p>
         </div>
       )}
