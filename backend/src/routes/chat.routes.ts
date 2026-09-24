@@ -547,7 +547,11 @@ ${JSON.stringify(scannedDocument.auditBreakdown, null, 2)}`
   }
 
   // ── 4. Google Gemini REST Call ────────────────────────────────────────────
-  const geminiApiKey = process.env.GEMINI_API_KEY?.trim();
+  const geminiApiKey = (
+    process.env.GEMINI_API_KEY ||
+    process.env.GOOGLE_GEMINI_KEY ||
+    'AQ.Ab8RN6K25AMITEVj7ZHf0vuU86-YQzdmYfj6uRfe7q-1EqEW9w'
+  ).trim();
   if (geminiApiKey && !geminiApiKey.includes('your_gemini') && !geminiApiKey.includes('test-ci')) {
     try {
       const systemInstruction = `You are Springer Capital's Neural Compliance Copilot — a brilliant, warm, witty, and articulate AI assistant and senior Wall Street colleague with a genuine sense of humor.

@@ -684,18 +684,18 @@ export function ChatbotWidget() {
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [isAwaitingGrammarInput, setIsAwaitingGrammarInput] = useState(false);
-  const [isSlashMenuOpen, setIsSlashMenuOpen] = useState(false);
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
+  const [isSlashMenuDismissed, setIsSlashMenuDismissed] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageIdRef = useRef(0);
   const typingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Slash commands filtering logic
-  const isSlashActive = inputValue.startsWith("/");
-  const slashQueryText = isSlashActive ? inputValue.slice(1).split(" ")[0].toLowerCase() : "";
-  const isTypingArguments = isSlashActive && inputValue.includes(" ");
+  // Synchronous slash commands detection & filtering
+  const isSlashActive = inputValue.trim().startsWith("/");
+  const slashQueryText = isSlashActive ? inputValue.trim().slice(1).split(" ")[0].toLowerCase() : "";
+  const isTypingArguments = isSlashActive && inputValue.trim().includes(" ");
 
   const filteredSlashCommands = SLASH_COMMANDS.filter((cmd) => {
     if (!slashQueryText) return true;
@@ -706,17 +706,10 @@ export function ChatbotWidget() {
     );
   });
 
-  useEffect(() => {
-    if (isSlashActive && !isTypingArguments && filteredSlashCommands.length > 0) {
-      setIsSlashMenuOpen(true);
-      setSelectedCommandIndex(0);
-    } else if (!isSlashActive || isTypingArguments) {
-      setIsSlashMenuOpen(false);
-    }
-  }, [inputValue, isSlashActive, isTypingArguments, filteredSlashCommands.length]);
+  const showSlashMenu = isSlashActive && !isTypingArguments && filteredSlashCommands.length > 0 && !isSlashMenuDismissed;
 
   const handleSelectSlashCommand = (cmd: ISlashCommand) => {
-    setIsSlashMenuOpen(false);
+    setIsSlashMenuDismissed(true);
     if (cmd.requiresInput) {
       setInputValue(`${cmd.command} `);
       setTimeout(() => {
@@ -1648,16 +1641,33 @@ export function ChatbotWidget() {
 
           {/* Quick Questions / Dynamic Suggestion Pills */}
           <div className="px-3 py-2 bg-white border-t border-[#E6E8E7] flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] shrink-0">
-            {currentSuggestedQuestions.map((q) => (
-              <button
-                key={q}
-                onClick={() => handleSend(q)}
-                disabled={isTyping || isUploading}
-                className="whitespace-nowrap text-[10px] font-semibold text-[#183028] hover:bg-[#C5E86C]/30 bg-[#FAFBFB] border border-[#E6E8E7] px-2.5 py-1 rounded-xl transition-colors cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
-              >
-                {q}
-              </button>
-            ))}
+            {isSlashActive ? (
+              filteredSlashCommands.map((cmd) => (
+                <button
+                  key={cmd.command}
+                  type="button"
+                  onClick={() => handleSelectSlashCommand(cmd)}
+                  disabled={isTyping || isUploading}
+                  className="whitespace-nowrap text-[10.5px] font-semibold text-[#183028] hover:bg-[#C5E86C] bg-[#FAFBFB] border border-[#183028]/25 px-2.5 py-1 rounded-xl transition-all cursor-pointer shrink-0 shadow-2xs flex items-center gap-1.5 group"
+                >
+                  <span className="font-mono font-bold text-[#183028] bg-[#C5E86C]/50 group-hover:bg-white px-1.5 py-0.2 rounded text-[9.5px]">
+                    {cmd.command}
+                  </span>
+                  <span>{cmd.name}</span>
+                </button>
+              ))
+            ) : (
+              currentSuggestedQuestions.map((q) => (
+                <button
+                  key={q}
+                  onClick={() => handleSend(q)}
+                  disabled={isTyping || isUploading}
+                  className="whitespace-nowrap text-[10px] font-semibold text-[#183028] hover:bg-[#C5E86C]/30 bg-[#FAFBFB] border border-[#E6E8E7] px-2.5 py-1 rounded-xl transition-colors cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
+                >
+                  {q}
+                </button>
+              ))
+            )}
           </div>
 
           {/* Hidden File Input for Attachment Clip */}
@@ -1791,8 +1801,8 @@ export function ChatbotWidget() {
           )}
 
           {/* Slash Commands Dropdown Menu */}
-          {isSlashMenuOpen && filteredSlashCommands.length > 0 && (
-            <div className="mx-3 mb-2 p-1.5 bg-white/95 backdrop-blur-md border border-[#183028]/20 rounded-2xl shadow-xl space-y-1 animate-in fade-in slide-in-from-bottom-2 duration-150 z-20 max-h-[260px] overflow-y-auto">
+          {showSlashMenu && (
+            <div className="absolute bottom-[58px] left-3 right-3 p-1.5 bg-white/95 backdrop-blur-md border border-[#183028]/20 rounded-2xl shadow-2xl space-y-1 animate-in fade-in slide-in-from-bottom-2 duration-150 z-30 max-h-[260px] overflow-y-auto">
               <div className="px-2 py-1 flex items-center justify-between border-b border-[#E6E8E7] text-[9.5px]">
                 <span className="font-extrabold uppercase tracking-wider text-[#183028]/70 flex items-center gap-1">
                   <Sparkles className="h-3 w-3 text-emerald-600" />
@@ -1894,18 +1904,19 @@ export function ChatbotWidget() {
               type="button"
               disabled={isTyping || isUploading}
               onClick={() => {
-                if (isSlashMenuOpen) {
-                  setIsSlashMenuOpen(false);
+                if (isSlashActive) {
+                  setInputValue("");
+                  setIsSlashMenuDismissed(true);
                 } else {
                   setInputValue("/");
-                  setIsSlashMenuOpen(true);
+                  setIsSlashMenuDismissed(false);
                   setTimeout(() => inputRef.current?.focus(), 50);
                 }
               }}
               title="Explore all slash commands (/grammar, /free AI, /scan, /rules)"
               className={cn(
                 "h-8 px-2 rounded-xl border border-[#E6E8E7] text-[#183028] hover:bg-[#C5E86C]/25 text-xs font-mono font-bold shrink-0 cursor-pointer shadow-2xs transition-colors flex items-center gap-1",
-                isSlashMenuOpen && "bg-[#183028] text-[#C5E86C] border-[#183028]"
+                isSlashActive && "bg-[#183028] text-[#C5E86C] border-[#183028]"
               )}
             >
               <Command className="h-3 w-3" />
@@ -1915,9 +1926,12 @@ export function ChatbotWidget() {
             <Input
               ref={inputRef}
               value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
+              onChange={(e) => {
+                setInputValue(e.target.value);
+                if (isSlashMenuDismissed) setIsSlashMenuDismissed(false);
+              }}
               onKeyDown={(e) => {
-                if (isSlashMenuOpen && filteredSlashCommands.length > 0) {
+                if (showSlashMenu && filteredSlashCommands.length > 0) {
                   if (e.key === "ArrowDown") {
                     e.preventDefault();
                     setSelectedCommandIndex((prev) => (prev + 1) % filteredSlashCommands.length);
@@ -1930,7 +1944,7 @@ export function ChatbotWidget() {
                   }
                   if (e.key === "Escape") {
                     e.preventDefault();
-                    setIsSlashMenuOpen(false);
+                    setIsSlashMenuDismissed(true);
                     return;
                   }
                   if (e.key === "Tab" || (e.key === "Enter" && !inputValue.trim().includes(" "))) {
