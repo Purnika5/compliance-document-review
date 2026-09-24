@@ -4,7 +4,7 @@
  * @author Keith
  */
 import { client, getBaseBackendUrl } from "./client";
-import type { ISearchParams, ISearchResponse, IAuditAndFixResponse } from "@/types/copilot.types";
+import type { ISearchParams, ISearchResponse, IAuditAndFixResponse, IScannedDocumentContext } from "@/types/copilot.types";
 
 interface ApiResponse<T> {
   success: boolean;
@@ -19,7 +19,12 @@ export const copilotApi = {
   async sendChatMessage(
     message: string,
     role?: string,
-    context?: { pathname?: string; documentId?: string; conversationHistory?: Array<{ role: string; content: string }> }
+    context?: {
+      pathname?: string;
+      documentId?: string;
+      conversationHistory?: Array<{ role: string; content: string }>;
+      scannedDocument?: IScannedDocumentContext;
+    }
   ): Promise<{ reply: string; quota?: { used: number; limit: number; remaining: number; resetsAt: string; resetInDays: number }; quotaExceeded?: boolean }> {
     try {
       const response = await client.post<ApiResponse<{ reply: string; quota?: any; quotaExceeded?: boolean }>>("/api/chat", {
@@ -28,6 +33,7 @@ export const copilotApi = {
         pathname: context?.pathname,
         documentId: context?.documentId,
         conversationHistory: context?.conversationHistory,
+        scannedDocument: context?.scannedDocument,
       });
       if (response && response.data && response.data.reply) {
         return { reply: response.data.reply, quota: (response.data as any).quota, quotaExceeded: (response.data as any).quotaExceeded };

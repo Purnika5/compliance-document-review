@@ -40,7 +40,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { IChatMessage } from "@/types/chatbot.types";
-import type { ISearchResponse, IAuditAndFixResponse, IAuditBreakdownItem, ISearchDocument } from "@/types/copilot.types";
+import type { ISearchResponse, IAuditAndFixResponse, IAuditBreakdownItem, ISearchDocument, IScannedDocumentContext } from "@/types/copilot.types";
 import { authStore, type UserSession } from "@/lib/auth/auth-store";
 import { getBaseBackendUrl } from "@/lib/api/client";
 import { copilotApi } from "@/lib/api/copilot";
@@ -66,6 +66,49 @@ interface IResolvedBotReply {
   grammarResult?: IGrammarResult;
   documentationResult?: IDocumentationResult;
   suggestedChips?: string[];
+}
+
+/** Formats all scanned breakdown findings with severity, applicable rule, original passage, and prescribed remediation */
+export function formatScannedFindingsMarkdown(scannedDoc: IScannedDocumentContext): string {
+  const breakdown = scannedDoc.auditBreakdown || [];
+  if (breakdown.length === 0) {
+    return `### Scanned Document: "${scannedDoc.fileName}"\n\nNo compliance flags or regulatory infractions were identified under FINRA Rule 2210 & SEC Rule 206. The document is 100% clean and ready for supervisory review.`;
+  }
+
+  const resolveSeverity = (item: IAuditBreakdownItem): "HIGH" | "MEDIUM" | "LOW" => {
+    if (item.severity) return item.severity;
+    const cat = (item.category || "").toUpperCase();
+    const issue = (item.issue || "").toUpperCase();
+    if (cat === "PROHIBITED_CLAIM" || cat === "SUITABILITY" || issue.includes("GUARANTEE") || issue.includes("PROMISSORY")) {
+      return "HIGH";
+    }
+    if (cat === "MISSING_DISCLOSURE") {
+      return "MEDIUM";
+    }
+    return "LOW";
+  };
+
+  const formatted = breakdown.map((item, idx) => {
+    const sev = resolveSeverity(item);
+    const sevBadge = sev === "HIGH" ? "🔴 HIGH" : sev === "MEDIUM" ? "🟡 MEDIUM" : "🟢 LOW";
+    const rule = item.rule || "FINRA Rule 2210";
+    const orig = item.original_passage || "Identified text passage";
+    const issue = item.issue || "Compliance rule violation";
+    const fix = item.fixed_passage || "Rewritten with statutory downside disclaimers.";
+    const reason = item.reason || "Regulatory disclosure standard.";
+
+    return `### Finding ${idx + 1}: ${rule} [Severity: ${sevBadge}]
+• **Severity**: **${sev}**
+• **Applicable Rule**: ${rule}
+• **Specific Infraction**: ${issue}
+• **Original Offending Passage**:
+> "${orig}"
+• **Prescribed Remediation**:
+> "${fix}"
+• **Amendment Rationale**: ${reason}`;
+  }).join("\n\n");
+
+  return `### Comprehensive Compliance Analysis for "${scannedDoc.fileName}"\nFound **${breakdown.length} compliance findings** under FINRA Rule 2210 & SEC Rule 206:\n\n${formatted}`;
 }
 
 /** Determines whether a user input is asking to check, fix, or polish grammar/sentences */
@@ -94,7 +137,8 @@ function getConversationalFallback(
   role?: string,
   isLoginMode?: boolean,
   userQuery?: string,
-  session?: UserSession | null
+  session?: UserSession | null,
+  scannedDoc?: IScannedDocumentContext | null
 ): string {
   if (isLoginMode) {
     return "Hello! I am your Springer Capital Compliance Assistant. I can help answer questions regarding our platform review workflows, accepted filing formats, and FINRA 2210 / SEC 206 regulatory guidelines. What would you like to know?";
@@ -102,6 +146,20 @@ function getConversationalFallback(
 
   if (userQuery) {
     const q = userQuery.trim().toLowerCase();
+
+    // 0. Active Scanned Document Findings Inquiry
+    if (
+      scannedDoc &&
+      scannedDoc.auditBreakdown &&
+      scannedDoc.auditBreakdown.length > 0 &&
+      (/\b(?:findings?|infractions?|violations?|deficienc(?:y|ies)|flags?|rules?|severity|remediat(?:e|ion|ions)|amendments?|this document|scanned document|draft)\b/i.test(q) ||
+        q.includes("list all 9") ||
+        q.includes("all 9 findings") ||
+        q.includes("list findings") ||
+        q.includes("what are the findings"))
+    ) {
+      return formatScannedFindingsMarkdown(scannedDoc);
+    }
 
     // 1. User Identity / Account
     if (
@@ -234,9 +292,19 @@ function resolveBotReply(rawText: string, isLoginMode: boolean, role?: string): 
 }
 
 /** Determines active suggested questions dynamically based on authentication state, user role, and active page */
-function getSuggestedQuestions(isLoginMode: boolean, role?: string, pathname?: string): string[] {
+function getSuggestedQuestions(isLoginMode: boolean, role?: string, pathname?: string, hasScannedDoc = false): string[] {
   if (isLoginMode) {
     return LOGIN_SUGGESTED_QUESTIONS;
+  }
+
+  // 0. Active Scanned Document Follow-up Questions
+  if (hasScannedDoc) {
+    return [
+      "List all 9 findings with severity, applicable rules and remediation",
+      "What FINRA 2210 & SEC 206 rules were violated?",
+      "How do I remediate the high-risk findings?",
+      "Can this scanned file be submitted directly?",
+    ];
   }
 
   const isOfficer = role === "Officer";
@@ -313,8 +381,8 @@ function getPlaceholderText(isLoginMode: boolean, isTyping: boolean, isUploading
   return "Ask copilot, search filings, or attach file to audit...";
 }
 
-/** Detects if query looks like a document search request */
-function isDocumentSearchQuery(text: string): boolean {
+/** Detects if query looks like a document repository search request */
+export function isDocumentSearchQuery(text: string, hasActiveScannedDoc = false): boolean {
   const lower = text.toLowerCase();
 
   // Questions explaining workflows, FAQs, guidelines, or auditing are NOT document searches
@@ -327,38 +395,35 @@ function isDocumentSearchQuery(text: string): boolean {
     return false;
   }
 
-  const searchKeywords = [
-    "show",
-    "list",
-    "find",
-    "search",
-    "files",
-    "filings",
-    "submissions",
-    "documents",
-    "proposals",
-    "approved",
-    "approve",
-    "pending",
-    "needs revision",
-    "revision needed",
-    "for revision",
-    "my revisions",
-    "rejected",
-    "reject",
-    "my uploads",
-    "my files",
-    "this month",
-    "last month",
-    "today",
-    "yesterday",
-    "past 7 days",
-    "past 30 days",
-    "past 90 days",
-    "high-risk",
-    "flags",
-  ];
-  return searchKeywords.some((k) => lower.includes(k));
+  // Follow-up queries asking about document analysis findings, infractions, rules, severity, or remediation
+  // MUST NEVER trigger a platform-wide document search
+  if (
+    /\b(?:findings?|infractions?|violations?|deficienc(?:y|ies)|flags?|severity|applicable\s+rules?|remediat(?:e|ion|ions)|amendments?|issues?)\b/i.test(lower) ||
+    /\b(?:list\s+all\s+\d+|\d+\s+findings|\d+\s+flags|\d+\s+issues|\d+\s+violations|list\s+all\s+findings|list\s+findings|show\s+findings)\b/i.test(lower) ||
+    /\b(?:this\s+(?:scanned\s+)?(?:document|file|draft|proposal)|the\s+scanned\s+(?:document|file|draft)|currently\s+opened|current\s+document)\b/i.test(lower) ||
+    lower.includes("all 9") ||
+    lower.includes("all 9 findings") ||
+    lower.includes("list all 9")
+  ) {
+    return false;
+  }
+
+  // If a document was scanned in this session, conversational queries asking to list/show/explain without explicit repository scope should not search the repository
+  if (hasActiveScannedDoc && (lower.includes("list") || lower.includes("show") || lower.includes("explain") || lower.includes("what"))) {
+    if (!/\b(?:repository|all\s+advisors|queue|unassigned)\b/i.test(lower)) {
+      return false;
+    }
+  }
+
+  // Only genuine repository-wide document catalog search patterns
+  const isExplicitSearch =
+    /\b(?:search|find|lookup)\s+(?:for\s+)?(?:documents?|filings?|submissions?|proposals?|files?|uploads?)/i.test(lower) ||
+    /\b(?:show|list|get|display)\s+(?:all\s+)?(?:documents?|filings?|submissions?|proposals?|files?|my\s+uploads|my\s+submissions|approved\s+documents|pending\s+documents)/i.test(lower) ||
+    /\b(?:pending|approved|rejected|needs\s+revision|for\s+revision)\s+(?:documents?|filings?|submissions?|proposals?|queue)/i.test(lower) ||
+    /\b(?:my\s+uploads|my\s+files|my\s+submissions|submissions?\s+from\s+this\s+month|submissions?\s+today)\b/i.test(lower) ||
+    /\b(?:high[- ]risk\s+submissions?|submissions?\s+across\s+all\s+advisors)\b/i.test(lower);
+
+  return isExplicitSearch;
 }
 
 /** Extracts search parameters from natural language user query */
@@ -483,6 +548,7 @@ export function ChatbotWidget() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatusText, setUploadStatusText] = useState("");
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [activeScannedDoc, setActiveScannedDoc] = useState<IScannedDocumentContext | null>(null);
 
   // Quota tracking (Advisor only, null = Officer or not loaded)
   const [quota, setQuota] = useState<{ used: number; limit: number; remaining: number; resetsAt: string; resetInDays: number } | null>(null);
@@ -681,6 +747,28 @@ export function ChatbotWidget() {
       setIsUploading(false);
       setUploadStatusText("");
 
+      const newScannedDoc: IScannedDocumentContext = {
+        fileName: file.name,
+        fileSize: file.size,
+        mimeType: file.type,
+        summary: auditResponse.conversational_summary,
+        auditBreakdown: auditResponse.audit_breakdown || [],
+        remediatedText: auditResponse.remediated_content?.text,
+        downloadUrl: auditResponse.remediated_content?.download_url,
+        suggestedTitle: auditResponse.remediated_content?.suggested_title,
+        fileMeta: {
+          original_filename: file.name,
+          file_size: file.size,
+          mime_type: file.type,
+        },
+      };
+      setActiveScannedDoc(newScannedDoc);
+
+      const findingsCount = auditResponse.audit_breakdown?.length || 0;
+      const findingsChip = findingsCount > 0
+        ? `List all ${findingsCount} findings with severity, applicable rules and remediation`
+        : "Explain compliance audit evaluation";
+
       setMessages((prev) => [
         ...prev,
         {
@@ -692,13 +780,13 @@ export function ChatbotWidget() {
           officerAuditResult: session?.role === "Officer" ? auditResponse : undefined,
           suggestedChips: session?.role === "Officer"
             ? [
-              "Show all pending documents in queue",
-              "Show high-risk submissions across all advisors",
+              findingsChip,
               "What FINRA 2210 rules apply to this type of filing?",
+              "Show all pending documents in queue",
             ]
             : [
+              findingsChip,
               "Submit remediated version",
-              "Show my submissions from this month",
               "Download remediated file",
             ],
         },
@@ -921,8 +1009,8 @@ export function ChatbotWidget() {
       /^(?:audit|compliance\s*audit|scan|check\s*compliance|audit\s*this|audit\s*text|audit\s*draft|audit\s*passage)[:,-]?\s+/i.test(rawText) ||
       /\b(?:compliance\s*audit|audit\s*this\s*text|audit\s*this\s*passage|scan\s*this\s*text)\b/i.test(rawText);
 
-    // 2b. Repository Search Intent Routing (skip if it's a workflow FAQ or text audit)
-    if (isAuthenticated && !isWorkflowFaqQuery && !isAuditTextQuery && isDocumentSearchQuery(rawText)) {
+    // 2b. Repository Search Intent Routing (skip if it's a workflow FAQ, text audit, or document analysis inquiry)
+    if (isAuthenticated && !isWorkflowFaqQuery && !isAuditTextQuery && isDocumentSearchQuery(rawText, Boolean(activeScannedDoc))) {
       try {
         const searchParams = parseNaturalSearch(rawText);
         const searchResult = await copilotApi.searchDocuments({
@@ -968,22 +1056,28 @@ export function ChatbotWidget() {
       .sendChatMessage(rawText, userRole, {
         pathname: pathname || undefined,
         documentId,
-        conversationHistory: messages.slice(-6).map((m) => ({ role: m.sender === 'user' ? 'user' : 'assistant', content: m.text })),
+        conversationHistory: messages.slice(-8).map((m) => ({ role: m.sender === 'user' ? 'user' : 'assistant', content: m.text })),
+        scannedDocument: activeScannedDoc || undefined,
       })
       .then((res) => {
         // Reconcile quota with authoritative server value after response
         if (res?.quota) setQuota(res.quota);
-        return res?.reply || getConversationalFallback(userRole, isLoginMode, rawText, session);
+        return res?.reply || getConversationalFallback(userRole, isLoginMode, rawText, session, activeScannedDoc);
       })
       .catch(() => {
-        return getConversationalFallback(userRole, isLoginMode, rawText, session);
+        return getConversationalFallback(userRole, isLoginMode, rawText, session, activeScannedDoc);
       })
       .then((replyText) => {
         simulateTyping(botMsgId, replyText, timestamp);
       });
   };
 
-  const currentSuggestedQuestions = getSuggestedQuestions(isLoginMode, session?.role, pathname);
+  const currentSuggestedQuestions = getSuggestedQuestions(
+    isLoginMode,
+    session?.role,
+    pathname,
+    Boolean(activeScannedDoc && activeScannedDoc.auditBreakdown && activeScannedDoc.auditBreakdown.length > 0)
+  );
   const currentPlaceholder = getPlaceholderText(isLoginMode, isTyping, isUploading);
 
   if (isAuthPage) {
@@ -1061,6 +1155,33 @@ export function ChatbotWidget() {
               setIsFullscreen(false);
             }}
           />
+
+          {/* Active Scanned Document Context Indicator */}
+          {activeScannedDoc && (
+            <div className="px-3.5 py-1.5 bg-[#FAFBFB] border-b border-[#E6E8E7] flex items-center justify-between text-[10.5px] text-[#183028] shrink-0">
+              <div className="flex items-center gap-1.5 truncate">
+                <span className="relative flex h-2 w-2 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                </span>
+                <span className="font-semibold text-[#183028]/60 shrink-0">Scanned Document:</span>
+                <span className="font-bold text-[#183028] truncate max-w-[200px]" title={activeScannedDoc.fileName}>
+                  {activeScannedDoc.fileName}
+                </span>
+                <span className="text-[9.5px] px-1.5 py-0.5 rounded font-mono font-bold bg-[#C5E86C] text-[#183028] shrink-0 border border-[#b4db53]">
+                  {activeScannedDoc.auditBreakdown?.length || 0} findings
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveScannedDoc(null)}
+                className="text-[#183028]/50 hover:text-rose-600 p-0.5 rounded transition-colors cursor-pointer shrink-0 ml-1.5"
+                title="Clear scanned document context"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          )}
 
           {/* Chat Messages Log */}
           <div ref={messagesContainerRef} className="flex-1 p-3.5 overflow-y-auto space-y-3 bg-[#FAFBFB]/50">

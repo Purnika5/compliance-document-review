@@ -1,5 +1,6 @@
 import { SearchEngineService } from '../src/services/search-engine.service';
 import { GeminiCopilotService } from '../src/services/gemini-copilot.service';
+import { GrokChatbotService } from '../src/services/grok-chatbot.service';
 
 describe('Neural Compliance Copilot - Search & Audit Services', () => {
   describe('SearchEngineService.resolveDateRange', () => {
@@ -72,6 +73,49 @@ describe('Neural Compliance Copilot - Search & Audit Services', () => {
 
       expect(result.remediated_text).toContain('Institutional Regulatory Disclosure (FINRA Rule 2210 / SEC Rule 206)');
       expect(result.remediated_text).toContain('loss of principal');
+    });
+  });
+
+  describe('GrokChatbotService - Scanned Document Findings Grounding', () => {
+    it('should ground follow-up queries to the currently scanned draft and list all findings with severity, rules and remediation', async () => {
+      jest.spyOn(GrokChatbotService, 'callLlm').mockResolvedValue(null);
+
+      const mockScannedDoc = {
+        fileName: 'Institutional_Growth_Strategy_2026.docx',
+        summary: 'Audit completed with 2 findings.',
+        auditBreakdown: [
+          {
+            rule: 'FINRA Rule 2210(d)(1)(B)',
+            original_passage: 'We guarantee a 15% net return for all clients.',
+            issue: 'Promissory return guarantee',
+            fixed_passage: 'Our target annualized return benchmark is 15%.',
+            reason: 'FINRA Rule 2210 prohibits promissory guarantees.',
+            category: 'PROHIBITED_CLAIM',
+          },
+          {
+            rule: 'SEC Rule 206(4)-1',
+            original_passage: 'High yield allocation with zero principal loss risk.',
+            issue: 'Total omission of downside risk disclosures',
+            fixed_passage: 'Investments are subject to market risks, including possible loss of principal.',
+            reason: 'Mandatory downside risk disclosure under SEC Rule 206.',
+            category: 'MISSING_DISCLOSURE',
+          },
+        ],
+      };
+
+      const res = await GrokChatbotService.processMessage({
+        message: 'list all 9 findings with severity, applicable rules and remediation',
+        user: { role: 'Advisor', id: 'adv-123' },
+        scannedDocument: mockScannedDoc,
+      });
+
+      expect(res.intent).toBe('scanned_document_findings');
+      expect(res.reply).toContain('FINRA Rule 2210');
+      expect(res.reply).toContain('SEC Rule 206');
+      expect(res.reply).toContain('HIGH');
+      expect(res.reply).toContain('MEDIUM');
+      expect(res.reply).toContain('We guarantee a 15% net return');
+      expect(res.reply).toContain('Our target annualized return benchmark');
     });
   });
 });

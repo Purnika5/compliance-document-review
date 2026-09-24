@@ -69,6 +69,23 @@ export interface IAuditBreakdownItem {
   fixed_passage: string;
   reason: string;
   category?: 'PROHIBITED_CLAIM' | 'MISSING_DISCLOSURE' | 'SUITABILITY' | 'PRECEDENT_MATCH';
+  severity?: 'HIGH' | 'MEDIUM' | 'LOW';
+}
+
+export interface IScannedDocumentContext {
+  fileName: string;
+  fileSize?: number;
+  mimeType?: string;
+  summary?: string;
+  auditBreakdown?: IAuditBreakdownItem[];
+  remediatedText?: string;
+  downloadUrl?: string;
+  suggestedTitle?: string;
+  fileMeta?: {
+    original_filename: string;
+    file_size: number;
+    mime_type: string;
+  };
 }
 
 export interface IAuditAndFixResponse {

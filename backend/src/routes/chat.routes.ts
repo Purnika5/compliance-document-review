@@ -46,6 +46,13 @@ interface LiveTelemetryData {
     flags?: any[];
     flag_count: number;
   } | null;
+  scannedDoc?: {
+    fileName: string;
+    summary?: string;
+    auditBreakdown?: any[];
+    remediatedText?: string;
+    fileMeta?: any;
+  } | null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -91,14 +98,56 @@ function generateContextualComplianceReply(
 ): string {
   const lower = message.toLowerCase().trim();
   const isOfficer = role === 'Officer';
-  const { statusCounts, recentDocs, todaysDocs, activeDoc } = data;
+  const { statusCounts, recentDocs, todaysDocs, activeDoc, scannedDoc } = data;
+
+  // 0. Active scanned document in chat session
+  if (scannedDoc && scannedDoc.auditBreakdown && scannedDoc.auditBreakdown.length > 0 &&
+      /\b(?:findings?|infractions?|violations?|deficienc(?:y|ies)|flags?|rules?|severity|remediat(?:e|ion|ions)|amendments?|this document|this file|scanned document|scan|draft)\b/i.test(lower)) {
+    const breakdown = scannedDoc.auditBreakdown;
+    const resolveSeverity = (item: any): string => {
+      if (item.severity) return item.severity.toUpperCase();
+      const cat = (item.category || '').toUpperCase();
+      const issue = (item.issue || '').toUpperCase();
+      if (cat === 'PROHIBITED_CLAIM' || cat === 'SUITABILITY' || issue.includes('GUARANTEE') || issue.includes('PROMISSORY')) {
+        return 'HIGH';
+      }
+      if (cat === 'MISSING_DISCLOSURE') {
+        return 'MEDIUM';
+      }
+      return 'LOW';
+    };
+
+    const findingsFormatted = breakdown.map((item: any, idx: number) => {
+      const sev = resolveSeverity(item);
+      const sevBadge = sev === 'HIGH' ? '🔴 HIGH' : sev === 'MEDIUM' ? '🟡 MEDIUM' : '🟢 LOW';
+      const rule = item.rule || 'FINRA Rule 2210';
+      const orig = item.original_passage || item.passage || 'Identified text passage';
+      const fix = item.fixed_passage || item.remediation || item.remediated_text || 'Rewritten with balanced market risk disclosures.';
+      const reason = item.reason || item.explanation || 'Regulatory disclosure standard.';
+      return `### Finding ${idx + 1}: ${rule} [Severity: ${sevBadge}]\n• **Severity**: **${sev}**\n• **Applicable Rule**: ${rule}\n• **Specific Infraction**: ${item.issue || 'Compliance rule infraction'}\n• **Original Offending Passage:**\n> "${orig}"\n• **Prescribed Remediation:**\n> "${fix}"\n• **Amendment Rationale:** ${reason}`;
+    }).join('\n\n');
+
+    return `### Comprehensive Compliance Analysis for "${scannedDoc.fileName}"\nFound **${breakdown.length} compliance findings** under FINRA Rule 2210 & SEC Rule 206:\n\n${findingsFormatted}`;
+  }
 
   // 1. Active document — infractions / flags / violations
-  if (activeDoc && /\b(this document|this file|current document|infractions?|flags?|violations?|risk|fix)\b/i.test(lower)) {
+  if (activeDoc && /\b(this document|this file|current document|infractions?|flags?|violations?|risk|fix|findings?)\b/i.test(lower)) {
     const flagCount = activeDoc.flag_count || 0;
     const byLine = activeDoc.advisor_name ? ` submitted by ${activeDoc.advisor_name}` : '';
     if (flagCount === 0) {
       return `"${activeDoc.title}"${byLine} (v${activeDoc.version}) is clean — zero compliance flags under FINRA 2210 & SEC 206. It's ready for ${isOfficer ? 'final determination' : 'submission'}.`;
+    }
+    if (activeDoc.flags && activeDoc.flags.length > 0 && /\b(list|all|findings?|rules?|severity|remediation)\b/i.test(lower)) {
+      const formatted = activeDoc.flags.map((f: any, idx: number) => {
+        const rule = f.rule || f.ruleCode || 'FINRA Rule 2210';
+        const sev = f.severity || (f.category === 'PROHIBITED_CLAIM' || f.category === 'SUITABILITY' ? 'HIGH' : f.category === 'MISSING_DISCLOSURE' ? 'MEDIUM' : 'LOW');
+        const sevBadge = sev === 'HIGH' ? '🔴 HIGH' : sev === 'MEDIUM' ? '🟡 MEDIUM' : '🟢 LOW';
+        const passage = f.original_passage || f.passage || 'Identified text passage';
+        const fix = f.remediated_text || f.compliant_text || f.remediation || f.fixed_passage || 'Replace with balanced market risk disclosures.';
+        const reason = f.explanation || f.reason || f.rationale || 'Eliminate promissory claims and add statutory disclosures.';
+        return `### Finding ${idx + 1}: ${rule} [Severity: ${sevBadge}]\n• **Severity**: **${sev}**\n• **Applicable Rule**: ${rule}\n• **Specific Infraction**: ${f.title || f.issue || 'Compliance rule violation'}\n• **Original Offending Passage:**\n> "${passage}"\n• **Prescribed Remediation:**\n> "${fix}"\n• **Amendment Rationale:** ${reason}`;
+      }).join('\n\n');
+      return `### Compliance Findings for "${activeDoc.title}" (v${activeDoc.version})\nFound **${flagCount} compliance findings** under FINRA Rule 2210 & SEC Rule 206:\n\n${formatted}`;
     }
     const sample = activeDoc.flags?.[0];
     return `"${activeDoc.title}"${byLine} (v${activeDoc.version}) has ${flagCount} compliance flag${flagCount > 1 ? 's' : ''}. The first is under ${sample?.rule || 'FINRA Rule 2210'}: "${sample?.original_passage || sample?.passage || ''}". ${
@@ -210,12 +259,19 @@ function generateContextualComplianceReply(
 // POST /api/chat
 // ─────────────────────────────────────────────────────────────────────────────
 router.post('/', optionalAuth, async (req: Request, res: Response) => {
-  const { message, role, pathname, documentId, conversationHistory } = req.body as {
+  const { message, role, pathname, documentId, conversationHistory, scannedDocument } = req.body as {
     message?: string;
     role?: string;
     pathname?: string;
     documentId?: string;
     conversationHistory?: Array<{ role: string; content: string }>;
+    scannedDocument?: {
+      fileName: string;
+      summary?: string;
+      auditBreakdown?: any[];
+      remediatedText?: string;
+      fileMeta?: any;
+    };
   };
 
   if (!message || !message.trim()) {
@@ -293,6 +349,7 @@ router.post('/', optionalAuth, async (req: Request, res: Response) => {
       pathname,
       documentId,
       conversationHistory,
+      scannedDocument,
     });
 
     const isSpecificIntent =
@@ -340,6 +397,7 @@ router.post('/', optionalAuth, async (req: Request, res: Response) => {
     recentDocs: [],
     todaysDocs: [],
     activeDoc: null,
+    scannedDoc: scannedDocument || null,
     userId,
     userEmail,
   };
@@ -464,6 +522,15 @@ Compliance Summary: ${telemetryData.activeDoc.summary || 'Not yet analyzed'}
 Risk Flags: ${telemetryData.activeDoc.flag_count} flag${telemetryData.activeDoc.flag_count !== 1 ? 's' : ''} — ${JSON.stringify(telemetryData.activeDoc.flags || [])}`
     : '';
 
+  const scannedDocFormatted = scannedDocument && scannedDocument.auditBreakdown && scannedDocument.auditBreakdown.length > 0
+    ? `\nCURRENTLY SCANNED DRAFT (ACTIVE IN CHAT SESSION):
+File Name: "${scannedDocument.fileName}"
+Summary: ${scannedDocument.summary || 'Audited draft file'}
+Total Findings: ${scannedDocument.auditBreakdown.length}
+Detailed Findings Breakdown:
+${JSON.stringify(scannedDocument.auditBreakdown, null, 2)}`
+    : '';
+
   // ── 3. Advisor Quota Check ────────────────────────────────────────────────
   if (userId) {
     const quota = await QuotaService.checkChatMessage(userId, userRole);
@@ -490,8 +557,9 @@ Your tone is engaging, direct, and clever. Speak in natural sentences — no rob
 CAPABILITIES:
 1. General Knowledge & Science: You enthusiastically and accurately answer general knowledge questions (e.g., astronomy, physics, distance to the sun or moon, history, math, trivia) with depth and precision. Never refuse general knowledge questions.
 2. Compliance & Workflows: You answer questions about institutional filings, review queue status, and regulatory rules (FINRA 2210, SEC 206) using the LIVE DATABASE TELEMETRY below.
-3. Conversational Fluency: You handle greetings, casual conversation, and follow-ups naturally.
-4. PLAYFULNESS (critical): When someone asks a nonsensical, absurd, or clearly out-of-context question — about Batman, whether you can rap, what a potato dreams about, the meaning of life, your favorite pizza, etc. — respond with warmth and genuine wit. Be funny, self-aware, maybe throw in a light compliance pun, then optionally pivot back to offer real help. You are NOT a boring corporate bot. Lean in. Have fun. A sharp, unexpected quip beats a wall of robotic disclaimer text every single time.
+3. Scanned Document Analysis & Grounding: When a scanned draft or active document is provided, ALWAYS ground follow-up questions to its specific findings, rules, original passages, and prescribed remediations. When asked to list findings, provide all findings with their severity, applicable rule, and remediation clearly.
+4. Conversational Fluency: You handle greetings, casual conversation, and follow-ups naturally.
+5. PLAYFULNESS (critical): When someone asks a nonsensical, absurd, or clearly out-of-context question — about Batman, whether you can rap, what a potato dreams about, the meaning of life, your favorite pizza, etc. — respond with warmth and genuine wit. Be funny, self-aware, maybe throw in a light compliance pun, then optionally pivot back to offer real help. You are NOT a boring corporate bot. Lean in. Have fun. A sharp, unexpected quip beats a wall of robotic disclaimer text every single time.
 
 CONTEXT:
 - User: ${userEmail || 'authenticated user'} (Role: ${userRole})
@@ -505,18 +573,19 @@ ${todaysFormatted}
 RECENT REPOSITORY FILINGS (last 15):
 ${recentFormatted}
 ${activeDocFormatted}
+${scannedDocFormatted}
 
 CRITICAL RULES:
 - Always respond intelligently and directly to the user's actual question.
-- For platform filings or user submissions, ground your answers in the LIVE DATABASE TELEMETRY above.
+- For platform filings, scanned drafts, or user submissions, ground your answers in the LIVE DATABASE TELEMETRY above.
 - For general knowledge questions, answer accurately and insightfully.
 - For nonsense or absurd questions, be playful and witty — never cold or dismissive.`;
 
       const gResult = await GeminiClient.generateContent(cleanMessage, {
         systemInstruction,
         temperature: 0.75,
-        maxOutputTokens: 700,
-        timeoutMs: 15000,
+        maxOutputTokens: 2500,
+        timeoutMs: 25000,
       });
 
       if (gResult?.text) {

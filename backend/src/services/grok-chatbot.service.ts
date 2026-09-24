@@ -64,6 +64,13 @@ export interface ChatbotRequestOptions {
   pathname?: string;
   documentId?: string;
   conversationHistory?: Array<{ role: string; content: string }>;
+  scannedDocument?: {
+    fileName: string;
+    summary?: string;
+    auditBreakdown?: any[];
+    remediatedText?: string;
+    fileMeta?: any;
+  };
 }
 
 export interface ChatbotResponse {
@@ -436,7 +443,7 @@ State whether this text would be Approved or Needs Revision, with guidance for t
    * clarification gating, and live database queries.
    */
   public static async processMessage(options: ChatbotRequestOptions): Promise<ChatbotResponse> {
-    const { message, user, pathname, documentId, conversationHistory } = options;
+    const { message, user, pathname, documentId, conversationHistory, scannedDocument } = options;
     const isOfficer = user.role === 'Officer';
     const isAdvisor = !isOfficer;
 
@@ -452,6 +459,23 @@ State whether this text would be Approved or Needs Revision, with guidance for t
     if (isAuditRequest) {
       const reply = await this.handleTextComplianceAuditIntent(message, user, conversationHistory);
       return { reply, intent: 'text_compliance_audit', correctedQuery };
+    }
+
+    // ── Intent 0: Scanned Document Findings / Breakdown Inquiry ─────────────
+    // Ground follow-up questions to the currently scanned draft file in chat
+    const isFindingsInquiry =
+      /\b(?:findings?|infractions?|violations?|deficienc(?:y|ies)|flags?|severity|applicable\s+rules?|remediat(?:e|ion|ions)|amendments?)\b/i.test(lower) ||
+      /\b(?:list\s+all|show\s+all|what\s+are\s+the|explain\s+all|\d+\s+findings|\d+\s+flags|\d+\s+issues)\b/i.test(lower) ||
+      lower.includes('list all 9') ||
+      lower.includes('all 9 findings');
+
+    if (scannedDocument && scannedDocument.auditBreakdown && scannedDocument.auditBreakdown.length > 0 && isFindingsInquiry) {
+      return await this.handleScannedDocumentFindingsIntent(scannedDocument, user, correctedQuery, conversationHistory);
+    }
+
+    // Ground follow-ups when user is viewing an opened document in /documents/[id]
+    if (Boolean(documentId || (pathname && pathname.includes('/documents/'))) && isFindingsInquiry) {
+      return await this.handleActiveDocumentAuditIntent(user, correctedQuery, lower, documentId, pathname);
     }
 
     // ── Check for explicit Grammar Check or Expansion intent ────────────────
@@ -1477,16 +1501,121 @@ State whether this text would be Approved or Needs Revision, with guidance for t
       };
     }
 
+    const resolveSeverity = (f: any): 'HIGH' | 'MEDIUM' | 'LOW' => {
+      if (f.severity) return f.severity.toUpperCase();
+      const cat = (f.category || '').toUpperCase();
+      const issue = (f.issue || f.title || '').toUpperCase();
+      if (cat === 'PROHIBITED_CLAIM' || cat === 'SUITABILITY' || issue.includes('GUARANTEE') || issue.includes('PROMISSORY')) {
+        return 'HIGH';
+      }
+      if (cat === 'MISSING_DISCLOSURE') {
+        return 'MEDIUM';
+      }
+      return 'LOW';
+    };
+
     const formattedFlags = flagsList.map((f: any, idx: number) => {
-      const rule = f.rule || 'FINRA Rule 2210';
+      const sev = resolveSeverity(f);
+      const sevBadge = sev === 'HIGH' ? '🔴 HIGH' : sev === 'MEDIUM' ? '🟡 MEDIUM' : '🟢 LOW';
+      const rule = f.rule || f.ruleCode || 'FINRA Rule 2210';
       const passage = f.original_passage || f.passage || 'Identified text passage';
-      const fix = f.remediated_text || f.compliant_text || f.remediation || 'Replace with balanced market risk disclosures.';
+      const fix = f.remediated_text || f.compliant_text || f.remediation || f.fixed_passage || 'Replace with balanced market risk disclosures.';
       const explanation = f.explanation || f.reason || f.rationale || 'Eliminate promissory claims and add statutory disclosures.';
-      return `### Flag ${idx + 1}: ${rule}\n**Violation Flag**\n• **Original Passage:**\n> "${passage}"\n• **Remediated Compliant Text:**\n> "${fix}"\n• **Amendment Rationale:** ${explanation}`;
+      const issue = f.issue || f.title || 'Regulatory compliance infraction';
+      return `### Finding ${idx + 1}: ${rule} [Severity: ${sevBadge}]
+• **Severity**: **${sev}**
+• **Applicable Rule**: ${rule}
+• **Specific Infraction**: ${issue}
+• **Original Offending Passage:**
+> "${passage}"
+• **Prescribed Remediation:**
+> "${fix}"
+• **Amendment Rationale**: ${explanation}`;
     }).join('\n\n');
 
-    const fallback = `**Compliance Diagnostic & Prescribed Amendments for "${doc.title}" (v${doc.version}):**\n\nFound **${flagsList.length} compliance issue${flagsList.length > 1 ? 's' : ''}** in the database analysis:\n\n${formattedFlags}`;
-    return { reply: fallback, intent: 'document_audit', correctedQuery };
+    const fallback = `### Compliance Diagnostic & Prescribed Amendments for "${doc.title}" (v${doc.version})\n\nFound **${flagsList.length} compliance issue${flagsList.length > 1 ? 's' : ''}** in the database analysis:\n\n${formattedFlags}`;
+
+    const prompt = `The user (${user.role}) is asking about the compliance findings for document "${doc.title}" (v${doc.version}): "${correctedQuery}".
+Present ALL ${flagsList.length} findings with their severity (HIGH, MEDIUM, LOW), applicable rules (FINRA 2210 / SEC 206), specific infractions, offending passages, and exact prescribed remediations.
+Use the verified findings data below. Structure clearly with Markdown headings, bullet points, and blockquotes for original vs remediated passages:
+
+${formattedFlags}`;
+
+    const systemPrompt = user.role === 'Officer' ? OFFICER_APP_PROMPT : ADVISOR_APP_PROMPT;
+    const llmReply = await this.callLlm(prompt, systemPrompt);
+
+    return { reply: llmReply || fallback, intent: 'document_audit', correctedQuery };
+  }
+
+  /**
+   * Handles direct follow-up inquiries regarding the in-chat scanned draft document.
+   * Consistently grounds responses to all detected findings, severity, rules, and remediations.
+   */
+  private static async handleScannedDocumentFindingsIntent(
+    scannedDoc: {
+      fileName: string;
+      summary?: string;
+      auditBreakdown?: any[];
+      remediatedText?: string;
+      fileMeta?: any;
+    },
+    user: ChatUserContext,
+    correctedQuery: string,
+    conversationHistory?: Array<{ role: string; content: string }>
+  ): Promise<ChatbotResponse> {
+    const isOfficer = user.role === 'Officer';
+    const breakdown = scannedDoc.auditBreakdown || [];
+    const count = breakdown.length;
+
+    const resolveSeverity = (item: any): 'HIGH' | 'MEDIUM' | 'LOW' => {
+      if (item.severity) return item.severity.toUpperCase() as any;
+      const cat = (item.category || '').toUpperCase();
+      const issue = (item.issue || '').toUpperCase();
+      if (cat === 'PROHIBITED_CLAIM' || cat === 'SUITABILITY' || issue.includes('GUARANTEE') || issue.includes('PROMISSORY')) {
+        return 'HIGH';
+      }
+      if (cat === 'MISSING_DISCLOSURE') {
+        return 'MEDIUM';
+      }
+      return 'LOW';
+    };
+
+    const formattedFindings = breakdown.map((item: any, idx: number) => {
+      const sev = resolveSeverity(item);
+      const sevBadge = sev === 'HIGH' ? '🔴 HIGH' : sev === 'MEDIUM' ? '🟡 MEDIUM' : '🟢 LOW';
+      const rule = item.rule || 'FINRA Rule 2210';
+      const orig = item.original_passage || item.passage || 'Identified text passage';
+      const issue = item.issue || 'Compliance rule infraction';
+      const fix = item.fixed_passage || item.remediation || item.remediated_text || 'Rewritten with balanced market risk disclosures.';
+      const reason = item.reason || item.explanation || 'Regulatory disclosure standard.';
+
+      return `### Finding ${idx + 1}: ${rule} [Severity: ${sevBadge}]
+• **Severity**: **${sev}**
+• **Applicable Rule**: ${rule}
+• **Specific Infraction**: ${issue}
+• **Original Offending Passage**:
+> "${orig}"
+• **Prescribed Remediation**:
+> "${fix}"
+• **Amendment Rationale**: ${reason}`;
+    }).join('\n\n');
+
+    const fallbackSummary = `### Comprehensive Compliance Analysis for "${scannedDoc.fileName}"\nFound **${count} compliance findings** under FINRA Rule 2210 & SEC Rule 206:\n\n${formattedFindings}`;
+
+    const prompt = `The user (${user.role}) is asking about the compliance findings for their currently scanned draft "${scannedDoc.fileName}": "${correctedQuery}".
+Present ALL ${count} findings with their severity (HIGH, MEDIUM, LOW), applicable rules (FINRA 2210 / SEC 206), specific infractions, offending passages, and exact prescribed remediations.
+Use the verified findings data below. Structure clearly with Markdown headings, bullet points, and blockquotes for original vs remediated passages:
+
+${formattedFindings}`;
+
+    const systemPrompt = isOfficer ? OFFICER_APP_PROMPT : ADVISOR_APP_PROMPT;
+    const llmReply = await this.callLlm(prompt, systemPrompt, conversationHistory);
+
+    return {
+      reply: llmReply || fallbackSummary,
+      intent: 'scanned_document_findings',
+      correctedQuery,
+    };
   }
 
   // ─────────────────────────────────────────────────────────────────────────
