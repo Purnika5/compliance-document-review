@@ -150,4 +150,32 @@ describe('Neural Compliance Copilot - Search & Audit Services', () => {
       expect(res.reply).toContain('Our target annualized return benchmark');
     });
   });
+
+  describe('PipelineService.extractText - PDF and TXT Support', () => {
+    it('should successfully extract text from plain text buffer with or without path', async () => {
+      const txtContent = 'Client proposal: We target 8% annualized yield under strict risk controls.';
+      const buf = Buffer.from(txtContent, 'utf-8');
+
+      const extracted1 = await PipelineService.extractText('sample_proposal.txt', 'text/plain', buf);
+      expect(extracted1).toBe(txtContent);
+
+      const extracted2 = await PipelineService.extractText('', 'text/plain; charset=utf-8', buf);
+      expect(extracted2).toBe(txtContent);
+
+      const extracted3 = await PipelineService.extractText('notes.txt', 'application/octet-stream', buf);
+      expect(extracted3).toBe(txtContent);
+    });
+
+    it('should extract text from PDF streams and objects using fallback parser', async () => {
+      // Minimal valid PDF text stream
+      const mockPdfContent = '%PDF-1.4\n1 0 obj\n<< /Length 50 >>\nstream\nBT /F1 12 Tf (Institutional Investment Plan with 15% return) Tj ET\nendstream\nendobj\nxref\n0 2\n0000000000 65535 f \n0000000009 00000 n \ntrailer\n<< /Size 2 /Root 1 0 R >>\nstartxref\n100\n%%EOF';
+      const pdfBuf = Buffer.from(mockPdfContent, 'latin1');
+
+      const rawExtracted = PipelineService.extractRawPdfText(pdfBuf);
+      expect(rawExtracted).toContain('Institutional Investment Plan with 15% return');
+
+      const extracted = await PipelineService.extractText('Client_Plan.pdf', 'application/pdf', pdfBuf);
+      expect(extracted).toContain('Institutional Investment Plan with 15% return');
+    });
+  });
 });

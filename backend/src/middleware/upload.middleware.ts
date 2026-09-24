@@ -15,9 +15,15 @@ const storage = multer.memoryStorage();
 const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
   const allowedExtensions = ['.pdf', '.docx', '.doc', '.xlsx', '.xls', '.txt'];
   const ext = path.extname(file.originalname).toLowerCase();
+  const cleanMime = (file.mimetype || '').toLowerCase().split(';')[0].trim();
 
   const isExtensionValid = allowedExtensions.includes(ext);
-  const isMimeValid = config.uploads.allowedMimeTypes.includes(file.mimetype);
+  const isMimeValid =
+    config.uploads.allowedMimeTypes.includes(cleanMime) ||
+    cleanMime === 'application/octet-stream' ||
+    cleanMime === '' ||
+    cleanMime === 'application/x-pdf' ||
+    cleanMime.startsWith('text/');
 
   if (isExtensionValid && isMimeValid) {
     cb(null, true);

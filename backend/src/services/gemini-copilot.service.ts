@@ -91,7 +91,7 @@ export class GeminiCopilotService {
     }
 
     // 2. Text Extraction (supports disk path or in-memory buffer)
-    let rawText = await PipelineService.extractText(file.path || '', file.mimetype, file.buffer);
+    let rawText = await PipelineService.extractText(file.originalname || file.path || '', file.mimetype, file.buffer);
     if (!rawText || rawText.trim().length === 0) {
       rawText = `[Draft Compliance Filing: ${file.originalname}]\nSpringer Capital Institutional Investment Advisory Document submitted for regulatory compliance inspection under FINRA Rule 2210 and SEC Rule 206(4)-1.`;
     }

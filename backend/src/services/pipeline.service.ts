@@ -1,7 +1,19 @@
 import fs from 'fs';
 import path from 'path';
 import zlib from 'zlib';
-import pdfParse from 'pdf-parse';
+// Safely import the core pdf-parse processor to avoid the test file debug bug in index.js
+// @ts-ignore
+const pdfParseCore: any = (() => {
+  try {
+    return require('pdf-parse/lib/pdf-parse.js');
+  } catch {
+    try {
+      return require('pdf-parse');
+    } catch {
+      return null;
+    }
+  }
+})();
 import { query } from '../db/pool';
 import { config } from '../config';
 import { ComplianceFlag, DocumentAnalysis, RetrievedRule, PrecedentItem } from '../types/models';
@@ -61,7 +73,39 @@ export class PipelineService {
   }
 
   /**
+   * Secondary fallback to extract raw readable text streams from PDF text objects (BT ... ET).
+   */
+  public static extractRawPdfText(buffer: Buffer): string {
+    try {
+      const raw = buffer.toString('latin1');
+      const textPieces: string[] = [];
+      const btBlocks = raw.match(/BT[\s\S]*?ET/g) || [];
+      for (const block of btBlocks) {
+        const tjMatches = block.match(/\(([^)]*)\)\s*Tj/g) || [];
+        for (const tj of tjMatches) {
+          const m = tj.match(/\(([^)]*)\)/);
+          if (m && m[1]) textPieces.push(m[1]);
+        }
+        const tjArrayMatches = block.match(/\[([\s\S]*?)\]\s*TJ/g) || [];
+        for (const arr of tjArrayMatches) {
+          const parts = arr.match(/\(([^)]*)\)/g) || [];
+          for (const p of parts) {
+            textPieces.push(p.slice(1, -1));
+          }
+        }
+      }
+      if (textPieces.length > 0) {
+        return textPieces.join(' ').replace(/\\r|\\n/g, ' ').replace(/\s{2,}/g, ' ').trim();
+      }
+    } catch {
+      // ignore
+    }
+    return '';
+  }
+
+  /**
    * Extract plain text from the uploaded file on disk or directly from memory buffer.
+   * Fully supports PDF, DOCX/DOC, and TXT using magic bytes, extensions, and MIME fallbacks.
    */
   public static async extractText(filePath: string, mimeType: string, inputBuffer?: Buffer): Promise<string> {
     const hasBuffer = Boolean(inputBuffer && inputBuffer.length > 0);
@@ -75,32 +119,64 @@ export class PipelineService {
     try {
       const ext = filePath ? path.extname(filePath).toLowerCase() : '';
       const buffer = hasBuffer ? inputBuffer! : fs.readFileSync(filePath);
+      const cleanMime = (mimeType || '').toLowerCase().split(';')[0].trim();
 
-      if (mimeType === 'application/pdf' || ext === '.pdf') {
-        const parsed = await pdfParse(buffer);
-        return parsed.text ? parsed.text.trim() : '';
+      // 1. PDF Detection (magic bytes %PDF- OR .pdf extension OR application/pdf)
+      const isPdf =
+        (buffer.length >= 4 &&
+          buffer[0] === 0x25 && // %
+          buffer[1] === 0x50 && // P
+          buffer[2] === 0x44 && // D
+          buffer[3] === 0x46) ||  // F
+        ext === '.pdf' ||
+        cleanMime === 'application/pdf' ||
+        cleanMime === 'application/x-pdf';
+
+      if (isPdf) {
+        if (pdfParseCore) {
+          try {
+            const parsed = await pdfParseCore(buffer);
+            if (parsed && parsed.text && parsed.text.trim().length > 0) {
+              return parsed.text.trim();
+            }
+          } catch (pdfErr: any) {
+            console.warn(`[PipelineService] pdf-parse warning for ${filePath}: ${pdfErr?.message || pdfErr}, attempting raw stream extraction.`);
+          }
+        }
+
+        // Secondary fallback for PDF text streams
+        const rawPdfText = PipelineService.extractRawPdfText(buffer);
+        if (rawPdfText && rawPdfText.length > 0) {
+          return rawPdfText;
+        }
       }
 
-      if (
-        mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-        mimeType === 'application/msword' ||
+      // 2. DOCX Detection (PK\x03\x04 zip header OR .docx/.doc OR word MIME)
+      const isDocx =
+        (buffer.length >= 4 &&
+          buffer[0] === 0x50 && // P
+          buffer[1] === 0x4b && // K
+          buffer[2] === 0x03 &&
+          buffer[3] === 0x04) ||
         ext === '.docx' ||
-        ext === '.doc'
-      ) {
+        ext === '.doc' ||
+        cleanMime.includes('wordprocessingml') ||
+        cleanMime === 'application/msword';
+
+      if (isDocx) {
         const docxText = PipelineService.extractDocxText(filePath, buffer);
         if (docxText && docxText.trim().length > 0) {
           return docxText.trim();
         }
       }
 
-      if (mimeType === 'text/plain' || ext === '.txt') {
-        return buffer.toString('utf-8').trim();
+      // 3. Plain Text / TXT / Fallback Extraction (supports UTF-8 with full Unicode)
+      const textContent = buffer.toString('utf-8');
+      if (textContent && textContent.trim().length > 0) {
+        return textContent.trim();
       }
 
-      // Fallback for docx or generic text-based formats: attempt reading as utf8
-      const content = buffer.toString('utf-8');
-      // Clean non-printable characters for fallback
-      return content.replace(/[^\x20-\x7E\n\r\t]/g, ' ').trim();
+      return '';
     } catch (err) {
       console.error(`[PipelineService] Text extraction error for ${filePath}:`, err);
       return '';
