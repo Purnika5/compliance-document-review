@@ -1061,19 +1061,6 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
                                 })
                               : "Recently Submitted"}
                           </span>
-                        </div>
-
-                        {/* Neural Copilot Remediated Callout Banner */}
-                        <div className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-50/80 border border-emerald-200 text-emerald-950 text-[11px]">
-                          <ShieldCheck className="h-4 w-4 text-emerald-700 shrink-0" />
-                          <div className="min-w-0 flex-1">
-                            <span className="font-bold text-emerald-900 block text-[10.5px]">
-                              Google Gemini Neural Remediation Applied
-                            </span>
-                            <span className="text-[10px] text-emerald-800/80">
-                              This proposal text was audited and fixed against FINRA Rule 2210 &amp; SEC Rule 206 standards.
-                            </span>
-                          </div>
                           {isOfficer && isUnmasked && (
                             <span className="font-mono text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-200 border border-amber-400 text-amber-950 shrink-0">
                               Unmasked View
