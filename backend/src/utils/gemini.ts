@@ -7,9 +7,8 @@
 
 export const ACTIVE_GEMINI_MODELS = [
   'gemini-3.6-flash',
-  'gemini-3.5-flash',
-  'gemini-3.1-flash-lite',
-  'gemini-2.5-flash',
+  'gemini-3.7-flash',
+  'gemini-flash-latest',
 ];
 
 /**
@@ -47,7 +46,7 @@ export class GeminiClient {
       return null;
     }
 
-    const timeoutMs = options.timeoutMs ?? 35000;
+    const timeoutMs = options.timeoutMs ?? 5000;
 
     // Build multi-turn contents if conversationHistory is provided
     const rawContents: Array<{ role: string; parts: Array<{ text: string }> }> = [];
