@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { UploadCloud, FileText, Loader2, RefreshCw, Paperclip, Trash2 } from "lucide-react";
+import { UploadCloud, FileText, Loader2, RefreshCw, Paperclip, Trash2, CheckCircle2 } from "lucide-react";
 import type { DocumentItem } from "@/entities/interfaces/document.interface";
 import { documentService } from "@/services/document.service";
 import { showSuccessToast, showErrorToast } from "@/components/ui/toast";
@@ -40,6 +40,7 @@ export function ResubmitRevisionModal({
   const [revisionNotes, setRevisionNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB
@@ -76,6 +77,7 @@ export function ResubmitRevisionModal({
     setSelectedFile(null);
     setRevisionNotes("");
     setIsSubmitting(false);
+    setIsSuccess(false);
     onClose();
   };
 
@@ -104,7 +106,7 @@ export function ResubmitRevisionModal({
         window.dispatchEvent(new Event("compliance-notification-refresh"));
       }
       if (onSuccess) onSuccess();
-      handleReset();
+      setIsSuccess(true);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to resubmit document revision.";
       showErrorToast("Resubmission Failed", msg);
@@ -118,21 +120,55 @@ export function ResubmitRevisionModal({
       <DialogContent className="max-w-lg p-6 sm:p-7 bg-white border border-slate-200/90 text-slate-900 shadow-2xl rounded-2xl">
         <DialogHeader className="space-y-1 pb-2">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-amber-50 border border-amber-200/70 text-amber-700 flex items-center justify-center shrink-0">
-              <RefreshCw className="h-5 w-5" />
+            <div
+              className={cn(
+                "h-9 w-9 rounded-xl flex items-center justify-center shrink-0 border",
+                isSuccess
+                  ? "bg-[#C5E86C]/20 border-[#C5E86C] text-[#183028]"
+                  : "bg-amber-50 border-amber-200/70 text-amber-700"
+              )}
+            >
+              {isSuccess ? <UploadCloud className="h-5 w-5" /> : <RefreshCw className="h-5 w-5" />}
             </div>
             <div>
               <DialogTitle className="text-base font-bold text-slate-900">
-                Resubmit Document Revision
+                {isSuccess ? "Submission Confirmed" : "Resubmit Document Revision"}
               </DialogTitle>
               <DialogDescription className="text-xs text-slate-500">
-                Upload a revised file payload (v2) and submit notes explaining modifications.
+                {isSuccess
+                  ? "Document successfully placed in the Officer Evaluation Queue."
+                  : "Upload a revised file payload (v2) and submit notes explaining modifications."}
               </DialogDescription>
             </div>
           </div>
         </DialogHeader>
 
-        {documentItem && (
+        {isSuccess ? (
+          <div className="py-6 flex flex-col items-center text-center space-y-3 animate-slide-up">
+            <div className="relative h-14 w-14">
+              <div className="absolute inset-0 rounded-full bg-[#C5E86C]/30 animate-pulse" />
+              <div className="relative h-14 w-14 rounded-full bg-[#FFFFFF] border border-[#C5E86C] flex items-center justify-center">
+                <CheckCircle2 className="h-7 w-7 text-[#183028] animate-check-pop" />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-base font-bold text-[#183028]">
+                Document Successfully Submitted
+              </h3>
+              <p className="text-xs text-[#183028]/60 max-w-sm">
+                Proposal <span className="font-semibold text-[#183028]">{documentItem?.title}</span> has been logged and assigned to the Compliance Evaluation Queue.
+              </p>
+            </div>
+            <div className="pt-2">
+              <Button
+                onClick={handleReset}
+                className="h-8.5 px-5 text-xs font-semibold bg-[#183028] hover:bg-[#23453a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] text-white rounded-xl transition-all shadow-2xs cursor-pointer"
+              >
+                Return to Workspace
+              </Button>
+            </div>
+          </div>
+        ) : documentItem ? (
           <form onSubmit={handleSubmit} className="space-y-4 text-xs pt-1">
             {/* Target Document Meta Box */}
             <div className="p-3.5 rounded-xl border border-amber-200/80 bg-amber-50/50 space-y-1 shadow-2xs">
@@ -256,7 +292,7 @@ export function ResubmitRevisionModal({
               </Button>
             </DialogFooter>
           </form>
-        )}
+        ) : null}
       </DialogContent>
     </Dialog>
   );
