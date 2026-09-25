@@ -12,9 +12,7 @@ import {
   History,
   PanelLeftClose,
   PanelLeftOpen,
-  BookOpen,
 } from "lucide-react";
-import { journalStore } from "@/lib/journal-store";
 
 export interface AppSidebarProps {
   isOpenMobile?: boolean;
@@ -76,12 +74,6 @@ export function AppSidebar({
       dataTour: "nav-settings",
       active: pathname === "/settings",
     },
-    {
-      label: "Compliance Journal",
-      icon: BookOpen,
-      dataTour: "nav-journal",
-      action: () => journalStore.openJournal("Advisor"),
-    },
   ];
 
   const officerNavItems: NavItem[] = [
@@ -105,12 +97,6 @@ export function AppSidebar({
       icon: Settings,
       dataTour: "nav-settings",
       active: pathname === "/settings",
-    },
-    {
-      label: "Compliance Journal",
-      icon: BookOpen,
-      dataTour: "nav-journal",
-      action: () => journalStore.openJournal("Officer"),
     },
   ];
 
