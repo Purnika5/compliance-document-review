@@ -45,52 +45,18 @@ interface ISpotlightStep {
   description: string;
   icon: React.ComponentType<{ className?: string }>;
   preferredPlacement: "right" | "bottom" | "top" | "left";
+  category: "Navbar" | "Sidebar" | "Content" | "AI Copilot";
 }
 
 /**
- * Sequential highlight steps for Advisors (including Statistics, File Viewer, Date Filter, Notifications, Profile, Settings, and AI Copilot).
+ * Sequential highlight steps for Advisors ordered by:
+ * 1. Navbar (Notifications, Profile & Session)
+ * 2. Sidebar (Dashboard, Audit Trail, Account & Settings)
+ * 3. Content (Analytics & Metrics, Upload Document, Tracking & File Viewer, Date & Calendar Filter)
+ * 4. AI Copilot (Neural Compliance AI Assistant)
  */
 const ADVISOR_SPOTLIGHT_STEPS: ISpotlightStep[] = [
-  {
-    targetKey: "nav-dashboard",
-    title: "Advisor Dashboard",
-    description:
-      "Your central hub to monitor client recommendation correspondence, track filing volume, and check review statuses in real time.",
-    icon: LayoutDashboard,
-    preferredPlacement: "right",
-  },
-  {
-    targetKey: "advisor-statistics",
-    title: "Compliance Analytics & Metrics",
-    description:
-      "Monitor your review queue volume, pending evaluation filings, required revisions, approval metrics, and 14-day velocity sparklines in real time.",
-    icon: TrendingUp,
-    preferredPlacement: "bottom",
-  },
-  {
-    targetKey: "advisor-upload",
-    title: "Upload Document",
-    description:
-      "Submit client recommendation drafts (.pdf, .docx, .txt). The system automatically detects and masks sensitive client PII (SSNs, phone numbers).",
-    icon: UploadCloud,
-    preferredPlacement: "bottom",
-  },
-  {
-    targetKey: "advisor-view-files",
-    title: "Document Tracking & File Viewer",
-    description:
-      "Inspect submitted correspondence, view full document text, verify PII redaction tokens, and download clean remediated files.",
-    icon: FileText,
-    preferredPlacement: "bottom",
-  },
-  {
-    targetKey: "dashboard-date-filter",
-    title: "Date Range & Calendar Filter",
-    description:
-      "Filter your filings using quick date presets (Today, Past 7 Days, This Month) or click specific calendar days to analyze submission activity.",
-    icon: Calendar,
-    preferredPlacement: "left",
-  },
+  // 1. NAVBAR
   {
     targetKey: "header-notifications",
     title: "Real-Time Notification Alerts",
@@ -98,6 +64,7 @@ const ADVISOR_SPOTLIGHT_STEPS: ISpotlightStep[] = [
       "Receive live alerts when the Compliance Officer approves your filing, requests required revisions, or returns detailed regulatory determinations.",
     icon: Bell,
     preferredPlacement: "bottom",
+    category: "Navbar",
   },
   {
     targetKey: "header-user-menu",
@@ -106,6 +73,18 @@ const ADVISOR_SPOTLIGHT_STEPS: ISpotlightStep[] = [
       "Quickly view your authenticated institutional advisor profile, active session credentials, role verification, or sign out securely.",
     icon: User,
     preferredPlacement: "bottom",
+    category: "Navbar",
+  },
+
+  // 2. SIDEBAR
+  {
+    targetKey: "nav-dashboard",
+    title: "Advisor Dashboard",
+    description:
+      "Your central hub to monitor client recommendation correspondence, track filing volume, and check review statuses in real time.",
+    icon: LayoutDashboard,
+    preferredPlacement: "right",
+    category: "Sidebar",
   },
   {
     targetKey: "nav-audit",
@@ -114,6 +93,7 @@ const ADVISOR_SPOTLIGHT_STEPS: ISpotlightStep[] = [
       "Inspect the immutable regulatory ledger logging cryptographic upload timestamps, sanitization proofs, and officer determinations.",
     icon: History,
     preferredPlacement: "right",
+    category: "Sidebar",
   },
   {
     targetKey: "nav-settings",
@@ -122,7 +102,48 @@ const ADVISOR_SPOTLIGHT_STEPS: ISpotlightStep[] = [
       "Manage your advisor profile, credential details, notification preferences, and account security configurations.",
     icon: Settings,
     preferredPlacement: "right",
+    category: "Sidebar",
   },
+
+  // 3. CONTENT
+  {
+    targetKey: "advisor-statistics",
+    title: "Compliance Analytics & Metrics",
+    description:
+      "Monitor your review queue volume, pending evaluation filings, required revisions, approval metrics, and 14-day velocity sparklines in real time.",
+    icon: TrendingUp,
+    preferredPlacement: "bottom",
+    category: "Content",
+  },
+  {
+    targetKey: "advisor-upload",
+    title: "Upload Document",
+    description:
+      "Submit client recommendation drafts (.pdf, .docx, .txt). The system automatically detects and masks sensitive client PII (SSNs, phone numbers).",
+    icon: UploadCloud,
+    preferredPlacement: "bottom",
+    category: "Content",
+  },
+  {
+    targetKey: "advisor-view-files",
+    title: "Document Tracking & File Viewer",
+    description:
+      "Inspect submitted correspondence, view full document text, verify PII redaction tokens, and download clean remediated files.",
+    icon: FileText,
+    preferredPlacement: "bottom",
+    category: "Content",
+  },
+  {
+    targetKey: "dashboard-date-filter",
+    title: "Date Range & Calendar Filter",
+    description:
+      "Filter your filings using quick date presets (Today, Past 7 Days, This Month) or click specific calendar days to analyze submission activity.",
+    icon: Calendar,
+    preferredPlacement: "left",
+    category: "Content",
+  },
+
+  // 4. LAST: THE AI
   {
     targetKey: "copilot-widget",
     title: "Neural Compliance AI Copilot",
@@ -130,53 +151,19 @@ const ADVISOR_SPOTLIGHT_STEPS: ISpotlightStep[] = [
       "Click the AI Copilot button in the bottom-right corner to test sentences with /grammar, query the database with /query, view /stats, or ask regulatory questions.",
     icon: Bot,
     preferredPlacement: "top",
+    category: "AI Copilot",
   },
 ];
 
 /**
- * Sequential highlight steps for Officers (including Statistics, File Viewer, Date Filter, Notifications, Profile, Settings, and AI Copilot).
+ * Sequential highlight steps for Officers ordered by:
+ * 1. Navbar (Notifications, Profile & Session)
+ * 2. Sidebar (Review Queue, Audit History, Account & Settings)
+ * 3. Content (Queue Analytics & Throughput, Priority Triage, Queue & Review Inspection, Date & Calendar Filter)
+ * 4. AI Copilot (Institutional AI Precedents & Regulatory Research)
  */
 const OFFICER_SPOTLIGHT_STEPS: ISpotlightStep[] = [
-  {
-    targetKey: "nav-queue",
-    title: "Supervisory Review Queue",
-    description:
-      "Your supervisory console to triage and audit incoming advisor recommendation drafts awaiting formal compliance sign-off.",
-    icon: ShieldCheck,
-    preferredPlacement: "right",
-  },
-  {
-    targetKey: "officer-statistics",
-    title: "Supervisory Queue Analytics & Throughput",
-    description:
-      "Track platform-wide filing volume, pending evaluations, revision backlogs, approved records, and compliance clearance throughput percentages.",
-    icon: TrendingUp,
-    preferredPlacement: "bottom",
-  },
-  {
-    targetKey: "officer-priority",
-    title: "Risk Priority Triage",
-    description:
-      "Filter submissions by risk severity (High, Medium, Urgent). Filings with promissory language or missing risk disclosures are prioritized.",
-    icon: Filter,
-    preferredPlacement: "bottom",
-  },
-  {
-    targetKey: "officer-view-files",
-    title: "Document Queue & Review Inspection",
-    description:
-      "Click any filing to open the Compliance Audit Workspace for side-by-side inspection, flagged rule citations, and statutory sign-offs.",
-    icon: FileText,
-    preferredPlacement: "bottom",
-  },
-  {
-    targetKey: "dashboard-date-filter",
-    title: "Date Range & Calendar Filter",
-    description:
-      "Triage review volume across specific time intervals or click interactive calendar days to isolate historical review cycles and pending filings.",
-    icon: Calendar,
-    preferredPlacement: "left",
-  },
+  // 1. NAVBAR
   {
     targetKey: "header-notifications",
     title: "Supervisory Notification Alerts",
@@ -184,6 +171,7 @@ const OFFICER_SPOTLIGHT_STEPS: ISpotlightStep[] = [
       "Stay alerted to newly submitted advisor drafts, re-submitted revision filings, and high-risk compliance triage escalations requiring officer sign-off.",
     icon: Bell,
     preferredPlacement: "bottom",
+    category: "Navbar",
   },
   {
     targetKey: "header-user-menu",
@@ -192,6 +180,18 @@ const OFFICER_SPOTLIGHT_STEPS: ISpotlightStep[] = [
       "Inspect your supervisory credentials, institutional compliance officer designation, active session details, or sign out securely.",
     icon: User,
     preferredPlacement: "bottom",
+    category: "Navbar",
+  },
+
+  // 2. SIDEBAR
+  {
+    targetKey: "nav-queue",
+    title: "Supervisory Review Queue",
+    description:
+      "Your supervisory console to triage and audit incoming advisor recommendation drafts awaiting formal compliance sign-off.",
+    icon: ShieldCheck,
+    preferredPlacement: "right",
+    category: "Sidebar",
   },
   {
     targetKey: "nav-audit",
@@ -200,6 +200,7 @@ const OFFICER_SPOTLIGHT_STEPS: ISpotlightStep[] = [
       "Review historical supervisory determinations, officer signatures, and export audit-defensible inspection reports.",
     icon: History,
     preferredPlacement: "right",
+    category: "Sidebar",
   },
   {
     targetKey: "nav-settings",
@@ -208,7 +209,48 @@ const OFFICER_SPOTLIGHT_STEPS: ISpotlightStep[] = [
       "Configure your compliance officer supervisory profile, statutory designation, notification triggers, and platform preferences.",
     icon: Settings,
     preferredPlacement: "right",
+    category: "Sidebar",
   },
+
+  // 3. CONTENT
+  {
+    targetKey: "officer-statistics",
+    title: "Supervisory Queue Analytics & Throughput",
+    description:
+      "Track platform-wide filing volume, pending evaluations, revision backlogs, approved records, and compliance clearance throughput percentages.",
+    icon: TrendingUp,
+    preferredPlacement: "bottom",
+    category: "Content",
+  },
+  {
+    targetKey: "officer-priority",
+    title: "Risk Priority Triage",
+    description:
+      "Filter submissions by risk severity (High, Medium, Urgent). Filings with promissory language or missing risk disclosures are prioritized.",
+    icon: Filter,
+    preferredPlacement: "bottom",
+    category: "Content",
+  },
+  {
+    targetKey: "officer-view-files",
+    title: "Document Queue & Review Inspection",
+    description:
+      "Click any filing to open the Compliance Audit Workspace for side-by-side inspection, flagged rule citations, and statutory sign-offs.",
+    icon: FileText,
+    preferredPlacement: "bottom",
+    category: "Content",
+  },
+  {
+    targetKey: "dashboard-date-filter",
+    title: "Date Range & Calendar Filter",
+    description:
+      "Triage review volume across specific time intervals or click interactive calendar days to isolate historical review cycles and pending filings.",
+    icon: Calendar,
+    preferredPlacement: "left",
+    category: "Content",
+  },
+
+  // 4. LAST: THE AI
   {
     targetKey: "copilot-widget",
     title: "Institutional AI Copilot & Precedents",
@@ -216,6 +258,7 @@ const OFFICER_SPOTLIGHT_STEPS: ISpotlightStep[] = [
       "Query the AI Copilot to research FINRA & SEC regulatory precedents, query compliance records with /query, inspect /stats, and audit supervisory memos before sign-off.",
     icon: Bot,
     preferredPlacement: "top",
+    category: "AI Copilot",
   },
 ];
 
@@ -521,12 +564,17 @@ export function AppWalkthrough() {
           />
         )}
 
-        {/* Tooltip Header: Step Pill + Role Badge + Close Button */}
+        {/* Tooltip Header: Step Pill + Category Badge + Role Badge + Close Button */}
         <div className="flex items-center justify-between gap-2 mb-2 shrink-0">
           <div className="flex items-center gap-1.5">
             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#183028] text-[#C5E86C]">
               Step {currentStepIndex + 1} of {steps.length}
             </span>
+            {currentStep.category && (
+              <span className="px-1.5 py-0.5 rounded-md text-[9.5px] font-bold bg-[#C5E86C]/30 text-[#183028] border border-[#C5E86C]/60 uppercase tracking-wide">
+                {currentStep.category}
+              </span>
+            )}
             <span className="text-[10px] font-semibold text-[#183028]/60 uppercase tracking-wider">
               {isOfficer ? "Officer" : "Advisor"}
             </span>
