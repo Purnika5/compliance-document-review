@@ -12,7 +12,9 @@ import {
   History,
   PanelLeftClose,
   PanelLeftOpen,
+  Compass,
 } from "lucide-react";
+import { walkthroughStore } from "@/lib/walkthrough-store";
 
 export interface AppSidebarProps {
   isOpenMobile?: boolean;
@@ -70,6 +72,11 @@ export function AppSidebar({
       icon: Settings,
       active: pathname === "/settings",
     },
+    {
+      label: "App Walkthrough",
+      icon: Compass,
+      action: () => walkthroughStore.openWalkthrough("Advisor"),
+    },
   ];
 
   const officerNavItems: NavItem[] = [
@@ -90,6 +97,11 @@ export function AppSidebar({
       href: "/settings",
       icon: Settings,
       active: pathname === "/settings",
+    },
+    {
+      label: "App Walkthrough",
+      icon: Compass,
+      action: () => walkthroughStore.openWalkthrough("Officer"),
     },
   ];
 

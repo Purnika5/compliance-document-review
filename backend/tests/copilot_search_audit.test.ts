@@ -178,4 +178,63 @@ describe('Neural Compliance Copilot - Search & Audit Services', () => {
       expect(extracted).toContain('Institutional Investment Plan with 15% return');
     });
   });
+
+  describe('PipelineService.cleanRemediatedDocumentForDownload', () => {
+    it('should remove all findings, severity ratings, and issues from downloaded remediated documents', () => {
+      const sampleAuditReport = `
+MERIDIAN OAK WEALTH ADVISORS, LLC
+COMPLIANCE AUDIT REPORT
+Report Date: September 23, 2026
+Audit Status: Findings identified — see Section 2
+
+1. Executive Summary
+This report documents a compliance and suitability review. The review identified nine findings spanning suitability analysis, disclosure completeness, sales practice, and data handling. Five findings are rated High severity and warrant remediation and supervisory review before the recommendation is executed or, if already executed, before further client transactions proceed. The findings are summarized in Section 2 and detailed individually in Section 3.
+Findings should be routed to qualified compliance and legal counsel for a formal suitability and regulatory determination.
+
+2. Summary of Findings
+Ref.
+Finding
+Section Referenced
+Severity
+F-1
+Liquidity need inconsistent with product surrender terms
+Section 2 (Current Situation); Section 3 (Recommendation)
+High
+F-2
+Potentially misleading guarantee and return language
+Section 3 (Recommendation)
+High
+
+3. Detailed Findings
+F-1 — Liquidity need inconsistent with product surrender terms
+Severity: High
+Section(s) Referenced: Section 2 (Current Situation); Section 3 (Recommendation)
+The client profile states a need for partial access to funds in approximately five years.
+
+4. Recommendations
+Route this file to supervisory/principal review before the transfer paperwork is executed.
+Request the carrier's current product illustration and disclosure document.
+
+5. Scope and Limitations
+This review was limited to the four corners of the single recommendation letter provided.
+      `;
+
+      const cleaned = PipelineService.cleanRemediatedDocumentForDownload(sampleAuditReport);
+
+      // Verify all finding markers and severity ratings are completely absent
+      expect(cleaned).not.toContain('Severity: High');
+      expect(cleaned).not.toContain('Findings identified — see Section 2');
+      expect(cleaned).not.toContain('Summary of Findings');
+      expect(cleaned).not.toContain('Detailed Findings');
+      expect(cleaned).not.toContain('F-1');
+      expect(cleaned).not.toContain('Five findings are rated High severity');
+
+      // Verify compliant institutional remediation language is present
+      expect(cleaned).toContain('Audit Status: Verified & Compliant');
+      expect(cleaned).toContain('2. Remediation & Fiduciary Standards Summary');
+      expect(cleaned).toContain('3. Supervisory Approval & Regulatory Attestation');
+      expect(cleaned).toContain('Scope and Limitations');
+    });
+  });
 });
+

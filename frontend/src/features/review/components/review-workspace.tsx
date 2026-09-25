@@ -38,6 +38,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { buildPiiMap, unmaskText, hasPiiPlaceholders } from "@/utils/pii-unmasker";
+import { cleanRemediatedDocumentForDownload } from "@/components/ui/chatbot-widget";
 import type { DocumentStatusType, DocumentItem } from "@/lib/validation/document";
 import { getDocumentAction, updateDocumentStatusAction } from "@/lib/actions/document-actions";
 import { EditDocumentModal } from "@/features/documents/components/edit-document-modal";
@@ -355,15 +356,24 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
   }, [isOfficer, currentDocItem.originalText, currentDocItem.maskedText]);
 
   const displayedExtractedText = useMemo(() => {
-    const baseMasked = currentDocItem.maskedText || currentDocItem.originalText || "";
+    let baseMasked = currentDocItem.maskedText || currentDocItem.originalText || "";
+    const isRemediated =
+      currentDocItem.title?.toLowerCase().includes("remediated") ||
+      currentDocItem.fileName?.toLowerCase().includes("remediated") ||
+      Boolean((currentDocItem as any).description?.toLowerCase().includes("remediated"));
+
+    if (isRemediated) {
+      baseMasked = cleanRemediatedDocumentForDownload(baseMasked);
+    }
+
     if (!isOfficer || !isUnmasked) {
       return baseMasked;
     }
     if (currentDocItem.originalText && !hasPiiPlaceholders(currentDocItem.originalText)) {
-      return currentDocItem.originalText;
+      return isRemediated ? cleanRemediatedDocumentForDownload(currentDocItem.originalText) : currentDocItem.originalText;
     }
     return unmaskText(baseMasked, piiMap);
-  }, [isOfficer, isUnmasked, currentDocItem.maskedText, currentDocItem.originalText, piiMap]);
+  }, [isOfficer, isUnmasked, currentDocItem.maskedText, currentDocItem.originalText, currentDocItem.title, currentDocItem.fileName, piiMap]);
 
   const isDocx = Boolean(
     currentDocItem.fileFormat === "DOCX" ||
@@ -1018,12 +1028,6 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
                       <div className="flex items-center justify-between border-b border-[#E6E8E7] pb-4">
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="font-bold tracking-tight text-sm text-[#183028]">
-                              SPRINGER CAPITAL
-                            </span>
-                            <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-[#183028] text-[#C5E86C]">
-                              Compliance Verified
-                            </span>
                           </div>
                           <p className="text-[10px] text-[#183028]/60 uppercase tracking-wider mt-0.5 font-medium">
                             Institutional Advisory Filing • {currentDocItem.fileName || "Proposal Document"}
@@ -1053,12 +1057,12 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
                           <span>
                             {currentDocItem.submittedAt
                               ? new Date(currentDocItem.submittedAt).toLocaleDateString(undefined, {
-                                  year: "numeric",
-                                  month: "short",
-                                  day: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })
                               : "Recently Submitted"}
                           </span>
                           {isOfficer && isUnmasked && (
@@ -1099,11 +1103,15 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
                             type="button"
                             onClick={() => {
                               if (!displayedExtractedText) return;
-                              const blob = new Blob([displayedExtractedText], { type: "text/plain;charset=utf-8" });
+                              const cleanText = cleanRemediatedDocumentForDownload(displayedExtractedText);
+                              const blob = new Blob([cleanText], { type: "text/plain;charset=utf-8" });
                               const url = URL.createObjectURL(blob);
                               const a = document.createElement("a");
                               a.href = url;
-                              a.download = `${currentDocItem.title || "Remediated_Proposal"}.txt`;
+                              const safeTitle = (currentDocItem.title || "Remediated_Proposal")
+                                .replace(/[^a-zA-Z0-9_\-\s]/g, "")
+                                .trim();
+                              a.download = `${safeTitle}.txt`;
                               document.body.appendChild(a);
                               a.click();
                               document.body.removeChild(a);
@@ -1119,7 +1127,8 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
                             type="button"
                             onClick={() => {
                               if (!displayedExtractedText) return;
-                              navigator.clipboard.writeText(displayedExtractedText);
+                              const cleanText = cleanRemediatedDocumentForDownload(displayedExtractedText);
+                              navigator.clipboard.writeText(cleanText);
                               showSuccessToast("Document content copied to clipboard.");
                             }}
                             className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#183028] text-white font-semibold hover:bg-[#23453a] transition-all cursor-pointer shadow-2xs"
@@ -1447,7 +1456,7 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
               setLineageVersions(res.versions);
               setLineageEntries(res.threadEntries);
             })
-            .catch(() => {})
+            .catch(() => { })
             .finally(() => setIsLoadingLineage(false));
 
           getDocumentAction(activeDocId)
@@ -1457,7 +1466,7 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
               setCategory(doc.category);
               setStatus(doc.status);
             })
-            .catch(() => {});
+            .catch(() => { });
 
           setRevisionRefreshKey((prev) => prev + 1);
           setActionSuccess(`Document revision (v${nextVersion}) uploaded and submitted for compliance review.`);

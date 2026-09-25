@@ -142,7 +142,12 @@ CONSTRAINTS
 
 REMEDIATION (after flagging)
 Also provide:
-- remediated_text: The COMPLETE compliant text of the entire document. Replace all promissory language with balanced fiduciary language (e.g. "targeted returns subject to market volatility and risk of loss of principal"). Add missing required disclosures in the appropriate sections.
+- remediated_text: The COMPLETE compliant text of the entire document. Replace all promissory language with balanced fiduciary language (e.g. "targets an annualized return benchmark of X% subject to market volatility and risk of loss of principal"). Add missing required disclosures in the appropriate sections.
+CRITICAL FOR REMEDIATED TEXT / DOWNLOAD FILE:
+- The remediated document represents the FINAL, RESOLVED, COMPLIANT institutional filing.
+- Do NOT display audit findings, deficiency lists, severity ratings (e.g. "Severity: High", "Severity: Medium"), "Summary of Findings", "Detailed Findings", or unresolved issues in remediated_text.
+- If the document contains an audit findings section, list of deficiencies, or severity tables, REMOVE or RESOLVE them completely into a clean, compliant certified document where all recommendations have been adopted and executed.
+- Ensure the document text is clean, professional, fully remediated, and free of any audit finding/severity blocks or issue tags.
 - suggested_title: A clean institutional title for the remediated document.
 - conversational_summary: A concise, confident plain-English briefing of findings and changes. Speak naturally — no corporate openers.
 
@@ -243,7 +248,8 @@ Return ONLY valid JSON — no prose outside the JSON object:
     }
 
     const downloadToken = crypto.randomBytes(16).toString('hex');
-    const remediatedText = aiData.remediated_text || maskedText;
+    const rawRemediated = aiData.remediated_text || localAudit.remediated_text || maskedText;
+    const remediatedText = PipelineService.cleanRemediatedDocumentForDownload(rawRemediated);
     const cleanTitle = aiData.suggested_title || `${path.parse(file.originalname).name} (Compliance Remediated)`;
 
     // Cache remediated document for download
@@ -308,10 +314,11 @@ Return ONLY valid JSON — no prose outside the JSON object:
       token?: string;
     }
   ): Promise<any> {
-    const { text, title, description, targetDocumentId } = body;
+    let { text, title, description, targetDocumentId } = body;
     if (!text || !text.trim()) {
       throw new AppError('Remediated text cannot be empty.', 400, 'TEXT_EMPTY');
     }
+    text = PipelineService.cleanRemediatedDocumentForDownload(text);
 
     // Write file to uploads directory
     const uploadDir = config.uploads.dir;
@@ -419,7 +426,7 @@ Return ONLY valid JSON — no prose outside the JSON object:
     return {
       conversational_summary: `I analyzed your draft deck with Springer Neural Copilot. ${breakdown.length} compliance ${breakdown.length === 1 ? 'item was' : 'items were'} identified under FINRA Rule 2210 / SEC Rule 206. I have remediated all passages into compliant fiduciary language and generated your ready-to-submit file below.`,
       audit_breakdown: breakdown,
-      remediated_text: audit.remediatedText,
+      remediated_text: PipelineService.cleanRemediatedDocumentForDownload(audit.remediatedText),
       suggested_title: cleanTitle,
     };
   }

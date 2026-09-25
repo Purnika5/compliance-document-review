@@ -244,9 +244,9 @@ Present this data to the user in a warm, conversational way. Use only the data l
   ): Promise<string> {
     const isOfficer = user?.role === 'Officer';
     const textToCheck = rawText
-      .replace(/^(?:can you\s+|please\s+|help me\s+|i want\s+(?:you\s+)?to\s+|i want more to\s+)?(?:fix|check|re-?check|correct|proofread|improve|rewrite|rephrase)\s*(?:my|this|the)?\s*(?:grammar|sentence|sentences|phrasing|text|draft|writing)?[:,-]?\s*/i, '')
-      .replace(/\b(?:please\s+)?(?:re-?check|check|fix)\s+(?:grammar|sentence|sentences)\b[:,-]?/gi, '')
-      .replace(/\b(?:grammar|sentence|sentences)\s+(?:check|re-?check)\b[:,-]?/gi, '')
+      .replace(/^(?:can you\s+|please\s+|help me\s+|i want\s+(?:you\s+)?to\s+|i want more to\s+)?(?:fix|check|re-?check|correct|proofread|improve|rewrite|rephrase)\s*(?:my|this|the)?\s*(?:grammar|sentence|sentences|phrasing|text|draft|writing)?(?:\s+(?:in|for|of|on))?[:,-]?\s*/i, '')
+      .replace(/\b(?:please\s+)?(?:re-?check|check|fix)\s+(?:grammar|sentence|sentences)\b(?:\s+(?:in|for|of|on))?[:,-]?/gi, '')
+      .replace(/\b(?:grammar|sentence|sentences)\s+(?:check|re-?check)\b(?:\s+(?:in|for|of|on))?[:,-]?/gi, '')
       .replace(/^(?:grammar|sentence|check|proofread|audit\s*note|fix)[:,-]?\s*/i, '')
       .trim();
 
@@ -257,13 +257,24 @@ Present this data to the user in a warm, conversational way. Use only the data l
     // Open, free-agent grammar prompt — works for any text, both Advisor and Officer
     const systemPrompt = `You are a warm, expressive, and highly skilled writing assistant for Springer Capital's ${isOfficer ? 'Compliance Officers' : 'Investment Advisors'}.
 
-You can fix grammar, spelling, punctuation, tone, clarity, and style for ANY text the user gives you — emails, proposals, notes, memos, casual messages, or anything else. Never refuse to fix text.
+You can fix grammar, spelling, punctuation, tone, clarity, and style for ANY text the user gives you — emails, proposals, notes, memos, casual messages, or anything else.
 
-Respond in exactly two clearly labelled parts:
-- **Corrected Text**: the fully fixed, polished version
-- **What I changed**: a friendly, conversational bullet list explaining what you improved and why
+IMPORTANT VALIDATION RULES:
+1. Sentence & Word Verification:
+   - Check if the text forms a valid English sentence (Good Sentence, Sentence Fragment, or Bad/Invalid Sentence).
+   - Check if each token is an actual English word or unrecognized gibberish/keyboard smashes (e.g., 'ashdzhuzhfskj', 'rjnij').
+2. If the text is unintelligible gibberish or contains non-words:
+   - Start with: "**Sentence Quality Assessment**: ✕ Bad Sentence (Unrecognized Words Detected)"
+   - List the specific unrecognized words and explain that they are not recognized English vocabulary.
+   - Do NOT pretend to fix it by merely capitalizing letters or adding punctuation. Ask the user for a meaningful sentence.
+3. If the text is a valid sentence with issues:
+   - Start with: "**Sentence Quality Assessment**: ⚠ Needs Revision (Word Check: Valid ✓ | Structure: Grammar/Spelling issues detected)"
+   - Provide **Corrected Text** and bulleted **What I changed**.
+4. If the text is already a good sentence:
+   - Start with: "**Sentence Quality Assessment**: ✓ Good Sentence (Word Check: All words recognized ✓ | Structure: Complete and standard ✓)"
+   - State **Corrected Text** and compliment the writing.
 
-Be warm and encouraging — like a knowledgeable colleague helping out, not a strict editor. If the text is already great, say so with a compliment!${isOfficer ? '\n\nFor professional text, also note if any phrasing could be strengthened for audit-defensible documentation.' : '\n\nFor proposal or client-facing text, optionally mention if any phrasing could be tightened for professional clarity.'}`;
+Be warm and encouraging — like a knowledgeable colleague helping out, not a strict editor.${isOfficer ? '\n\nFor professional text, also note if any phrasing could be strengthened for audit-defensible documentation.' : '\n\nFor proposal or client-facing text, optionally mention if any phrasing could be tightened for professional clarity.'}`;
 
     const result = await this.callLlm(textToCheck || rawText, systemPrompt, conversationHistory);
     if (result) return result;
@@ -277,6 +288,36 @@ Be warm and encouraging — like a knowledgeable colleague helping out, not a st
    * Mirrors the recheckGrammar engine in the frontend documentation-engine.ts.
    */
   private static applyHeuristicGrammarFix(input: string): string {
+    const rawTokens = input.replace(/[^a-zA-Z0-9\s]/g, ' ').split(/\s+/).filter(Boolean);
+
+    // 0. Non-word and gibberish detection
+    const invalidWords: string[] = [];
+    for (const token of rawTokens) {
+      const clean = token.toLowerCase();
+      if (/^[0-9]+$/.test(clean) || clean.length <= 1) continue;
+
+      const isNoVowels = clean.length >= 3 && !/[aeiouy]/i.test(clean);
+      const isConsonantCluster = /[bcdfghjklmnpqrstvwxyz]{5,}/i.test(clean);
+      const isImpossibleStart = /^(?:rjn|zh|xz|jj|kk|vv|ww|xx|yy|zz|pt|tk|fp|fk|kd|jl|jh|zx)/i.test(clean);
+      const isImpossibleEnd = /(?:fskj|jnij|ljs|xdf|qwe|zxc|vbn|jkl)$/i.test(clean);
+      const isSmash = /zhuzh|zhf|fsk|hfs|zxcv|asdf|ghjk|hjkl|qwerty/i.test(clean);
+
+      if (isNoVowels || isConsonantCluster || isImpossibleStart || isImpossibleEnd || isSmash) {
+        invalidWords.push(token);
+      }
+    }
+
+    if (
+      invalidWords.length > 0 &&
+      (invalidWords.length >= Math.ceil(rawTokens.length * 0.4) ||
+        (invalidWords.length >= 2 && rawTokens.length <= 5))
+    ) {
+      return `**Sentence Quality Assessment**: ✕ Bad Sentence (Unrecognized Words Detected)\n\n` +
+        `**Word Check**: Detected ${invalidWords.length} non-English or invalid word${invalidWords.length > 1 ? 's' : ''}: ${invalidWords.map(w => `"${w}"`).join(', ')}. These tokens do not exist in English vocabulary.\n\n` +
+        `**Sentence Check**: Incoherent syntax structure (lacks meaningful subject and predicate).\n\n` +
+        `I cannot correct unintelligible gibberish. Please provide a sentence with recognized English words so I can check and polish it for you!`;
+    }
+
     const changes: string[] = [];
     let corrected = input.trim();
 
@@ -345,13 +386,13 @@ Be warm and encouraging — like a knowledgeable colleague helping out, not a st
         .replace(/\bvery\s+(\w+)/gi, 'substantially $1')
         .replace(/\ba\s+lot\s+of\b/gi, 'numerous');
       if (polished !== corrected) {
-        return `**Corrected Text:**\n${polished}\n\n**What I changed:**\n• Enhanced tone and vocabulary for formal institutional compliance documentation.`;
+        return `**Sentence Quality Assessment**: ✓ Good Sentence (Word Check: Valid ✓ | Structure: Complete ✓)\n\n**Corrected Text:**\n${polished}\n\n**What I changed:**\n• Enhanced tone and vocabulary for formal institutional compliance documentation.`;
       }
-      return `**Corrected Text:**\n${corrected}\n\n**What I changed:**\n• Verified syntax and structure — grammar, spelling, and punctuation adhere to institutional standards.`;
+      return `**Sentence Quality Assessment**: ✓ Good Sentence (Word Check: Valid ✓ | Structure: Complete ✓)\n\n**Corrected Text:**\n${corrected}\n\n**What I changed:**\n• Verified syntax and structure — grammar, spelling, and punctuation adhere to institutional standards.`;
     }
 
     const bulletList = [...new Set(changes)].map((c: string) => `• ${c}`).join('\n');
-    return `**Corrected Text:**\n${corrected}\n\n**What I changed:**\n${bulletList}`;
+    return `**Sentence Quality Assessment**: ⚠ Needs Revision (Word Check: Valid ✓ | Structure: Corrections applied)\n\n**Corrected Text:**\n${corrected}\n\n**What I changed:**\n${bulletList}`;
   }
 
   /**
