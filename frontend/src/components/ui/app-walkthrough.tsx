@@ -27,6 +27,7 @@ import {
   Calendar,
   FileText,
   Bot,
+  Bell,
   X,
   ArrowRight,
   ArrowLeft,
@@ -45,7 +46,7 @@ interface ISpotlightStep {
 }
 
 /**
- * Sequential highlight steps for Advisors (including File Viewer, Date Filter, Settings, and AI Copilot).
+ * Sequential highlight steps for Advisors (including File Viewer, Date Filter, Notifications, Settings, and AI Copilot).
  */
 const ADVISOR_SPOTLIGHT_STEPS: ISpotlightStep[] = [
   {
@@ -81,6 +82,14 @@ const ADVISOR_SPOTLIGHT_STEPS: ISpotlightStep[] = [
     preferredPlacement: "left",
   },
   {
+    targetKey: "header-notifications",
+    title: "Real-Time Notification Alerts",
+    description:
+      "Receive live alerts when the Compliance Officer approves your filing, requests required revisions, or returns detailed regulatory determinations.",
+    icon: Bell,
+    preferredPlacement: "bottom",
+  },
+  {
     targetKey: "nav-audit",
     title: "Audit Trail",
     description:
@@ -100,14 +109,14 @@ const ADVISOR_SPOTLIGHT_STEPS: ISpotlightStep[] = [
     targetKey: "copilot-widget",
     title: "Neural Compliance AI Copilot",
     description:
-      "Click the AI Copilot button in the bottom-right corner to test sentences with /grammar, format compliance memos, or ask regulatory questions.",
+      "Click the AI Copilot button in the bottom-right corner to test sentences with /grammar, query the database with /query, view /stats, or ask regulatory questions.",
     icon: Bot,
     preferredPlacement: "top",
   },
 ];
 
 /**
- * Sequential highlight steps for Officers (including File Viewer, Date Filter, Settings, and AI Copilot).
+ * Sequential highlight steps for Officers (including File Viewer, Date Filter, Notifications, Settings, and AI Copilot).
  */
 const OFFICER_SPOTLIGHT_STEPS: ISpotlightStep[] = [
   {
@@ -143,6 +152,14 @@ const OFFICER_SPOTLIGHT_STEPS: ISpotlightStep[] = [
     preferredPlacement: "left",
   },
   {
+    targetKey: "header-notifications",
+    title: "Supervisory Notification Alerts",
+    description:
+      "Stay alerted to newly submitted advisor drafts, re-submitted revision filings, and high-risk compliance triage escalations requiring officer sign-off.",
+    icon: Bell,
+    preferredPlacement: "bottom",
+  },
+  {
     targetKey: "nav-audit",
     title: "Audit History",
     description:
@@ -162,7 +179,7 @@ const OFFICER_SPOTLIGHT_STEPS: ISpotlightStep[] = [
     targetKey: "copilot-widget",
     title: "Institutional AI Copilot & Precedents",
     description:
-      "Query the AI Copilot to research FINRA & SEC regulatory precedents, verify statutory requirements, and audit supervisory memos before sign-off.",
+      "Query the AI Copilot to research FINRA & SEC regulatory precedents, query compliance records with /query, inspect /stats, and audit supervisory memos before sign-off.",
     icon: Bot,
     preferredPlacement: "top",
   },
@@ -452,9 +469,21 @@ export function AppWalkthrough() {
               "absolute w-2.5 h-2.5 bg-white border border-[#E6E8E7] transform rotate-45 pointer-events-none",
               arrowPlacement === "left" && "-left-1.5 top-6 border-r-0 border-t-0",
               arrowPlacement === "right" && "-right-1.5 top-6 border-l-0 border-b-0",
-              arrowPlacement === "top" && "-top-1.5 left-8 border-b-0 border-r-0",
-              arrowPlacement === "bottom" && "-bottom-1.5 left-8 border-t-0 border-l-0"
+              arrowPlacement === "top" && "-top-1.5 border-b-0 border-r-0",
+              arrowPlacement === "bottom" && "-bottom-1.5 border-t-0 border-l-0"
             )}
+            style={{
+              left:
+                arrowPlacement === "top" || arrowPlacement === "bottom"
+                  ? `${Math.max(
+                      16,
+                      Math.min(
+                        296,
+                        targetRect.left + targetRect.width / 2 - (tooltipStyles.left ? parseFloat(tooltipStyles.left as string) : targetRect.left) - 5
+                      )
+                    )}px`
+                  : undefined,
+            }}
           />
         )}
 

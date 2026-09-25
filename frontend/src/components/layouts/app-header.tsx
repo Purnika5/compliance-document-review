@@ -21,7 +21,9 @@ import {
   Menu,
   ChevronDown,
   LogOut,
+  Sparkles,
 } from "lucide-react";
+import { walkthroughStore } from "@/lib/walkthrough-store";
 
 export interface AppHeaderProps {
   onToggleSidebarMobile?: () => void;
@@ -90,6 +92,16 @@ export function AppHeader({
               <div className="font-bold text-[#183028]">{session?.name || "User"}</div>
               <div className="text-[10px] text-[#183028]/60 font-mono">{session?.email || ""}</div>
             </DropdownMenuLabel>
+            <DropdownMenuSeparator className="bg-[#E6E8E7]" />
+
+            <DropdownMenuItem
+              onClick={() => {
+                walkthroughStore.openWalkthrough(role === "Officer" ? "Officer" : "Advisor");
+              }}
+              className="text-xs cursor-pointer text-[#183028] hover:bg-[#FAFBFB] gap-2 font-medium rounded-lg px-3 py-2 transition-colors"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-[#183028]" /> Product Guided Tour
+            </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-[#E6E8E7]" />
 
             <DropdownMenuItem

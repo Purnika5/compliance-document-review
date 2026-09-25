@@ -415,6 +415,7 @@ export function NotificationCenter() {
       <Popover>
         <PopoverTrigger asChild>
           <button
+            data-tour="header-notifications"
             className={cn(
               "relative h-8 w-8 rounded-full border bg-[#FFFFFF] text-[#183028] hover:bg-[#C5E86C] hover:text-[#183028] hover:border-[#C5E86C] flex items-center justify-center transition-all cursor-pointer shadow-2xs outline-none",
               activeRevisionCount > 0
