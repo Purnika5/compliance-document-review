@@ -22,8 +22,10 @@ import {
   ChevronDown,
   LogOut,
   Compass,
+  BookOpen,
 } from "lucide-react";
 import { walkthroughStore } from "@/lib/walkthrough-store";
+import { journalStore } from "@/lib/journal-store";
 
 export interface AppHeaderProps {
   onToggleSidebarMobile?: () => void;
@@ -73,6 +75,17 @@ export function AppHeader({
 
       {/* Right Area: Status / Actions / User Menu */}
       <div className="flex items-center gap-2.5">
+        {/* Onboarding Compliance Journal Button */}
+        <button
+          onClick={() => journalStore.openJournal(role as "Advisor" | "Officer")}
+          className="flex items-center gap-1.5 rounded-lg border border-[#E6E8E7] bg-white px-2.5 py-1 text-xs font-semibold text-[#183028] shadow-2xs transition-all hover:bg-[#C5E86C]/30 hover:border-[#C5E86C] cursor-pointer"
+          title="Open Compliance Action Journal"
+          aria-label="Open Compliance Action Journal"
+        >
+          <BookOpen className="h-3.5 w-3.5 text-emerald-700" />
+          <span className="hidden sm:inline">Journal</span>
+        </button>
+
         {/* On-demand Walkthrough Tour Button */}
         <button
           onClick={() => walkthroughStore.openWalkthrough(role === "Officer" ? "Officer" : "Advisor")}
@@ -104,6 +117,13 @@ export function AppHeader({
               <div className="text-[10px] text-[#183028]/60 font-mono">{session?.email || ""}</div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator className="bg-[#E6E8E7]" />
+
+            <DropdownMenuItem
+              onClick={() => journalStore.openJournal(role as "Advisor" | "Officer")}
+              className="text-xs cursor-pointer text-[#183028] hover:bg-[#C5E86C]/20 focus:bg-[#C5E86C]/20 gap-2 font-medium rounded-lg px-3 py-2 transition-colors"
+            >
+              <BookOpen className="h-3.5 w-3.5 text-emerald-700" /> Compliance Journal
+            </DropdownMenuItem>
 
             <DropdownMenuItem
               onClick={() => walkthroughStore.openWalkthrough(role === "Officer" ? "Officer" : "Advisor")}
