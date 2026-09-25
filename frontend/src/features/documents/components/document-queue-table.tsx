@@ -468,7 +468,7 @@ export function DocumentQueueTable() {
                   <TableHead className="py-3.5 pl-4 pr-2 text-left text-[11px] font-bold uppercase tracking-wider text-[#183028]/60 w-[95px] shrink-0">
                     DOCUMENT ID
                   </TableHead>
-                  <TableHead className="py-3.5 px-3 text-left text-[11px] font-bold uppercase tracking-wider text-[#183028]/60 min-w-[180px]">
+                  <TableHead className="py-3.5 px-3 text-left text-[11px] font-bold uppercase tracking-wider text-[#183028]/60 min-w-[220px] max-w-[420px]">
                     DOCUMENT DETAILS
                   </TableHead>
                   <TableHead className="py-3.5 px-3 text-left text-[11px] font-bold uppercase tracking-wider text-[#183028]/60 min-w-[150px] max-w-[200px]">
@@ -500,14 +500,14 @@ export function DocumentQueueTable() {
                         </span>
                       </TableCell>
 
-                      <TableCell className="py-3 px-3">
+                      <TableCell className="py-3 px-3 min-w-[220px] max-w-[420px]">
                         <div className="space-y-0.5">
-                          <div className="flex items-center gap-2">
-                            <p className="font-semibold text-sm text-[#183028] leading-snug group-hover:text-[#183028] transition-colors line-clamp-1">
+                          <div className="flex items-start gap-2">
+                            <p className="font-semibold text-sm text-[#183028] leading-snug group-hover:text-[#183028] transition-colors break-words [overflow-wrap:anywhere] whitespace-normal">
                               {doc.title}
                             </p>
                             {isScannedFile(doc.fileName || (doc as any).file_name || doc.title) && (
-                              <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-[#C5E86C]/40 text-[#183028] border border-[#C5E86C] shrink-0" title="Scanned via Springer Neural Copilot">
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-[#C5E86C]/40 text-[#183028] border border-[#C5E86C] shrink-0 mt-0.5" title="Scanned via Springer Neural Copilot">
                                 <span className="h-1 w-1 rounded-full bg-[#183028]" />
                                 Scanned
                               </span>
