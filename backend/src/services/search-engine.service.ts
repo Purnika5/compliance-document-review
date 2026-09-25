@@ -229,27 +229,25 @@ export class SearchEngineService {
     const userRole = user?.role || 'Advisor';
     const userId = user?.id;
 
-    if (userRole === 'Advisor' && userId) {
-      if (uploaded_by && uploaded_by.trim() && uploaded_by !== 'my uploads' && uploaded_by !== 'my files' && uploaded_by !== 'my submissions' && uploaded_by !== 'all') {
-        const cleanUpload = uploaded_by.trim().toLowerCase();
-        // Allow matching by specific advisor name (e.g. Duncan Woodard) or own submissions
-        conditions.push(`(u.name ILIKE $${idx} OR u.email ILIKE $${idx} OR d.advisor_id = $${idx + 1})`);
-        values.push(`%${cleanUpload}%`, userId);
-        idx += 2;
-      } else {
+    if (userRole === 'Advisor') {
+      // Advisors are strictly locked to their own submissions ONLY — never expose other advisors' files
+      if (userId) {
         conditions.push(`d.advisor_id = $${idx++}`);
         values.push(userId);
       }
-    } else if (uploaded_by) {
-      const cleanUpload = uploaded_by.trim().toLowerCase();
-      if ((cleanUpload === 'my uploads' || cleanUpload === 'my files' || cleanUpload === 'my submissions') && userId) {
-        conditions.push(`d.advisor_id = $${idx++}`);
-        values.push(userId);
-      } else if (cleanUpload.length > 0 && cleanUpload !== 'all' && cleanUpload !== 'my uploads' && cleanUpload !== 'my files' && cleanUpload !== 'my submissions') {
-        // Can match advisor UUID, email, or name
-        conditions.push(`(u.name ILIKE $${idx} OR u.email ILIKE $${idx} OR d.advisor_id::text = $${idx})`);
-        values.push(`%${cleanUpload}%`);
-        idx++;
+    } else {
+      // Supervisory Officers have platform-wide review scope and can filter across all advisors or by specific advisor
+      if (uploaded_by) {
+        const cleanUpload = uploaded_by.trim().toLowerCase();
+        if ((cleanUpload === 'my uploads' || cleanUpload === 'my files' || cleanUpload === 'my submissions') && userId) {
+          conditions.push(`d.advisor_id = $${idx++}`);
+          values.push(userId);
+        } else if (cleanUpload.length > 0 && cleanUpload !== 'all') {
+          // Can match advisor UUID, email, or name
+          conditions.push(`(u.name ILIKE $${idx} OR u.email ILIKE $${idx} OR d.advisor_id::text = $${idx})`);
+          values.push(`%${cleanUpload}%`);
+          idx++;
+        }
       }
     }
 

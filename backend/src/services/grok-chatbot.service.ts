@@ -1176,7 +1176,8 @@ State whether this text would be Approved or Needs Revision, with guidance for t
     user: ChatUserContext,
     correctedQuery: string
   ): Promise<ChatbotResponse> {
-    const sql = `
+    const isAdvisor = user.role === 'Advisor';
+    let sql = `
       SELECT 
         d.id, d.title, d.status, d.version, d.file_name, d.mime_type, d.file_size, d.created_at,
         u.name AS advisor_name, u.email AS advisor_email, u.role AS advisor_role,
@@ -1184,14 +1185,21 @@ State whether this text would be Approved or Needs Revision, with guidance for t
       FROM documents d
       LEFT JOIN users u ON d.advisor_id = u.id
       LEFT JOIN document_analyses da ON d.id = da.document_id AND d.version = da.version
-      ORDER BY d.created_at DESC
-      LIMIT 1
     `;
-    const res = await query<any>(sql, []);
+    const params: any[] = [];
+    if (isAdvisor && user.id) {
+      sql += ` WHERE d.advisor_id = $1`;
+      params.push(user.id);
+    }
+    sql += ` ORDER BY d.created_at DESC LIMIT 1`;
+
+    const res = await query<any>(sql, params);
 
     if (res.rows.length === 0) {
       return {
-        reply: "There are currently no document filings uploaded in the Springer Capital repository database.",
+        reply: isAdvisor
+          ? "You have not submitted any document filings yet in the Springer Capital repository."
+          : "There are currently no document filings uploaded in the Springer Capital repository database.",
         intent: 'most_recent_filing',
         correctedQuery,
       };
@@ -1231,9 +1239,13 @@ State whether this text would be Approved or Needs Revision, with guidance for t
       flagsSnippet = '\n\n**Compliance Status**: ✓ Clean — zero compliance flags detected under FINRA Rule 2210 & SEC Rule 206.';
     }
 
-    const dbSummary = `Most recent document filing retrieved from the database:\n- Title: "${doc.title}" (Version ${doc.version})\n- Uploaded by: ${advisorName}${advisorEmail}\n- Upload Date: ${dateFormatted}\n- Status: ${doc.status}\n- Risk Level: ${riskLevel} (Score: ${riskScore})\n- Flag count: ${flagCount}`;
+    const dbSummary = isAdvisor
+      ? `The advisor's most recent document filing:\n- Title: "${doc.title}" (Version ${doc.version})\n- Upload Date: ${dateFormatted}\n- Status: ${doc.status}\n- Risk Level: ${riskLevel} (Score: ${riskScore})\n- Flag count: ${flagCount}`
+      : `Most recent document filing retrieved from the database:\n- Title: "${doc.title}" (Version ${doc.version})\n- Uploaded by: ${advisorName}${advisorEmail}\n- Upload Date: ${dateFormatted}\n- Status: ${doc.status}\n- Risk Level: ${riskLevel} (Score: ${riskScore})\n- Flag count: ${flagCount}`;
 
-    const fallback = `The most recent filing in the Springer Capital repository is:\n\n📄 **"${doc.title}"** (Version ${doc.version})\n• **Uploaded By**: **${advisorName}**${advisorEmail}\n• **Submission Date**: ${dateFormatted}\n• **Status**: **${doc.status}**\n• **Risk Assessment**: **${riskLevel}** (${riskScore})${flagsSnippet}`;
+    const fallback = isAdvisor
+      ? `Your most recent filing in the Springer Capital repository is:\n\n📄 **"${doc.title}"** (Version ${doc.version})\n• **Submission Date**: ${dateFormatted}\n• **Status**: **${doc.status}**\n• **Risk Assessment**: **${riskLevel}** (${riskScore})${flagsSnippet}`
+      : `The most recent filing in the Springer Capital repository is:\n\n📄 **"${doc.title}"** (Version ${doc.version})\n• **Uploaded By**: **${advisorName}**${advisorEmail}\n• **Submission Date**: ${dateFormatted}\n• **Status**: **${doc.status}**\n• **Risk Assessment**: **${riskLevel}** (${riskScore})${flagsSnippet}`;
 
     const reply = await this.formatDbResultWithLlm(dbSummary, correctedQuery, user.role || 'Officer', fallback);
     return { reply, intent: 'most_recent_filing', correctedQuery };
@@ -1246,7 +1258,8 @@ State whether this text would be Approved or Needs Revision, with guidance for t
     user: ChatUserContext,
     correctedQuery: string
   ): Promise<ChatbotResponse> {
-    const sql = `
+    const isAdvisor = user.role === 'Advisor';
+    let sql = `
       SELECT 
         d.id, d.title, d.status, d.version, d.created_at,
         u.name AS advisor_name, u.email AS advisor_email,
@@ -1255,17 +1268,22 @@ State whether this text would be Approved or Needs Revision, with guidance for t
       LEFT JOIN users u ON d.advisor_id = u.id
       LEFT JOIN document_analyses da ON d.id = da.document_id AND d.version = da.version
       WHERE d.created_at >= NOW() - INTERVAL '7 days'
-      ORDER BY d.created_at DESC
-      LIMIT 10
     `;
-    const res = await query<any>(sql, []);
+    const params: any[] = [];
+    if (isAdvisor && user.id) {
+      sql += ` AND d.advisor_id = $1`;
+      params.push(user.id);
+    }
+    sql += ` ORDER BY d.created_at DESC LIMIT 10`;
+
+    const res = await query<any>(sql, params);
 
     let rows = res.rows;
     let periodNote = 'in the past 7 days';
 
     if (rows.length === 0) {
       // Fallback to most recent filings from DB so user always gets live records
-      const fallbackRes = await query<any>(`
+      let fallbackSql = `
         SELECT 
           d.id, d.title, d.status, d.version, d.created_at,
           u.name AS advisor_name, u.email AS advisor_email,
@@ -1273,16 +1291,24 @@ State whether this text would be Approved or Needs Revision, with guidance for t
         FROM documents d
         LEFT JOIN users u ON d.advisor_id = u.id
         LEFT JOIN document_analyses da ON d.id = da.document_id AND d.version = da.version
-        ORDER BY d.created_at DESC
-        LIMIT 5
-      `, []);
+      `;
+      const fallbackParams: any[] = [];
+      if (isAdvisor && user.id) {
+        fallbackSql += ` WHERE d.advisor_id = $1`;
+        fallbackParams.push(user.id);
+      }
+      fallbackSql += ` ORDER BY d.created_at DESC LIMIT 5`;
+
+      const fallbackRes = await query<any>(fallbackSql, fallbackParams);
       rows = fallbackRes.rows;
       periodNote = 'recently (no uploads in past 7 days, showing latest filings)';
     }
 
     if (rows.length === 0) {
       return {
-        reply: "No document uploads found in the Springer Capital database.",
+        reply: isAdvisor
+          ? "You have not uploaded any documents recently in the Springer Capital database."
+          : "No document uploads found in the Springer Capital database.",
         intent: 'who_uploaded_recent',
         correctedQuery,
       };
@@ -1293,11 +1319,16 @@ State whether this text would be Approved or Needs Revision, with guidance for t
       let flagsList: any[] = [];
       try { flagsList = typeof doc.flags === 'string' ? JSON.parse(doc.flags) : (doc.flags || []); } catch { flagsList = []; }
       const risk = flagsList.length === 0 ? '✓ Clean' : `⚠ ${flagsList.length} flag${flagsList.length > 1 ? 's' : ''}`;
-      return `- **"${doc.title}"** (v${doc.version}) → Uploaded by **${doc.advisor_name || 'Advisor'}** (${doc.advisor_email || 'N/A'}) on ${dateStr} [Status: ${doc.status} | ${risk}]`;
+      const author = isAdvisor ? '' : ` → Uploaded by **${doc.advisor_name || 'Advisor'}** (${doc.advisor_email || 'N/A'})`;
+      return `- **"${doc.title}"** (v${doc.version})${author} on ${dateStr} [Status: ${doc.status} | ${risk}]`;
     }).join('\n');
 
-    const dbSummary = `Document uploads ${periodNote} (${rows.length} total):\n${docLines}`;
-    const fallback = `Here are the document submissions uploaded ${periodNote}:\n\n${docLines}\n\nWould you like me to inspect any specific advisor's filing?`;
+    const header = isAdvisor
+      ? `Your document submissions uploaded ${periodNote}:`
+      : `Here are the document submissions uploaded ${periodNote}:`;
+
+    const dbSummary = `${header} (${rows.length} total):\n${docLines}`;
+    const fallback = `${header}\n\n${docLines}${isAdvisor ? '' : '\n\nWould you like me to inspect any specific advisor\'s filing?'}`;
 
     const reply = await this.formatDbResultWithLlm(dbSummary, correctedQuery, user.role || 'Officer', fallback);
     return { reply, intent: 'who_uploaded_recent', correctedQuery };
@@ -1310,7 +1341,8 @@ State whether this text would be Approved or Needs Revision, with guidance for t
     user: ChatUserContext,
     correctedQuery: string
   ): Promise<ChatbotResponse> {
-    const sql = `
+    const isAdvisor = user.role === 'Advisor';
+    let sql = `
       SELECT 
         d.id, d.title, d.status, d.version, d.created_at,
         u.name AS advisor_name, u.email AS advisor_email,
@@ -1319,13 +1351,21 @@ State whether this text would be Approved or Needs Revision, with guidance for t
       LEFT JOIN users u ON d.advisor_id = u.id
       LEFT JOIN document_analyses da ON d.id = da.document_id AND d.version = da.version
       WHERE d.created_at::date = CURRENT_DATE
-      ORDER BY d.created_at DESC
     `;
-    const res = await query<any>(sql, []);
+    const params: any[] = [];
+    if (isAdvisor && user.id) {
+      sql += ` AND d.advisor_id = $1`;
+      params.push(user.id);
+    }
+    sql += ` ORDER BY d.created_at DESC`;
+
+    const res = await query<any>(sql, params);
     const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
     if (res.rows.length === 0) {
-      const reply = `No documents have been uploaded today (${todayStr}). The supervisory review queue has received 0 new submissions today.`;
+      const reply = isAdvisor
+        ? `You have not uploaded any documents today (${todayStr}).`
+        : `No documents have been uploaded today (${todayStr}). The supervisory review queue has received 0 new submissions today.`;
       return { reply, intent: 'todays_uploads', correctedQuery };
     }
 
@@ -1334,11 +1374,16 @@ State whether this text would be Approved or Needs Revision, with guidance for t
       let flagsList: any[] = [];
       try { flagsList = typeof doc.flags === 'string' ? JSON.parse(doc.flags) : (doc.flags || []); } catch { flagsList = []; }
       const risk = flagsList.length === 0 ? '✓ Clean' : `⚠ ${flagsList.length} flag${flagsList.length > 1 ? 's' : ''}`;
-      return `- **"${doc.title}"** (v${doc.version}) | By: **${doc.advisor_name || 'Advisor'}** | Time: ${timeStr} | Status: **${doc.status}** (${risk})`;
+      const byAuthor = isAdvisor ? '' : ` | By: **${doc.advisor_name || 'Advisor'}**`;
+      return `- **"${doc.title}"** (v${doc.version})${byAuthor} | Time: ${timeStr} | Status: **${doc.status}** (${risk})`;
     }).join('\n');
 
-    const dbSummary = `${res.rows.length} document(s) uploaded today (${todayStr}):\n${docLines}`;
-    const fallback = `**Today's Uploads (${res.rows.length} document${res.rows.length > 1 ? 's' : ''} on ${todayStr}):**\n\n${docLines}`;
+    const header = isAdvisor
+      ? `**Your Uploads Today (${res.rows.length} document${res.rows.length > 1 ? 's' : ''} on ${todayStr}):**`
+      : `**Today's Uploads (${res.rows.length} document${res.rows.length > 1 ? 's' : ''} on ${todayStr}):**`;
+
+    const dbSummary = `${header}\n${docLines}`;
+    const fallback = `${header}\n\n${docLines}`;
 
     const reply = await this.formatDbResultWithLlm(dbSummary, correctedQuery, user.role || 'Officer', fallback);
     return { reply, intent: 'todays_uploads', correctedQuery };
@@ -1416,7 +1461,8 @@ State whether this text would be Approved or Needs Revision, with guidance for t
     user: ChatUserContext,
     correctedQuery: string
   ): Promise<ChatbotResponse> {
-    const sql = `
+    const isAdvisor = user.role === 'Advisor';
+    let sql = `
       SELECT 
         d.id, d.title, d.status, d.version, d.created_at,
         u.name AS advisor_name, u.email AS advisor_email,
@@ -1424,15 +1470,22 @@ State whether this text would be Approved or Needs Revision, with guidance for t
       FROM documents d
       LEFT JOIN users u ON d.advisor_id = u.id
       JOIN document_analyses da ON d.id = da.document_id AND d.version = da.version
-      WHERE da.risk_level = 'High' OR (da.flags IS NOT NULL AND jsonb_array_length(da.flags) > 0)
-      ORDER BY da.risk_score DESC NULLS LAST, d.created_at DESC
-      LIMIT 10
+      WHERE (da.risk_level = 'High' OR (da.flags IS NOT NULL AND jsonb_array_length(da.flags) > 0))
     `;
-    const res = await query<any>(sql, []);
+    const params: any[] = [];
+    if (isAdvisor && user.id) {
+      sql += ` AND d.advisor_id = $1`;
+      params.push(user.id);
+    }
+    sql += ` ORDER BY da.risk_score DESC NULLS LAST, d.created_at DESC LIMIT 10`;
+
+    const res = await query<any>(sql, params);
 
     if (res.rows.length === 0) {
       return {
-        reply: "Great news — zero submissions across all advisors currently have high-risk compliance flags in the database.",
+        reply: isAdvisor
+          ? "Great news — zero of your submissions currently have high-risk compliance flags in the database."
+          : "Great news — zero submissions across all advisors currently have high-risk compliance flags in the database.",
         intent: 'high_risk_filings',
         correctedQuery,
       };
@@ -1442,11 +1495,16 @@ State whether this text would be Approved or Needs Revision, with guidance for t
       let flagsList: any[] = [];
       try { flagsList = typeof doc.flags === 'string' ? JSON.parse(doc.flags) : (doc.flags || []); } catch { flagsList = []; }
       const rules = [...new Set(flagsList.map((f: any) => f.rule || 'FINRA 2210'))].join(', ');
-      return `- **"${doc.title}"** (v${doc.version}) | Advisor: **${doc.advisor_name || 'Unknown'}** | Status: **${doc.status}** | Flags: **${flagsList.length}** [${rules}]`;
+      const advisorPart = isAdvisor ? '' : ` | Advisor: **${doc.advisor_name || 'Unknown'}**`;
+      return `- **"${doc.title}"** (v${doc.version})${advisorPart} | Status: **${doc.status}** | Flags: **${flagsList.length}** [${rules}]`;
     }).join('\n');
 
-    const dbSummary = `${res.rows.length} high-risk / flagged submission(s) in repository:\n${docLines}`;
-    const fallback = `**High-Risk & Flagged Submissions (${res.rows.length} found):**\n\n${docLines}\n\nWould you like me to inspect the compliance flags for any of these?`;
+    const header = isAdvisor
+      ? `**Your High-Risk & Flagged Submissions (${res.rows.length} found):**`
+      : `**High-Risk & Flagged Submissions (${res.rows.length} found):**`;
+
+    const dbSummary = `${header}\n${docLines}`;
+    const fallback = `${header}\n\n${docLines}\n\nWould you like me to inspect the compliance flags for any of these?`;
 
     const reply = await this.formatDbResultWithLlm(dbSummary, correctedQuery, user.role || 'Officer', fallback);
     return { reply, intent: 'high_risk_filings', correctedQuery };
