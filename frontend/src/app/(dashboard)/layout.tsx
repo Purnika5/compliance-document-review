@@ -78,8 +78,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <AppHeader onToggleSidebarMobile={() => setMobileSidebarOpen((prev) => !prev)} />
         </div>
 
-        {/* Content Pane */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-[1600px] w-full mx-auto print:p-0 print:m-0 print:max-w-none">
+        {/* Content Pane - Maximized width for high-density document queues */}
+        <main className="flex-1 p-3 sm:p-5 lg:p-6 2xl:p-8 max-w-[1800px] w-full mx-auto print:p-0 print:m-0 print:max-w-none">
           {children}
         </main>
       </div>

@@ -69,6 +69,7 @@ export function DocumentQueueTable() {
   const [dateFilterPreset, setDateFilterPreset] = useState<DateFilterPreset>("All");
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
+  const [showCalendar, setShowCalendar] = useState(true);
   const [sortField] = useState<"submittedAt" | "title" | "status">("submittedAt");
   const [sortDirection] = useState<"asc" | "desc">("desc");
   const [decisionDoc, setDecisionDoc] = useState<{
@@ -362,10 +363,10 @@ export function DocumentQueueTable() {
         </div>
       </div>
 
-      {/* Main Content: Review Queue and Unified Compliance Calendar */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
-        {/* Left Column: Review Queue Table & Toolbar */}
-        <div className="xl:col-span-8 2xl:col-span-9 space-y-4 min-w-0">
+      {/* Main Content: Review Queue and Unified Compliance Calendar (Maximized Table Width) */}
+      <div className="flex flex-col xl:flex-row gap-4 2xl:gap-5 items-start">
+        {/* Left Column: Review Queue Table & Toolbar (Expands to fill 100% available space) */}
+        <div className="flex-1 min-w-0 space-y-4 w-full">
           {/* Queue Toolbar: Search, Status Tabs, and Priority Filters */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-2xl bg-white border border-[#E6E8E7] shadow-xs">
             {/* Status Filter Tabs */}
@@ -388,9 +389,9 @@ export function DocumentQueueTable() {
               )}
             </div>
 
-            {/* Search & Priority Controls */}
+            {/* Search, Priority Controls, and Calendar Toggle */}
             <div className="flex items-center gap-2.5">
-              <div className="relative w-full sm:w-72">
+              <div className="relative w-full sm:w-64 2xl:w-72">
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#183028]/40" />
                 <Input
                   placeholder="Search advisor, document ID, title..."
@@ -414,6 +415,21 @@ export function DocumentQueueTable() {
                   <option value="Standard">Standard</option>
                 </select>
               </div>
+
+              <button
+                type="button"
+                onClick={() => setShowCalendar((prev) => !prev)}
+                title={showCalendar ? "Hide calendar to maximize queue table width" : "Show compliance calendar"}
+                className={cn(
+                  "h-9 px-2.5 text-xs font-semibold rounded-xl border transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs shrink-0",
+                  showCalendar
+                    ? "bg-[#FAFBF9] border-[#E6E8E7] text-[#183028] hover:bg-[#C5E86C]/25 hover:border-[#183028]/30"
+                    : "bg-[#183028] text-[#C5E86C] border-[#183028]"
+                )}
+              >
+                <Calendar className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{showCalendar ? "Hide Calendar" : "Show Calendar"}</span>
+              </button>
             </div>
           </div>
 
@@ -443,25 +459,25 @@ export function DocumentQueueTable() {
           />
         ) : (
           <div className="overflow-x-auto [scrollbar-width:thin] [scrollbar-color:#E2E8F0_transparent] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-200 [&::-webkit-scrollbar-thumb]:rounded-full">
-            <Table className="w-full min-w-[880px] bg-white border-collapse">
+            <Table className="w-full min-w-[760px] bg-white border-collapse">
               <TableHeader className="bg-[#FAFBF9] border-b border-[#E6E8E7]">
                 <TableRow className="border-b border-[#E6E8E7] hover:bg-[#FAFBF9]">
-                  <TableHead className="py-4 pl-6 pr-4 text-left text-[11px] font-bold uppercase tracking-wider text-[#183028]/60 w-[13%] min-w-[110px]">
+                  <TableHead className="py-3.5 pl-4 pr-2 text-left text-[11px] font-bold uppercase tracking-wider text-[#183028]/60 w-[95px] shrink-0">
                     DOCUMENT ID
                   </TableHead>
-                  <TableHead className="py-4 px-4 text-left text-[11px] font-bold uppercase tracking-wider text-[#183028]/60 w-[30%] min-w-[240px]">
+                  <TableHead className="py-3.5 px-3 text-left text-[11px] font-bold uppercase tracking-wider text-[#183028]/60 min-w-[180px]">
                     DOCUMENT DETAILS
                   </TableHead>
-                  <TableHead className="py-4 px-4 text-left text-[11px] font-bold uppercase tracking-wider text-[#183028]/60 w-[23%] min-w-[200px]">
+                  <TableHead className="py-3.5 px-3 text-left text-[11px] font-bold uppercase tracking-wider text-[#183028]/60 min-w-[150px] max-w-[200px]">
                     SUBMITTING ADVISOR
                   </TableHead>
-                  <TableHead className="py-4 px-4 text-left text-[11px] font-bold uppercase tracking-wider text-[#183028]/60 w-[14%] min-w-[125px]">
+                  <TableHead className="py-3.5 px-3 text-left text-[11px] font-bold uppercase tracking-wider text-[#183028]/60 w-[105px] shrink-0">
                     SUBMITTED DATE
                   </TableHead>
-                  <TableHead className="py-4 px-4 text-left text-[11px] font-bold uppercase tracking-wider text-[#183028]/60 w-[10%] min-w-[110px]">
+                  <TableHead className="py-3.5 px-3 text-left text-[11px] font-bold uppercase tracking-wider text-[#183028]/60 w-[115px] shrink-0">
                     STATUS
                   </TableHead>
-                  <TableHead className="py-4 pl-4 pr-6 text-right text-[11px] font-bold uppercase tracking-wider text-[#183028]/60 w-[10%] min-w-[190px]">
+                  <TableHead className="py-3.5 pl-2 pr-4 text-right text-[11px] font-bold uppercase tracking-wider text-[#183028]/60 w-[170px] shrink-0">
                     DECISION ACTIONS
                   </TableHead>
                 </TableRow>
@@ -475,14 +491,14 @@ export function DocumentQueueTable() {
                       onClick={() => router.push(`/documents/${doc.id}`)}
                       className="hover:bg-[#FAFBF9]/80 transition-colors cursor-pointer group"
                     >
-                      <TableCell className="py-5 pl-6 pr-4">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-[#183028]/5 border border-[#183028]/10 font-mono text-xs font-semibold text-[#183028] tracking-wide group-hover:bg-[#C5E86C]/30 transition-colors">
+                      <TableCell className="py-3 pl-4 pr-2">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-[#183028]/5 border border-[#183028]/10 font-mono text-xs font-semibold text-[#183028] tracking-wide group-hover:bg-[#C5E86C]/30 transition-colors">
                           DOC-{(doc.id || "0000").slice(-4).toUpperCase()}
                         </span>
                       </TableCell>
 
-                      <TableCell className="py-5 px-4">
-                        <div className="space-y-1">
+                      <TableCell className="py-3 px-3">
+                        <div className="space-y-0.5">
                           <div className="flex items-center gap-2">
                             <p className="font-semibold text-sm text-[#183028] leading-snug group-hover:text-[#183028] transition-colors line-clamp-1">
                               {doc.title}
@@ -510,23 +526,23 @@ export function DocumentQueueTable() {
                         </div>
                       </TableCell>
 
-                      <TableCell className="py-5 px-4">
-                        <div className="flex items-center gap-3">
-                          <div className="h-8.5 w-8.5 rounded-full bg-[#183028] text-[#C5E86C] text-xs font-bold flex items-center justify-center shrink-0 shadow-2xs ring-2 ring-[#C5E86C]/20">
+                      <TableCell className="py-3 px-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="h-7 w-7 rounded-full bg-[#183028] text-[#C5E86C] text-[10px] font-bold flex items-center justify-center shrink-0 shadow-2xs ring-2 ring-[#C5E86C]/20">
                             {(doc.submittedBy || "Advisor").split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
                           </div>
-                          <div className="min-w-0">
+                          <div className="min-w-0 max-w-[160px]">
                             <p className="text-xs font-semibold text-[#183028] truncate">
                               {doc.submittedBy || "Institutional Advisor"}
                             </p>
-                            <p className="text-[11px] text-[#183028]/55 truncate mt-0.5 font-sans">
+                            <p className="text-[10.5px] text-[#183028]/55 truncate mt-0.5 font-sans" title={doc.advisorEmail || "advisor@springer.capital"}>
                               {doc.advisorEmail || "advisor@springer.capital"}
                             </p>
                           </div>
                         </div>
                       </TableCell>
 
-                      <TableCell className="py-5 px-4 font-mono text-xs text-[#183028]/70 whitespace-nowrap">
+                      <TableCell className="py-3 px-3 font-mono text-xs text-[#183028]/70 whitespace-nowrap">
                         {new Date(doc.submittedAt).toLocaleDateString("en-US", {
                           month: "short",
                           day: "numeric",
@@ -534,19 +550,19 @@ export function DocumentQueueTable() {
                         })}
                       </TableCell>
 
-                      <TableCell className="py-5 px-4 whitespace-nowrap">
+                      <TableCell className="py-3 px-3 whitespace-nowrap">
                         <StatusBadge status={doc.status} />
                       </TableCell>
 
-                      <TableCell className="py-5 pl-4 pr-6 text-right" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-end gap-2 whitespace-nowrap">
+                      <TableCell className="py-3 pl-2 pr-4 text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
                           {doc.status !== "Pending" ? (
                             <Button
                               size="sm"
                               variant="outline"
                               data-tour="officer-review-btn"
                               onClick={() => router.push(`/documents/${doc.id}`)}
-                              className="h-8 px-3 rounded-lg border-[#E6E8E7] text-xs font-semibold text-[#183028]/80 bg-white hover:bg-[#C5E86C]/20 hover:text-[#183028] hover:border-[#183028] transition-colors gap-1.5 cursor-pointer shadow-2xs"
+                              className="h-7.5 px-2.5 rounded-lg border-[#E6E8E7] text-xs font-semibold text-[#183028]/80 bg-white hover:bg-[#C5E86C]/20 hover:text-[#183028] hover:border-[#183028] transition-colors gap-1.5 cursor-pointer shadow-2xs"
                             >
                               <Eye className="h-3.5 w-3.5" />
                               <span>View Only</span>
@@ -558,7 +574,7 @@ export function DocumentQueueTable() {
                                 variant="outline"
                                 data-tour="officer-review-btn"
                                 onClick={() => router.push(`/documents/${doc.id}`)}
-                                className="h-8 px-3 rounded-lg border-[#E6E8E7] text-xs font-semibold text-[#183028] bg-white hover:bg-[#C5E86C]/20 hover:text-[#183028] hover:border-[#183028] transition-colors gap-1.5 shadow-2xs cursor-pointer"
+                                className="h-7.5 px-2.5 rounded-lg border-[#E6E8E7] text-xs font-semibold text-[#183028] bg-white hover:bg-[#C5E86C]/20 hover:text-[#183028] hover:border-[#183028] transition-colors gap-1 shadow-2xs cursor-pointer"
                               >
                                 <Eye className="h-3.5 w-3.5" />
                                 <span>Review</span>
@@ -573,7 +589,7 @@ export function DocumentQueueTable() {
                                     type: "Approved",
                                   })
                                 }
-                                className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#C5E86C] border border-[#183028]/20 px-3 text-xs font-bold text-[#183028] hover:bg-[#b8de5b] transition-all cursor-pointer shadow-2xs"
+                                className="inline-flex h-7.5 items-center gap-1 rounded-lg bg-[#C5E86C] border border-[#183028]/20 px-2.5 text-xs font-bold text-[#183028] hover:bg-[#b8de5b] transition-all cursor-pointer shadow-2xs"
                               >
                                 <CheckCircle2 className="h-3.5 w-3.5 text-[#183028]" />
                                 <span>Approve</span>
@@ -581,8 +597,8 @@ export function DocumentQueueTable() {
 
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <button className="h-8 w-8 rounded-lg bg-white hover:bg-[#C5E86C]/20 text-[#183028]/70 hover:text-[#183028] hover:border-[#183028] flex items-center justify-center transition-colors cursor-pointer border border-[#E6E8E7] shadow-2xs">
-                                    <MoreHorizontal className="h-4 w-4" />
+                                  <button className="h-7.5 w-7.5 rounded-lg bg-white hover:bg-[#C5E86C]/20 text-[#183028]/70 hover:text-[#183028] hover:border-[#183028] flex items-center justify-center transition-colors cursor-pointer border border-[#E6E8E7] shadow-2xs">
+                                    <MoreHorizontal className="h-3.5 w-3.5" />
                                   </button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-48 bg-[#FFFFFF] shadow-xl rounded-xl border-[#E6E8E7] p-1.5">
@@ -626,30 +642,32 @@ export function DocumentQueueTable() {
           </div>
         </div>
 
-        {/* Right Column: Unified Compliance Calendar (Merged in 1 place) */}
-        <div data-tour="dashboard-date-filter" className="xl:col-span-4 2xl:col-span-3 space-y-4 sticky top-4 min-w-0">
-          <ComplianceCalendar
-            documents={documents}
-            activePreset={dateFilterPreset}
-            customStartDate={customStartDate}
-            customEndDate={customEndDate}
-            onSelectPreset={(preset) => {
-              setDateFilterPreset(preset);
-              setCustomStartDate("");
-              setCustomEndDate("");
-            }}
-            onSelectCustomRange={(start, end) => {
-              setDateFilterPreset("Custom");
-              setCustomStartDate(start);
-              setCustomEndDate(end);
-            }}
-            onClear={() => {
-              setDateFilterPreset("All");
-              setCustomStartDate("");
-              setCustomEndDate("");
-            }}
-          />
-        </div>
+        {/* Right Column: Unified Compliance Calendar */}
+        {showCalendar && (
+          <div data-tour="dashboard-date-filter" className="w-full xl:w-[280px] 2xl:w-[295px] space-y-4 sticky top-4 shrink-0">
+            <ComplianceCalendar
+              documents={documents}
+              activePreset={dateFilterPreset}
+              customStartDate={customStartDate}
+              customEndDate={customEndDate}
+              onSelectPreset={(preset) => {
+                setDateFilterPreset(preset);
+                setCustomStartDate("");
+                setCustomEndDate("");
+              }}
+              onSelectCustomRange={(start, end) => {
+                setDateFilterPreset("Custom");
+                setCustomStartDate(start);
+                setCustomEndDate(end);
+              }}
+              onClear={() => {
+                setDateFilterPreset("All");
+                setCustomStartDate("");
+                setCustomEndDate("");
+              }}
+            />
+          </div>
+        )}
       </div>
 
       {/* Decision Execution Dialog */}
