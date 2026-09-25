@@ -361,24 +361,34 @@ export function AppWalkthrough() {
 
   return (
     <div className="fixed inset-0 z-[9990] overflow-hidden pointer-events-auto">
-      {/* 1. Backdrop Overlay */}
+      {/* 1. Transparent Backdrop Click-Outside to Dismiss */}
       <div
         onClick={handleClose}
-        className="fixed inset-0 bg-slate-950/70 backdrop-blur-[2px] transition-opacity duration-200 cursor-pointer"
+        className="fixed inset-0 bg-transparent cursor-pointer z-[9989]"
         aria-hidden="true"
       />
 
-      {/* 2. Spotlight Cutout / Glowing Highlighter Box */}
-      {targetRect && (
+      {/* 2. True Illuminated Spotlight Cutout:
+          Uses a massive 9999px spread box-shadow so the dark overlay is ONLY outside the spotlight hole.
+          The area over the target element has ZERO dark overlay, making it 100% visible, bright, and legible! */}
+      {targetRect ? (
         <div
           style={{
             position: "fixed",
-            top: `${Math.max(0, targetRect.top - 6)}px`,
-            left: `${Math.max(0, targetRect.left - 6)}px`,
-            width: `${targetRect.width + 12}px`,
-            height: `${targetRect.height + 12}px`,
+            top: `${Math.max(0, targetRect.top - 5)}px`,
+            left: `${Math.max(0, targetRect.left - 5)}px`,
+            width: `${targetRect.width + 10}px`,
+            height: `${targetRect.height + 10}px`,
+            boxShadow:
+              "0 0 0 9999px rgba(15, 23, 42, 0.72), 0 0 25px rgba(197, 232, 108, 0.85), inset 0 0 8px rgba(197, 232, 108, 0.2)",
           }}
-          className="rounded-xl border-2 border-[#C5E86C] ring-4 ring-[#C5E86C]/40 shadow-[0_0_35px_rgba(197,232,108,0.75)] pointer-events-none transition-all duration-300 ease-out z-[9991] animate-pulse"
+          className="rounded-xl border-2 border-[#C5E86C] ring-4 ring-[#C5E86C]/40 backdrop-brightness-110 pointer-events-none transition-all duration-200 ease-out z-[9991]"
+        />
+      ) : (
+        <div
+          onClick={handleClose}
+          className="fixed inset-0 bg-slate-950/70 backdrop-blur-[2px] transition-opacity duration-200 cursor-pointer z-[9990]"
+          aria-hidden="true"
         />
       )}
 
