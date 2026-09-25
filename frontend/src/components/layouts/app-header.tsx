@@ -75,7 +75,10 @@ export function AppHeader({
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex cursor-pointer items-center gap-2 rounded-full border border-[#E6E8E7] bg-[#FFFFFF] pl-1.5 pr-2.5 py-1 shadow-2xs outline-none transition-all hover:bg-[#C5E86C]/20">
+            <button
+              data-tour="header-user-menu"
+              className="flex cursor-pointer items-center gap-2 rounded-full border border-[#E6E8E7] bg-[#FFFFFF] pl-1.5 pr-2.5 py-1 shadow-2xs outline-none transition-all hover:bg-[#C5E86C]/20"
+            >
               <div className="flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold text-[#C5E86C] bg-[#183028]">
                 {getInitials(session?.name)}
               </div>

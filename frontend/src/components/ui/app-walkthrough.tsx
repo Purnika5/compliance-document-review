@@ -29,6 +29,7 @@ import {
   Bot,
   Bell,
   TrendingUp,
+  User,
   X,
   ArrowRight,
   ArrowLeft,
@@ -47,7 +48,7 @@ interface ISpotlightStep {
 }
 
 /**
- * Sequential highlight steps for Advisors (including Statistics, File Viewer, Date Filter, Notifications, Settings, and AI Copilot).
+ * Sequential highlight steps for Advisors (including Statistics, File Viewer, Date Filter, Notifications, Profile, Settings, and AI Copilot).
  */
 const ADVISOR_SPOTLIGHT_STEPS: ISpotlightStep[] = [
   {
@@ -99,6 +100,14 @@ const ADVISOR_SPOTLIGHT_STEPS: ISpotlightStep[] = [
     preferredPlacement: "bottom",
   },
   {
+    targetKey: "header-user-menu",
+    title: "Advisor Profile & Session",
+    description:
+      "Quickly view your authenticated institutional advisor profile, active session credentials, role verification, or sign out securely.",
+    icon: User,
+    preferredPlacement: "bottom",
+  },
+  {
     targetKey: "nav-audit",
     title: "Audit Trail",
     description:
@@ -125,7 +134,7 @@ const ADVISOR_SPOTLIGHT_STEPS: ISpotlightStep[] = [
 ];
 
 /**
- * Sequential highlight steps for Officers (including Statistics, File Viewer, Date Filter, Notifications, Settings, and AI Copilot).
+ * Sequential highlight steps for Officers (including Statistics, File Viewer, Date Filter, Notifications, Profile, Settings, and AI Copilot).
  */
 const OFFICER_SPOTLIGHT_STEPS: ISpotlightStep[] = [
   {
@@ -174,6 +183,14 @@ const OFFICER_SPOTLIGHT_STEPS: ISpotlightStep[] = [
     description:
       "Stay alerted to newly submitted advisor drafts, re-submitted revision filings, and high-risk compliance triage escalations requiring officer sign-off.",
     icon: Bell,
+    preferredPlacement: "bottom",
+  },
+  {
+    targetKey: "header-user-menu",
+    title: "Officer Profile & Session",
+    description:
+      "Inspect your supervisory credentials, institutional compliance officer designation, active session details, or sign out securely.",
+    icon: User,
     preferredPlacement: "bottom",
   },
   {
