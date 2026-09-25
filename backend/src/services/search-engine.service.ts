@@ -248,7 +248,7 @@ export class SearchEngineService {
 
     // 2. Title matching
     let sanitizedTitle = (titleQuery || '').trim();
-    const noiseWordsRegex = /^(?:total|totals|count|counts|number|numbers|how\s+many|amount|amounts|sum|sums|overall|summary|stats|statistics|status|statuses|records?|items?|data|database|query|search|filter|list|show|get|display|view|fetch|find|give|all|any|the|a|an|year|years|month|months|day|days|date|dates|of|in|for|on|at|by|from|to|with|and|or|uploaded|upload|uploads|documents?|filings?|submissions?|proposals?|files?|approved|pending|needs\s+revision|rejected)$/i;
+    const noiseWordsRegex = /^(?:this|that|these|those|there|here|what|which|who|whom|whose|when|where|why|how|how\s+many|is|are|was|were|be|been|being|have|has|had|do|does|did|can|could|will|would|should|want|wants|know|knows|tell|check|total|totals|count|counts|number|numbers|amount|amounts|sum|sums|overall|summary|stats|statistics|status|statuses|records?|items?|data|database|query|search|filter|list|show|get|display|view|fetch|find|give|all|any|the|a|an|year|years|month|months|day|days|date|dates|of|in|for|on|at|by|from|to|with|and|or|uploaded|upload|uploads|documents?|filings?|submissions?|proposals?|files?|approved|pending|needs\s+revision|rejected)$/i;
     if (noiseWordsRegex.test(sanitizedTitle)) {
       sanitizedTitle = '';
     }
@@ -270,14 +270,22 @@ export class SearchEngineService {
       }
     }
 
-    // 4. Date ranges
-    if (startDate) {
-      conditions.push(`d.created_at >= $${idx++}`);
-      values.push(startDate.toISOString());
-    }
-    if (endDate) {
-      conditions.push(`d.created_at <= $${idx++}`);
-      values.push(endDate.toISOString());
+    // 4. Date ranges & Flexible Year matching (matches upload year OR title containing the year)
+    const isYearOnly = date_range && /^(19|20)\d{2}$/.test(date_range.trim());
+    if (isYearOnly && startDate && endDate) {
+      const yearStr = date_range.trim();
+      conditions.push(`((d.created_at >= $${idx} AND d.created_at <= $${idx + 1}) OR d.title ILIKE $${idx + 2})`);
+      values.push(startDate.toISOString(), endDate.toISOString(), `%${yearStr}%`);
+      idx += 3;
+    } else {
+      if (startDate) {
+        conditions.push(`d.created_at >= $${idx++}`);
+        values.push(startDate.toISOString());
+      }
+      if (endDate) {
+        conditions.push(`d.created_at <= $${idx++}`);
+        values.push(endDate.toISOString());
+      }
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';

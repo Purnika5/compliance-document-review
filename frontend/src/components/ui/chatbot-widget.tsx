@@ -617,7 +617,7 @@ function parseNaturalSearch(text: string): {
   if (titleMatch && titleMatch[1] && titleMatch[1].length > 2) {
     const candidateClean = titleMatch[1]
       .replace(
-        /\b(approved|pending|needs\s+revision|for\s+revision|rejected|past\s+7\s+days|last\s+7\s+days|past\s+30\s+days|last\s+30\s+days|past\s+90\s+days|last\s+90\s+days|this\s+month|last\s+month|this\s+year|last\s+year|past\s+year|today|yesterday|total|totals|count|counts|number|numbers|how\s+many|amount|sum|overall|summary|stats|statistics|status|statuses|records?|items?|data|database|query|search|filter|list|show|get|display|view|fetch|find|give|all|any|the|a|an|year|years|month|months|day|days|date|dates|of|in|for|on|at|by|from|to|with|and|or|uploaded|upload|uploads|documents?|filings?|submissions?|proposals?|files?)\b/gi,
+        /\b(approved|pending|needs\s+revision|for\s+revision|rejected|past\s+7\s+days|last\s+7\s+days|past\s+30\s+days|last\s+30\s+days|past\s+90\s+days|last\s+90\s+days|this\s+month|last\s+month|this\s+year|last\s+year|past\s+year|today|yesterday|this|that|these|those|there|here|what|which|who|whom|whose|when|where|why|how|how\s+many|is|are|was|were|be|been|being|have|has|had|do|does|did|can|could|will|would|should|want|wants|know|knows|tell|check|total|totals|count|counts|number|numbers|how\s+many|amount|sum|overall|summary|stats|statistics|status|statuses|records?|items?|data|database|query|search|filter|list|show|get|display|view|fetch|find|give|all|any|the|a|an|year|years|month|months|day|days|date|dates|of|in|for|on|at|by|from|to|with|and|or|uploaded|upload|uploads|documents?|filings?|submissions?|proposals?|files?)\b/gi,
         ""
       )
       .trim();
@@ -1334,10 +1334,10 @@ export function ChatbotWidget() {
         const naturalParams = parseNaturalSearch(cmdArg);
         let queryText = naturalParams.query;
         if (!queryText) {
-          // Strip filter keywords, date ranges, years, months, upload terms, status keywords, and aggregation/stop words
+          // Strip filter keywords, date ranges, years, months, upload terms, status keywords, and aggregation/filler/stop words
           const cleaned = cmdArg
             .replace(
-              /\b(approved|pending|needs\s+revision|for\s+revision|rejected|past\s+7\s+days|last\s+7\s+days|past\s+30\s+days|last\s+30\s+days|past\s+90\s+days|last\s+90\s+days|this\s+month|last\s+month|this\s+year|last\s+year|past\s+year|today|yesterday|january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec|\b(19\d\d|20\d\d)\b|my\s+uploads|my\s+files|my\s+submissions|total|totals|count|counts|number|numbers|how\s+many|amount|amounts|sum|sums|overall|summary|stats|statistics|status|statuses|records?|items?|data|database|query|search|filter|list|show|get|display|view|fetch|find|give|all|any|the|a|an|year|years|month|months|day|days|date|dates|of|in|for|on|at|by|from|to|with|and|or|uploaded|upload|uploads|documents?|filings?|submissions?|proposals?|files?)\b/gi,
+              /\b(approved|pending|needs\s+revision|for\s+revision|rejected|past\s+7\s+days|last\s+7\s+days|past\s+30\s+days|last\s+30\s+days|past\s+90\s+days|last\s+90\s+days|this\s+month|last\s+month|this\s+year|last\s+year|past\s+year|today|yesterday|january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec|\b(19\d\d|20\d\d)\b|my\s+uploads|my\s+files|my\s+submissions|this|that|these|those|there|here|what|which|who|whom|whose|when|where|why|how|how\s+many|is|are|was|were|be|been|being|have|has|had|do|does|did|can|could|will|would|should|want|wants|know|knows|tell|check|total|totals|count|counts|number|numbers|amount|amounts|sum|sums|overall|summary|stats|statistics|status|statuses|records?|items?|data|database|query|search|filter|list|show|get|display|view|fetch|find|give|all|any|the|a|an|year|years|month|months|day|days|date|dates|of|in|for|on|at|by|from|to|with|and|or|uploaded|upload|uploads|documents?|filings?|submissions?|proposals?|files?)\b/gi,
               ""
             )
             .replace(/\s+/g, " ")
@@ -1347,11 +1347,11 @@ export function ChatbotWidget() {
           }
         }
 
-        // If queryText is set but contains only noise or stop words, drop it
+        // If queryText is set but contains only noise, filler, or stop words, drop it
         if (queryText) {
           const testClean = queryText
             .replace(
-              /\b(approved|pending|needs\s+revision|for\s+revision|rejected|past\s+7\s+days|last\s+7\s+days|past\s+30\s+days|last\s+30\s+days|past\s+90\s+days|last\s+90\s+days|this\s+month|last\s+month|this\s+year|last\s+year|past\s+year|today|yesterday|january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec|\b(19\d\d|20\d\d)\b|my\s+uploads|my\s+files|my\s+submissions|total|totals|count|counts|number|numbers|how\s+many|amount|amounts|sum|sums|overall|summary|stats|statistics|status|statuses|records?|items?|data|database|query|search|filter|list|show|get|display|view|fetch|find|give|all|any|the|a|an|year|years|month|months|day|days|date|dates|of|in|for|on|at|by|from|to|with|and|or|uploaded|upload|uploads|documents?|filings?|submissions?|proposals?|files?)\b/gi,
+              /\b(approved|pending|needs\s+revision|for\s+revision|rejected|past\s+7\s+days|last\s+7\s+days|past\s+30\s+days|last\s+30\s+days|past\s+90\s+days|last\s+90\s+days|this\s+month|last\s+month|this\s+year|last\s+year|past\s+year|today|yesterday|january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec|\b(19\d\d|20\d\d)\b|my\s+uploads|my\s+files|my\s+submissions|this|that|these|those|there|here|what|which|who|whom|whose|when|where|why|how|how\s+many|is|are|was|were|be|been|being|have|has|had|do|does|did|can|could|will|would|should|want|wants|know|knows|tell|check|total|totals|count|counts|number|numbers|amount|amounts|sum|sums|overall|summary|stats|statistics|status|statuses|records?|items?|data|database|query|search|filter|list|show|get|display|view|fetch|find|give|all|any|the|a|an|year|years|month|months|day|days|date|dates|of|in|for|on|at|by|from|to|with|and|or|uploaded|upload|uploads|documents?|filings?|submissions?|proposals?|files?)\b/gi,
               ""
             )
             .trim();
