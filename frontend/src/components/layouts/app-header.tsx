@@ -21,10 +21,8 @@ import {
   Menu,
   ChevronDown,
   LogOut,
-  Compass,
   BookOpen,
 } from "lucide-react";
-import { walkthroughStore } from "@/lib/walkthrough-store";
 import { journalStore } from "@/lib/journal-store";
 
 export interface AppHeaderProps {
@@ -86,17 +84,6 @@ export function AppHeader({
           <span className="hidden sm:inline">Journal</span>
         </button>
 
-        {/* On-demand Walkthrough Tour Button */}
-        <button
-          onClick={() => walkthroughStore.openWalkthrough(role === "Officer" ? "Officer" : "Advisor")}
-          className="flex items-center gap-1.5 rounded-lg border border-[#E6E8E7] bg-white px-2.5 py-1 text-xs font-semibold text-[#183028] shadow-2xs transition-all hover:bg-[#C5E86C]/30 hover:border-[#C5E86C] cursor-pointer"
-          title="Open Application Walkthrough"
-          aria-label="Open Application Walkthrough"
-        >
-          <Compass className="h-3.5 w-3.5 text-emerald-700" />
-          <span className="hidden sm:inline">Walkthrough</span>
-        </button>
-
         <NotificationCenter />
 
         <DropdownMenu>
@@ -123,13 +110,6 @@ export function AppHeader({
               className="text-xs cursor-pointer text-[#183028] hover:bg-[#C5E86C]/20 focus:bg-[#C5E86C]/20 gap-2 font-medium rounded-lg px-3 py-2 transition-colors"
             >
               <BookOpen className="h-3.5 w-3.5 text-emerald-700" /> Compliance Journal
-            </DropdownMenuItem>
-
-            <DropdownMenuItem
-              onClick={() => walkthroughStore.openWalkthrough(role === "Officer" ? "Officer" : "Advisor")}
-              className="text-xs cursor-pointer text-[#183028] hover:bg-[#C5E86C]/20 focus:bg-[#C5E86C]/20 gap-2 font-medium rounded-lg px-3 py-2 transition-colors"
-            >
-              <Compass className="h-3.5 w-3.5 text-emerald-700" /> App Walkthrough
             </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-[#E6E8E7]" />
 

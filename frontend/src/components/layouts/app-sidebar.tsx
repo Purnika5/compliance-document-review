@@ -12,10 +12,8 @@ import {
   History,
   PanelLeftClose,
   PanelLeftOpen,
-  Compass,
   BookOpen,
 } from "lucide-react";
-import { walkthroughStore } from "@/lib/walkthrough-store";
 import { journalStore } from "@/lib/journal-store";
 
 export interface AppSidebarProps {
@@ -84,12 +82,6 @@ export function AppSidebar({
       dataTour: "nav-journal",
       action: () => journalStore.openJournal("Advisor"),
     },
-    {
-      label: "App Walkthrough",
-      icon: Compass,
-      dataTour: "nav-walkthrough",
-      action: () => walkthroughStore.openWalkthrough("Advisor"),
-    },
   ];
 
   const officerNavItems: NavItem[] = [
@@ -119,12 +111,6 @@ export function AppSidebar({
       icon: BookOpen,
       dataTour: "nav-journal",
       action: () => journalStore.openJournal("Officer"),
-    },
-    {
-      label: "App Walkthrough",
-      icon: Compass,
-      dataTour: "nav-walkthrough",
-      action: () => walkthroughStore.openWalkthrough("Officer"),
     },
   ];
 
