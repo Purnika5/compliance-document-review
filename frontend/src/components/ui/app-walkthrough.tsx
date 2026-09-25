@@ -176,26 +176,16 @@ export function AppWalkthrough() {
     const role = session.role || "Advisor";
     const currentKey = `${userIdentifier}_${role}`;
 
-    // Fresh login trigger check
-    const isFreshLogin = typeof window !== "undefined" && sessionStorage.getItem("springer_fresh_login_tour") === "true";
-    if (isFreshLogin) {
-      sessionStorage.removeItem("springer_fresh_login_tour");
-      const timer = setTimeout(() => {
-        walkthroughStore.openWalkthrough(role === "Officer" ? "Officer" : "Advisor");
-      }, 400);
-      lastCheckedKey.current = currentKey;
-      return () => clearTimeout(timer);
-    }
-
     if (lastCheckedKey.current === currentKey) return;
     lastCheckedKey.current = currentKey;
 
+    // Strictly display ONCE per user account and role
     const alreadyCompleted = walkthroughStore.hasCompleted(userIdentifier, role);
 
     if (!alreadyCompleted) {
       const timer = setTimeout(() => {
         walkthroughStore.openWalkthrough(role === "Officer" ? "Officer" : "Advisor");
-      }, 400);
+      }, 500);
       return () => clearTimeout(timer);
     }
   }, [session]);
