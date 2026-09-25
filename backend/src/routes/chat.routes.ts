@@ -354,7 +354,6 @@ router.post('/', optionalAuth, async (req: Request, res: Response) => {
 
     const isSpecificIntent =
       grokResult.intent !== 'general_conversational' &&
-      grokResult.intent !== 'free_conversation' &&
       !grokResult.isClarification;
     const isClarification = grokResult.isClarification === true;
 

@@ -1285,6 +1285,10 @@ export function ChatbotWidget() {
         }
 
         setIsTyping(true);
+        setMessages((prev) => [
+          ...prev,
+          { id: botMsgId, sender: "bot", text: "", timestamp, isTyping: true },
+        ]);
         copilotApi
           .sendChatMessage(
             `[Free Conversational AI Assistance]: ${cmdArg}`,
