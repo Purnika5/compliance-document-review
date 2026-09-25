@@ -6,7 +6,6 @@ import { authStore, type UserSession } from "@/lib/auth/auth-store";
 import { AppSidebar } from "@/components/layouts/app-sidebar";
 import { AppHeader } from "@/components/layouts/app-header";
 import { AppWalkthrough } from "@/components/ui/app-walkthrough";
-import { ComplianceJournal } from "@/components/ui/compliance-journal";
 import { Loader2 } from "lucide-react";
 
 /**
@@ -85,11 +84,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </main>
       </div>
 
-      {/* First-time and on-demand interactive onboarding walkthrough */}
+      {/* First-time onboarding walkthrough */}
       <AppWalkthrough />
-
-      {/* Role-differentiated Compliance Onboarding Action Journal */}
-      <ComplianceJournal />
     </div>
   );
 }
