@@ -97,6 +97,25 @@ export const SLASH_COMMANDS: ISlashCommand[] = [
     sampleExample: "Explain FINRA Rule 2210 in simple terms",
   },
   {
+    command: "/query",
+    name: "Query Compliance Database",
+    description: "Search documents, filings & audit ledger records in the database",
+    category: "Workflow",
+    badge: "Database",
+    placeholder: "/query retirement portfolio needs revision",
+    requiresInput: true,
+    sampleExample: "retirement portfolio needs revision",
+  },
+  {
+    command: "/stats",
+    name: "Compliance Statistics & Analytics",
+    description: "Display platform filing metrics, approval velocity & risk statistics",
+    category: "Workflow",
+    badge: "Stats",
+    placeholder: "/stats",
+    requiresInput: false,
+  },
+  {
     command: "/enhance",
     name: "Enhance Documentation Rules",
     description: "Transform rough notes into institutional compliance memos",
@@ -1252,6 +1271,164 @@ export function ChatbotWidget() {
         return;
       }
 
+      // /query or /search
+      if (cmdKey === "/query" || cmdKey === "/search") {
+        if (!isAuthenticated) {
+          setTimeout(() => {
+            simulateTyping(
+              botMsgId,
+              "Please log in as an Advisor or Officer to query private compliance database filings.",
+              timestamp
+            );
+          }, 150);
+          return;
+        }
+
+        if (!cmdArg) {
+          setTimeout(() => {
+            simulateTyping(
+              botMsgId,
+              "**Query Compliance Database** 🔍\n\nSearch documents, submissions, and audit ledger records directly from the database.\n\nYou can query by title keyword, filing status, or date range.\n\nExamples:\n• `/query retirement portfolio`\n• `/query needs revision`\n• `/query approved past 30 days`\n• `/query my submissions`",
+              timestamp,
+              {
+                suggestedChips: [
+                  "/query retirement portfolio",
+                  "/query needs revision",
+                  "/query approved past 30 days",
+                  "/stats",
+                ],
+              }
+            );
+          }, 150);
+          return;
+        }
+
+        const naturalParams = parseNaturalSearch(cmdArg);
+        let queryText = naturalParams.query;
+        if (!queryText) {
+          const cleaned = cmdArg
+            .replace(/\b(approved|pending|needs\s+revision|for\s+revision|rejected|past\s+7\s+days|past\s+30\s+days|past\s+90\s+days|this\s+month|last\s+month|today|yesterday|my\s+uploads|my\s+files|my\s+submissions)\b/gi, "")
+            .replace(/\s+/g, " ")
+            .trim();
+          if (cleaned.length > 0) {
+            queryText = cleaned;
+          }
+        }
+
+        setIsTyping(true);
+        copilotApi
+          .searchDocuments({
+            ...naturalParams,
+            query: queryText,
+            conversation_history: messages.slice(-4).map((m) => ({ role: m.sender, content: m.text })),
+          })
+          .then((searchResult) => {
+            setIsTyping(false);
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === botMsgId
+                  ? {
+                      ...msg,
+                      text:
+                        searchResult.conversational_reply ||
+                        `Found **${searchResult.analytics.total_matches}** document(s) matching your query "${cmdArg}".`,
+                      isTyping: false,
+                      searchResult,
+                      suggestedChips:
+                        searchResult.suggested_chips && searchResult.suggested_chips.length > 0
+                          ? searchResult.suggested_chips
+                          : ["/query needs revision", "/query approved", "/stats"],
+                    }
+                  : msg
+              )
+            );
+          })
+          .catch((err) => {
+            setIsTyping(false);
+            simulateTyping(
+              botMsgId,
+              `Unable to query database at this moment: ${err?.message || "Repository service unavailable"}.`,
+              timestamp
+            );
+          });
+        return;
+      }
+
+      // /stats or /analytics or /metrics
+      if (cmdKey === "/stats" || cmdKey === "/analytics" || cmdKey === "/metrics") {
+        if (!isAuthenticated) {
+          setTimeout(() => {
+            simulateTyping(
+              botMsgId,
+              "Please log in as an Advisor or Officer to view real-time compliance queue statistics and analytics.",
+              timestamp
+            );
+          }, 150);
+          return;
+        }
+
+        setIsTyping(true);
+        copilotApi
+          .searchDocuments({
+            query: "",
+            include_all_versions: true,
+            conversation_history: messages.slice(-4).map((m) => ({ role: m.sender, content: m.text })),
+          })
+          .then((searchResult) => {
+            setIsTyping(false);
+            const a = searchResult.analytics;
+            const total = a.total_matches;
+            const approvedPct = total > 0 ? Math.round((a.breakdown_by_status.Approved / total) * 100) : 0;
+            const pendingPct = total > 0 ? Math.round((a.breakdown_by_status.Pending / total) * 100) : 0;
+            const revisionPct = total > 0 ? Math.round((a.breakdown_by_status.NeedsRevision / total) * 100) : 0;
+            const rejectedPct = total > 0 ? Math.round((a.breakdown_by_status.Rejected / total) * 100) : 0;
+
+            const userRole = session?.role || "Advisor";
+            const scopeLabel = userRole === "Officer" ? "Platform Supervisory Review Queue" : "Advisor Submission Portfolio";
+
+            const statsMarkdown =
+              `### 📊 Compliance Statistics & Repository Metrics\n\n` +
+              `**Scope**: ${scopeLabel}\n\n` +
+              `• **Total Documents in Ledger**: **${total}**\n` +
+              `• **Approved**: **${a.breakdown_by_status.Approved}** (${approvedPct}%)\n` +
+              `• **Pending Determination**: **${a.breakdown_by_status.Pending}** (${pendingPct}%)\n` +
+              `• **Needs Revision**: **${a.breakdown_by_status.NeedsRevision}** (${revisionPct}%)\n` +
+              `• **Rejected**: **${a.breakdown_by_status.Rejected}** (${rejectedPct}%)\n\n` +
+              `**Regulatory Flags & Version Lineage**:\n` +
+              `• **Active Regulatory Flags**: **${a.regulatory_risk_summary}** compliance flag(s)\n` +
+              `• **Multi-Version Revision Rate**: **${a.revision_velocity.reversioned_percentage}%** (${a.revision_velocity.reversioned_count} document(s) revised)\n` +
+              `• **Supervisory Governance**: FINRA Rule 2210 & SEC Rule 206(4)-1`;
+
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === botMsgId
+                  ? {
+                      ...msg,
+                      text: statsMarkdown,
+                      isTyping: false,
+                      searchResult,
+                      suggestedChips: [
+                        "/query needs revision",
+                        "/query approved",
+                        "/query pending",
+                        "/rules",
+                      ],
+                    }
+                  : msg
+              )
+            );
+          })
+          .catch((err) => {
+            setIsTyping(false);
+            simulateTyping(
+              botMsgId,
+              `Unable to fetch compliance statistics: ${err?.message || "Repository service unavailable"}.`,
+              timestamp
+            );
+          });
+        return;
+      }
+
       // /scan
       if (cmdKey === "/scan") {
         if (pendingFile) {
@@ -1802,7 +1979,7 @@ export function ChatbotWidget() {
 
           {/* Slash Commands Dropdown Menu */}
           {showSlashMenu && (
-            <div className="absolute bottom-[58px] left-3 right-3 p-1.5 bg-[#FAFBFB] border border-[#E6E8E7] rounded-2xl shadow-xl space-y-1 animate-in fade-in slide-in-from-bottom-2 duration-150 z-30 max-h-[260px] overflow-y-auto">
+            <div className="absolute bottom-[58px] left-3 right-3 p-1.5 bg-[#FAFBFB] border border-[#E6E8E7] rounded-2xl shadow-xl space-y-1 animate-in fade-in slide-in-from-bottom-2 duration-150 z-30 max-h-[320px] overflow-y-auto">
               <div className="px-2 py-1 flex items-center justify-between border-b border-[#E6E8E7] text-[9.5px]">
                 <span className="font-extrabold uppercase tracking-wider text-[#183028]/70 flex items-center gap-1">
                   <Sparkles className="h-3 w-3 text-emerald-600" />
@@ -1856,7 +2033,11 @@ export function ChatbotWidget() {
                               ? "bg-purple-100 text-purple-800"
                               : cmd.badge === "Audit"
                                 ? "bg-amber-100 text-amber-800"
-                                : "bg-slate-100 text-slate-800"
+                                : cmd.badge === "Database"
+                                  ? "bg-blue-100 text-blue-800"
+                                  : cmd.badge === "Stats"
+                                    ? "bg-cyan-100 text-cyan-800"
+                                    : "bg-slate-100 text-slate-800"
                         )}
                       >
                         {cmd.badge}

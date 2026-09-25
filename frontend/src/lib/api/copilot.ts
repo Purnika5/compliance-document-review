@@ -55,8 +55,26 @@ export const copilotApi = {
    * Search document repository with multi-dimensional filters, version lineages, and analytics.
    */
   async searchDocuments(params: ISearchParams): Promise<ISearchResponse> {
-    const response = await client.post<ApiResponse<ISearchResponse>>("/api/documents/search", params);
-    return response.data;
+    try {
+      const response = await client.post<ApiResponse<ISearchResponse>>("/api/documents/search", params);
+      if (response && response.data) {
+        return response.data;
+      }
+    } catch (err) {
+      console.warn("[Copilot searchDocuments error]", err);
+    }
+    return {
+      documents: [],
+      analytics: {
+        total_matches: 0,
+        breakdown_by_status: { Pending: 0, Approved: 0, NeedsRevision: 0, Rejected: 0 },
+        regulatory_risk_summary: 0,
+        revision_velocity: { reversioned_count: 0, reversioned_percentage: 0 },
+        temporal_aggregation: [],
+      },
+      conversational_reply: `No records found matching your query at this time.`,
+      suggested_chips: ["/query retirement portfolio", "/query needs revision", "/stats"],
+    };
   },
 
   /**
