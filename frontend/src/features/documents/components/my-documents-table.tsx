@@ -714,7 +714,7 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                   </div>
                 </div>
 
-                <div className="overflow-x-auto rounded-xl border border-[#E6E8E7] bg-[#FFFFFF] shadow-2xs">
+                <div data-tour="advisor-view-files" className="overflow-x-auto rounded-xl border border-[#E6E8E7] bg-[#FFFFFF] shadow-2xs">
                   <Table className="w-full bg-[#FFFFFF] border-collapse">
                     <TableHeader className="bg-[#FFFFFF] border-b border-[#E6E8E7]">
                       <TableRow className="border-b border-[#E6E8E7] bg-[#FFFFFF] hover:bg-[#FFFFFF]">

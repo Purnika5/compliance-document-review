@@ -418,7 +418,7 @@ export function DocumentQueueTable() {
           </div>
 
           {/* Main Review Queue Table */}
-          <div className="rounded-2xl border border-[#E6E8E7] bg-white shadow-xs overflow-hidden">
+          <div data-tour="officer-view-files" className="rounded-2xl border border-[#E6E8E7] bg-white shadow-xs overflow-hidden">
         {isPending ? (
           <LoadingState rows={5} />
         ) : filteredDocuments.length === 0 ? (

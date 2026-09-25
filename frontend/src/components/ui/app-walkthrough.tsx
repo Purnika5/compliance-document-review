@@ -25,6 +25,8 @@ import {
   History,
   Settings,
   Calendar,
+  FileText,
+  Bot,
   X,
   ArrowRight,
   ArrowLeft,
@@ -43,7 +45,7 @@ interface ISpotlightStep {
 }
 
 /**
- * Sequential highlight steps for Advisors (including Date Filter and Settings).
+ * Sequential highlight steps for Advisors (including File Viewer, Date Filter, Settings, and AI Copilot).
  */
 const ADVISOR_SPOTLIGHT_STEPS: ISpotlightStep[] = [
   {
@@ -60,6 +62,14 @@ const ADVISOR_SPOTLIGHT_STEPS: ISpotlightStep[] = [
     description:
       "Submit client recommendation drafts (.pdf, .docx, .txt). The system automatically detects and masks sensitive client PII (SSNs, phone numbers).",
     icon: UploadCloud,
+    preferredPlacement: "bottom",
+  },
+  {
+    targetKey: "advisor-view-files",
+    title: "Document Tracking & File Viewer",
+    description:
+      "Inspect submitted correspondence, view full document text, verify PII redaction tokens, and download clean remediated files.",
+    icon: FileText,
     preferredPlacement: "bottom",
   },
   {
@@ -86,10 +96,18 @@ const ADVISOR_SPOTLIGHT_STEPS: ISpotlightStep[] = [
     icon: Settings,
     preferredPlacement: "right",
   },
+  {
+    targetKey: "copilot-widget",
+    title: "Neural Compliance AI Copilot",
+    description:
+      "Click the AI Copilot button in the bottom-right corner to test sentences with /grammar, format compliance memos, or ask regulatory questions.",
+    icon: Bot,
+    preferredPlacement: "top",
+  },
 ];
 
 /**
- * Sequential highlight steps for Officers (including Date Filter and Settings).
+ * Sequential highlight steps for Officers (including File Viewer, Date Filter, Settings, and AI Copilot).
  */
 const OFFICER_SPOTLIGHT_STEPS: ISpotlightStep[] = [
   {
@@ -106,6 +124,14 @@ const OFFICER_SPOTLIGHT_STEPS: ISpotlightStep[] = [
     description:
       "Filter submissions by risk severity (High, Medium, Urgent). Filings with promissory language or missing risk disclosures are prioritized.",
     icon: Filter,
+    preferredPlacement: "bottom",
+  },
+  {
+    targetKey: "officer-view-files",
+    title: "Document Queue & Review Inspection",
+    description:
+      "Click any filing to open the Compliance Audit Workspace for side-by-side inspection, flagged rule citations, and statutory sign-offs.",
+    icon: FileText,
     preferredPlacement: "bottom",
   },
   {
@@ -131,6 +157,14 @@ const OFFICER_SPOTLIGHT_STEPS: ISpotlightStep[] = [
       "Configure your compliance officer supervisory profile, statutory designation, notification triggers, and platform preferences.",
     icon: Settings,
     preferredPlacement: "right",
+  },
+  {
+    targetKey: "copilot-widget",
+    title: "Institutional AI Copilot & Precedents",
+    description:
+      "Query the AI Copilot to research FINRA & SEC regulatory precedents, verify statutory requirements, and audit supervisory memos before sign-off.",
+    icon: Bot,
+    preferredPlacement: "top",
   },
 ];
 
