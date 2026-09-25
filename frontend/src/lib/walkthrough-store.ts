@@ -54,7 +54,7 @@ export const walkthroughStore = {
   getStorageKey(userIdOrEmail?: string, role?: string): string {
     const user = (userIdOrEmail || "guest").toLowerCase().trim();
     const userRole = (role || "user").toLowerCase().trim();
-    return `springer_guided_tour_v4_${user}_${userRole}`;
+    return `springer_guided_tour_v5_${user}_${userRole}`;
   },
 
   /**

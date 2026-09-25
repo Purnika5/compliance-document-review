@@ -627,7 +627,7 @@ export function DocumentQueueTable() {
         </div>
 
         {/* Right Column: Unified Compliance Calendar (Merged in 1 place) */}
-        <div className="xl:col-span-4 2xl:col-span-3 space-y-4 sticky top-4 min-w-0">
+        <div data-tour="dashboard-date-filter" className="xl:col-span-4 2xl:col-span-3 space-y-4 sticky top-4 min-w-0">
           <ComplianceCalendar
             documents={documents}
             activePreset={dateFilterPreset}

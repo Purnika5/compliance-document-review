@@ -24,6 +24,7 @@ import {
   Filter,
   History,
   Settings,
+  Calendar,
   X,
   ArrowRight,
   ArrowLeft,
@@ -42,7 +43,7 @@ interface ISpotlightStep {
 }
 
 /**
- * Exactly 4 sequential highlight steps for Advisors (including Settings).
+ * Sequential highlight steps for Advisors (including Date Filter and Settings).
  */
 const ADVISOR_SPOTLIGHT_STEPS: ISpotlightStep[] = [
   {
@@ -60,6 +61,14 @@ const ADVISOR_SPOTLIGHT_STEPS: ISpotlightStep[] = [
       "Submit client recommendation drafts (.pdf, .docx, .txt). The system automatically detects and masks sensitive client PII (SSNs, phone numbers).",
     icon: UploadCloud,
     preferredPlacement: "bottom",
+  },
+  {
+    targetKey: "dashboard-date-filter",
+    title: "Date Range & Calendar Filter",
+    description:
+      "Filter your filings using quick date presets (Today, Past 7 Days, This Month) or click specific calendar days to analyze submission activity.",
+    icon: Calendar,
+    preferredPlacement: "left",
   },
   {
     targetKey: "nav-audit",
@@ -80,7 +89,7 @@ const ADVISOR_SPOTLIGHT_STEPS: ISpotlightStep[] = [
 ];
 
 /**
- * Exactly 4 sequential highlight steps for Officers (including Settings).
+ * Sequential highlight steps for Officers (including Date Filter and Settings).
  */
 const OFFICER_SPOTLIGHT_STEPS: ISpotlightStep[] = [
   {
@@ -98,6 +107,14 @@ const OFFICER_SPOTLIGHT_STEPS: ISpotlightStep[] = [
       "Filter submissions by risk severity (High, Medium, Urgent). Filings with promissory language or missing risk disclosures are prioritized.",
     icon: Filter,
     preferredPlacement: "bottom",
+  },
+  {
+    targetKey: "dashboard-date-filter",
+    title: "Date Range & Calendar Filter",
+    description:
+      "Triage review volume across specific time intervals or click interactive calendar days to isolate historical review cycles and pending filings.",
+    icon: Calendar,
+    preferredPlacement: "left",
   },
   {
     targetKey: "nav-audit",

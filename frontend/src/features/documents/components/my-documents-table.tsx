@@ -867,7 +867,7 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
             </div>
 
             {/* Right (col-span-4): Compliance Calendar */}
-            <div className="lg:col-span-4 space-y-3.5">
+            <div data-tour="dashboard-date-filter" className="lg:col-span-4 space-y-3.5">
               <ComplianceCalendar
                 documents={documents}
                 activePreset={dateFilterPreset}
