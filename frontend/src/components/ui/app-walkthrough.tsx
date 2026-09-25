@@ -28,6 +28,7 @@ import {
   FileText,
   Bot,
   Bell,
+  TrendingUp,
   X,
   ArrowRight,
   ArrowLeft,
@@ -46,7 +47,7 @@ interface ISpotlightStep {
 }
 
 /**
- * Sequential highlight steps for Advisors (including File Viewer, Date Filter, Notifications, Settings, and AI Copilot).
+ * Sequential highlight steps for Advisors (including Statistics, File Viewer, Date Filter, Notifications, Settings, and AI Copilot).
  */
 const ADVISOR_SPOTLIGHT_STEPS: ISpotlightStep[] = [
   {
@@ -56,6 +57,14 @@ const ADVISOR_SPOTLIGHT_STEPS: ISpotlightStep[] = [
       "Your central hub to monitor client recommendation correspondence, track filing volume, and check review statuses in real time.",
     icon: LayoutDashboard,
     preferredPlacement: "right",
+  },
+  {
+    targetKey: "advisor-statistics",
+    title: "Compliance Analytics & Metrics",
+    description:
+      "Monitor your review queue volume, pending evaluation filings, required revisions, approval metrics, and 14-day velocity sparklines in real time.",
+    icon: TrendingUp,
+    preferredPlacement: "bottom",
   },
   {
     targetKey: "advisor-upload",
@@ -116,7 +125,7 @@ const ADVISOR_SPOTLIGHT_STEPS: ISpotlightStep[] = [
 ];
 
 /**
- * Sequential highlight steps for Officers (including File Viewer, Date Filter, Notifications, Settings, and AI Copilot).
+ * Sequential highlight steps for Officers (including Statistics, File Viewer, Date Filter, Notifications, Settings, and AI Copilot).
  */
 const OFFICER_SPOTLIGHT_STEPS: ISpotlightStep[] = [
   {
@@ -126,6 +135,14 @@ const OFFICER_SPOTLIGHT_STEPS: ISpotlightStep[] = [
       "Your supervisory console to triage and audit incoming advisor recommendation drafts awaiting formal compliance sign-off.",
     icon: ShieldCheck,
     preferredPlacement: "right",
+  },
+  {
+    targetKey: "officer-statistics",
+    title: "Supervisory Queue Analytics & Throughput",
+    description:
+      "Track platform-wide filing volume, pending evaluations, revision backlogs, approved records, and compliance clearance throughput percentages.",
+    icon: TrendingUp,
+    preferredPlacement: "bottom",
   },
   {
     targetKey: "officer-priority",

@@ -234,7 +234,10 @@ export function DocumentQueueTable() {
   return (
     <div className="space-y-4 max-w-[1600px] mx-auto pb-16">
       {/* Structured Institutional Back-Office Metric Cards (Balanced 5-Column Grid) */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+      <div
+        data-tour="officer-statistics"
+        className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5"
+      >
         {/* Total in Queue */}
         <div className="rounded-xl p-4 border border-border bg-card shadow-xs flex flex-col justify-between group">
           <div>

@@ -521,7 +521,10 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
               </div>
             </div>
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 pt-5">
+              <div
+                data-tour="advisor-statistics"
+                className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 pt-5"
+              >
                 {/* Total Submissions */}
                 <div className="rounded-xl p-4 border border-border bg-card shadow-xs flex flex-col justify-between group hover:border-[#183028]/30 transition-all">
                   <div>
