@@ -1,14 +1,15 @@
 "use client";
 
 /**
- * DOCU: Interactive Onboarding Walkthrough for Springer Capital Compliance Platform.
- * Automatically initiates only on first-time login/visit for both Advisors and Officers.
- * Features role-tailored workflow guides, interactive mock previews, and statutory compliance highlights.
+ * DOCU: Interactive Onboarding Guidance & Spotlight Tour for Springer Capital Compliance Platform.
+ * Automatically initiates only on first-time visit/login for both Advisors and Officers.
+ * Features strict role isolation (Advisor-only or Officer-only) and an interactive spotlight pointer
+ * that physically highlights and points to the actual buttons and workspace components on the screen.
  * Last Updated Date: September 25, 2026
  * @author Keith
  */
 
-import React, { useState, useEffect, useSyncExternalStore, useCallback } from "react";
+import React, { useState, useEffect, useSyncExternalStore, useCallback, useRef } from "react";
 import {
   Sparkles,
   ShieldCheck,
@@ -18,139 +19,187 @@ import {
   History,
   Bot,
   ListOrdered,
-  CheckCircle2,
   ArrowRight,
   ArrowLeft,
   X,
   Compass,
-  FileText,
-  AlertTriangle,
-  Lock,
-  Download,
-  Search,
   Check,
   HelpCircle,
-  RotateCcw,
+  MousePointerClick,
+  Filter,
+  Eye,
 } from "lucide-react";
 import { authStore, type UserSession } from "@/lib/auth/auth-store";
 import { walkthroughStore } from "@/lib/walkthrough-store";
 import { cn } from "@/lib/utils";
 
-interface IWalkthroughStep {
+interface ISpotlightStep {
+  targetKey: string;
+  targetLabel: string;
   title: string;
-  badge: string;
   headline: string;
   description: string;
-  icon: React.ComponentType<{ className?: string }>;
+  actionGuidance: string;
   proTip: string;
-  previewType: "welcome" | "upload_pii" | "versioning" | "audit_trail" | "copilot" | "queue" | "audit_workspace" | "determinations";
+  statutoryRule?: string;
+  icon: React.ComponentType<{ className?: string }>;
+  preferredPlacement: "right" | "bottom" | "top" | "left";
 }
 
-const ADVISOR_STEPS: IWalkthroughStep[] = [
+const ADVISOR_SPOTLIGHT_STEPS: ISpotlightStep[] = [
   {
-    title: "Welcome to Advisor Portal",
-    badge: "Advisor Workspace",
-    headline: "Institutional Advisory Compliance & Submission",
+    targetKey: "nav-dashboard",
+    targetLabel: "Sidebar Navigation: Dashboard",
+    title: "Advisor Workspace Overview",
+    headline: "Your Central Submissions Dashboard",
     description:
-      "Prepare, pre-scan, and submit client recommendation correspondence, retirement strategies, and marketing materials. Every draft is automatically audited against FINRA Rule 2210 & SEC Rule 206 standards.",
+      "This is your primary Advisory Workspace. Monitor all your client recommendation documents, retirement portfolio restructurings, and marketing materials here.",
+    actionGuidance:
+      "Check this dashboard to review filing volume, pending evaluations, and recent compliance determinations.",
+    proTip: "Keep this tab open as your main operational hub for client document submissions.",
+    statutoryRule: "FINRA Rule 2210 & Rule 2111 (Suitability)",
     icon: Sparkles,
-    proTip: "Automated pre-scans run instantly on upload to highlight potential promissory claims before supervisory review.",
-    previewType: "welcome",
+    preferredPlacement: "right",
   },
   {
-    title: "Draft Submission & PII Masking",
-    badge: "Step 2: Submissions",
-    headline: "Uploading Documents & Automated Redaction",
+    targetKey: "advisor-upload",
+    targetLabel: "Upload Document Button",
+    title: "Submitting Client Documents",
+    headline: "Upload Drafts with Automated PII Masking",
     description:
-      "Submit drafts in .pdf, .docx, or .txt format. Springer Capital's secure ingestion pipeline automatically detects and masks confidential client PII (SSNs, phone numbers, account numbers) before permanent ledger storage.",
+      "Click this 'Upload Document' button to submit new client correspondence (.pdf, .docx, .txt). The system automatically detects and masks sensitive client PII (SSNs, phone numbers) before regulatory ledger storage.",
+    actionGuidance:
+      "Click here whenever you have a new client recommendation or marketing draft ready for compliance pre-check.",
+    proTip: "Client identities are converted into secure audit tokens (e.g. [SSN_MASKED]) for complete confidentiality.",
+    statutoryRule: "Automatic PII Ingestion Sanitizer",
     icon: UploadCloud,
-    proTip: "Client identities are converted into secure audit tokens (e.g., [SSN_MASKED]) for complete data confidentiality.",
-    previewType: "upload_pii",
+    preferredPlacement: "bottom",
   },
   {
-    title: "Status Workflow & Revisions",
-    badge: "Step 3: Lineage & Versions",
-    headline: "Tracking Review Cycles & Versioning",
+    targetKey: "advisor-status-filter",
+    targetLabel: "Status Filters & Document Table",
+    title: "Tracking Review Cycles & Lineage",
+    headline: "Document Status & Multi-Version Revisions",
     description:
-      "Track submissions through 'Pending Review', 'Needs Revision', or 'Approved'. If an officer requests amendments, upload revised drafts (v2, v3) while preserving complete audit lineage and review history.",
-    icon: Layers,
+      "Filter your submissions by 'Pending', 'Needs Revision', or 'Approved'. When an officer requests revisions, open the document to upload an amended revision (v2, v3) without breaking audit history.",
+    actionGuidance:
+      "Always upload revisions directly onto existing submissions to preserve complete regulatory lineage.",
     proTip: "Clean remediated files can be downloaded directly from the review workspace with internal audit notes removed.",
-    previewType: "versioning",
+    statutoryRule: "Regulatory Version Lineage Standard",
+    icon: Layers,
+    preferredPlacement: "bottom",
   },
   {
-    title: "Permanent Audit Trail",
-    badge: "Step 4: Audit Defensibility",
-    headline: "Immutable Supervisory Ledger",
+    targetKey: "nav-audit",
+    targetLabel: "Sidebar Navigation: Audit Trail",
+    title: "Permanent Regulatory Ledger",
+    headline: "Immutable Fiduciary Audit Ledger",
     description:
-      "Every document event, status transition, timestamp, and officer determination is permanently logged to the compliance ledger, ensuring complete books and records audit defensibility.",
+      "Click 'Audit Trail' in the sidebar to access Springer Capital's permanent regulatory ledger. Every upload, automated PII mask event, and officer determination is permanently logged with cryptographic timestamps.",
+    actionGuidance:
+      "Use the Audit Trail tab whenever you need documentation proof for internal exams or regulatory audits.",
+    proTip: "Full supervisory notes and timestamped decision records are preserved for SEC and FINRA audit defensibility.",
+    statutoryRule: "SEC Rule 206 Books & Records Mandate",
     icon: History,
-    proTip: "View full supervisory notes and lifecycle audit logs anytime from the Audit Trail tab.",
-    previewType: "audit_trail",
+    preferredPlacement: "right",
   },
   {
-    title: "Neural Compliance Copilot",
-    badge: "Step 5: Embedded AI",
-    headline: "AI-Powered Pre-Checking & Polish",
+    targetKey: "copilot-widget",
+    targetLabel: "Bottom-Right: Neural Copilot Launcher",
+    title: "AI Compliance Assistant",
+    headline: "Your Neural Compliance Copilot",
     description:
-      "Click the Copilot widget in the bottom-right corner anytime! Use /grammar to check sentence quality and verify English dictionary words, /enhance to format memos, or /rules to look up FINRA & SEC guidelines.",
+      "Click this floating Copilot button in the bottom-right corner! Type /grammar to check sentence quality and verify real English dictionary words, /enhance to format drafts into institutional compliance memos, or /rules for FINRA/SEC guides.",
+    actionGuidance:
+      "Click the button anytime to test draft sentences before submitting them for formal review.",
+    proTip: "Run /grammar on draft statements to catch promissory language and verify vocabulary before officer review.",
+    statutoryRule: "Embedded AI: FINRA 2210 Non-Promissory Standard",
     icon: Bot,
-    proTip: "Type '/grammar <sentence>' to test phrasing for promissory language and grammatical syntax before submitting.",
-    previewType: "copilot",
+    preferredPlacement: "top",
   },
 ];
 
-const OFFICER_STEPS: IWalkthroughStep[] = [
+const OFFICER_SPOTLIGHT_STEPS: ISpotlightStep[] = [
   {
-    title: "Supervisory Console",
-    badge: "Officer Supervisory Console",
-    headline: "Welcome, Compliance Supervisory Officer",
+    targetKey: "nav-queue",
+    targetLabel: "Sidebar Navigation: Review Queue",
+    title: "Supervisory Review Console",
+    headline: "Your Central Review Queue",
     description:
-      "Your centralized command center for reviewing advisory correspondence, supervising suitability under FINRA Rule 2111, and executing statutory compliance determinations under FINRA Rule 2210 & SEC Rule 206.",
+      "This is your primary supervisory workspace. All incoming advisor filings and client recommendation correspondence flow directly into this queue awaiting your compliance review and statutory sign-off.",
+    actionGuidance:
+      "Navigate here daily to inspect newly submitted advisor filings and monitor queue turnaround velocity.",
+    proTip: "Supervisory officers hold statutory approval authority across all advisory communications.",
+    statutoryRule: "FINRA Rule 3110 (Supervision Standard)",
     icon: ShieldCheck,
-    proTip: "Officers hold final determinative authority across all advisory submissions and marketing filings.",
-    previewType: "welcome",
+    preferredPlacement: "right",
   },
   {
-    title: "Review Queue & Triage",
-    badge: "Step 2: Review Queue",
-    headline: "Incoming Filings & Priority Risk Triage",
+    targetKey: "officer-priority",
+    targetLabel: "Risk Priority Filter & Triage",
+    title: "Risk-Based Queue Triage",
+    headline: "Priority & Severity Filtering",
     description:
-      "The Review Queue organizes incoming filings by submission date, filing type, and risk severity (High, Medium, Low). Quickly prioritize urgent reviews and inspect multi-version submissions.",
-    icon: ListOrdered,
-    proTip: "Filter by 'High' severity to prioritize filings with promissory return claims or missing downside disclosures.",
-    previewType: "queue",
+      "Use this filter dropdown to triage filings by risk severity (High, Medium, Urgent). Filings with promissory return statements or missing downside risk disclosures are automatically ranked with High priority.",
+    actionGuidance:
+      "Filter for 'High' priority first to address potentially non-compliant public representations immediately.",
+    proTip: "Promissory claims without balanced risk disclosures are strictly prohibited under FINRA Rule 2210.",
+    statutoryRule: "FINRA Rule 2210 & SEC Rule 206(4)-1",
+    icon: Filter,
+    preferredPlacement: "bottom",
   },
   {
-    title: "Audit Workspace & Citations",
-    badge: "Step 3: Document Workspace",
+    targetKey: "officer-review-btn",
+    targetLabel: "Queue Action: Review Button",
+    title: "Compliance Audit Workspace",
     headline: "Side-by-Side Review & Rule Citations",
     description:
-      "Inspect submitted drafts with automated side-by-side text analysis, statutory rule citations, and flagged passages. Every finding connects directly to relevant FINRA and SEC regulatory standards.",
-    icon: FileCheck2,
-    proTip: "Click any flagged finding to inspect statutory citations and review recommended remediation text.",
-    previewType: "audit_workspace",
+      "Click 'Review' on any pending submission to enter the side-by-side Compliance Audit Workspace. Here you inspect flagged passages, view statutory rule citations, and issue 'Approved', 'Needs Revision', or 'Rejected' determinations.",
+    actionGuidance:
+      "Click 'Review' to inspect side-by-side text, review citations, and issue legally binding determinations.",
+    proTip: "All flagged findings connect directly to FINRA and SEC regulatory codes with suggested remediations.",
+    statutoryRule: "Statutory Rule Citation Engine",
+    icon: Eye,
+    preferredPlacement: "left",
   },
   {
-    title: "Determinations & Reports",
-    badge: "Step 4: Determinations",
-    headline: "Formal Determinations & Clean Remediated Files",
+    targetKey: "nav-audit",
+    targetLabel: "Sidebar Navigation: Audit History",
+    title: "Supervisory Audit Trail",
+    headline: "Historical Determinations & Audit Reports",
     description:
-      "Issue 'Approved', 'Needs Revision', or 'Rejected' determinations with supervisory audit notes. Remediated document exports automatically strip internal findings so advisors receive clean, presentation-ready files.",
-    icon: CheckCircle2,
-    proTip: "Downloaded remediated files omit all internal finding and severity tags, while audit reports preserve full inspection trails.",
-    previewType: "determinations",
+      "Click 'Audit History' in the sidebar to review past determinations, officer signatures, and export audit-defensible inspection reports for SEC/FINRA regulatory examinations.",
+    actionGuidance:
+      "Access this tab to verify historical supervisory sign-offs and download clean remediated documents.",
+    proTip: "Downloaded remediated documents automatically omit internal findings so advisors can safely share approved correspondence.",
+    statutoryRule: "SEC Rule 206 Regulatory Retention",
+    icon: History,
+    preferredPlacement: "right",
   },
   {
-    title: "Institutional AI Copilot",
-    badge: "Step 5: Institutional Copilot",
-    headline: "Regulatory Precedent Research & Text Audits",
+    targetKey: "copilot-widget",
+    targetLabel: "Bottom-Right: Institutional Copilot",
+    title: "Regulatory AI & Precedent Research",
+    headline: "Institutional Compliance Copilot",
     description:
-      "Consult the Copilot in the bottom-right corner to search historical audit precedents, review statutory requirements, and audit drafts. Use /grammar to check sentence validity and detect non-words before signing off.",
+      "Click this floating Copilot button in the bottom-right corner! Consult the AI to look up FINRA & SEC regulatory precedents, search historical audits, and audit draft text before signing off on supervisory memos.",
+    actionGuidance:
+      "Click the Copilot button to ask questions like: 'What are required disclosures under FINRA 2210?'",
+    proTip: "Use /grammar inside the Copilot to verify sentence validity and detect non-words before issuing formal memos.",
+    statutoryRule: "Institutional AI Precedent Discovery",
     icon: Bot,
-    proTip: "Ask the copilot: 'What are required disclosures under FINRA 2210?' for instant statutory guidance.",
-    previewType: "copilot",
+    preferredPlacement: "top",
   },
 ];
+
+interface ElementRect {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+  right: number;
+  bottom: number;
+}
 
 export function AppWalkthrough() {
   const session = useSyncExternalStore<UserSession | null>(
@@ -166,19 +215,16 @@ export function AppWalkthrough() {
   );
 
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const [activeRoleView, setActiveRoleView] = useState<"Advisor" | "Officer">("Advisor");
   const [hasCheckedFirstTime, setHasCheckedFirstTime] = useState(false);
+  const [targetRect, setTargetRect] = useState<ElementRect | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
 
-  // Sync role view with current user session or forced role
-  useEffect(() => {
-    if (walkthroughState.forcedRole) {
-      setActiveRoleView(walkthroughState.forcedRole);
-    } else if (session?.role === "Officer") {
-      setActiveRoleView("Officer");
-    } else {
-      setActiveRoleView("Advisor");
-    }
-  }, [session?.role, walkthroughState.forcedRole]);
+  // Strict role enforcement: If Officer, strictly Officer. If Advisor, strictly Advisor.
+  const isOfficer = session?.role === "Officer";
+  const steps = isOfficer ? OFFICER_SPOTLIGHT_STEPS : ADVISOR_SPOTLIGHT_STEPS;
+  const currentStep = steps[currentStepIndex] || steps[0];
+  const isFirstStep = currentStepIndex === 0;
+  const isLastStep = currentStepIndex === steps.length - 1;
 
   // First-time visit auto-trigger check
   useEffect(() => {
@@ -190,20 +236,55 @@ export function AppWalkthrough() {
     const alreadyCompleted = walkthroughStore.hasCompleted(userIdentifier, role);
 
     if (!alreadyCompleted) {
-      // Delay slightly so dashboard mounts smoothly
+      // Delay slightly so dashboard mounts and elements render smoothly
       const timer = setTimeout(() => {
         walkthroughStore.openWalkthrough(role === "Officer" ? "Officer" : "Advisor");
-      }, 600);
+      }, 700);
       setHasCheckedFirstTime(true);
       return () => clearTimeout(timer);
     }
     setHasCheckedFirstTime(true);
   }, [session, hasCheckedFirstTime]);
 
-  const steps = activeRoleView === "Officer" ? OFFICER_STEPS : ADVISOR_STEPS;
-  const currentStep = steps[currentStepIndex] || steps[0];
-  const isFirstStep = currentStepIndex === 0;
-  const isLastStep = currentStepIndex === steps.length - 1;
+  // Measure and locate target element on step change or window scroll/resize
+  const updateTargetPosition = useCallback(() => {
+    if (!walkthroughState.isOpen || !currentStep) return;
+
+    const targetEl = document.querySelector(`[data-tour="${currentStep.targetKey}"]`);
+
+    if (targetEl) {
+      // Scroll into view gently if needed
+      targetEl.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+      const rect = targetEl.getBoundingClientRect();
+      setTargetRect({
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+        right: rect.right,
+        bottom: rect.bottom,
+      });
+    } else {
+      // Fallback if element not found in DOM
+      setTargetRect(null);
+    }
+  }, [walkthroughState.isOpen, currentStep]);
+
+  useEffect(() => {
+    updateTargetPosition();
+    const handleRecalculate = () => updateTargetPosition();
+
+    window.addEventListener("resize", handleRecalculate);
+    window.addEventListener("scroll", handleRecalculate, true);
+
+    const timer = setTimeout(updateTargetPosition, 250);
+
+    return () => {
+      window.removeEventListener("resize", handleRecalculate);
+      window.removeEventListener("scroll", handleRecalculate, true);
+      clearTimeout(timer);
+    };
+  }, [updateTargetPosition, currentStepIndex]);
 
   const handleClose = useCallback(() => {
     if (session) {
@@ -248,117 +329,176 @@ export function AppWalkthrough() {
 
   const IconComponent = currentStep.icon;
 
+  // Calculate Guidance Card Coordinates relative to viewport & targetRect
+  let cardStyles: React.CSSProperties = {};
+  let pointerArrowPosition: "top" | "bottom" | "left" | "right" | "center" = "center";
+
+  if (targetRect && typeof window !== "undefined") {
+    const cardWidth = Math.min(420, window.innerWidth - 32);
+    const cardEstimatedHeight = 360;
+    const padding = 16;
+
+    if (currentStep.preferredPlacement === "right") {
+      // Place card to the right of element
+      let left = targetRect.right + padding;
+      let top = Math.max(padding, Math.min(window.innerHeight - cardEstimatedHeight - padding, targetRect.top - 20));
+
+      if (left + cardWidth > window.innerWidth - padding) {
+        // Not enough room on right, fallback to bottom or left
+        left = Math.max(padding, targetRect.left - cardWidth - padding);
+        pointerArrowPosition = "right";
+      } else {
+        pointerArrowPosition = "left";
+      }
+
+      cardStyles = {
+        position: "fixed",
+        top: `${top}px`,
+        left: `${left}px`,
+        width: `${cardWidth}px`,
+      };
+    } else if (currentStep.preferredPlacement === "bottom") {
+      // Place card below element
+      let top = targetRect.bottom + padding;
+      let left = Math.max(padding, Math.min(window.innerWidth - cardWidth - padding, targetRect.left - 40));
+
+      if (top + cardEstimatedHeight > window.innerHeight - padding) {
+        // Fallback above
+        top = Math.max(padding, targetRect.top - cardEstimatedHeight - padding);
+        pointerArrowPosition = "bottom";
+      } else {
+        pointerArrowPosition = "top";
+      }
+
+      cardStyles = {
+        position: "fixed",
+        top: `${top}px`,
+        left: `${left}px`,
+        width: `${cardWidth}px`,
+      };
+    } else if (currentStep.preferredPlacement === "top") {
+      // Place card above element (e.g. bottom-right Copilot)
+      let top = Math.max(padding, targetRect.top - cardEstimatedHeight - padding);
+      let left = Math.max(padding, Math.min(window.innerWidth - cardWidth - padding, targetRect.right - cardWidth));
+      pointerArrowPosition = "bottom";
+
+      cardStyles = {
+        position: "fixed",
+        top: `${top}px`,
+        left: `${left}px`,
+        width: `${cardWidth}px`,
+      };
+    } else if (currentStep.preferredPlacement === "left") {
+      // Place card to the left of element
+      let left = Math.max(padding, targetRect.left - cardWidth - padding);
+      let top = Math.max(padding, Math.min(window.innerHeight - cardEstimatedHeight - padding, targetRect.top - 20));
+      pointerArrowPosition = "right";
+
+      cardStyles = {
+        position: "fixed",
+        top: `${top}px`,
+        left: `${left}px`,
+        width: `${cardWidth}px`,
+      };
+    }
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-slate-950/60 backdrop-blur-xs animate-in fade-in-0 duration-200">
+    <div className="fixed inset-0 z-50 overflow-hidden pointer-events-auto">
+      {/* 1. Backdrop Overlay */}
       <div
+        onClick={handleClose}
+        className="fixed inset-0 bg-slate-950/65 backdrop-blur-[2px] transition-opacity duration-200 cursor-pointer"
+        aria-hidden="true"
+      />
+
+      {/* 2. Spotlight Cutout / Glowing Highlighter Box */}
+      {targetRect && (
+        <div
+          style={{
+            position: "fixed",
+            top: `${Math.max(0, targetRect.top - 6)}px`,
+            left: `${Math.max(0, targetRect.left - 6)}px`,
+            width: `${targetRect.width + 12}px`,
+            height: `${targetRect.height + 12}px`,
+          }}
+          className="rounded-xl border-2 border-[#C5E86C] ring-4 ring-[#C5E86C]/40 shadow-[0_0_35px_rgba(197,232,108,0.7)] pointer-events-none transition-all duration-300 ease-out z-50 animate-pulse"
+        />
+      )}
+
+      {/* 3. Floating Guidance Pointer Card */}
+      <div
+        ref={cardRef}
+        style={targetRect ? cardStyles : undefined}
+        className={cn(
+          "z-50 bg-white rounded-2xl border border-[#E6E8E7] shadow-2xl overflow-hidden box-border text-[#183028] transition-all duration-300 animate-in zoom-in-95",
+          !targetRect && "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100vw-2rem)] max-w-lg"
+        )}
         role="dialog"
         aria-modal="true"
-        aria-label="Application Walkthrough"
-        className="relative flex flex-col w-full max-w-2xl max-h-[92vh] bg-white rounded-2xl border border-[#E6E8E7] shadow-2xl overflow-hidden box-border text-[#183028] animate-in zoom-in-95 duration-200"
+        aria-label={`${isOfficer ? "Officer" : "Advisor"} Onboarding Guidance`}
       >
-        {/* Top Header Bar */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#E6E8E7] bg-white">
-          <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#183028] text-[#C5E86C]">
-              <Compass className="h-4 w-4" />
-            </div>
-            <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-[#183028]">
-                Springer Capital Onboarding
+        {/* Top Pointing Indicator Header */}
+        <div className="bg-[#183028] text-white px-4 py-2.5 flex items-center justify-between gap-2 border-b border-[#183028]">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#C5E86C] text-[#183028] shrink-0">
+              <MousePointerClick className="h-3 w-3" />
+            </span>
+            <div className="truncate">
+              <span className="text-[10px] uppercase font-bold tracking-wider text-[#C5E86C] block leading-none">
+                {isOfficer ? "Officer Supervisory Guidance" : "Advisor Onboarding Guidance"}
               </span>
-              <div className="text-[10px] text-[#183028]/60 font-medium">
-                Institutional Regulatory Compliance Walkthrough
-              </div>
+              <span className="text-xs font-semibold text-white truncate block">
+                {currentStep.targetLabel}
+              </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* Role Switcher Pill */}
-            <div className="flex items-center rounded-lg bg-[#E6E8E7]/40 p-0.5 border border-[#E6E8E7] text-[10px] font-semibold">
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveRoleView("Advisor");
-                  setCurrentStepIndex(0);
-                }}
-                className={cn(
-                  "px-2 py-0.5 rounded-md transition-all cursor-pointer",
-                  activeRoleView === "Advisor"
-                    ? "bg-white text-[#183028] font-bold shadow-2xs"
-                    : "text-[#183028]/60 hover:text-[#183028]"
-                )}
-              >
-                Advisor
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveRoleView("Officer");
-                  setCurrentStepIndex(0);
-                }}
-                className={cn(
-                  "px-2 py-0.5 rounded-md transition-all cursor-pointer",
-                  activeRoleView === "Officer"
-                    ? "bg-white text-[#183028] font-bold shadow-2xs"
-                    : "text-[#183028]/60 hover:text-[#183028]"
-                )}
-              >
-                Officer
-              </button>
-            </div>
-
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-white/10 text-white">
+              {currentStepIndex + 1}/{steps.length}
+            </span>
             <button
+              type="button"
               onClick={handleClose}
-              className="rounded-lg p-1.5 text-[#183028]/50 hover:text-[#183028] hover:bg-[#E6E8E7]/60 transition-colors cursor-pointer"
-              aria-label="Close walkthrough"
+              className="p-1 rounded-md text-white/60 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              title="Skip Guidance"
+              aria-label="Close onboarding guidance"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
 
-        {/* Progress Bar & Indicators */}
-        <div className="px-5 pt-3.5 pb-1 bg-white">
-          <div className="flex items-center justify-between text-[11px] font-semibold text-[#183028]/70 mb-1.5">
-            <span className="flex items-center gap-1.5 text-xs text-[#183028] font-bold">
-              <span className="px-2 py-0.5 rounded-full bg-[#C5E86C]/40 text-[#183028] text-[10.5px]">
-                {currentStep.badge}
-              </span>
-            </span>
-            <span className="font-mono text-[10.5px] font-bold text-[#183028]">
-              Step {currentStepIndex + 1} of {steps.length}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-5 gap-1.5">
-            {steps.map((_, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => setCurrentStepIndex(idx)}
-                className={cn(
-                  "h-1.5 rounded-full transition-all cursor-pointer",
-                  idx === currentStepIndex
-                    ? "bg-[#183028]"
-                    : idx < currentStepIndex
-                    ? "bg-[#C5E86C]"
-                    : "bg-[#E6E8E7]"
-                )}
-                aria-label={`Go to step ${idx + 1}`}
-              />
-            ))}
-          </div>
+        {/* Step Progress Bar */}
+        <div className="grid grid-cols-5 gap-1 p-2 bg-[#FAFBFB] border-b border-[#E6E8E7]">
+          {steps.map((_, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => setCurrentStepIndex(idx)}
+              className={cn(
+                "h-1 rounded-full transition-all cursor-pointer",
+                idx === currentStepIndex
+                  ? "bg-[#183028]"
+                  : idx < currentStepIndex
+                  ? "bg-[#C5E86C]"
+                  : "bg-[#E6E8E7]"
+              )}
+              aria-label={`Jump to step ${idx + 1}`}
+            />
+          ))}
         </div>
 
-        {/* Modal Scrollable Body */}
-        <div className="flex-1 overflow-y-auto px-5 py-3 space-y-4">
-          {/* Step Header */}
-          <div className="flex items-start gap-3 pt-1">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#C5E86C]/30 border border-[#C5E86C]/60 text-[#183028] shrink-0 shadow-2xs">
-              <IconComponent className="h-5 w-5 text-[#183028]" />
+        {/* Guidance Content Body */}
+        <div className="p-4 space-y-3 max-h-[60vh] overflow-y-auto">
+          {/* Headline & Icon */}
+          <div className="flex items-start gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#C5E86C]/30 border border-[#C5E86C]/60 text-[#183028] shrink-0 shadow-2xs mt-0.5">
+              <IconComponent className="h-4.5 w-4.5 text-[#183028]" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-[#183028] leading-tight">
+              <h3 className="text-sm font-bold text-[#183028] leading-snug">
                 {currentStep.headline}
               </h3>
               <p className="text-xs text-[#183028]/75 mt-1 leading-relaxed">
@@ -367,40 +507,51 @@ export function AppWalkthrough() {
             </div>
           </div>
 
-          {/* Dynamic Interactive Preview Card */}
-          <div className="rounded-xl border border-[#E6E8E7] bg-slate-50/70 p-3.5 space-y-2.5">
-            <WalkthroughVisualPreview
-              type={currentStep.previewType}
-              isOfficer={activeRoleView === "Officer"}
-            />
+          {/* Action Box: What the user must do here */}
+          <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-[#183028] space-y-1">
+            <div className="text-[10px] uppercase font-bold tracking-wider text-[#183028]/60 flex items-center gap-1">
+              <Compass className="h-3 w-3 text-emerald-700" />
+              <span>What You Will Work on Here:</span>
+            </div>
+            <p className="text-[11px] leading-relaxed font-medium text-[#183028]">
+              {currentStep.actionGuidance}
+            </p>
           </div>
 
-          {/* Pro Tip Callout */}
-          <div className="flex items-start gap-2.5 p-2.5 rounded-lg bg-emerald-50/80 border border-emerald-200 text-xs text-emerald-950">
-            <HelpCircle className="h-4 w-4 text-emerald-700 shrink-0 mt-0.5" />
-            <div className="text-[11px] leading-relaxed">
-              <strong className="font-semibold text-emerald-900">Institutional Pro-Tip: </strong>
+          {/* Pro Tip Box */}
+          <div className="flex items-start gap-2 p-2 rounded-lg bg-emerald-50/80 border border-emerald-200 text-xs text-emerald-950">
+            <HelpCircle className="h-3.5 w-3.5 text-emerald-700 shrink-0 mt-0.5" />
+            <div className="text-[10.5px] leading-relaxed">
+              <strong className="font-semibold text-emerald-900">Pro-Tip: </strong>
               <span>{currentStep.proTip}</span>
             </div>
           </div>
+
+          {/* Regulatory Citation Tag */}
+          {currentStep.statutoryRule && (
+            <div className="flex items-center justify-between text-[10px] text-[#183028]/60 pt-0.5 font-mono">
+              <span>Regulatory Standard:</span>
+              <span className="font-bold text-[#183028]">{currentStep.statutoryRule}</span>
+            </div>
+          )}
         </div>
 
-        {/* Bottom Footer Actions */}
-        <div className="flex items-center justify-between px-5 py-3 border-t border-[#E6E8E7] bg-white">
+        {/* Footer Actions */}
+        <div className="flex items-center justify-between p-3 border-t border-[#E6E8E7] bg-white">
           <button
             type="button"
             onClick={handleClose}
-            className="text-xs font-semibold text-[#183028]/60 hover:text-[#183028] transition-colors cursor-pointer"
+            className="text-[11px] font-semibold text-[#183028]/60 hover:text-[#183028] transition-colors cursor-pointer"
           >
-            Skip Walkthrough
+            Skip Guidance
           </button>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             {!isFirstStep && (
               <button
                 type="button"
                 onClick={handleBack}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[#E6E8E7] bg-white hover:bg-slate-50 text-xs font-semibold text-[#183028] transition-colors cursor-pointer"
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[#E6E8E7] bg-white hover:bg-slate-50 text-[11px] font-semibold text-[#183028] transition-colors cursor-pointer"
               >
                 <ArrowLeft className="h-3 w-3" />
                 <span>Back</span>
@@ -410,9 +561,9 @@ export function AppWalkthrough() {
             <button
               type="button"
               onClick={handleNext}
-              className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-[#183028] hover:bg-[#203f35] text-[#C5E86C] text-xs font-bold transition-all shadow-xs cursor-pointer"
+              className="flex items-center gap-1 px-3 py-1 rounded-lg bg-[#183028] hover:bg-[#203f35] text-[#C5E86C] text-[11px] font-bold transition-all shadow-xs cursor-pointer"
             >
-              <span>{isLastStep ? "Complete Walkthrough" : "Next"}</span>
+              <span>{isLastStep ? "Got it, Finish" : "Next Point"}</span>
               {isLastStep ? (
                 <Check className="h-3 w-3" />
               ) : (
@@ -424,269 +575,4 @@ export function AppWalkthrough() {
       </div>
     </div>
   );
-}
-
-/**
- * Renders role-specific graphical mockups illustrating key platform features.
- */
-function WalkthroughVisualPreview({
-  type,
-  isOfficer,
-}: {
-  type: IWalkthroughStep["previewType"];
-  isOfficer: boolean;
-}) {
-  switch (type) {
-    case "welcome":
-      return (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-[10.5px] font-bold text-[#183028]">
-            <span className="flex items-center gap-1 text-emerald-700">
-              <CheckCircle2 className="h-3 w-3" />
-              Statutory Verification Active
-            </span>
-            <span className="font-mono text-[9.5px] text-[#183028]/60">
-              FINRA Rule 2210 &bull; SEC Rule 206(4)-1
-            </span>
-          </div>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="p-2.5 bg-white rounded-lg border border-[#E6E8E7] shadow-2xs">
-              <div className="text-[10px] uppercase font-bold text-[#183028]/60">
-                {isOfficer ? "Supervisory Scope" : "Advisor Filings"}
-              </div>
-              <div className="text-xs font-bold text-[#183028] mt-0.5">
-                {isOfficer ? "All Correspondence & Ads" : "Client Recommendations"}
-              </div>
-              <p className="text-[10px] text-[#183028]/70 mt-1">
-                {isOfficer
-                  ? "Audit suitability, risk disclosures, and statutory disclaimers."
-                  : "Automated scan on upload catches promissory claims before officer review."}
-              </p>
-            </div>
-            <div className="p-2.5 bg-white rounded-lg border border-[#E6E8E7] shadow-2xs">
-              <div className="text-[10px] uppercase font-bold text-[#183028]/60">
-                Compliance Standard
-              </div>
-              <div className="text-xs font-bold text-emerald-700 mt-0.5">
-                Fiduciary & Fair-Balance
-              </div>
-              <p className="text-[10px] text-[#183028]/70 mt-1">
-                Zero-tolerance for promissory returns or unqualified risk-free statements.
-              </p>
-            </div>
-          </div>
-        </div>
-      );
-
-    case "upload_pii":
-      return (
-        <div className="space-y-2">
-          <div className="p-2 bg-white rounded-lg border border-dashed border-[#E6E8E7] flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 bg-[#C5E86C]/30 rounded text-[#183028]">
-                <FileText className="h-4 w-4" />
-              </div>
-              <div>
-                <div className="text-xs font-bold text-[#183028]">
-                  Retirement_Recommendation_Whitfield.pdf
-                </div>
-                <div className="text-[10px] text-[#183028]/60">
-                  Client Account: MOW-88213456 &bull; PDF Document
-                </div>
-              </div>
-            </div>
-            <span className="px-2 py-0.5 rounded text-[9.5px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-              PII Redacted ✓
-            </span>
-          </div>
-
-          <div className="p-2 bg-white rounded-lg border border-[#E6E8E7] text-[10.5px] font-mono text-[#183028]/80 space-y-1">
-            <div className="text-[9.5px] uppercase font-bold text-[#183028]/60 font-sans">
-              Automated Ingestion Sanitizer:
-            </div>
-            <div className="text-xs">
-              Client SSN: <span className="px-1 bg-amber-100 text-amber-900 rounded font-bold">[SSN_MASKED]</span>
-            </div>
-            <div className="text-xs">
-              Contact Phone: <span className="px-1 bg-amber-100 text-amber-900 rounded font-bold">[PHONE_MASKED]</span>
-            </div>
-          </div>
-        </div>
-      );
-
-    case "versioning":
-      return (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-xs font-semibold">
-            <span className="text-[#183028] font-bold">Document Revision Lineage</span>
-            <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-              Approved Version Available
-            </span>
-          </div>
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between p-2 bg-white rounded-lg border border-[#E6E8E7] text-xs">
-              <div className="flex items-center gap-2">
-                <span className="px-1.5 py-0.5 bg-slate-100 text-slate-700 font-mono font-bold text-[10px] rounded">
-                  v1.0
-                </span>
-                <span className="text-[#183028]/70">Initial Submission</span>
-              </div>
-              <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                Needs Revision (2 Findings)
-              </span>
-            </div>
-            <div className="flex items-center justify-between p-2 bg-white rounded-lg border border-emerald-300 bg-emerald-50/30 text-xs">
-              <div className="flex items-center gap-2">
-                <span className="px-1.5 py-0.5 bg-[#C5E86C] text-[#183028] font-mono font-bold text-[10px] rounded">
-                  v2.0
-                </span>
-                <span className="text-[#183028] font-bold">Remediated Amendment</span>
-              </div>
-              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300">
-                Approved ✓
-              </span>
-            </div>
-          </div>
-        </div>
-      );
-
-    case "audit_trail":
-      return (
-        <div className="p-2.5 bg-white rounded-lg border border-[#E6E8E7] space-y-2">
-          <div className="flex items-center justify-between text-xs font-bold text-[#183028]">
-            <span className="flex items-center gap-1.5">
-              <History className="h-3.5 w-3.5 text-emerald-600" />
-              Permanent Compliance Audit Log
-            </span>
-            <span className="text-[9.5px] font-mono text-[#183028]/60">
-              SHA-256 Ledger
-            </span>
-          </div>
-          <div className="space-y-1 text-[10px]">
-            <div className="flex items-center justify-between p-1.5 rounded bg-slate-50 border border-slate-100">
-              <span className="text-[#183028] font-medium">DOCUMENT_SUBMISSION &bull; v1.0</span>
-              <span className="text-[#183028]/60 font-mono">10:14 AM</span>
-            </div>
-            <div className="flex items-center justify-between p-1.5 rounded bg-slate-50 border border-slate-100">
-              <span className="text-[#183028] font-medium">PII_MASK_APPLIED &bull; 2 Tokens</span>
-              <span className="text-[#183028]/60 font-mono">10:14 AM</span>
-            </div>
-            <div className="flex items-center justify-between p-1.5 rounded bg-emerald-50/60 border border-emerald-200">
-              <span className="text-emerald-900 font-bold">OFFICER_APPROVAL &bull; Alex Smith (Officer)</span>
-              <span className="text-emerald-800 font-mono">03:42 PM</span>
-            </div>
-          </div>
-        </div>
-      );
-
-    case "queue":
-      return (
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between text-xs font-bold text-[#183028]">
-            <span>Supervisory Review Queue</span>
-            <span className="text-[10px] text-[#183028]/60 font-mono">3 Pending Filings</span>
-          </div>
-          <div className="space-y-1 text-[10.5px]">
-            <div className="flex items-center justify-between p-2 bg-white rounded-lg border border-[#E6E8E7]">
-              <div>
-                <span className="font-bold text-[#183028]">Portfolio Restructuring Memo</span>
-                <div className="text-[9.5px] text-[#183028]/60">Rep: Sarah Jenkins &bull; MOW-88213456</div>
-              </div>
-              <span className="px-2 py-0.5 rounded text-[9.5px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
-                High Risk
-              </span>
-            </div>
-            <div className="flex items-center justify-between p-2 bg-white rounded-lg border border-[#E6E8E7]">
-              <div>
-                <span className="font-bold text-[#183028]">Q3 Market Commentary</span>
-                <div className="text-[9.5px] text-[#183028]/60">Rep: David Vance &bull; Public Pitch</div>
-              </div>
-              <span className="px-2 py-0.5 rounded text-[9.5px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
-                Medium Risk
-              </span>
-            </div>
-          </div>
-        </div>
-      );
-
-    case "audit_workspace":
-      return (
-        <div className="p-2.5 bg-white rounded-lg border border-[#E6E8E7] space-y-2">
-          <div className="flex items-center justify-between text-xs font-bold text-[#183028]">
-            <span className="text-rose-700 flex items-center gap-1">
-              <AlertTriangle className="h-3 w-3" />
-              Flagged Finding: Promissory Return
-            </span>
-            <span className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">
-              FINRA-2210
-            </span>
-          </div>
-          <div className="p-2 rounded bg-rose-50/70 border border-rose-200 text-[10.5px] space-y-1">
-            <div className="line-through text-rose-700 font-mono text-[10px]">
-              &ldquo;This strategy guarantees a 12% annual return with zero risk.&rdquo;
-            </div>
-            <div className="text-emerald-700 font-bold font-mono text-[10px]">
-              &ldquo;This portfolio targets long-term growth, subject to market fluctuation.&rdquo;
-            </div>
-          </div>
-        </div>
-      );
-
-    case "determinations":
-      return (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-xs font-bold text-[#183028]">
-            <span>Statutory Determination Actions</span>
-            <span className="text-[10px] text-emerald-700 font-bold">Client Download Sanitized</span>
-          </div>
-          <div className="grid grid-cols-3 gap-1.5 text-center text-[10px] font-bold">
-            <div className="p-2 rounded-lg bg-emerald-100/70 border border-emerald-300 text-emerald-900">
-              Approve Filing
-            </div>
-            <div className="p-2 rounded-lg bg-amber-100/70 border border-amber-300 text-amber-900">
-              Require Revision
-            </div>
-            <div className="p-2 rounded-lg bg-rose-100/70 border border-rose-300 text-rose-900">
-              Reject Draft
-            </div>
-          </div>
-          <div className="p-2 bg-white rounded-lg border border-[#E6E8E7] text-[10px] text-[#183028]/70 flex items-center justify-between">
-            <span>Export Clean Remediated (.txt / .pdf)</span>
-            <Download className="h-3 w-3 text-emerald-600" />
-          </div>
-        </div>
-      );
-
-    case "copilot":
-      return (
-        <div className="p-2.5 bg-white rounded-lg border border-[#E6E8E7] space-y-2">
-          <div className="flex items-center justify-between text-xs font-bold text-[#183028]">
-            <span className="flex items-center gap-1.5 text-emerald-700">
-              <Bot className="h-3.5 w-3.5" />
-              Springer Neural Copilot
-            </span>
-            <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-[#C5E86C]/40 text-[#183028] font-bold">
-              Embedded AI
-            </span>
-          </div>
-          <div className="grid grid-cols-2 gap-1.5 text-[10px]">
-            <div className="p-2 bg-slate-50 rounded border border-slate-100 space-y-0.5">
-              <div className="font-mono font-bold text-emerald-800">/grammar &lt;text&gt;</div>
-              <p className="text-[9.5px] text-[#183028]/70">
-                Validates English words &amp; evaluates Good vs. Bad sentence quality.
-              </p>
-            </div>
-            <div className="p-2 bg-slate-50 rounded border border-slate-100 space-y-0.5">
-              <div className="font-mono font-bold text-[#183028]">/enhance &lt;draft&gt;</div>
-              <p className="text-[9.5px] text-[#183028]/70">
-                Formats drafts into SEC &amp; FINRA compliant institutional memos.
-              </p>
-            </div>
-          </div>
-        </div>
-      );
-
-    default:
-      return null;
-  }
 }

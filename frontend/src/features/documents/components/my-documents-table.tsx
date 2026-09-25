@@ -512,6 +512,7 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                 <Button
                   onClick={openModal}
                   size="sm"
+                  data-tour="advisor-upload"
                   className="h-8 px-3.5 rounded-xl bg-[#183028] text-white hover:bg-[#183028]/90 font-semibold text-xs gap-1.5 shadow-2xs transition-all cursor-pointer border border-[#183028]"
                 >
                   <Plus className="h-3.5 w-3.5 text-[#C5E86C]" />
@@ -678,7 +679,7 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                 </div>
 
                 {/* Status Filter Tabs & Search */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 mb-1">
+                <div data-tour="advisor-status-filter" className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 mb-1">
                   <div className="flex items-center space-x-1 overflow-x-auto">
                     {["All", "Pending", "Needs Revision", "Approved", "Rejected"].map((tab) => (
                       <button

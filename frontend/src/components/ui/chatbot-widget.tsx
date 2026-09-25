@@ -1486,7 +1486,7 @@ export function ChatbotWidget() {
     <div className="print:hidden font-sans">
       {/* Floating Trigger Button */}
       {!isOpen && (
-        <div className="fixed bottom-5 right-5 z-40">
+        <div className="fixed bottom-5 right-5 z-40" data-tour="copilot-widget">
           <button
             onClick={() => {
               setIsOpen(true);

@@ -369,7 +369,7 @@ export function DocumentQueueTable() {
           {/* Queue Toolbar: Search, Status Tabs, and Priority Filters */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-2xl bg-white border border-[#E6E8E7] shadow-xs">
             {/* Status Filter Tabs */}
-            <div className="flex items-center space-x-1.5 overflow-x-auto [scrollbar-width:none]">
+            <div data-tour="officer-status-tabs" className="flex items-center space-x-1.5 overflow-x-auto [scrollbar-width:none]">
               {(["All", "Pending", "Needs Revision", "Approved", "Rejected"] as FilterTab[]).map(
                 (tab) => (
                   <button
@@ -400,7 +400,7 @@ export function DocumentQueueTable() {
                 />
               </div>
 
-              <div className="flex items-center gap-1.5 shrink-0">
+              <div data-tour="officer-priority" className="flex items-center gap-1.5 shrink-0">
                 <Filter className="h-4 w-4 text-[#183028]/50" />
                 <select
                   value={selectedPriority}
@@ -544,6 +544,7 @@ export function DocumentQueueTable() {
                             <Button
                               size="sm"
                               variant="outline"
+                              data-tour="officer-review-btn"
                               onClick={() => router.push(`/documents/${doc.id}`)}
                               className="h-8 px-3 rounded-lg border-[#E6E8E7] text-xs font-semibold text-[#183028]/80 bg-white hover:bg-[#C5E86C]/20 hover:text-[#183028] hover:border-[#183028] transition-colors gap-1.5 cursor-pointer shadow-2xs"
                             >
@@ -555,6 +556,7 @@ export function DocumentQueueTable() {
                               <Button
                                 size="sm"
                                 variant="outline"
+                                data-tour="officer-review-btn"
                                 onClick={() => router.push(`/documents/${doc.id}`)}
                                 className="h-8 px-3 rounded-lg border-[#E6E8E7] text-xs font-semibold text-[#183028] bg-white hover:bg-[#C5E86C]/20 hover:text-[#183028] hover:border-[#183028] transition-colors gap-1.5 shadow-2xs cursor-pointer"
                               >
