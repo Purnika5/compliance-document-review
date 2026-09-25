@@ -247,9 +247,15 @@ export class SearchEngineService {
     }
 
     // 2. Title matching
-    if (titleQuery && titleQuery.trim()) {
+    let sanitizedTitle = (titleQuery || '').trim();
+    const noiseWordsRegex = /^(?:total|totals|count|counts|number|numbers|how\s+many|amount|amounts|sum|sums|overall|summary|stats|statistics|status|statuses|records?|items?|data|database|query|search|filter|list|show|get|display|view|fetch|find|give|all|any|the|a|an|year|years|month|months|day|days|date|dates|of|in|for|on|at|by|from|to|with|and|or|uploaded|upload|uploads|documents?|filings?|submissions?|proposals?|files?|approved|pending|needs\s+revision|rejected)$/i;
+    if (noiseWordsRegex.test(sanitizedTitle)) {
+      sanitizedTitle = '';
+    }
+
+    if (sanitizedTitle) {
       conditions.push(`d.title ILIKE $${idx++}`);
-      values.push(`%${titleQuery.trim()}%`);
+      values.push(`%${sanitizedTitle}%`);
     }
 
     // 3. Multi-status filtering
@@ -467,7 +473,7 @@ export class SearchEngineService {
 
     if (!conversationalReply) {
       const datePart = date_range ? ` for ${date_range}` : '';
-      const queryPart = titleQuery ? ` matching "${titleQuery}"` : '';
+      const queryPart = sanitizedTitle ? ` matching "${sanitizedTitle}"` : '';
 
       // If filtering by a single status, focus the reply on just that status
       if (statusFilter.length === 1) {
