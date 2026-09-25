@@ -75,7 +75,10 @@ export class SearchEngineService {
       return { startDate: null, endDate: null };
     }
 
-    const clean = rangeStr.trim().toLowerCase();
+    let clean = rangeStr.trim().toLowerCase();
+    // Strip leading conversational phrases like "uploaded in", "uploaded on", "uploaded", "in", "from"
+    clean = clean.replace(/^(?:uploaded\s+in|uploaded\s+on|uploaded\s+at|uploaded\s+|files\s+in|files\s+from|in\s+|from\s+)/i, '').trim();
+
     const now = new Date();
 
     if (clean === 'today') {
@@ -118,17 +121,67 @@ export class SearchEngineService {
       return { startDate: start, endDate: end };
     }
 
+    if (clean === 'last year' || clean === 'past year') {
+      const yr = now.getFullYear() - 1;
+      const start = new Date(yr, 0, 1, 0, 0, 0, 0);
+      const end = new Date(yr, 11, 31, 23, 59, 59, 999);
+      return { startDate: start, endDate: end };
+    }
+
+    if (clean === 'this year') {
+      const yr = now.getFullYear();
+      const start = new Date(yr, 0, 1, 0, 0, 0, 0);
+      const end = new Date(yr, 11, 31, 23, 59, 59, 999);
+      return { startDate: start, endDate: end };
+    }
+
     if (clean === 'quarter to date' || clean === 'qtd') {
       const currentQuarter = Math.floor(now.getMonth() / 3);
       const start = new Date(now.getFullYear(), currentQuarter * 3, 1, 0, 0, 0, 0);
       return { startDate: start, endDate: now };
     }
 
-    if (/^202[0-9]$/.test(clean)) {
+    // Pure 4-digit year: e.g. "2024", "2025", "2026"
+    if (/^(19|20)\d{2}$/.test(clean)) {
       const yr = parseInt(clean, 10);
       const start = new Date(yr, 0, 1, 0, 0, 0, 0);
       const end = new Date(yr, 11, 31, 23, 59, 59, 999);
       return { startDate: start, endDate: end };
+    }
+
+    // YYYY-MM (e.g. 2026-09)
+    const ymMatch = clean.match(/^(\d{4})-(\d{1,2})$/);
+    if (ymMatch) {
+      const yr = parseInt(ymMatch[1], 10);
+      const mo = parseInt(ymMatch[2], 10) - 1;
+      const start = new Date(yr, mo, 1, 0, 0, 0, 0);
+      const end = new Date(yr, mo + 1, 0, 23, 59, 59, 999);
+      return { startDate: start, endDate: end };
+    }
+
+    // Month names (e.g., "september 2026", "september", "sep 2026", "january 2025")
+    const monthPatterns = [
+      { regex: /\b(?:september|sept|sep)\b/i, index: 8 },
+      { regex: /\b(?:october|oct)\b/i, index: 9 },
+      { regex: /\b(?:november|nov)\b/i, index: 10 },
+      { regex: /\b(?:december|dec)\b/i, index: 11 },
+      { regex: /\b(?:january|jan)\b/i, index: 0 },
+      { regex: /\b(?:february|feb)\b/i, index: 1 },
+      { regex: /\b(?:march|mar)\b/i, index: 2 },
+      { regex: /\b(?:april|apr)\b/i, index: 3 },
+      { regex: /\b(?:may)\b/i, index: 4 },
+      { regex: /\b(?:june|jun)\b/i, index: 5 },
+      { regex: /\b(?:july|jul)\b/i, index: 6 },
+      { regex: /\b(?:august|aug)\b/i, index: 7 },
+    ];
+    for (const m of monthPatterns) {
+      if (m.regex.test(clean)) {
+        const yrMatch = clean.match(/\b(19\d\d|20\d\d)\b/);
+        const yr = yrMatch ? parseInt(yrMatch[1], 10) : now.getFullYear();
+        const start = new Date(yr, m.index, 1, 0, 0, 0, 0);
+        const end = new Date(yr, m.index + 1, 0, 23, 59, 59, 999);
+        return { startDate: start, endDate: end };
+      }
     }
 
     // Interval check: "YYYY-MM-DD to YYYY-MM-DD"
@@ -142,7 +195,7 @@ export class SearchEngineService {
       }
     }
 
-    // Direct ISO string check
+    // Direct single date check: e.g. "2026-09-25", "09/25/2026"
     const directDate = new Date(clean);
     if (!isNaN(directDate.getTime())) {
       const start = new Date(directDate.getFullYear(), directDate.getMonth(), directDate.getDate(), 0, 0, 0, 0);

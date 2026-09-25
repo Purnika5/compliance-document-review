@@ -40,6 +40,11 @@ import {
   BookOpen,
   RotateCcw,
   ListOrdered,
+  Clock,
+  Calendar,
+  CalendarDays,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -566,10 +571,24 @@ function parseNaturalSearch(text: string): {
   else if (lower.includes("past 90 days") || lower.includes("last 90 days")) params.date_range = "past 90 days";
   else if (lower.includes("this month")) params.date_range = "this month";
   else if (lower.includes("last month")) params.date_range = "last month";
+  else if (lower.includes("last year") || lower.includes("past year")) params.date_range = "last year";
+  else if (lower.includes("this year")) params.date_range = "this year";
   else if (lower.includes("today")) params.date_range = "today";
   else if (lower.includes("yesterday")) params.date_range = "yesterday";
-  else if (lower.includes("2026")) params.date_range = "2026";
-  else if (lower.includes("2025")) params.date_range = "2025";
+  else {
+    // Check for months: january - december with optional year
+    const monthRegex = /\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\b/i;
+    const yearRegex = /\b(19\d\d|20\d\d)\b/;
+    const mMatch = lower.match(monthRegex);
+    const yMatch = lower.match(yearRegex);
+    if (mMatch && yMatch) {
+      params.date_range = `${mMatch[1]} ${yMatch[1]}`;
+    } else if (mMatch) {
+      params.date_range = mMatch[1];
+    } else if (yMatch) {
+      params.date_range = yMatch[1];
+    }
+  }
 
   // Status detection (supports 'revision', 'needs revision', 'approve', 'approved', 'reject', 'rejected', 'pending')
   const statuses: string[] = [];
@@ -1307,9 +1326,9 @@ export function ChatbotWidget() {
         const naturalParams = parseNaturalSearch(cmdArg);
         let queryText = naturalParams.query;
         if (!queryText) {
-          // Strip filter keywords, date ranges, years, and stop words
+          // Strip filter keywords, date ranges, years, months, upload terms, and stop words
           const cleaned = cmdArg
-            .replace(/\b(approved|pending|needs\s+revision|for\s+revision|rejected|past\s+7\s+days|past\s+30\s+days|past\s+90\s+days|this\s+month|last\s+month|today|yesterday|202[0-9]|my\s+uploads|my\s+files|my\s+submissions|list|show|get|all|the|year|of|in|for|documents?|filings?|submissions?|proposals?|files?)\b/gi, "")
+            .replace(/\b(approved|pending|needs\s+revision|for\s+revision|rejected|past\s+7\s+days|last\s+7\s+days|past\s+30\s+days|last\s+30\s+days|past\s+90\s+days|last\s+90\s+days|this\s+month|last\s+month|this\s+year|last\s+year|past\s+year|today|yesterday|january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec|\b(19\d\d|20\d\d)\b|my\s+uploads|my\s+files|my\s+submissions|list|show|get|display|all|the|year|of|in|for|on|at|uploaded|upload|documents?|filings?|submissions?|proposals?|files?)\b/gi, "")
             .replace(/\s+/g, " ")
             .trim();
           if (cleaned.length > 1) {
@@ -1317,8 +1336,8 @@ export function ChatbotWidget() {
           }
         }
 
-        // Detect explicit year query (e.g. "2026", "year of 2026", "in 2026")
-        const yearMatch = cmdArg.match(/\b(202[0-9])\b/);
+        // Detect explicit 4-digit year query if not captured yet
+        const yearMatch = cmdArg.match(/\b(19\d\d|20\d\d)\b/);
         if (yearMatch && !naturalParams.date_range) {
           naturalParams.date_range = yearMatch[1];
         }
@@ -2887,6 +2906,74 @@ function OfficerFlagScanCard({ result }: { result: IAuditAndFixResponse }) {
   );
 }
 
+/**
+ * Computes human-friendly upload recency badge (e.g., "Uploaded Today", "Uploaded Last Year", "Uploaded in Sep 2026")
+ */
+function getUploadRelativeBadge(dateStr: string): { label: string; badgeClass: string } {
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return { label: "Uploaded", badgeClass: "bg-slate-100 text-slate-700 border-slate-200" };
+
+    const now = new Date();
+    const isSameDay =
+      d.getFullYear() === now.getFullYear() &&
+      d.getMonth() === now.getMonth() &&
+      d.getDate() === now.getDate();
+    if (isSameDay) {
+      return { label: "Uploaded Today", badgeClass: "bg-emerald-100 text-emerald-800 border-emerald-300" };
+    }
+
+    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const isYesterday =
+      d.getFullYear() === yesterday.getFullYear() &&
+      d.getMonth() === yesterday.getMonth() &&
+      d.getDate() === yesterday.getDate();
+    if (isYesterday) {
+      return { label: "Uploaded Yesterday", badgeClass: "bg-teal-100 text-teal-800 border-teal-300" };
+    }
+
+    if (d.getFullYear() === now.getFullYear()) {
+      if (d.getMonth() === now.getMonth()) {
+        return { label: "Uploaded This Month", badgeClass: "bg-blue-100 text-blue-800 border-blue-300" };
+      }
+      if (d.getMonth() === now.getMonth() - 1) {
+        return { label: "Uploaded Last Month", badgeClass: "bg-indigo-100 text-indigo-800 border-indigo-300" };
+      }
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      return { label: `Uploaded in ${monthNames[d.getMonth()]} ${d.getFullYear()}`, badgeClass: "bg-sky-100 text-sky-800 border-sky-300" };
+    }
+
+    if (d.getFullYear() === now.getFullYear() - 1) {
+      return { label: "Uploaded Last Year", badgeClass: "bg-purple-100 text-purple-800 border-purple-300" };
+    }
+
+    return { label: `Uploaded in ${d.getFullYear()}`, badgeClass: "bg-slate-100 text-slate-800 border-slate-300" };
+  } catch {
+    return { label: "Uploaded", badgeClass: "bg-slate-100 text-slate-700 border-slate-200" };
+  }
+}
+
+/** Formats date and time into clean, legible supervisory timestamp */
+function formatDocumentDateTime(dateStr: string): string {
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const dateFormatted = d.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+    const timeFormatted = d.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+    return `${dateFormatted} at ${timeFormatted}`;
+  } catch {
+    return dateStr;
+  }
+}
+
 /** Card rendering live repository search matches and telemetry metrics */
 interface ITelemetryCardProps {
   result: ISearchResponse;
@@ -2926,69 +3013,113 @@ function TelemetrySearchCard({ result }: ITelemetryCardProps) {
       </div>
 
       {/* Matching Document Items List */}
-      <div className="space-y-1.5 max-h-[220px] overflow-y-auto pr-0.5">
-        {documents.slice(0, 5).map((doc) => (
-          <div
-            key={doc.id}
-            className="p-2 bg-white rounded-xl border border-[#E6E8E7] hover:border-[#183028]/30 transition-all space-y-1.5 shadow-2xs"
-          >
-            <div className="flex items-start justify-between gap-1.5">
-              <div className="min-w-0">
-                <h5 className="font-bold text-[11px] text-[#183028] truncate">{doc.title}</h5>
-                <p className="text-[9px] text-[#183028]/60">
-                  By {doc.advisor_name} • {new Date(doc.created_at).toLocaleDateString()}
-                </p>
-              </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <span className="text-[8.5px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-800">
-                  v{doc.version}
-                  {doc.total_versions > 1 ? ` of ${doc.total_versions}` : ""}
-                </span>
-                <span
-                  className={cn(
-                    "text-[8.5px] font-bold px-1.5 py-0.5 rounded",
-                    doc.status === "Approved" && "bg-emerald-100 text-emerald-800",
-                    doc.status === "Pending" && "bg-blue-100 text-blue-800",
-                    doc.status === "Needs Revision" && "bg-amber-100 text-amber-800",
-                    doc.status === "Rejected" && "bg-rose-100 text-rose-800"
+      {documents.length === 0 ? (
+        <div className="p-3 bg-white/70 rounded-xl border border-dashed border-[#E6E8E7] text-center text-[10px] text-[#183028]/60">
+          No matching documents found in repository for this criteria.
+        </div>
+      ) : (
+        <div className="space-y-2 max-h-[280px] overflow-y-auto pr-0.5">
+          {documents.map((doc) => {
+            const recency = getUploadRelativeBadge(doc.created_at);
+            const formattedDateTime = formatDocumentDateTime(doc.created_at);
+
+            return (
+              <div
+                key={doc.id}
+                className="p-2.5 bg-white rounded-xl border border-[#E6E8E7] hover:border-[#183028]/35 transition-all space-y-2 shadow-2xs"
+              >
+                {/* Header: Title & Badges */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex items-start gap-1.5 flex-1">
+                    <FileText className="h-3.5 w-3.5 text-emerald-700 shrink-0 mt-0.5" />
+                    <div className="min-w-0 flex-1">
+                      <h5 className="font-bold text-[11.5px] text-[#183028] truncate leading-snug" title={doc.title}>
+                        {doc.title}
+                      </h5>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    <span className="text-[8.5px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-800 border border-slate-200">
+                      v{doc.version}
+                      {doc.total_versions > 1 ? ` of ${doc.total_versions}` : ""}
+                    </span>
+                    <span
+                      className={cn(
+                        "text-[8.5px] font-extrabold px-1.5 py-0.5 rounded border inline-flex items-center gap-1",
+                        doc.status === "Approved" && "bg-emerald-100 text-emerald-800 border-emerald-300",
+                        doc.status === "Pending" && "bg-blue-100 text-blue-800 border-blue-300",
+                        doc.status === "Needs Revision" && "bg-amber-100 text-amber-800 border-amber-300",
+                        doc.status === "Rejected" && "bg-rose-100 text-rose-800 border-rose-300"
+                      )}
+                    >
+                      {doc.status === "Approved" && <CheckCircle2 className="h-2.5 w-2.5" />}
+                      {doc.status === "Pending" && <Clock className="h-2.5 w-2.5" />}
+                      {doc.status === "Needs Revision" && <AlertTriangle className="h-2.5 w-2.5" />}
+                      {doc.status === "Rejected" && <XCircle className="h-2.5 w-2.5" />}
+                      {doc.status}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Sub-row: Recency Badge + Exact Date & Time + Advisor */}
+                <div className="flex flex-wrap items-center gap-1.5 text-[9px] text-[#183028]/70">
+                  <span className={cn("px-1.5 py-0.5 rounded-full font-bold border text-[8.5px]", recency.badgeClass)}>
+                    {recency.label}
+                  </span>
+
+                  <span className="flex items-center gap-1 font-medium text-[#183028]/80">
+                    <Clock className="h-2.5 w-2.5 text-[#183028]/50" />
+                    {formattedDateTime}
+                  </span>
+
+                  {doc.advisor_name && (
+                    <span className="text-[#183028]/60">
+                      • By <strong className="font-semibold text-[#183028]">{doc.advisor_name}</strong>
+                    </span>
                   )}
-                >
-                  {doc.status}
-                </span>
+
+                  {doc.active_flags_count > 0 && (
+                    <span className="text-[8.5px] font-bold px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 flex items-center gap-1 ml-auto">
+                      <ShieldAlert className="h-2.5 w-2.5" />
+                      {doc.active_flags_count} Flag{doc.active_flags_count > 1 ? "s" : ""}
+                    </span>
+                  )}
+                </div>
+
+                {/* Quick Action Chips */}
+                <div className="flex items-center gap-1 pt-0.5">
+                  <button
+                    onClick={() => router.push(`/documents/${doc.id}`)}
+                    className="flex items-center gap-1 text-[9px] font-semibold text-[#183028] hover:bg-[#C5E86C]/40 bg-[#FAFBFB] border border-[#E6E8E7] px-2 py-0.5 rounded cursor-pointer transition-colors"
+                  >
+                    <ExternalLink className="h-2.5 w-2.5 text-emerald-700" />
+                    <span>Open File</span>
+                  </button>
+
+                  <button
+                    onClick={() => router.push(`/documents/${doc.id}/audit-trail`)}
+                    className="flex items-center gap-1 text-[9px] font-semibold text-[#183028] hover:bg-[#C5E86C]/40 bg-[#FAFBFB] border border-[#E6E8E7] px-2 py-0.5 rounded cursor-pointer transition-colors"
+                  >
+                    <History className="h-2.5 w-2.5 text-[#183028]/70" />
+                    <span>Audit Trail</span>
+                  </button>
+
+                  {doc.has_revisions && (
+                    <button
+                      onClick={() => router.push(`/documents/${doc.id}`)}
+                      className="flex items-center gap-1 text-[9px] font-semibold text-[#183028] hover:bg-[#C5E86C]/40 bg-[#FAFBFB] border border-[#E6E8E7] px-2 py-0.5 rounded cursor-pointer transition-colors"
+                    >
+                      <Layers className="h-2.5 w-2.5 text-[#183028]/70" />
+                      <span>Lineage (v1-v{doc.total_versions})</span>
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-
-            {/* Quick Action Chips */}
-            <div className="flex items-center gap-1 pt-0.5">
-              <button
-                onClick={() => router.push(`/documents/${doc.id}`)}
-                className="flex items-center gap-1 text-[9px] font-semibold text-[#183028] hover:bg-[#C5E86C]/30 bg-[#FAFBFB] border border-[#E6E8E7] px-2 py-0.5 rounded cursor-pointer transition-colors"
-              >
-                <ExternalLink className="h-2.5 w-2.5" />
-                <span>Open File</span>
-              </button>
-
-              <button
-                onClick={() => router.push(`/documents/${doc.id}/audit-trail`)}
-                className="flex items-center gap-1 text-[9px] font-semibold text-[#183028] hover:bg-[#C5E86C]/30 bg-[#FAFBFB] border border-[#E6E8E7] px-2 py-0.5 rounded cursor-pointer transition-colors"
-              >
-                <History className="h-2.5 w-2.5" />
-                <span>Audit Trail</span>
-              </button>
-
-              {doc.has_revisions && (
-                <button
-                  onClick={() => router.push(`/documents/${doc.id}`)}
-                  className="flex items-center gap-1 text-[9px] font-semibold text-[#183028] hover:bg-[#C5E86C]/30 bg-[#FAFBFB] border border-[#E6E8E7] px-2 py-0.5 rounded cursor-pointer transition-colors"
-                >
-                  <Layers className="h-2.5 w-2.5" />
-                  <span>Lineage (v1-v{doc.total_versions})</span>
-                </button>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
