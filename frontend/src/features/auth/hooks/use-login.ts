@@ -38,6 +38,11 @@ export function useLogin() {
       setIsPending(false);
 
 
+      // Flag to ensure the guided tour pops automatically on dashboard entrance
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("springer_fresh_login_tour", "true");
+      }
+
       // Redirect based on role in token / session
       if (session.role === "Advisor") {
         router.push("/dashboard");

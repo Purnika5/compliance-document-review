@@ -2,9 +2,10 @@
 
 /**
  * DOCU: First-Time Guided Spotlight Tour for Springer Capital Compliance Review.
- * Automatically appears on first-time login for both Advisors and Officers.
+ * Automatically appears on first-time login without manual interaction.
  * Highlights exactly four things in sequence, one at a time, with an illuminated spotlight
- * and a small, elegant tooltip pointer (including Account & Settings).
+ * and a small, viewport-clamped tooltip ensuring the Next button is always fully visible.
+ * Includes Account & Settings for both Advisor and Officer.
  * Last Updated Date: September 25, 2026
  * @author Keith
  */
@@ -139,9 +140,9 @@ export function AppWalkthrough() {
   );
 
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const [hasCheckedFirstTime, setHasCheckedFirstTime] = useState(false);
   const [targetRect, setTargetRect] = useState<ElementRect | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+  const lastCheckedKey = useRef<string>("");
 
   // Role determination
   const isOfficer = session?.role === "Officer";
@@ -150,24 +151,37 @@ export function AppWalkthrough() {
   const isFirstStep = currentStepIndex === 0;
   const isLastStep = currentStepIndex === steps.length - 1;
 
-  // Auto-launch on first-time login
+  // Auto-launch on first-time login without manual clicking
   useEffect(() => {
-    if (!session || hasCheckedFirstTime) return;
+    if (!session) return;
 
     const userIdentifier = session.email || (session as any).userId || (session as any).id || "user";
     const role = session.role || "Advisor";
+    const currentKey = `${userIdentifier}_${role}`;
+
+    // Fresh login trigger check
+    const isFreshLogin = typeof window !== "undefined" && sessionStorage.getItem("springer_fresh_login_tour") === "true";
+    if (isFreshLogin) {
+      sessionStorage.removeItem("springer_fresh_login_tour");
+      const timer = setTimeout(() => {
+        walkthroughStore.openWalkthrough(role === "Officer" ? "Officer" : "Advisor");
+      }, 400);
+      lastCheckedKey.current = currentKey;
+      return () => clearTimeout(timer);
+    }
+
+    if (lastCheckedKey.current === currentKey) return;
+    lastCheckedKey.current = currentKey;
 
     const alreadyCompleted = walkthroughStore.hasCompleted(userIdentifier, role);
 
     if (!alreadyCompleted) {
       const timer = setTimeout(() => {
         walkthroughStore.openWalkthrough(role === "Officer" ? "Officer" : "Advisor");
-      }, 700);
-      setHasCheckedFirstTime(true);
+      }, 400);
       return () => clearTimeout(timer);
     }
-    setHasCheckedFirstTime(true);
-  }, [session, hasCheckedFirstTime]);
+  }, [session]);
 
   // Reset step index whenever walkthrough is freshly opened
   useEffect(() => {
@@ -235,7 +249,7 @@ export function AppWalkthrough() {
     setCurrentStepIndex((prev) => Math.max(prev - 1, 0));
   };
 
-  // Keyboard navigation
+  // Keyboard navigation: ArrowRight / Space / Enter = Next, ArrowLeft = Back, Escape = Close
   useEffect(() => {
     if (!walkthroughState.isOpen) return;
 
@@ -243,8 +257,11 @@ export function AppWalkthrough() {
       if (e.key === "Escape") {
         handleClose();
       } else if (e.key === "ArrowRight") {
+        e.preventDefault();
         if (!isLastStep) setCurrentStepIndex((p) => Math.min(p + 1, steps.length - 1));
+        else handleClose();
       } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
         if (!isFirstStep) setCurrentStepIndex((p) => Math.max(p - 1, 0));
       }
     };
@@ -257,26 +274,31 @@ export function AppWalkthrough() {
 
   const IconComponent = currentStep.icon;
 
-  // Calculate small tooltip coordinates and arrow direction relative to target
+  // Viewport bounds calculation to guarantee the tooltip and Next button are ALWAYS 100% visible
   let tooltipStyles: React.CSSProperties = {};
   let arrowPlacement: "left" | "right" | "top" | "bottom" = "left";
 
   if (targetRect && typeof window !== "undefined") {
     const tooltipWidth = Math.min(320, window.innerWidth - 32);
-    const tooltipEstimatedHeight = 210;
+    const tooltipEstimatedHeight = 190;
     const offset = 14;
+    const padding = 16;
 
     if (currentStep.preferredPlacement === "right") {
       let left = targetRect.right + offset;
-      let top = Math.max(16, Math.min(window.innerHeight - tooltipEstimatedHeight - 16, targetRect.top - 12));
+      let top = targetRect.top - 10;
 
-      if (left + tooltipWidth > window.innerWidth - 16) {
+      if (left + tooltipWidth > window.innerWidth - padding) {
         // Fallback to left
-        left = Math.max(16, targetRect.left - tooltipWidth - offset);
+        left = Math.max(padding, targetRect.left - tooltipWidth - offset);
         arrowPlacement = "right";
       } else {
         arrowPlacement = "left";
       }
+
+      // Guaranteed viewport clamping
+      top = Math.max(padding, Math.min(window.innerHeight - tooltipEstimatedHeight - padding, top));
+      left = Math.max(padding, Math.min(window.innerWidth - tooltipWidth - padding, left));
 
       tooltipStyles = {
         position: "fixed",
@@ -286,15 +308,19 @@ export function AppWalkthrough() {
       };
     } else if (currentStep.preferredPlacement === "bottom") {
       let top = targetRect.bottom + offset;
-      let left = Math.max(16, Math.min(window.innerWidth - tooltipWidth - 16, targetRect.left - 20));
+      let left = targetRect.left - 10;
 
-      if (top + tooltipEstimatedHeight > window.innerHeight - 16) {
-        // Fallback to top
-        top = Math.max(16, targetRect.top - tooltipEstimatedHeight - offset);
+      if (top + tooltipEstimatedHeight > window.innerHeight - padding) {
+        // Auto-flip ABOVE the target element so the Next button never gets cut off
+        top = Math.max(padding, targetRect.top - tooltipEstimatedHeight - offset);
         arrowPlacement = "bottom";
       } else {
         arrowPlacement = "top";
       }
+
+      // Guaranteed viewport clamping
+      top = Math.max(padding, Math.min(window.innerHeight - tooltipEstimatedHeight - padding, top));
+      left = Math.max(padding, Math.min(window.innerWidth - tooltipWidth - padding, left));
 
       tooltipStyles = {
         position: "fixed",
@@ -303,9 +329,12 @@ export function AppWalkthrough() {
         width: `${tooltipWidth}px`,
       };
     } else if (currentStep.preferredPlacement === "top") {
-      let top = Math.max(16, targetRect.top - tooltipEstimatedHeight - offset);
-      let left = Math.max(16, Math.min(window.innerWidth - tooltipWidth - 16, targetRect.left - 20));
+      let top = Math.max(padding, targetRect.top - tooltipEstimatedHeight - offset);
+      let left = targetRect.left - 10;
       arrowPlacement = "bottom";
+
+      top = Math.max(padding, Math.min(window.innerHeight - tooltipEstimatedHeight - padding, top));
+      left = Math.max(padding, Math.min(window.innerWidth - tooltipWidth - padding, left));
 
       tooltipStyles = {
         position: "fixed",
@@ -314,9 +343,12 @@ export function AppWalkthrough() {
         width: `${tooltipWidth}px`,
       };
     } else {
-      let left = Math.max(16, targetRect.left - tooltipWidth - offset);
-      let top = Math.max(16, Math.min(window.innerHeight - tooltipEstimatedHeight - 16, targetRect.top - 12));
+      let left = targetRect.left - tooltipWidth - offset;
+      let top = targetRect.top - 10;
       arrowPlacement = "right";
+
+      top = Math.max(padding, Math.min(window.innerHeight - tooltipEstimatedHeight - padding, top));
+      left = Math.max(padding, Math.min(window.innerWidth - tooltipWidth - padding, left));
 
       tooltipStyles = {
         position: "fixed",
@@ -328,7 +360,7 @@ export function AppWalkthrough() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden pointer-events-auto">
+    <div className="fixed inset-0 z-[9990] overflow-hidden pointer-events-auto">
       {/* 1. Backdrop Overlay */}
       <div
         onClick={handleClose}
@@ -346,7 +378,7 @@ export function AppWalkthrough() {
             width: `${targetRect.width + 12}px`,
             height: `${targetRect.height + 12}px`,
           }}
-          className="rounded-xl border-2 border-[#C5E86C] ring-4 ring-[#C5E86C]/40 shadow-[0_0_35px_rgba(197,232,108,0.75)] pointer-events-none transition-all duration-300 ease-out z-50 animate-pulse"
+          className="rounded-xl border-2 border-[#C5E86C] ring-4 ring-[#C5E86C]/40 shadow-[0_0_35px_rgba(197,232,108,0.75)] pointer-events-none transition-all duration-300 ease-out z-[9991] animate-pulse"
         />
       )}
 
@@ -355,7 +387,7 @@ export function AppWalkthrough() {
         ref={cardRef}
         style={targetRect ? tooltipStyles : undefined}
         className={cn(
-          "z-50 bg-white rounded-xl border border-[#E6E8E7] shadow-2xl p-4 text-[#183028] transition-all duration-200 animate-in zoom-in-95",
+          "z-[9999] bg-white rounded-xl border border-[#E6E8E7] shadow-2xl p-4 text-[#183028] transition-all duration-200 animate-in zoom-in-95 flex flex-col justify-between max-h-[calc(100vh-2rem)] shrink-0",
           !targetRect && "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 max-w-[calc(100vw-2rem)]"
         )}
         role="dialog"
@@ -376,7 +408,7 @@ export function AppWalkthrough() {
         )}
 
         {/* Tooltip Header: Step Pill + Role Badge + Close Button */}
-        <div className="flex items-center justify-between gap-2 mb-2.5">
+        <div className="flex items-center justify-between gap-2 mb-2 shrink-0">
           <div className="flex items-center gap-1.5">
             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#183028] text-[#C5E86C]">
               Step {currentStepIndex + 1} of {steps.length}
@@ -397,12 +429,12 @@ export function AppWalkthrough() {
           </button>
         </div>
 
-        {/* Tooltip Title & Icon */}
-        <div className="flex items-start gap-2.5 mb-1.5">
+        {/* Tooltip Title & Description */}
+        <div className="flex items-start gap-2.5 mb-2 shrink-0">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#C5E86C]/30 border border-[#C5E86C]/60 text-[#183028] shrink-0 mt-0.5">
             <IconComponent className="h-4 w-4 text-[#183028]" />
           </div>
-          <div>
+          <div className="min-w-0">
             <h4 className="text-xs font-bold text-[#183028] leading-tight">
               {currentStep.title}
             </h4>
@@ -412,8 +444,8 @@ export function AppWalkthrough() {
           </div>
         </div>
 
-        {/* Tooltip Footer Controls */}
-        <div className="flex items-center justify-between pt-3 mt-2 border-t border-[#E6E8E7]">
+        {/* Tooltip Footer: Progress Dots + Back Button + Next / Finish Button */}
+        <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-[#E6E8E7] shrink-0">
           {/* Step Progress Dots */}
           <div className="flex items-center gap-1.5">
             {steps.map((_, idx) => (
@@ -445,12 +477,13 @@ export function AppWalkthrough() {
             )}
 
             <button
+              id="tour-next-btn"
               type="button"
               onClick={handleNext}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-[#183028] hover:bg-[#203f35] text-[#C5E86C] text-[10px] font-bold transition-all shadow-xs cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#183028] hover:bg-[#203f35] text-[#C5E86C] text-xs font-bold transition-all shadow-md cursor-pointer shrink-0"
             >
               <span>{isLastStep ? "Finish" : "Next"}</span>
-              {isLastStep ? <Check className="h-3 w-3" /> : <ArrowRight className="h-3 w-3" />}
+              {isLastStep ? <Check className="h-3.5 w-3.5" /> : <ArrowRight className="h-3.5 w-3.5" />}
             </button>
           </div>
         </div>
