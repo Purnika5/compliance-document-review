@@ -516,10 +516,9 @@ export function isDocumentSearchQuery(text: string, hasActiveScannedDoc = false)
 
   // Questions explaining workflows, FAQs, guidelines, or auditing are NOT document searches
   if (
-    /\b(how\s+(?:does|do|can|to)|what\s+is|explain|tell\s+me\s+about|walk\s+me\s+through|faq|workflow|guidelines?)\b/i.test(lower) ||
+    /\b(how\s+(?:does|do|can|to)|explain|tell\s+me\s+about|walk\s+me\s+through|faq|workflow|guidelines?)\b/i.test(lower) ||
     /\b(versioning|lineage|pii|masking|file\s+format|file\s+limit|standard|rule)\b/i.test(lower) ||
-    /^(?:audit|compliance\s*audit|scan|check\s*compliance|fix|check\s*grammar|grammar)[:,-]?\s+/i.test(lower) ||
-    /\b(who\s+(?:uploaded|submitted|filed)|most\s+recent\s+filing|latest\s+upload|attestation|audit\s+trail|audit\s+history)\b/i.test(lower)
+    /^(?:audit|compliance\s*audit|scan|check\s*compliance|fix|check\s*grammar|grammar)[:,-]?\s+/i.test(lower)
   ) {
     return false;
   }
@@ -544,13 +543,16 @@ export function isDocumentSearchQuery(text: string, hasActiveScannedDoc = false)
     }
   }
 
-  // Only genuine repository-wide document catalog search patterns
+  // Repository-wide document catalog search patterns, flexible questions & advisor/date queries
   const isExplicitSearch =
     /\b(?:search|find|lookup)\s+(?:for\s+)?(?:documents?|filings?|submissions?|proposals?|files?|uploads?)/i.test(lower) ||
     /\b(?:show|list|get|display)\s+(?:all\s+)?(?:documents?|filings?|submissions?|proposals?|files?|my\s+uploads|my\s+submissions|approved\s+documents|pending\s+documents)/i.test(lower) ||
     /\b(?:pending|approved|rejected|needs\s+revision|for\s+revision)\s+(?:documents?|filings?|submissions?|proposals?|queue)/i.test(lower) ||
     /\b(?:my\s+uploads|my\s+files|my\s+submissions|submissions?\s+from\s+this\s+month|submissions?\s+today)\b/i.test(lower) ||
-    /\b(?:high[- ]risk\s+submissions?|submissions?\s+across\s+all\s+advisors)\b/i.test(lower);
+    /\b(?:high[- ]risk\s+submissions?|submissions?\s+across\s+all\s+advisors)\b/i.test(lower) ||
+    /\b(?:title|titles)\s+(?:of\s+the\s+)?(?:documents?|filings?|submissions?|files?|that|which)\b/i.test(lower) ||
+    /\b(?:submitted|uploaded|filed|authored)\s+(?:in|by|on|during|for)\b/i.test(lower) ||
+    (/\b(?:by|from|advisor)\s+[a-z]+/i.test(lower) && /\b(?:202[0-9]|19\d\d|today|yesterday|month|year|pending|approved|revision|rejected|submitted|uploaded|files?|documents?|titles?)\b/i.test(lower));
 
   return isExplicitSearch;
 }
@@ -607,9 +609,19 @@ function parseNaturalSearch(text: string): {
   if (lower.includes("rejected") || lower.includes("reject")) statuses.push("Rejected");
   if (statuses.length > 0) params.status = statuses;
 
-  // Ownership
+  // Ownership / Advisor Name detection
   if (lower.includes("my uploads") || lower.includes("my files") || lower.includes("my submissions")) {
     params.uploaded_by = "my uploads";
+  } else {
+    // Extract advisor name (e.g., "by Duncan Woodard", "submitted by Duncan Woodard", "from Duncan Woodard", "advisor Duncan Woodard")
+    const advisorMatch = lower.match(/(?:submitted\s+by|uploaded\s+by|filed\s+by|authored\s+by|advisor|submitter|by|from)\s+([a-z]+(?:\s+[a-z]+)?)/i);
+    if (advisorMatch && advisorMatch[1]) {
+      const candidate = advisorMatch[1].trim();
+      const nonNameWords = /^(?:status|date|year|month|today|yesterday|202[0-9]|19\d\d|20\d\d|approved|pending|revision|rejected|all|default|category|title|system|the|this|that|these|those|me|us|him|her|them)$/i;
+      if (!nonNameWords.test(candidate) && candidate.length > 2) {
+        params.uploaded_by = candidate;
+      }
+    }
   }
 
   // Keywords (extract title search after "find", "search", or "named")
@@ -1334,8 +1346,14 @@ export function ChatbotWidget() {
         const naturalParams = parseNaturalSearch(cmdArg);
         let queryText = naturalParams.query;
         if (!queryText) {
+          // If uploaded_by was extracted, strip it from cmdArg before cleaning
+          let strippedArg = cmdArg;
+          if (naturalParams.uploaded_by && naturalParams.uploaded_by !== "my uploads") {
+            strippedArg = strippedArg.replace(new RegExp(`\\b${naturalParams.uploaded_by}\\b`, "gi"), "");
+          }
+
           // Strip filter keywords, date ranges, years, months, upload terms, status keywords, and aggregation/filler/stop words
-          const cleaned = cmdArg
+          const cleaned = strippedArg
             .replace(
               /\b(approved|pending|needs\s+revision|for\s+revision|rejected|past\s+7\s+days|last\s+7\s+days|past\s+30\s+days|last\s+30\s+days|past\s+90\s+days|last\s+90\s+days|this\s+month|last\s+month|this\s+year|last\s+year|past\s+year|today|yesterday|january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec|\b(19\d\d|20\d\d)\b|my\s+uploads|my\s+files|my\s+submissions|this|that|these|those|there|here|what|which|who|whom|whose|when|where|why|how|how\s+many|is|are|was|were|be|been|being|have|has|had|do|does|did|can|could|will|would|should|want|wants|know|knows|tell|check|total|totals|count|counts|number|numbers|amount|amounts|sum|sums|overall|summary|stats|statistics|status|statuses|records?|items?|data|database|query|search|filter|list|show|get|display|view|fetch|find|give|all|any|the|a|an|year|years|month|months|day|days|date|dates|of|in|for|on|at|by|from|to|with|and|or|uploaded|upload|uploads|documents?|filings?|submissions?|proposals?|files?)\b/gi,
               ""
@@ -1349,7 +1367,11 @@ export function ChatbotWidget() {
 
         // If queryText is set but contains only noise, filler, or stop words, drop it
         if (queryText) {
-          const testClean = queryText
+          let testCandidate = queryText;
+          if (naturalParams.uploaded_by && naturalParams.uploaded_by !== "my uploads") {
+            testCandidate = testCandidate.replace(new RegExp(`\\b${naturalParams.uploaded_by}\\b`, "gi"), "");
+          }
+          const testClean = testCandidate
             .replace(
               /\b(approved|pending|needs\s+revision|for\s+revision|rejected|past\s+7\s+days|last\s+7\s+days|past\s+30\s+days|last\s+30\s+days|past\s+90\s+days|last\s+90\s+days|this\s+month|last\s+month|this\s+year|last\s+year|past\s+year|today|yesterday|january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec|\b(19\d\d|20\d\d)\b|my\s+uploads|my\s+files|my\s+submissions|this|that|these|those|there|here|what|which|who|whom|whose|when|where|why|how|how\s+many|is|are|was|were|be|been|being|have|has|had|do|does|did|can|could|will|would|should|want|wants|know|knows|tell|check|total|totals|count|counts|number|numbers|amount|amounts|sum|sums|overall|summary|stats|statistics|status|statuses|records?|items?|data|database|query|search|filter|list|show|get|display|view|fetch|find|give|all|any|the|a|an|year|years|month|months|day|days|date|dates|of|in|for|on|at|by|from|to|with|and|or|uploaded|upload|uploads|documents?|filings?|submissions?|proposals?|files?)\b/gi,
               ""
@@ -1611,25 +1633,34 @@ export function ChatbotWidget() {
     if (isAuthenticated && !isWorkflowFaqQuery && !isAuditTextQuery && isDocumentSearchQuery(rawText, Boolean(activeScannedDoc))) {
       try {
         const searchParams = parseNaturalSearch(rawText);
+        let qText = searchParams.query;
+        if (!qText) {
+          let stripped = rawText;
+          if (searchParams.uploaded_by && searchParams.uploaded_by !== "my uploads") {
+            stripped = stripped.replace(new RegExp(`\\b${searchParams.uploaded_by}\\b`, "gi"), "");
+          }
+          const cleaned = stripped
+            .replace(
+              /\b(approved|pending|needs\s+revision|for\s+revision|rejected|past\s+7\s+days|last\s+7\s+days|past\s+30\s+days|last\s+30\s+days|past\s+90\s+days|last\s+90\s+days|this\s+month|last\s+month|this\s+year|last\s+year|past\s+year|today|yesterday|january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec|\b(19\d\d|20\d\d)\b|my\s+uploads|my\s+files|my\s+submissions|this|that|these|those|there|here|what|which|who|whom|whose|when|where|why|how|how\s+many|is|are|was|were|be|been|being|have|has|had|do|does|did|can|could|will|would|should|want|wants|know|knows|tell|check|total|totals|count|counts|number|numbers|amount|amounts|sum|sums|overall|summary|stats|statistics|status|statuses|records?|items?|data|database|query|search|filter|list|show|get|display|view|fetch|find|give|all|any|the|a|an|year|years|month|months|day|days|date|dates|of|in|for|on|at|by|from|to|with|and|or|uploaded|upload|uploads|documents?|filings?|submissions?|proposals?|files?)\b/gi,
+              ""
+            )
+            .replace(/\s+/g, " ")
+            .trim();
+          if (cleaned.length > 1) {
+            qText = cleaned;
+          }
+        }
+
         const searchResult = await copilotApi.searchDocuments({
           ...searchParams,
+          query: qText,
           conversation_history: messages.slice(-4).map((m) => ({ role: m.sender, content: m.text })),
         });
 
-        setIsTyping(false);
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === botMsgId
-              ? {
-                ...msg,
-                text: searchResult.conversational_reply,
-                isTyping: false,
-                searchResult,
-                suggestedChips: searchResult.suggested_chips,
-              }
-              : msg
-          )
-        );
+        simulateTyping(botMsgId, searchResult.conversational_reply, timestamp, {
+          searchResult,
+          suggestedChips: searchResult.suggested_chips,
+        });
         return;
       } catch (searchErr) {
         console.warn("[Copilot Search Engine Error] Falling back to standard chat proxy:", searchErr);

@@ -230,9 +230,16 @@ export class SearchEngineService {
     const userId = user?.id;
 
     if (userRole === 'Advisor' && userId) {
-      // Advisors are strictly locked to their own submissions
-      conditions.push(`d.advisor_id = $${idx++}`);
-      values.push(userId);
+      if (uploaded_by && uploaded_by.trim() && uploaded_by !== 'my uploads' && uploaded_by !== 'my files' && uploaded_by !== 'my submissions' && uploaded_by !== 'all') {
+        const cleanUpload = uploaded_by.trim().toLowerCase();
+        // Allow matching by specific advisor name (e.g. Duncan Woodard) or own submissions
+        conditions.push(`(u.name ILIKE $${idx} OR u.email ILIKE $${idx} OR d.advisor_id = $${idx + 1})`);
+        values.push(`%${cleanUpload}%`, userId);
+        idx += 2;
+      } else {
+        conditions.push(`d.advisor_id = $${idx++}`);
+        values.push(userId);
+      }
     } else if (uploaded_by) {
       const cleanUpload = uploaded_by.trim().toLowerCase();
       if ((cleanUpload === 'my uploads' || cleanUpload === 'my files' || cleanUpload === 'my submissions') && userId) {
@@ -482,13 +489,19 @@ export class SearchEngineService {
     if (!conversationalReply) {
       const datePart = date_range ? ` for ${date_range}` : '';
       const queryPart = sanitizedTitle ? ` matching "${sanitizedTitle}"` : '';
+      const authorPart = uploaded_by && uploaded_by !== 'all' && uploaded_by !== 'my uploads' && uploaded_by !== 'my files' && uploaded_by !== 'my submissions' ? ` submitted by ${uploaded_by}` : '';
 
       // If filtering by a single status, focus the reply on just that status
       if (statusFilter.length === 1) {
         const singleStatus = statusFilter[0];
-        conversationalReply = `I found ${totalMatches} ${singleStatus} filing${totalMatches !== 1 ? 's' : ''}${queryPart}${datePart}. ${flaggedCount > 0 ? `${flaggedCount} document(s) have active compliance risk flags under FINRA 2210 / SEC 206.` : 'All matches comply with baseline regulatory standards.'}`;
+        conversationalReply = `I found ${totalMatches} ${singleStatus} filing${totalMatches !== 1 ? 's' : ''}${authorPart}${queryPart}${datePart}. ${flaggedCount > 0 ? `${flaggedCount} document(s) have active compliance risk flags under FINRA 2210 / SEC 206.` : 'All matches comply with baseline regulatory standards.'}`;
       } else {
-        conversationalReply = `I located ${totalMatches} filing${totalMatches !== 1 ? 's' : ''}${queryPart}${datePart}. Status distribution: ${breakdown.Approved} Approved, ${breakdown.Pending} Pending, and ${breakdown.NeedsRevision} Needs Revision. ${flaggedCount > 0 ? `${flaggedCount} document(s) have active compliance risk flags under FINRA 2210 / SEC 206.` : 'All matches comply with baseline regulatory standards.'}`;
+        conversationalReply = `I located ${totalMatches} filing${totalMatches !== 1 ? 's' : ''}${authorPart}${queryPart}${datePart}. Status distribution: ${breakdown.Approved} Approved, ${breakdown.Pending} Pending, and ${breakdown.NeedsRevision} Needs Revision. ${flaggedCount > 0 ? `${flaggedCount} document(s) have active compliance risk flags under FINRA 2210 / SEC 206.` : 'All matches comply with baseline regulatory standards.'}`;
+      }
+
+      if (finalDocuments.length > 0) {
+        const titleList = finalDocuments.slice(0, 5).map((d, i) => `${i + 1}. **${d.title}** (v${d.version} • ${d.status})`).join('\n');
+        conversationalReply += `\n\n**Document Titles**:\n${titleList}`;
       }
     }
 
