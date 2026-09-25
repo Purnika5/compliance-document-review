@@ -1303,16 +1303,24 @@ export function ChatbotWidget() {
           return;
         }
 
+        // Extract query term and date filters
         const naturalParams = parseNaturalSearch(cmdArg);
         let queryText = naturalParams.query;
         if (!queryText) {
+          // Strip filter keywords, date ranges, years, and stop words
           const cleaned = cmdArg
-            .replace(/\b(approved|pending|needs\s+revision|for\s+revision|rejected|past\s+7\s+days|past\s+30\s+days|past\s+90\s+days|this\s+month|last\s+month|today|yesterday|my\s+uploads|my\s+files|my\s+submissions)\b/gi, "")
+            .replace(/\b(approved|pending|needs\s+revision|for\s+revision|rejected|past\s+7\s+days|past\s+30\s+days|past\s+90\s+days|this\s+month|last\s+month|today|yesterday|202[0-9]|my\s+uploads|my\s+files|my\s+submissions|list|show|get|all|the|year|of|in|for|documents?|filings?|submissions?|proposals?|files?)\b/gi, "")
             .replace(/\s+/g, " ")
             .trim();
-          if (cleaned.length > 0) {
+          if (cleaned.length > 1) {
             queryText = cleaned;
           }
+        }
+
+        // Detect explicit year query (e.g. "2026", "year of 2026", "in 2026")
+        const yearMatch = cmdArg.match(/\b(202[0-9])\b/);
+        if (yearMatch && !naturalParams.date_range) {
+          naturalParams.date_range = yearMatch[1];
         }
 
         setIsTyping(true);
@@ -1323,28 +1331,22 @@ export function ChatbotWidget() {
             conversation_history: messages.slice(-4).map((m) => ({ role: m.sender, content: m.text })),
           })
           .then((searchResult) => {
-            setIsTyping(false);
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === botMsgId
-                  ? {
-                      ...msg,
-                      text:
-                        searchResult.conversational_reply ||
-                        `Found **${searchResult.analytics.total_matches}** document(s) matching your query "${cmdArg}".`,
-                      isTyping: false,
-                      searchResult,
-                      suggestedChips:
-                        searchResult.suggested_chips && searchResult.suggested_chips.length > 0
-                          ? searchResult.suggested_chips
-                          : ["/query needs revision", "/query approved", "/stats"],
-                    }
-                  : msg
-              )
-            );
+            const count = searchResult.analytics?.total_matches ?? searchResult.documents?.length ?? 0;
+            const replyText =
+              searchResult.conversational_reply ||
+              (count > 0
+                ? `I found **${count}** compliance filing(s) in the repository matching "${cmdArg}".`
+                : `No compliance documents found matching "${cmdArg}". You can query by status (e.g., \`/query approved\` or \`/query needs revision\`) or date range.`);
+
+            simulateTyping(botMsgId, replyText, timestamp, {
+              searchResult,
+              suggestedChips:
+                searchResult.suggested_chips && searchResult.suggested_chips.length > 0
+                  ? searchResult.suggested_chips
+                  : ["/query needs revision", "/query approved", "/stats"],
+            });
           })
           .catch((err) => {
-            setIsTyping(false);
             simulateTyping(
               botMsgId,
               `Unable to query database at this moment: ${err?.message || "Repository service unavailable"}.`,
@@ -1375,7 +1377,6 @@ export function ChatbotWidget() {
             conversation_history: messages.slice(-4).map((m) => ({ role: m.sender, content: m.text })),
           })
           .then((searchResult) => {
-            setIsTyping(false);
             const a = searchResult.analytics;
             const total = a.total_matches;
             const approvedPct = total > 0 ? Math.round((a.breakdown_by_status.Approved / total) * 100) : 0;
@@ -1399,27 +1400,17 @@ export function ChatbotWidget() {
               `• **Multi-Version Revision Rate**: **${a.revision_velocity.reversioned_percentage}%** (${a.revision_velocity.reversioned_count} document(s) revised)\n` +
               `• **Supervisory Governance**: FINRA Rule 2210 & SEC Rule 206(4)-1`;
 
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === botMsgId
-                  ? {
-                      ...msg,
-                      text: statsMarkdown,
-                      isTyping: false,
-                      searchResult,
-                      suggestedChips: [
-                        "/query needs revision",
-                        "/query approved",
-                        "/query pending",
-                        "/rules",
-                      ],
-                    }
-                  : msg
-              )
-            );
+            simulateTyping(botMsgId, statsMarkdown, timestamp, {
+              searchResult,
+              suggestedChips: [
+                "/query needs revision",
+                "/query approved",
+                "/query pending",
+                "/rules",
+              ],
+            });
           })
           .catch((err) => {
-            setIsTyping(false);
             simulateTyping(
               botMsgId,
               `Unable to fetch compliance statistics: ${err?.message || "Repository service unavailable"}.`,
