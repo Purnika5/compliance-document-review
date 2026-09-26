@@ -94,6 +94,24 @@ function renderHighlightedText(text: string, passage?: string) {
     }
   }
 
+  // 3. Punctuation-tolerant match for normalized alphanumeric words
+  if (!match || match.index === undefined) {
+    const alphaWords = words
+      .map((w) => w.replace(/[^a-zA-Z0-9]/g, ""))
+      .filter((w) => w.length > 2);
+    if (alphaWords.length >= 2) {
+      for (let len = Math.min(alphaWords.length, 5); len >= 2; len--) {
+        for (let start = 0; start <= alphaWords.length - len; start++) {
+          const pattern = alphaWords.slice(start, start + len).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("[^a-zA-Z0-9]+");
+          const fuzzyRegex = new RegExp(pattern, "i");
+          match = text.match(fuzzyRegex);
+          if (match && match.index !== undefined) break;
+        }
+        if (match && match.index !== undefined) break;
+      }
+    }
+  }
+
   if (!match || match.index === undefined) {
     return text;
   }

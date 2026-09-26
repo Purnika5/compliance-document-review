@@ -416,6 +416,22 @@ def analyze_document(request: AnalyzeRequest):
                     f"[AI Service] Flag rule '{flag.rule}' did not match any retrieved rule — skipping.",
                     flush=True
                 )
+            # Grounding check 2: verify the flagged passage actually exists in the document text
+            clean_passage = flag.passage.strip().strip('"\'“”‘’')
+            if not clean_passage:
+                continue
+
+            # Check if passage or a 3+ word sequence exists in the document text
+            words = [w for w in clean_passage.split() if len(w) > 2]
+            if len(words) >= 3:
+                sample_phrase = " ".join(words[:min(len(words), 5)])
+                norm_doc = re.sub(r'\s+', ' ', request.masked_text).lower()
+                norm_sample = re.sub(r'\s+', ' ', sample_phrase).lower()
+                if norm_sample not in norm_doc:
+                    print(f"[AI Service] Flag passage not in document text — discarding phantom flag: {clean_passage[:60]}", flush=True)
+                    continue
+            elif clean_passage.lower() not in request.masked_text.lower():
+                print(f"[AI Service] Short flag passage not in document text — discarding: {clean_passage}", flush=True)
                 continue
 
             validated_flags.append(flag)

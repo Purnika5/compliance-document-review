@@ -239,16 +239,31 @@ Return ONLY valid JSON — no prose outside the JSON object:
           existingBreakdown.push(item);
         }
       }
-      aiData.audit_breakdown = existingBreakdown;
-      const count = existingBreakdown.length;
-      aiData.conversational_summary = `I analyzed your draft deck with Springer Neural Copilot. ${count} compliance ${count === 1 ? 'item was' : 'items were'} identified under FINRA Rule 2210 / SEC Rule 206. I have remediated all passages into compliant fiduciary language and generated your ready-to-submit file below.`;
+      // Filter out any phantom items where the original passage cannot be found in the document
+      aiData.audit_breakdown = existingBreakdown.filter((item: any) =>
+        PipelineService.passageExistsInText(maskedText, item.original_passage)
+      );
+      const count = aiData.audit_breakdown.length;
+      aiData.conversational_summary = count === 0
+        ? 'I analyzed your draft deck with Springer Neural Copilot. All regulatory rules under FINRA Rule 2210 and SEC Rule 206 are satisfied with zero compliance flags.'
+        : `I analyzed your draft deck with Springer Neural Copilot. ${count} compliance ${count === 1 ? 'item was' : 'items were'} identified under FINRA Rule 2210 / SEC Rule 206. I have remediated all passages into compliant fiduciary language and generated your ready-to-submit file below.`;
       if (!aiData.remediated_text || aiData.remediated_text.length < 50) {
         aiData.remediated_text = localAudit.remediated_text;
       }
     }
 
     const downloadToken = crypto.randomBytes(16).toString('hex');
-    const rawRemediated = aiData.remediated_text || localAudit.remediated_text || maskedText;
+    let rawRemediated = aiData.remediated_text || localAudit.remediated_text || maskedText;
+
+    // Enforce that every identified infraction in audit_breakdown is actively replaced with compliant text
+    if (Array.isArray(aiData.audit_breakdown)) {
+      for (const item of aiData.audit_breakdown) {
+        if (item.original_passage && item.fixed_passage && rawRemediated.includes(item.original_passage)) {
+          rawRemediated = rawRemediated.replace(item.original_passage, item.fixed_passage);
+        }
+      }
+    }
+
     const remediatedText = PipelineService.cleanRemediatedDocumentForDownload(rawRemediated);
     const cleanTitle = aiData.suggested_title || `${path.parse(file.originalname).name} (Compliance Remediated)`;
 
