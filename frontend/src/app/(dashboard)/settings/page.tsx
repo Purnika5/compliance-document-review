@@ -8,6 +8,7 @@
  */
 import React, { useState, useEffect, useSyncExternalStore } from "react";
 import { authStore, type UserSession } from "@/lib/auth/auth-store";
+import type { UserProfile } from "@/entities/interfaces/auth.interface";
 import { authService } from "@/services/auth.service";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,16 +49,21 @@ export default function SettingsPage() {
       hasFetchedProfile.current = true;
       authService
         .getMe()
-        .then((profile) => {
+        .then((res: any) => {
+          const profile: UserProfile | undefined = res?.user || res;
           if (profile) {
             if (profile.name) setFullName(profile.name);
             if (profile.email) setEmail(profile.email);
             const current = authStore.getSession();
-            if (current && (current.name !== profile.name || current.email !== profile.email)) {
+            if (
+              current &&
+              profile.email &&
+              (current.name !== profile.name || current.email !== profile.email)
+            ) {
               authStore.setSession({
                 ...current,
-                name: profile.name,
-                email: profile.email,
+                name: profile.name || current.name,
+                email: profile.email || current.email,
               });
             }
           }

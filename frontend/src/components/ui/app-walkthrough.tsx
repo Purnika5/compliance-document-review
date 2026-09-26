@@ -17,6 +17,7 @@ import React, {
   useCallback,
   useSyncExternalStore,
 } from "react";
+import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   UploadCloud,
@@ -272,6 +273,10 @@ interface ElementRect {
 }
 
 export function AppWalkthrough() {
+  const pathname = usePathname();
+  const isDashboardRoute =
+    pathname === "/dashboard" || pathname === "/queue" || pathname === "/";
+
   const session = useSyncExternalStore<UserSession | null>(
     authStore.subscribe,
     authStore.getSession,
@@ -296,11 +301,18 @@ export function AppWalkthrough() {
   const isFirstStep = currentStepIndex === 0;
   const isLastStep = currentStepIndex === steps.length - 1;
 
-  // Auto-launch on first-time login without manual clicking
+  // Auto-launch on first-time login without manual clicking (ONLY on primary dashboard/queue routes)
   useEffect(() => {
     if (!session) return;
+    // Walkthrough is strictly intended for the dashboard / review queue
+    if (!isDashboardRoute) return;
 
-    const userIdentifier = session.email || (session as any).userId || (session as any).id || "user";
+    const userIdentifier = (
+      session.email ||
+      (session as any).userId ||
+      (session as any).id ||
+      "user"
+    ).toLowerCase().trim();
     const role = session.role || "Advisor";
     const currentKey = `${userIdentifier}_${role}`;
 
@@ -312,11 +324,20 @@ export function AppWalkthrough() {
 
     if (!alreadyCompleted) {
       const timer = setTimeout(() => {
-        walkthroughStore.openWalkthrough(role === "Officer" ? "Officer" : "Advisor");
+        if (typeof window !== "undefined") {
+          const currentPath = window.location.pathname;
+          if (
+            currentPath === "/dashboard" ||
+            currentPath === "/queue" ||
+            currentPath === "/"
+          ) {
+            walkthroughStore.openWalkthrough(role === "Officer" ? "Officer" : "Advisor");
+          }
+        }
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [session]);
+  }, [session, isDashboardRoute]);
 
   // Reset step index whenever walkthrough is freshly opened
   useEffect(() => {
@@ -364,13 +385,23 @@ export function AppWalkthrough() {
   }, [updateTargetPosition, currentStepIndex]);
 
   const handleClose = useCallback(() => {
-    if (session) {
-      const userIdentifier = session.email || (session as any).userId || (session as any).id || "user";
-      const role = session.role || "Advisor";
-      walkthroughStore.markCompleted(userIdentifier, role);
-    }
-    walkthroughStore.closeWalkthrough();
+    const userIdentifier = (
+      session?.email ||
+      (session as any)?.userId ||
+      (session as any)?.id ||
+      "user"
+    ).toLowerCase().trim();
+    const role = session?.role || "Advisor";
+    walkthroughStore.markCompleted(userIdentifier, role);
+    walkthroughStore.closeWalkthrough(userIdentifier, role);
   }, [session]);
+
+  // Automatically close & save completion if user navigates away to other pages like /settings or /audit
+  useEffect(() => {
+    if (walkthroughState.isOpen && !isDashboardRoute) {
+      handleClose();
+    }
+  }, [pathname, isDashboardRoute, walkthroughState.isOpen, handleClose]);
 
   const handleNext = () => {
     if (isLastStep) {
