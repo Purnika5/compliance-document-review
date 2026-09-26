@@ -35,6 +35,10 @@ export function FileTypeIcon({
     text.includes(".XLS") ||
     text.includes("SHEET") ||
     text.includes("EXCEL");
+  const isTxt =
+    text.endsWith(".TXT") ||
+    text.includes(".TXT") ||
+    text.includes("TEXT");
 
   if (isPdf) {
     return (
@@ -115,6 +119,36 @@ export function FileTypeIcon({
         </svg>
         <span className="text-[8.5px] font-black tracking-wider text-emerald-700 font-sans leading-none mt-0.5">
           XLS
+        </span>
+      </div>
+    );
+  }
+
+  if (isTxt) {
+    return (
+      <div
+        className={cn(
+          "h-8 w-8 rounded-lg bg-amber-50 border border-amber-200 flex flex-col items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform text-amber-700 select-none",
+          className
+        )}
+        title="Plain Text Document (TXT)"
+      >
+        <svg
+          className="h-3.5 w-3.5 text-amber-600"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <line x1="16" y1="13" x2="8" y2="13" />
+          <line x1="16" y1="17" x2="8" y2="17" />
+        </svg>
+        <span className="text-[8.5px] font-black tracking-wider text-amber-700 font-sans leading-none mt-0.5">
+          TXT
         </span>
       </div>
     );

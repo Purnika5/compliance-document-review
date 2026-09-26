@@ -30,7 +30,7 @@ import {
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { authStore } from "@/lib/auth/auth-store";
-import { getMySubmissionsAction } from "@/lib/actions/document-actions";
+import { getMySubmissionsAction, getQueueAction } from "@/lib/actions/document-actions";
 import type { DocumentItem } from "@/lib/validation/document";
 import {
   notificationService,
@@ -74,6 +74,9 @@ function getActiveRevisionDocuments(docs: DocumentItem[]): DocumentItem[] {
 export function NotificationCenter() {
   const [notifications, setNotifications] = useState<INotificationItem[]>([]);
   const [revisionItems, setRevisionItems] = useState<DocumentItem[]>([]);
+  const [docTypeMap, setDocTypeMap] = useState<
+    Record<string, { fileName?: string; fileFormat?: string; mimeType?: string; title?: string }>
+  >({});
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isDismissed, setIsDismissed] = useState<boolean>(false);
@@ -113,11 +116,36 @@ export function NotificationCenter() {
       try {
         const myDocs = await getMySubmissionsAction();
         setRevisionItems(getActiveRevisionDocuments(myDocs));
+        const map: Record<string, { fileName?: string; fileFormat?: string; mimeType?: string; title?: string }> = {};
+        for (const d of myDocs) {
+          map[d.id] = {
+            fileName: d.fileName,
+            fileFormat: d.fileFormat,
+            mimeType: d.mimeType,
+            title: d.title,
+          };
+        }
+        setDocTypeMap((prev) => ({ ...prev, ...map }));
       } catch (err) {
         console.error("[NotificationCenter] Failed to fetch revision submissions:", err);
       }
     } else {
       setRevisionItems([]);
+      try {
+        const queueDocs = await getQueueAction();
+        const map: Record<string, { fileName?: string; fileFormat?: string; mimeType?: string; title?: string }> = {};
+        for (const d of queueDocs) {
+          map[d.id] = {
+            fileName: d.fileName,
+            fileFormat: d.fileFormat,
+            mimeType: d.mimeType,
+            title: d.title,
+          };
+        }
+        setDocTypeMap((prev) => ({ ...prev, ...map }));
+      } catch (err) {
+        console.error("[NotificationCenter] Failed to fetch queue submissions:", err);
+      }
     }
   }, []);
 
@@ -214,17 +242,239 @@ export function NotificationCenter() {
     await notificationService.markAsRead(id);
   };
 
+  const renderFileBadge = (
+    type: "pdf" | "doc" | "txt" | "xls" | "generic",
+    statusBadge?: "approval" | "revision" | "ai"
+  ) => {
+    let badgeClasses = "";
+    let iconSvg: React.ReactNode = null;
+    let label = "";
+
+    switch (type) {
+      case "pdf":
+        badgeClasses = "bg-red-50 border-red-200 text-red-600";
+        label = "PDF";
+        iconSvg = (
+          <svg
+            className="h-3 w-3 text-red-600"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+          </svg>
+        );
+        break;
+      case "doc":
+        badgeClasses = "bg-blue-50 border-blue-200 text-blue-600";
+        label = "DOC";
+        iconSvg = (
+          <svg
+            className="h-3 w-3 text-blue-600"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+          </svg>
+        );
+        break;
+      case "txt":
+        badgeClasses = "bg-amber-50 border-amber-200 text-amber-700";
+        label = "TXT";
+        iconSvg = (
+          <svg
+            className="h-3 w-3 text-amber-600"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
+          </svg>
+        );
+        break;
+      case "xls":
+        badgeClasses = "bg-emerald-50 border-emerald-200 text-emerald-600";
+        label = "XLS";
+        iconSvg = (
+          <svg
+            className="h-3 w-3 text-emerald-600"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+          </svg>
+        );
+        break;
+      default:
+        badgeClasses = "bg-[#183028]/5 border-[#183028]/15 text-[#183028]/70";
+        label = "FILE";
+        iconSvg = <FileText className="h-3 w-3 text-[#183028]/70" />;
+        break;
+    }
+
+    return (
+      <div className="relative inline-flex shrink-0">
+        <div
+          className={cn(
+            "h-7 w-7 rounded-md border flex flex-col items-center justify-center shrink-0 shadow-2xs select-none transition-transform group-hover:scale-105",
+            badgeClasses
+          )}
+        >
+          {iconSvg}
+          <span className="text-[7px] font-black tracking-wider leading-none mt-0.5 font-sans uppercase">
+            {label}
+          </span>
+        </div>
+        {statusBadge === "approval" && (
+          <span
+            className="absolute -bottom-1 -right-1 bg-emerald-600 text-white rounded-full p-0.5 shadow-2xs ring-1 ring-white"
+            title="Approved"
+          >
+            <CheckCircle2 className="h-2.5 w-2.5" />
+          </span>
+        )}
+        {statusBadge === "revision" && (
+          <span
+            className="absolute -bottom-1 -right-1 bg-amber-500 text-white rounded-full p-0.5 shadow-2xs ring-1 ring-white"
+            title="Revision Required"
+          >
+            <AlertCircle className="h-2.5 w-2.5" />
+          </span>
+        )}
+        {statusBadge === "ai" && (
+          <span
+            className="absolute -bottom-1 -right-1 bg-amber-500 text-white rounded-full p-0.5 shadow-2xs ring-1 ring-white"
+            title="AI Alert"
+          >
+            <ShieldAlert className="h-2.5 w-2.5" />
+          </span>
+        )}
+      </div>
+    );
+  };
+
   const getCategoryIcon = (category: INotificationItem["category"]) => {
     switch (category) {
       case "ai":
-        return <ShieldAlert className="h-3.5 w-3.5 text-amber-500 shrink-0" />;
+        return (
+          <div className="h-7 w-7 rounded-md bg-amber-50 border border-amber-200 flex items-center justify-center shrink-0 shadow-2xs">
+            <ShieldAlert className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+          </div>
+        );
       case "approval":
-        return <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />;
+        return (
+          <div className="h-7 w-7 rounded-md bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0 shadow-2xs">
+            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+          </div>
+        );
       case "revision":
-        return <AlertCircle className="h-3.5 w-3.5 text-amber-600 shrink-0" />;
+        return (
+          <div className="h-7 w-7 rounded-md bg-amber-50 border border-amber-200 flex items-center justify-center shrink-0 shadow-2xs">
+            <AlertCircle className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+          </div>
+        );
       default:
-        return <FileText className="h-3.5 w-3.5 text-[#183028]/60 shrink-0" />;
+        return (
+          <div className="h-7 w-7 rounded-md bg-[#183028]/5 border border-[#183028]/15 flex items-center justify-center shrink-0 shadow-2xs">
+            <FileText className="h-3.5 w-3.5 text-[#183028]/60 shrink-0" />
+          </div>
+        );
     }
+  };
+
+  const getNotificationIcon = (notif: INotificationItem) => {
+    const docInfo = notif.documentId ? docTypeMap[notif.documentId] : undefined;
+    const fileName = (notif.fileName || notif.file_name || docInfo?.fileName || "").trim();
+    const mimeType = (notif.mimeType || notif.mime_type || docInfo?.mimeType || "").trim().toLowerCase();
+    const fileFormat = (docInfo?.fileFormat || "").trim().toUpperCase();
+    const title = notif.title || docInfo?.title || "";
+    const description = notif.description || "";
+    const combined = `${fileName} ${mimeType} ${fileFormat} ${title} ${description}`.toUpperCase();
+
+    const isPdf =
+      fileName.toLowerCase().endsWith(".pdf") ||
+      mimeType.includes("pdf") ||
+      fileFormat === "PDF" ||
+      combined.includes(".PDF") ||
+      /\bPDF\b/i.test(title);
+
+    const isDoc =
+      fileName.toLowerCase().endsWith(".doc") ||
+      fileName.toLowerCase().endsWith(".docx") ||
+      mimeType.includes("msword") ||
+      mimeType.includes("wordprocessingml") ||
+      fileFormat === "DOC" ||
+      fileFormat === "DOCX" ||
+      combined.includes(".DOCX") ||
+      combined.includes(".DOC") ||
+      /\bDOCX\b/i.test(title) ||
+      /\bWORD\b/i.test(title);
+
+    const isTxt =
+      fileName.toLowerCase().endsWith(".txt") ||
+      mimeType.includes("text/plain") ||
+      fileFormat === "TXT" ||
+      combined.includes(".TXT") ||
+      /\bTXT\b/i.test(title);
+
+    const isXls =
+      fileName.toLowerCase().endsWith(".xls") ||
+      fileName.toLowerCase().endsWith(".xlsx") ||
+      fileName.toLowerCase().endsWith(".csv") ||
+      mimeType.includes("spreadsheet") ||
+      mimeType.includes("ms-excel") ||
+      mimeType.includes("csv") ||
+      fileFormat === "XLS" ||
+      fileFormat === "XLSX" ||
+      combined.includes(".XLSX") ||
+      combined.includes(".XLS") ||
+      combined.includes(".CSV");
+
+    let statusBadge: "approval" | "revision" | "ai" | undefined;
+    if (notif.category === "approval" || notif.rawType?.includes("APPROVED")) {
+      statusBadge = "approval";
+    } else if (
+      notif.category === "revision" ||
+      notif.rawType?.includes("REVISION") ||
+      notif.title.toLowerCase().includes("revision") ||
+      notif.description.toLowerCase().includes("needs revision")
+    ) {
+      statusBadge = "revision";
+    } else if (notif.category === "ai") {
+      statusBadge = "ai";
+    }
+
+    if (isPdf) return renderFileBadge("pdf", statusBadge);
+    if (isDoc) return renderFileBadge("doc", statusBadge);
+    if (isTxt) return renderFileBadge("txt", statusBadge);
+    if (isXls) return renderFileBadge("xls", statusBadge);
+
+    // If it's associated with a document, default to institutional PDF badge
+    if (notif.documentId) {
+      return renderFileBadge("pdf", statusBadge);
+    }
+
+    return getCategoryIcon(notif.category);
   };
 
   const userRole = authStore.getRole();
@@ -509,7 +759,7 @@ export function NotificationCenter() {
                   )}
                   onClick={() => markAsRead(notif.id)}
                 >
-                  <div className="mt-0.5 shrink-0">{getCategoryIcon(notif.category)}</div>
+                  <div className="mt-0.5 shrink-0">{getNotificationIcon(notif)}</div>
                   <div className="flex-1 min-w-0 space-y-0.5">
                     <div className="flex items-center justify-between gap-1">
                       <p className="text-xs font-semibold text-[#183028] truncate">

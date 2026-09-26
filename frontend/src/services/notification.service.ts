@@ -18,6 +18,10 @@ export interface INotificationItem {
   read: boolean;
   documentId?: string;
   rawType?: string;
+  fileName?: string;
+  file_name?: string;
+  mimeType?: string;
+  mime_type?: string;
 }
 
 export interface RawBackendNotification {
@@ -33,6 +37,10 @@ export interface RawBackendNotification {
   is_read?: boolean;
   createdAt?: string;
   created_at?: string;
+  fileName?: string;
+  file_name?: string;
+  mimeType?: string;
+  mime_type?: string;
 }
 
 export function mapBackendNotificationToItem(raw: RawBackendNotification): INotificationItem {
@@ -60,6 +68,9 @@ export function mapBackendNotificationToItem(raw: RawBackendNotification): INoti
   const timeStr = dateObj.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   const dateStr = dateObj.toLocaleDateString([], { month: "short", day: "numeric" });
 
+  const fileName = raw.fileName || raw.file_name;
+  const mimeType = raw.mimeType || raw.mime_type;
+
   return {
     id: raw.id,
     category,
@@ -69,6 +80,10 @@ export function mapBackendNotificationToItem(raw: RawBackendNotification): INoti
     read: Boolean(raw.isRead ?? raw.is_read ?? false),
     documentId: raw.documentId || raw.document_id,
     rawType: type,
+    fileName,
+    file_name: fileName,
+    mimeType,
+    mime_type: mimeType,
   };
 }
 

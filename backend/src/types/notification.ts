@@ -56,6 +56,10 @@ export interface NotificationRecord {
   is_read?: boolean;
   createdAt: Date | string;
   created_at?: Date | string;
+  fileName?: string;
+  file_name?: string;
+  mimeType?: string;
+  mime_type?: string;
 }
 
 export interface CreateNotificationInput {
