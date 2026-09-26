@@ -262,6 +262,18 @@ export class NotificationService {
     };
   }
 
+  public static async markDocumentNotificationsAsRead(
+    documentId: string,
+    userId: string
+  ): Promise<{ updated_count: number }> {
+    const result = await query(
+      'UPDATE notifications SET is_read = true WHERE document_id = $1 AND user_id = $2 AND is_read = false',
+      [documentId, userId]
+    );
+
+    return { updated_count: result.rowCount || 0 };
+  }
+
   public static async markAllAsRead(userId: string): Promise<{ updated_count: number }> {
     const result = await query(
       'UPDATE notifications SET is_read = true WHERE user_id = $1 AND is_read = false',

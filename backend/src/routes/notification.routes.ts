@@ -24,6 +24,9 @@ router.get('/', validate({ query: notificationQuerySchema }), NotificationContro
 // Mark single notification as read
 router.patch('/:id/read', validate({ params: notificationIdParamSchema }), NotificationController.markAsRead);
 
+// Mark document notifications as read
+router.post('/document/:documentId/read', NotificationController.markDocumentAsRead);
+
 // Mark all notifications as read
 router.post('/read-all', NotificationController.markAllAsRead);
 

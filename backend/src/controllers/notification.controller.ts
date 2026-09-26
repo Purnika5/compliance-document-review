@@ -78,6 +78,21 @@ export class NotificationController {
     }
   };
 
+  public static markDocumentAsRead = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const userId = (req as any).user.id;
+      const documentId = req.params.documentId;
+      const result = await NotificationService.markDocumentNotificationsAsRead(documentId, userId);
+      sendSuccess(res, result);
+    } catch (err) {
+      next(err);
+    }
+  };
+
   public static streamNotifications = (
     req: Request,
     res: Response

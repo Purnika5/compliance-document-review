@@ -28,6 +28,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { authStore } from "@/lib/auth/auth-store";
 import { getMySubmissionsAction, getQueueAction } from "@/lib/actions/document-actions";
@@ -72,11 +73,29 @@ function getActiveRevisionDocuments(docs: DocumentItem[]): DocumentItem[] {
 }
 
 export function NotificationCenter() {
+  const pathname = usePathname();
+  const activeDocumentId = React.useMemo(() => {
+    if (!pathname) return null;
+    const match = pathname.match(/\/documents\/([^\/\?#]+)/);
+    return match ? match[1] : null;
+  }, [pathname]);
+
   const [notifications, setNotifications] = useState<INotificationItem[]>([]);
   const [revisionItems, setRevisionItems] = useState<DocumentItem[]>([]);
   const [docTypeMap, setDocTypeMap] = useState<
     Record<string, { fileName?: string; fileFormat?: string; mimeType?: string; title?: string }>
   >({});
+  const [viewedRevisionIds, setViewedRevisionIds] = useState<Set<string>>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = sessionStorage.getItem("viewed_revision_doc_ids");
+        return stored ? new Set(JSON.parse(stored)) : new Set();
+      } catch {
+        return new Set();
+      }
+    }
+    return new Set();
+  });
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isDismissed, setIsDismissed] = useState<boolean>(false);
@@ -104,7 +123,21 @@ export function NotificationCenter() {
     setIsLoading(true);
     try {
       const res = await notificationService.getNotifications(false, 1, 40);
-      setNotifications(res.notifications);
+      let items = res.notifications;
+      if (activeDocumentId) {
+        let hasMarked = false;
+        items = items.map((n) => {
+          if (n.documentId === activeDocumentId && !n.read) {
+            hasMarked = true;
+            return { ...n, read: true };
+          }
+          return n;
+        });
+        if (hasMarked) {
+          notificationService.markDocumentAsRead(activeDocumentId).catch(() => {});
+        }
+      }
+      setNotifications(items);
     } catch (err) {
       console.error("[NotificationCenter] Failed to fetch notifications:", err);
     } finally {
@@ -147,7 +180,30 @@ export function NotificationCenter() {
         console.error("[NotificationCenter] Failed to fetch queue submissions:", err);
       }
     }
-  }, []);
+  }, [activeDocumentId]);
+
+  // When activeDocumentId changes (viewing a document), automatically mark its notifications as read
+  useEffect(() => {
+    if (!activeDocumentId) return;
+
+    setViewedRevisionIds((prev) => {
+      if (prev.has(activeDocumentId)) return prev;
+      const next = new Set(prev);
+      next.add(activeDocumentId);
+      try {
+        sessionStorage.setItem("viewed_revision_doc_ids", JSON.stringify(Array.from(next)));
+      } catch {}
+      return next;
+    });
+
+    setNotifications((prev) => {
+      const hasUnread = prev.some((n) => n.documentId === activeDocumentId && !n.read);
+      if (!hasUnread) return prev;
+      return prev.map((n) => (n.documentId === activeDocumentId ? { ...n, read: true } : n));
+    });
+
+    notificationService.markDocumentAsRead(activeDocumentId).catch(() => {});
+  }, [activeDocumentId]);
 
   /**
    * DOCU: Subscribes to live SSE notification stream and updates internal state on arrival.
@@ -167,6 +223,10 @@ export function NotificationCenter() {
 
       disconnectSSE = notificationService.connectSSE(
         (newItem: INotificationItem) => {
+          if (activeDocumentId && newItem.documentId === activeDocumentId) {
+            newItem.read = true;
+            notificationService.markDocumentAsRead(activeDocumentId).catch(() => {});
+          }
           setNotifications((prev) => {
             const exists = prev.some((n) => n.id === newItem.id);
             if (exists) {
@@ -533,25 +593,33 @@ export function NotificationCenter() {
     return rawTitle.trim() || "Notification";
   };
 
+  const unviewedRevisionDocs = React.useMemo(() => {
+    return revisionItems.filter(
+      (item) => item.id !== activeDocumentId && !viewedRevisionIds.has(item.id)
+    );
+  }, [revisionItems, activeDocumentId, viewedRevisionIds]);
+
   const topRevisionItem = React.useMemo(() => {
-    if (!isAdvisor || revisionItems.length === 0) return null;
+    if (!isAdvisor || unviewedRevisionDocs.length === 0) return null;
+    const target = unviewedRevisionDocs[0];
     return {
-      id: revisionItems[0].id,
-      title: cleanNoticeTitle(revisionItems[0].title),
-      notifId: undefined as string | undefined,
+      id: target.id,
+      title: cleanNoticeTitle(target.title),
+      notifId: notifications.find((n) => n.documentId === target.id)?.id,
     };
-  }, [isAdvisor, revisionItems]);
+  }, [isAdvisor, unviewedRevisionDocs, notifications]);
 
   const officerUnreadNotifs = React.useMemo(() => {
     return notifications.filter(
       (n) =>
         !n.read &&
+        n.documentId !== activeDocumentId &&
         (n.category === "revision" ||
           n.category === "document" ||
           n.rawType === "REVISION_COMMENT" ||
           n.rawType === "STATUS_CHANGE")
     );
-  }, [notifications]);
+  }, [notifications, activeDocumentId]);
 
   const topOfficerItem = React.useMemo(() => {
     if (!isOfficer || officerUnreadNotifs.length === 0) return null;
@@ -563,18 +631,13 @@ export function NotificationCenter() {
     };
   }, [isOfficer, officerUnreadNotifs]);
 
-  const totalBadgeCount =
-    activeRevisionCount > 0
-      ? Math.max(unreadCount, activeRevisionCount)
-      : unreadCount;
-
   const displayedRevisionItem = topRevisionItem;
   const displayedOfficerItem = topOfficerItem;
 
   return (
     <div className="flex items-center gap-2 sm:gap-2.5">
       {/* Information Alert (Outside notification, beside notification bell) */}
-      {isAdvisor && activeRevisionCount > 0 && displayedRevisionItem && !isDismissed && (
+      {isAdvisor && unviewedRevisionDocs.length > 0 && displayedRevisionItem && !isDismissed && (
         <div
           role="status"
           aria-live="polite"
@@ -668,17 +731,19 @@ export function NotificationCenter() {
             data-tour="header-notifications"
             className={cn(
               "relative h-8 w-8 rounded-full border bg-[#FFFFFF] text-[#183028] hover:bg-[#C5E86C] hover:text-[#183028] hover:border-[#C5E86C] flex items-center justify-center transition-all cursor-pointer shadow-2xs outline-none",
-              activeRevisionCount > 0
+              unreadCount > 0 && revisionNotifs.length > 0
                 ? "border-orange-300 text-orange-700 bg-orange-50/50 ring-2 ring-orange-400/20"
                 : isOfficer && officerUnreadNotifs.length > 0
                 ? "border-emerald-300 text-emerald-800 bg-emerald-50/50 ring-2 ring-emerald-400/20"
+                : unreadCount > 0
+                ? "border-[#183028]/25 text-[#183028] bg-white ring-1 ring-[#183028]/10"
                 : "border-[#E6E8E7]"
             )}
             title={
-              activeRevisionCount > 0
-                ? `${activeRevisionCount} submission(s) require revision attention`
-                : isOfficer && officerUnreadNotifs.length > 0
-                ? `${officerUnreadNotifs.length} document/revision update(s) require officer review`
+              unreadCount > 0 && revisionNotifs.length > 0
+                ? `${unreadCount} unread notification(s) (${revisionNotifs.length} revision action required)`
+                : unreadCount > 0
+                ? `${unreadCount} unread notification(s)`
                 : isConnected
                 ? "Notifications (Live Stream Connected)"
                 : "Notifications"
@@ -686,13 +751,13 @@ export function NotificationCenter() {
             aria-label="Open notifications"
           >
             <Bell className="h-4 w-4" />
-            {activeRevisionCount > 0 ? (
+            {unreadCount > 0 && revisionNotifs.length > 0 ? (
               <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-orange-600 text-white text-[9px] font-bold font-mono flex items-center justify-center ring-2 ring-white">
-                {activeRevisionCount > 99 ? "99+" : activeRevisionCount}
+                {unreadCount > 99 ? "99+" : unreadCount}
               </span>
-            ) : totalBadgeCount > 0 ? (
+            ) : unreadCount > 0 ? (
               <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-[#183028] text-white text-[9px] font-bold font-mono flex items-center justify-center ring-2 ring-white">
-                {totalBadgeCount > 99 ? "99+" : totalBadgeCount}
+                {unreadCount > 99 ? "99+" : unreadCount}
               </span>
             ) : null}
           </button>

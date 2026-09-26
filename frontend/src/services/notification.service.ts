@@ -170,6 +170,18 @@ export class NotificationService {
   }
 
   /**
+   * DOCU: Marks all notifications for a specific document as read.
+   * Calls POST /notifications/document/:documentId/read.
+   */
+  public async markDocumentAsRead(documentId: string): Promise<void> {
+    try {
+      await this.client.post(`/notifications/document/${documentId}/read`, {});
+    } catch (err) {
+      console.error(`[NotificationService] Failed to mark notifications for document ${documentId} as read:`, err);
+    }
+  }
+
+  /**
    * DOCU: Opens a real-time Server-Sent Events (SSE) stream connection to GET /notifications/stream.
    * Dispatches incoming notifications and manages automatic reconnection.
    * Last Updated Date: September 18, 2026
