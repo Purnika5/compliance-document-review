@@ -2236,9 +2236,8 @@ function ChatHeader({
   return (
     <div className="bg-white text-[#183028] px-4 py-3 flex items-center justify-between border-b border-[#E6E8E7] shrink-0">
       <div className="flex items-center space-x-2.5">
-        <div className="relative h-8 w-8 rounded-xl bg-[#C5E86C]/30 border border-[#b4db53] flex items-center justify-center text-[#183028] shadow-2xs">
+        <div className="h-8 w-8 rounded-xl bg-[#C5E86C]/30 border border-[#b4db53] flex items-center justify-center text-[#183028] shadow-2xs">
           <Bot className="h-4 w-4 text-[#183028]" />
-          <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
         </div>
         <div>
           <div className="flex items-center gap-1.5">
