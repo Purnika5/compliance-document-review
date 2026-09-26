@@ -102,7 +102,7 @@ function generateContextualComplianceReply(
 
   // 0. Active scanned document in chat session
   if (scannedDoc && scannedDoc.auditBreakdown && scannedDoc.auditBreakdown.length > 0 &&
-      /\b(?:findings?|infractions?|violations?|deficienc(?:y|ies)|flags?|rules?|severity|remediat(?:e|ion|ions)|amendments?|this document|this file|scanned document|scan|draft)\b/i.test(lower)) {
+    /\b(?:findings?|infractions?|violations?|deficienc(?:y|ies)|flags?|rules?|severity|remediat(?:e|ion|ions)|amendments?|this document|this file|scanned document|scan|draft)\b/i.test(lower)) {
     const breakdown = scannedDoc.auditBreakdown;
     const resolveSeverity = (item: any): string => {
       if (item.severity) return item.severity.toUpperCase();
@@ -150,11 +150,10 @@ function generateContextualComplianceReply(
       return `### Compliance Findings for "${activeDoc.title}" (v${activeDoc.version})\nFound **${flagCount} compliance findings** under FINRA Rule 2210 & SEC Rule 206:\n\n${formatted}`;
     }
     const sample = activeDoc.flags?.[0];
-    return `"${activeDoc.title}"${byLine} (v${activeDoc.version}) has ${flagCount} compliance flag${flagCount > 1 ? 's' : ''}. The first is under ${sample?.rule || 'FINRA Rule 2210'}: "${sample?.original_passage || sample?.passage || ''}". ${
-      isOfficer
+    return `"${activeDoc.title}"${byLine} (v${activeDoc.version}) has ${flagCount} compliance flag${flagCount > 1 ? 's' : ''}. The first is under ${sample?.rule || 'FINRA Rule 2210'}: "${sample?.original_passage || sample?.passage || ''}". ${isOfficer
         ? 'Would you like to draft a revision request or trigger an auto-remediation?'
         : 'Would you like me to auto-fix this into compliant fiduciary language?'
-    }`;
+      }`;
   }
 
   // 1b. Most recent filing / who uploaded most recent
@@ -291,7 +290,7 @@ router.post('/', optionalAuth, async (req: Request, res: Response) => {
   const emailMatch = cleanMessage.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
   if (
     (/\b(user\s+(?:by|with)?\s*(?:the\s+)?email|is\s+there\s+(?:any\s+)?user|find\s+user|check\s+user|lookup\s+user)\b/i.test(lowerMsg) ||
-     /\b(?:any|a)\s+user\b/i.test(lowerMsg)) &&
+      /\b(?:any|a)\s+user\b/i.test(lowerMsg)) &&
     emailMatch
   ) {
     const targetEmail = emailMatch[0].toLowerCase();
@@ -371,12 +370,12 @@ router.post('/', optionalAuth, async (req: Request, res: Response) => {
         isClarification: grokResult.isClarification || false,
         quota: quotaInfo
           ? {
-              used: quotaInfo.chatMessages.used,
-              limit: quotaInfo.chatMessages.limit,
-              remaining: quotaInfo.chatMessages.remaining,
-              resetsAt: quotaInfo.resetsAt,
-              resetInDays: quotaInfo.resetInDays,
-            }
+            used: quotaInfo.chatMessages.used,
+            limit: quotaInfo.chatMessages.limit,
+            remaining: quotaInfo.chatMessages.remaining,
+            resetsAt: quotaInfo.resetsAt,
+            resetInDays: quotaInfo.resetInDays,
+          }
           : undefined,
       });
       return;
@@ -510,7 +509,7 @@ router.post('/', optionalAuth, async (req: Request, res: Response) => {
 
   const todaysFormatted = telemetryData.todaysDocs.length > 0
     ? `TODAY'S UPLOADS (${telemetryData.todaysDocs.length} document${telemetryData.todaysDocs.length > 1 ? 's' : ''}):\n` +
-      telemetryData.todaysDocs.map(formatDocForContext).join('\n')
+    telemetryData.todaysDocs.map(formatDocForContext).join('\n')
     : "TODAY'S UPLOADS: None uploaded today.";
 
   const activeDocFormatted = telemetryData.activeDoc
@@ -546,11 +545,7 @@ ${JSON.stringify(scannedDocument.auditBreakdown, null, 2)}`
   }
 
   // ── 4. Google Gemini REST Call ────────────────────────────────────────────
-  const geminiApiKey = (
-    process.env.GEMINI_API_KEY ||
-    process.env.GOOGLE_GEMINI_KEY ||
-    'AQ.Ab8RN6K25AMITEVj7ZHf0vuU86-YQzdmYfj6uRfe7q-1EqEW9w'
-  ).trim();
+  const geminiApiKey = process.env.GEMINI_API_KEY?.trim();
   if (geminiApiKey && !geminiApiKey.includes('your_gemini') && !geminiApiKey.includes('test-ci')) {
     try {
       const systemInstruction = `You are Springer Capital's Neural Compliance Copilot — a brilliant, warm, witty, and articulate AI assistant and senior Wall Street colleague with a genuine sense of humor.
@@ -600,12 +595,12 @@ CRITICAL RULES:
           reply: gResult.text,
           quota: quotaInfo
             ? {
-                used: quotaInfo.chatMessages.used,
-                limit: quotaInfo.chatMessages.limit,
-                remaining: quotaInfo.chatMessages.remaining,
-                resetsAt: quotaInfo.resetsAt,
-                resetInDays: quotaInfo.resetInDays,
-              }
+              used: quotaInfo.chatMessages.used,
+              limit: quotaInfo.chatMessages.limit,
+              remaining: quotaInfo.chatMessages.remaining,
+              resetsAt: quotaInfo.resetsAt,
+              resetInDays: quotaInfo.resetInDays,
+            }
             : undefined,
         });
         return;

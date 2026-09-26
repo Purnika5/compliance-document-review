@@ -90,13 +90,9 @@ export class GrokChatbotService {
   }
 
   private static getGeminiApiKey(): string | undefined {
-    const key = (
-      process.env.GEMINI_API_KEY ||
-      process.env.GOOGLE_GEMINI_KEY ||
-      'AQ.Ab8RN6K25AMITEVj7ZHf0vuU86-YQzdmYfj6uRfe7q-1EqEW9w'
-    ).trim();
+    const key = process.env.GEMINI_API_KEY?.trim();
     if (!key || key.includes('placeholder') || key.includes('your_gemini')) {
-      return 'AQ.Ab8RN6K25AMITEVj7ZHf0vuU86-YQzdmYfj6uRfe7q-1EqEW9w';
+      return undefined;
     }
     return key;
   }
@@ -627,11 +623,11 @@ State whether this text would be Approved or Needs Revision, with guidance for t
     const isDocumentAuditOrFlagsQuery =
       Boolean(documentId || (pathname && pathname.includes('/documents/'))) &&
       (/\b(audit\s+this\s+document|explain\s+(?:the\s+)?flagged\s+compliance\s+issues|compliance\s+issues\s+for\s+this\s+document|can\s+this\s+document\s+be\s+auto-remediated|review\s+attestation|audit\s+history|audit\s+trail|version\s+comparison|what\s+revisions\s+does\s+the\s+compliance\s+officer\s+require|remediate\s+promissory\s+language)\b/i.test(lower) ||
-       lower.includes('audit this document against finra') ||
-       lower.includes('explain the flagged compliance issues') ||
-       lower.includes('can this document be auto-remediated') ||
-       lower.includes('review attestation & audit history') ||
-       lower.includes('show version comparison'));
+        lower.includes('audit this document against finra') ||
+        lower.includes('explain the flagged compliance issues') ||
+        lower.includes('can this document be auto-remediated') ||
+        lower.includes('review attestation & audit history') ||
+        lower.includes('show version comparison'));
 
     if (isDocumentAuditOrFlagsQuery) {
       return await this.handleActiveDocumentAuditIntent(user, correctedQuery, lower, documentId, pathname);
@@ -1111,11 +1107,11 @@ State whether this text would be Approved or Needs Revision, with guidance for t
       flagsList.length === 0
         ? 'No compliance flags recorded.'
         : flagsList.map((f: any) => {
-            const rule = f.rule || 'Regulatory Rule';
-            const exp = f.explanation || f.reason || 'Compliance flag';
-            const pass = f.passage ? ` — "${f.passage}"` : '';
-            return `  - ${rule}: ${exp}${pass}`;
-          }).join('\n');
+          const rule = f.rule || 'Regulatory Rule';
+          const exp = f.explanation || f.reason || 'Compliance flag';
+          const pass = f.passage ? ` — "${f.passage}"` : '';
+          return `  - ${rule}: ${exp}${pass}`;
+        }).join('\n');
 
     const dbSummary = `Risk assessment for "${doc.title}" (version ${doc.version}, status: ${doc.status}):\n- Risk Level: ${doc.risk_level}\n- Risk Score: ${doc.risk_score}/100\n- Compliance Flags:\n${flagsSummary}`;
     const fallback = `**Risk Assessment — "${doc.title}"**\n- Risk Level: **${doc.risk_level}** (Score: ${doc.risk_score}/100)\n\n**Compliance Flags:**\n${flagsSummary}`;
@@ -2171,13 +2167,13 @@ Current page: ${pathname || 'Dashboard'}.`;
     if (/^(hi|hello|hey|good\s*(morning|afternoon|evening)|howdy|sup|yo|what'?s\s*up)\b/i.test(q)) {
       const greetings = isOfficer
         ? [
-            `Hey there! Good to see you. How's your day treating you? Ready to dive into some review files, or just taking a breather? 😊`,
-            `Hello! I'm active and keeping an eye on things. What's on your mind today — work, market thoughts, or just a quick chat?`,
-          ]
+          `Hey there! Good to see you. How's your day treating you? Ready to dive into some review files, or just taking a breather? 😊`,
+          `Hello! I'm active and keeping an eye on things. What's on your mind today — work, market thoughts, or just a quick chat?`,
+        ]
         : [
-            `Hey! Great to see you. How's everything going with your proposals today? Or are we taking a well-deserved breather to chat? 😄`,
-            `Hello there! I'm here and ready. We can work on a proposal draft, talk through FINRA rules, or just chat if you're taking a break. What's up?`,
-          ];
+          `Hey! Great to see you. How's everything going with your proposals today? Or are we taking a well-deserved breather to chat? 😄`,
+          `Hello there! I'm here and ready. We can work on a proposal draft, talk through FINRA rules, or just chat if you're taking a break. What's up?`,
+        ];
       return greetings[Math.floor(Math.random() * greetings.length)];
     }
 
