@@ -533,7 +533,7 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
     }
   };
 
-  if (isLoadingDocument) {
+  if (isLoadingDocument && !loadedDoc) {
     return <ReviewWorkspaceSkeleton />;
   }
 
@@ -1448,10 +1448,22 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
         isOpen={isResubmitModalOpen}
         onClose={() => setIsResubmitModalOpen(false)}
         documentItem={currentDocItem}
-        onSuccess={() => {
+        onSuccess={(newDoc) => {
+          const targetId = newDoc?.id || activeDocId;
+          if (newDoc?.id) {
+            setActiveDocId(newDoc.id);
+            setLoadedDoc(newDoc);
+            setTitle(newDoc.title);
+            setCategory(newDoc.category);
+            setStatus(newDoc.status);
+            if (typeof window !== "undefined") {
+              window.history.replaceState(null, "", `/documents/${newDoc.id}`);
+            }
+          }
+
           setIsLoadingLineage(true);
           documentService
-            .getDocumentVersions(activeDocId)
+            .getDocumentVersions(targetId)
             .then((res) => {
               setLineageVersions(res.versions);
               setLineageEntries(res.threadEntries);
@@ -1459,16 +1471,17 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
             .catch(() => { })
             .finally(() => setIsLoadingLineage(false));
 
-          getDocumentAction(activeDocId)
-            .then((doc) => {
-              setLoadedDoc(doc);
-              setTitle(doc.title);
-              setCategory(doc.category);
-              setStatus(doc.status);
-            })
-            .catch(() => { });
+          if (!newDoc?.id) {
+            getDocumentAction(targetId)
+              .then((doc) => {
+                setLoadedDoc(doc);
+                setTitle(doc.title);
+                setCategory(doc.category);
+                setStatus(doc.status);
+              })
+              .catch(() => { });
+          }
 
-          setRevisionRefreshKey((prev) => prev + 1);
           setActionSuccess(`Document revision (v${nextVersion}) uploaded and submitted for compliance review.`);
         }}
       />

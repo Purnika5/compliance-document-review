@@ -28,7 +28,7 @@ export interface ResubmitRevisionModalProps {
   isOpen: boolean;
   onClose: () => void;
   documentItem: DocumentItem | null;
-  onSuccess?: () => void;
+  onSuccess?: (newDoc?: DocumentItem) => void;
 }
 
 export function ResubmitRevisionModal({
@@ -43,6 +43,15 @@ export function ResubmitRevisionModal({
   const [isDragOver, setIsDragOver] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setIsSuccess(false);
+      setSelectedFile(null);
+      setRevisionNotes("");
+      setIsSubmitting(false);
+    }
+  }, [isOpen]);
 
   const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB
 
@@ -98,7 +107,7 @@ export function ResubmitRevisionModal({
 
     setIsSubmitting(true);
     try {
-      await documentService.resubmitDocument(documentItem.id, selectedFile, revisionNotes);
+      const newDoc = await documentService.resubmitDocument(documentItem.id, selectedFile, revisionNotes);
       showSuccessToast(
         "Revision Submitted",
         `New version for "${documentItem.title || 'document'}" uploaded successfully.`
@@ -106,8 +115,8 @@ export function ResubmitRevisionModal({
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("compliance-notification-refresh"));
       }
-      if (onSuccess) onSuccess();
       setIsSuccess(true);
+      if (onSuccess) onSuccess(newDoc);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to resubmit document revision.";
       showErrorToast("Resubmission Failed", msg);
