@@ -3057,11 +3057,9 @@ function TelemetrySearchCard({ result }: ITelemetryCardProps) {
         <span className="text-[9.5px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
           {analytics.breakdown_by_status.NeedsRevision} Needs Revision
         </span>
-        {analytics.breakdown_by_status.Rejected > 0 && (
-          <span className="text-[9.5px] font-semibold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800">
-            {analytics.breakdown_by_status.Rejected} Rejected
-          </span>
-        )}
+        <span className="text-[9.5px] font-semibold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800">
+          {analytics.breakdown_by_status.Rejected ?? 0} Rejected
+        </span>
         {analytics.regulatory_risk_summary > 0 && (
           <span className="text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 flex items-center gap-1">
             <ShieldAlert className="h-2.5 w-2.5" />

@@ -212,6 +212,13 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
 
   const activePresetTitle = React.useMemo(() => {
     if (dateFilterPreset === "Custom" && (customStartDate || customEndDate)) {
+      if (
+        customStartDate?.endsWith("-01-01") &&
+        customEndDate?.endsWith("-12-31") &&
+        customStartDate.slice(0, 4) === customEndDate.slice(0, 4)
+      ) {
+        return `Year ${customStartDate.slice(0, 4)}`;
+      }
       return `${customStartDate || "Start"} to ${customEndDate || "Now"}`;
     }
     return dateFilterPreset !== "All" ? dateFilterPreset : "All Time";
@@ -326,7 +333,7 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                   }}
                   className="h-8 px-2.5 text-xs rounded-xl border-[#E6E8E7] bg-[#C5E86C]/20 text-[#183028] hover:bg-[#C5E86C]/30 cursor-pointer font-semibold"
                 >
-                  <span>Date: {dateFilterPreset} (Clear)</span>
+                  <span>Date: {activePresetTitle} (Clear)</span>
                 </Button>
               )}
 

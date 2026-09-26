@@ -494,7 +494,7 @@ export class SearchEngineService {
         const singleStatus = statusFilter[0];
         conversationalReply = `I found ${totalMatches} ${singleStatus} filing${totalMatches !== 1 ? 's' : ''}${authorPart}${queryPart}${datePart}. ${flaggedCount > 0 ? `${flaggedCount} document(s) have active compliance risk flags under FINRA 2210 / SEC 206.` : 'All matches comply with baseline regulatory standards.'}`;
       } else {
-        conversationalReply = `I located ${totalMatches} filing${totalMatches !== 1 ? 's' : ''}${authorPart}${queryPart}${datePart}. Status distribution: ${breakdown.Approved} Approved, ${breakdown.Pending} Pending, and ${breakdown.NeedsRevision} Needs Revision. ${flaggedCount > 0 ? `${flaggedCount} document(s) have active compliance risk flags under FINRA 2210 / SEC 206.` : 'All matches comply with baseline regulatory standards.'}`;
+        conversationalReply = `I located ${totalMatches} filing${totalMatches !== 1 ? 's' : ''}${authorPart}${queryPart}${datePart}. Status distribution: ${breakdown.Approved} Approved, ${breakdown.Pending} Pending, ${breakdown.NeedsRevision} Needs Revision, and ${breakdown.Rejected} Rejected. ${flaggedCount > 0 ? `${flaggedCount} document(s) have active compliance risk flags under FINRA 2210 / SEC 206.` : 'All matches comply with baseline regulatory standards.'}`;
       }
 
       if (finalDocuments.length > 0) {

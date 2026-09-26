@@ -202,6 +202,13 @@ export function DocumentQueueTable() {
 
   const activeDatePreset = React.useMemo(() => {
     if (dateFilterPreset === "Custom") {
+      if (
+        customStartDate?.endsWith("-01-01") &&
+        customEndDate?.endsWith("-12-31") &&
+        customStartDate.slice(0, 4) === customEndDate.slice(0, 4)
+      ) {
+        return `Year ${customStartDate.slice(0, 4)}`;
+      }
       if (customStartDate && customEndDate) return `${customStartDate} to ${customEndDate}`;
       if (customStartDate) return `From ${customStartDate}`;
       if (customEndDate) return `Until ${customEndDate}`;

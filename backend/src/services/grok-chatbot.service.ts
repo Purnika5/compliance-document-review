@@ -707,6 +707,18 @@ State whether this text would be Approved or Needs Revision, with guidance for t
       return await this.handleMonthSubmissionsIntent(user, correctedQuery);
     }
 
+    // ── Intent 2j: Rejected Filings ─────────────────────────────────────────
+    const isRejectedFilingsQuery =
+      /\b(show\s+rejected\s+(?:filings?|documents?|submissions?|files?)|rejected\s+(?:filings?|documents?|submissions?|files?))\b/i.test(lower) ||
+      lower.includes('show rejected documents') ||
+      lower.includes('show rejected files') ||
+      lower.includes('rejected documents') ||
+      lower.includes('rejected files');
+
+    if (isRejectedFilingsQuery) {
+      return await this.handleRejectedFilingsIntent(user, correctedQuery);
+    }
+
     // ── Intent 3: Officer: Check Latest Upload (per advisor) ────────────────
     const isLatestUploadQuery =
       isOfficer &&
@@ -1781,6 +1793,52 @@ ${formattedFindings}`;
 
     const reply = await this.formatDbResultWithLlm(dbSummary, correctedQuery, user.role || 'Officer', fallback);
     return { reply, intent: 'approved_filings', correctedQuery };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Intent: Rejected Filings (Live Database Query)
+  // ─────────────────────────────────────────────────────────────────────────
+  private static async handleRejectedFilingsIntent(
+    user: ChatUserContext,
+    correctedQuery: string
+  ): Promise<ChatbotResponse> {
+    const isAdvisor = user.role === 'Advisor';
+    let sql = `
+      SELECT d.id, d.title, d.status, d.version, d.created_at, u.name AS advisor_name
+      FROM documents d
+      LEFT JOIN users u ON d.advisor_id = u.id
+      WHERE d.status = 'Rejected'
+    `;
+    const params: any[] = [];
+    if (isAdvisor && user.id) {
+      sql += ` AND d.advisor_id = $1`;
+      params.push(user.id);
+    }
+    sql += ` ORDER BY d.created_at DESC LIMIT 10`;
+
+    const res = await query<any>(sql, params);
+
+    if (res.rows.length === 0) {
+      return {
+        reply: isAdvisor
+          ? "You do not have any rejected filings on record. All your submissions have either been approved, are in review, or require revision."
+          : "There are currently zero rejected filings in the repository database.",
+        intent: 'rejected_filings',
+        correctedQuery,
+      };
+    }
+
+    const docLines = res.rows.map((doc: any) => {
+      const dateStr = new Date(doc.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const by = isAdvisor ? '' : ` | Advisor: **${doc.advisor_name || 'Advisor'}**`;
+      return `- **"${doc.title}"** (v${doc.version})${by} | Rejected Date: ${dateStr}`;
+    }).join('\n');
+
+    const dbSummary = `${res.rows.length} rejected filing(s):\n${docLines}`;
+    const fallback = `**Rejected Filings (${res.rows.length}):**\n\n${docLines}`;
+
+    const reply = await this.formatDbResultWithLlm(dbSummary, correctedQuery, user.role || 'Officer', fallback);
+    return { reply, intent: 'rejected_filings', correctedQuery };
   }
 
   // ─────────────────────────────────────────────────────────────────────────
