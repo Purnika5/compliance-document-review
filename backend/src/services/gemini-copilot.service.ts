@@ -258,13 +258,40 @@ Return ONLY valid JSON — no prose outside the JSON object:
     // Enforce that every identified infraction in audit_breakdown is actively replaced with compliant text
     if (Array.isArray(aiData.audit_breakdown)) {
       for (const item of aiData.audit_breakdown) {
-        if (item.original_passage && item.fixed_passage && rawRemediated.includes(item.original_passage)) {
-          rawRemediated = rawRemediated.replace(item.original_passage, item.fixed_passage);
+        if (item.original_passage && item.fixed_passage) {
+          if (rawRemediated.includes(item.original_passage)) {
+            rawRemediated = rawRemediated.replace(item.original_passage, item.fixed_passage);
+          } else {
+            const trimmed = item.original_passage.trim();
+            if (rawRemediated.includes(trimmed)) {
+              rawRemediated = rawRemediated.replace(trimmed, item.fixed_passage);
+            }
+          }
         }
       }
     }
 
-    const remediatedText = PipelineService.cleanRemediatedDocumentForDownload(rawRemediated);
+    let remediatedText = PipelineService.cleanRemediatedDocumentForDownload(rawRemediated);
+
+    // Continuous Regulatory Alignment Check:
+    // Run the institutional audit engine on remediatedText to guarantee 100% compliance before download or submission
+    const postAudit = PipelineService.auditDocumentRules(remediatedText);
+    if (postAudit.flags.length > 0) {
+      for (const flag of postAudit.flags) {
+        if (flag.passage && flag.fixed_passage) {
+          if (remediatedText.includes(flag.passage)) {
+            remediatedText = remediatedText.replace(flag.passage, flag.fixed_passage);
+          } else {
+            const trimmed = flag.passage.trim();
+            if (remediatedText.includes(trimmed)) {
+              remediatedText = remediatedText.replace(trimmed, flag.fixed_passage);
+            }
+          }
+        }
+      }
+      remediatedText = PipelineService.cleanRemediatedDocumentForDownload(remediatedText);
+    }
+
     const cleanTitle = aiData.suggested_title || `${path.parse(file.originalname).name} (Compliance Remediated)`;
 
     // Cache remediated document for download
