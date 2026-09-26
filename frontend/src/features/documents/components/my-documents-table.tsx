@@ -408,7 +408,15 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                     >
                       <TableCell className="py-3.5 px-4 text-left">
                         <div className="flex items-center gap-3">
-                          <FileTypeIcon title={doc.title} category={doc.category} />
+                          <FileTypeIcon
+                            fileName={doc.fileName}
+                            filename={doc.fileName}
+                            fileFormat={doc.fileFormat}
+                            mimeType={doc.mimeType}
+                            filePath={doc.filePath}
+                            title={doc.title}
+                            category={doc.category}
+                          />
                           <div className="min-w-0">
                             <p className="font-semibold text-[#183028] leading-snug truncate max-w-[200px] sm:max-w-[260px]">
                               {doc.title}
@@ -758,7 +766,15 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                           >
                             <TableCell className="py-3.5 px-4 text-left">
                               <div className="flex items-center gap-3">
-                                <FileTypeIcon title={doc.title} category={doc.category} />
+                                <FileTypeIcon
+                                  fileName={doc.fileName}
+                                  filename={doc.fileName}
+                                  fileFormat={doc.fileFormat}
+                                  mimeType={doc.mimeType}
+                                  filePath={doc.filePath}
+                                  title={doc.title}
+                                  category={doc.category}
+                                />
                                 <div className="min-w-0">
                                   <div className="flex items-center gap-1.5">
                                     <p className="font-semibold text-[#183028] leading-snug truncate max-w-[200px] sm:max-w-[260px]">

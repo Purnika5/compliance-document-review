@@ -1278,6 +1278,10 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
                         <div className="flex items-center gap-2 min-w-0">
                           <FileTypeIcon
                             filename={currentDocItem.fileName}
+                            fileName={currentDocItem.fileName}
+                            fileFormat={currentDocItem.fileFormat}
+                            mimeType={currentDocItem.mimeType}
+                            filePath={currentDocItem.filePath}
                             title={currentDocItem.title}
                             category={currentDocItem.category}
                           />
