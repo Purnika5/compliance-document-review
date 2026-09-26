@@ -2,6 +2,18 @@
   "name": "springer-capital-compliance-backend",
   "version": "1.0.0",
   "description": "Express REST API Backend for Compliance Document Review Platform (Render Host)",
+  "author": "Keith Lachica (https://github.com/keithlachica)",
+  "contributors": [
+    { "name": "Keith Lachica", "role": "Frontend / Currently Lead", "url": "https://github.com/keithlachica" },
+    { "name": "Sahil Sonar", "role": "Backend / Lead", "url": "https://github.com/SahilSonar-04" },
+    { "name": "Kumkum Gayki", "role": "Backend" },
+    { "name": "Purnika Naga Durga Jyothi", "role": "AI", "url": "https://github.com/Purnika5" },
+    { "name": "Udhayveer Singh Jamwal", "role": "Data Engineer" }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/keithlachica/compliance-document-review.git"
+  },
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",

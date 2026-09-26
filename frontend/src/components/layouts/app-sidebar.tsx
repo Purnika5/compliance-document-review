@@ -44,6 +44,7 @@ export function AppSidebar({
     action?: () => void;
     highlight?: boolean;
     badge?: string;
+    dataTour?: string;
   }
 
   const advisorNavItems: NavItem[] = [
@@ -51,6 +52,7 @@ export function AppSidebar({
       label: "Dashboard",
       href: "/dashboard",
       icon: LayoutDashboard,
+      dataTour: "nav-dashboard",
       active:
         (pathname === "/dashboard" ||
         pathname.startsWith("/submissions") ||
@@ -62,12 +64,14 @@ export function AppSidebar({
       label: "Audit Trail",
       href: "/audit",
       icon: History,
+      dataTour: "nav-audit",
       active: pathname === "/audit",
     },
     {
       label: "Account & Preferences",
       href: "/settings",
       icon: Settings,
+      dataTour: "nav-settings",
       active: pathname === "/settings",
     },
   ];
@@ -77,18 +81,21 @@ export function AppSidebar({
       label: "Review Queue",
       href: "/queue",
       icon: ShieldCheck,
+      dataTour: "nav-queue",
       active: pathname === "/queue" || pathname === "/dashboard",
     },
     {
       label: "Audit History",
       href: "/audit",
       icon: History,
+      dataTour: "nav-audit",
       active: pathname === "/audit",
     },
     {
       label: "Account & Preferences",
       href: "/settings",
       icon: Settings,
+      dataTour: "nav-settings",
       active: pathname === "/settings",
     },
   ];
@@ -180,6 +187,7 @@ export function AppSidebar({
               return (
                 <button
                   key={idx}
+                  data-tour={item.dataTour}
                   onClick={() => {
                     if (onCloseMobile) onCloseMobile();
                     item.action?.();
@@ -212,6 +220,7 @@ export function AppSidebar({
               <Link
                 key={idx}
                 href={item.href || "#"}
+                data-tour={item.dataTour}
                 onClick={() => {
                   if (onCloseMobile) onCloseMobile();
                 }}

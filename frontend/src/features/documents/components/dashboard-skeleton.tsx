@@ -141,8 +141,12 @@ export function DashboardSkeleton() {
           </div>
 
           {/* Table Footer Skeleton */}
-          <div className="pt-3 mt-4 border-t border-[#E6E8E7]">
-            <Skeleton className="h-3.5 w-48 rounded bg-[#E6E8E7]/60" />
+          <div className="flex items-center justify-between pt-3 mt-4 border-t border-[#E6E8E7]">
+            <Skeleton className="h-3.5 w-44 rounded bg-[#E6E8E7]/60" />
+            <div className="flex items-center gap-1.5">
+              <Skeleton className="h-7 w-16 rounded-lg bg-[#E6E8E7]/60" />
+              <Skeleton className="h-7 w-16 rounded-lg bg-[#E6E8E7]/60" />
+            </div>
           </div>
         </div>
 

@@ -14,6 +14,7 @@ import { UploadDocumentModal } from "./upload-document-modal";
 import { EditDocumentModal } from "./edit-document-modal";
 import { ResubmitRevisionModal } from "./resubmit-revision-modal";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { isScannedFile } from "@/lib/scanned-files";
 import { EmptyState } from "@/components/shared/empty-state";
 import { LoadingState } from "@/components/shared/loading-state";
 import { Button } from "@/components/ui/button";
@@ -199,11 +200,25 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
     currentPage * pageSize
   );
 
+  const dashboardPageSize = 6;
+  const dashboardTotalPages = Math.ceil(filteredDocuments.length / dashboardPageSize) || 1;
+  const paginatedDashboardDocs = filteredDocuments.slice(
+    (currentPage - 1) * dashboardPageSize,
+    currentPage * dashboardPageSize
+  );
+
   // Active date preset and dynamic time-series calculation
   const activeDatePreset = dateFilterPreset !== "All" ? dateFilterPreset : (dateFilter as DateFilterPreset);
 
   const activePresetTitle = React.useMemo(() => {
     if (dateFilterPreset === "Custom" && (customStartDate || customEndDate)) {
+      if (
+        customStartDate?.endsWith("-01-01") &&
+        customEndDate?.endsWith("-12-31") &&
+        customStartDate.slice(0, 4) === customEndDate.slice(0, 4)
+      ) {
+        return `Year ${customStartDate.slice(0, 4)}`;
+      }
       return `${customStartDate || "Start"} to ${customEndDate || "Now"}`;
     }
     return dateFilterPreset !== "All" ? dateFilterPreset : "All Time";
@@ -318,7 +333,7 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                   }}
                   className="h-8 px-2.5 text-xs rounded-xl border-[#E6E8E7] bg-[#C5E86C]/20 text-[#183028] hover:bg-[#C5E86C]/30 cursor-pointer font-semibold"
                 >
-                  <span>Date: {dateFilterPreset} (Clear)</span>
+                  <span>Date: {activePresetTitle} (Clear)</span>
                 </Button>
               )}
 
@@ -400,7 +415,15 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                     >
                       <TableCell className="py-3.5 px-4 text-left">
                         <div className="flex items-center gap-3">
-                          <FileTypeIcon title={doc.title} category={doc.category} />
+                          <FileTypeIcon
+                            fileName={doc.fileName}
+                            filename={doc.fileName}
+                            fileFormat={doc.fileFormat}
+                            mimeType={doc.mimeType}
+                            filePath={doc.filePath}
+                            title={doc.title}
+                            category={doc.category}
+                          />
                           <div className="min-w-0">
                             <p className="font-semibold text-[#183028] leading-snug truncate max-w-[200px] sm:max-w-[260px]">
                               {doc.title}
@@ -511,6 +534,7 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                 <Button
                   onClick={openModal}
                   size="sm"
+                  data-tour="advisor-upload"
                   className="h-8 px-3.5 rounded-xl bg-[#183028] text-white hover:bg-[#183028]/90 font-semibold text-xs gap-1.5 shadow-2xs transition-all cursor-pointer border border-[#183028]"
                 >
                   <Plus className="h-3.5 w-3.5 text-[#C5E86C]" />
@@ -519,7 +543,10 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
               </div>
             </div>
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 pt-5">
+              <div
+                data-tour="advisor-statistics"
+                className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 pt-5"
+              >
                 {/* Total Submissions */}
                 <div className="rounded-xl p-4 border border-border bg-card shadow-xs flex flex-col justify-between group hover:border-[#183028]/30 transition-all">
                   <div>
@@ -677,7 +704,7 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                 </div>
 
                 {/* Status Filter Tabs & Search */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 mb-1">
+                <div data-tour="advisor-status-filter" className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 mb-1">
                   <div className="flex items-center space-x-1 overflow-x-auto">
                     {["All", "Pending", "Needs Revision", "Approved", "Rejected"].map((tab) => (
                       <button
@@ -712,7 +739,7 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                   </div>
                 </div>
 
-                <div className="overflow-x-auto rounded-xl border border-[#E6E8E7] bg-[#FFFFFF] shadow-2xs">
+                <div data-tour="advisor-view-files" className="overflow-x-auto rounded-xl border border-[#E6E8E7] bg-[#FFFFFF] shadow-2xs">
                   <Table className="w-full bg-[#FFFFFF] border-collapse">
                     <TableHeader className="bg-[#FFFFFF] border-b border-[#E6E8E7]">
                       <TableRow className="border-b border-[#E6E8E7] bg-[#FFFFFF] hover:bg-[#FFFFFF]">
@@ -738,7 +765,7 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                     </TableHeader>
                     <TableBody className="bg-[#FFFFFF] divide-y divide-[#E6E8E7]">
                       {filteredDocuments.length > 0 ? (
-                        filteredDocuments.slice(0, 6).map((doc, idx) => (
+                        paginatedDashboardDocs.map((doc, idx) => (
                           <TableRow
                             key={doc.id}
                             onClick={() => router.push(`/documents/${doc.id}`)}
@@ -746,11 +773,27 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                           >
                             <TableCell className="py-3.5 px-4 text-left">
                               <div className="flex items-center gap-3">
-                                <FileTypeIcon title={doc.title} category={doc.category} />
+                                <FileTypeIcon
+                                  fileName={doc.fileName}
+                                  filename={doc.fileName}
+                                  fileFormat={doc.fileFormat}
+                                  mimeType={doc.mimeType}
+                                  filePath={doc.filePath}
+                                  title={doc.title}
+                                  category={doc.category}
+                                />
                                 <div className="min-w-0">
-                                  <p className="font-semibold text-[#183028] leading-snug truncate max-w-[200px] sm:max-w-[260px]">
-                                    {doc.title}
-                                  </p>
+                                  <div className="flex items-center gap-1.5">
+                                    <p className="font-semibold text-[#183028] leading-snug truncate max-w-[200px] sm:max-w-[260px]">
+                                      {doc.title}
+                                    </p>
+                                    {isScannedFile(doc.fileName || doc.title) && (
+                                      <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-[#C5E86C]/40 text-[#183028] border border-[#C5E86C] shrink-0" title="Scanned via Springer Neural Copilot">
+                                        <span className="h-1 w-1 rounded-full bg-[#183028]" />
+                                        Scanned
+                                      </span>
+                                    )}
+                                  </div>
                                   <p className="text-[11px] text-[#183028]/60 mt-0.5 truncate max-w-[200px] sm:max-w-[260px]">
                                     {doc.category || "Compliance Document"}
                                   </p>
@@ -850,14 +893,35 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
 
               <div className="pt-3 mt-4 border-t border-[#E6E8E7] text-xs text-[#183028]/60 flex items-center justify-between">
                 <span>
-                  Showing {Math.min(filteredDocuments.length, 6)} of {filteredDocuments.length} uploads
+                  Showing {(currentPage - 1) * dashboardPageSize + 1} - {Math.min(currentPage * dashboardPageSize, filteredDocuments.length)} of {filteredDocuments.length} uploads
                   {activeFilter !== "All" && ` • ${activeFilter}`}
                 </span>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                    className="h-7 px-2 text-xs rounded-lg border-[#E6E8E7] text-[#183028] hover:bg-[#C5E86C]/20 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    Previous
+                  </Button>
+                  <span className="px-2 font-mono text-xs text-[#183028]">{currentPage} / {dashboardTotalPages}</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage >= dashboardTotalPages}
+                    onClick={() => setCurrentPage((p) => Math.min(p + 1, dashboardTotalPages))}
+                    className="h-7 px-2 text-xs rounded-lg border-[#E6E8E7] text-[#183028] hover:bg-[#C5E86C]/20 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    Next
+                  </Button>
+                </div>
               </div>
             </div>
 
             {/* Right (col-span-4): Compliance Calendar */}
-            <div className="lg:col-span-4 space-y-3.5">
+            <div data-tour="dashboard-date-filter" className="lg:col-span-4 space-y-3.5">
               <ComplianceCalendar
                 documents={documents}
                 activePreset={dateFilterPreset}

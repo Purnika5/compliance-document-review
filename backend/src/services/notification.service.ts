@@ -70,6 +70,23 @@ export class NotificationService {
     );
 
     const row = result.rows[0];
+    let fileName: string | undefined;
+    let mimeType: string | undefined;
+    if (documentId) {
+      try {
+        const docRes = await query<{ file_name: string; mime_type: string }>(
+          'SELECT file_name, mime_type FROM documents WHERE id = $1',
+          [documentId]
+        );
+        if (docRes.rows[0]) {
+          fileName = docRes.rows[0].file_name;
+          mimeType = docRes.rows[0].mime_type;
+        }
+      } catch {
+        // non-blocking
+      }
+    }
+
     const notification: NotificationRecord = {
       id: row.id,
       userId: row.user_id,
@@ -82,7 +99,11 @@ export class NotificationService {
       isRead: row.is_read,
       is_read: row.is_read,
       createdAt: row.created_at,
-      created_at: row.created_at
+      created_at: row.created_at,
+      fileName,
+      file_name: fileName,
+      mimeType,
+      mime_type: mimeType,
     };
 
     // Dispatch real-time SSE stream update
@@ -147,10 +168,14 @@ export class NotificationService {
       type: string;
       is_read: boolean;
       created_at: Date;
+      file_name?: string | null;
+      mime_type?: string | null;
     }>(
-      `SELECT * FROM notifications 
-       ${whereClause} 
-       ORDER BY created_at DESC 
+      `SELECT n.*, d.file_name, d.mime_type 
+       FROM notifications n 
+       LEFT JOIN documents d ON n.document_id = d.id 
+       ${whereClause.replace(/user_id/g, 'n.user_id').replace(/is_read/g, 'n.is_read')} 
+       ORDER BY n.created_at DESC 
        LIMIT $2 OFFSET $3`,
       [userId, limit, offset]
     );
@@ -167,7 +192,11 @@ export class NotificationService {
       isRead: row.is_read,
       is_read: row.is_read,
       createdAt: row.created_at,
-      created_at: row.created_at
+      created_at: row.created_at,
+      fileName: row.file_name || undefined,
+      file_name: row.file_name || undefined,
+      mimeType: row.mime_type || undefined,
+      mime_type: row.mime_type || undefined,
     }));
 
     return { notifications, total, page, limit };
@@ -231,6 +260,18 @@ export class NotificationService {
       createdAt: row.created_at,
       created_at: row.created_at
     };
+  }
+
+  public static async markDocumentNotificationsAsRead(
+    documentId: string,
+    userId: string
+  ): Promise<{ updated_count: number }> {
+    const result = await query(
+      'UPDATE notifications SET is_read = true WHERE document_id = $1 AND user_id = $2 AND is_read = false',
+      [documentId, userId]
+    );
+
+    return { updated_count: result.rowCount || 0 };
   }
 
   public static async markAllAsRead(userId: string): Promise<{ updated_count: number }> {

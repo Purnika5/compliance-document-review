@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { ChevronLeft, ChevronRight, X, Calendar as CalendarIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, X, Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type DateFilterPreset =
@@ -79,12 +79,71 @@ export function ComplianceCalendar({
   const viewYear = currentViewDate.getFullYear();
   const viewMonth = currentViewDate.getMonth();
 
+  const viewMonthName = useMemo(() => {
+    return currentViewDate.toLocaleDateString("en-US", { month: "long" });
+  }, [currentViewDate]);
+
   const monthLabel = useMemo(() => {
     return currentViewDate.toLocaleDateString("en-US", {
       month: "long",
       year: "numeric",
     });
   }, [currentViewDate]);
+
+  // Check if a full-year filter is currently applied
+  const isFullYearFilter = useMemo(() => {
+    if (activePreset !== "Custom") return false;
+    if (!customStartDate || !customEndDate) return false;
+    return (
+      customStartDate.endsWith("-01-01") &&
+      customEndDate.endsWith("-12-31") &&
+      customStartDate.slice(0, 4) === customEndDate.slice(0, 4)
+    );
+  }, [activePreset, customStartDate, customEndDate]);
+
+  const activeFilterYear = useMemo(() => {
+    if (isFullYearFilter && customStartDate) {
+      return Number(customStartDate.slice(0, 4));
+    }
+    return null;
+  }, [isFullYearFilter, customStartDate]);
+
+  // Extract all available years from documents + current and neighboring years
+  const availableYears = useMemo(() => {
+    const currentYear = now.getFullYear();
+    const yearSet = new Set<number>([
+      currentYear - 2,
+      currentYear - 1,
+      currentYear,
+      currentYear + 1,
+    ]);
+    documents.forEach((doc) => {
+      if (!doc.submittedAt) return;
+      const d = new Date(doc.submittedAt);
+      if (!isNaN(d.getTime())) {
+        yearSet.add(d.getFullYear());
+      }
+    });
+    return Array.from(yearSet).sort((a, b) => b - a); // Descending order (2027, 2026, 2025, 2024...)
+  }, [documents, now]);
+
+  const handleYearChange = (val: string) => {
+    setRangeStart(null);
+    if (val === "ALL") {
+      onClear();
+      return;
+    }
+    const targetYear = Number(val);
+    if (isNaN(targetYear)) return;
+
+    // Shift calendar view to targetYear while keeping the same month index
+    const diffYears = targetYear - now.getFullYear();
+    const targetOffset = diffYears * 12 + (viewMonth - now.getMonth());
+    setMonthOffset(targetOffset);
+
+    // Apply year filter for documents
+    onSelectCustomRange(`${targetYear}-01-01`, `${targetYear}-12-31`);
+  };
 
   // Map of date strings "YYYY-MM-DD" to documents submitted on that date
   const docsByDateKey = useMemo(() => {
@@ -181,6 +240,9 @@ export function ComplianceCalendar({
   // Human-readable active filter summary
   const activeFilterText = useMemo(() => {
     if (activePreset === "Custom") {
+      if (isFullYearFilter && activeFilterYear) {
+        return `Year ${activeFilterYear}`;
+      }
       if (customStartDate && customEndDate && customStartDate !== customEndDate) {
         return `${customStartDate} to ${customEndDate}`;
       }
@@ -190,7 +252,7 @@ export function ComplianceCalendar({
       return "Custom Date";
     }
     return activePreset !== "All" ? activePreset : null;
-  }, [activePreset, customStartDate, customEndDate]);
+  }, [activePreset, customStartDate, customEndDate, isFullYearFilter, activeFilterYear]);
 
   return (
     <div
@@ -199,15 +261,49 @@ export function ComplianceCalendar({
         className
       )}
     >
-      {/* Top Header: Title & Month Navigation */}
+      {/* Top Header: Title & Month/Year Navigation */}
       <div className="flex items-center justify-between">
         <div>
           <span className="text-[10px] font-bold uppercase tracking-wider text-[#183028]/50 block">
             {title}
           </span>
-          <h3 className="text-sm font-bold text-[#183028] mt-0.5">
-            {monthLabel}
-          </h3>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <h3 className="text-sm font-bold text-[#183028]">
+              {viewMonthName}
+            </h3>
+
+            {/* Filter Year Dropdown for Fast UX Navigation & Annual Audit Filtering */}
+            <div className="relative inline-flex items-center">
+              <select
+                id="compliance-calendar-year-filter"
+                aria-label="Filter documents by year"
+                value={isFullYearFilter && activeFilterYear ? String(activeFilterYear) : String(viewYear)}
+                onChange={(e) => handleYearChange(e.target.value)}
+                className={cn(
+                  "appearance-none text-xs font-bold pl-2 pr-5 py-0.5 rounded-lg border transition-all cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#183028] shadow-2xs",
+                  isFullYearFilter
+                    ? "bg-[#183028] text-white border-[#183028]"
+                    : "bg-[#FAFBFB] text-[#183028] border-[#E6E8E7] hover:bg-[#C5E86C]/25 hover:border-[#183028]/30"
+                )}
+                title="Filter documents by year or select year"
+              >
+                <option value="ALL" className="bg-white text-[#183028]">
+                  All Years
+                </option>
+                {availableYears.map((yr) => (
+                  <option key={yr} value={String(yr)} className="bg-white text-[#183028]">
+                    {yr} {yr === now.getFullYear() ? "(Current)" : ""}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                className={cn(
+                  "h-3 w-3 absolute right-1 pointer-events-none transition-colors",
+                  isFullYearFilter ? "text-white/80" : "text-[#183028]/60"
+                )}
+              />
+            </div>
+          </div>
         </div>
 
         <div className="flex items-center gap-1">

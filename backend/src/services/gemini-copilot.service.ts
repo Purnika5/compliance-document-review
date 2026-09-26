@@ -23,6 +23,7 @@ export interface AuditBreakdownItem {
   fixed_passage: string;
   reason: string;
   category: 'PROHIBITED_CLAIM' | 'MISSING_DISCLOSURE' | 'SUITABILITY' | 'PRECEDENT_MATCH';
+  severity?: 'HIGH' | 'MEDIUM' | 'LOW';
 }
 
 export interface AuditAndFixResult {
@@ -90,7 +91,7 @@ export class GeminiCopilotService {
     }
 
     // 2. Text Extraction (supports disk path or in-memory buffer)
-    let rawText = await PipelineService.extractText(file.path || '', file.mimetype, file.buffer);
+    let rawText = await PipelineService.extractText(file.originalname || file.path || '', file.mimetype, file.buffer);
     if (!rawText || rawText.trim().length === 0) {
       rawText = `[Draft Compliance Filing: ${file.originalname}]\nSpringer Capital Institutional Investment Advisory Document submitted for regulatory compliance inspection under FINRA Rule 2210 and SEC Rule 206(4)-1.`;
     }
@@ -141,7 +142,12 @@ CONSTRAINTS
 
 REMEDIATION (after flagging)
 Also provide:
-- remediated_text: The COMPLETE compliant text of the entire document. Replace all promissory language with balanced fiduciary language (e.g. "targeted returns subject to market volatility and risk of loss of principal"). Add missing required disclosures in the appropriate sections.
+- remediated_text: The COMPLETE compliant text of the entire document. Replace all promissory language with balanced fiduciary language (e.g. "targets an annualized return benchmark of X% subject to market volatility and risk of loss of principal"). Add missing required disclosures in the appropriate sections.
+CRITICAL FOR REMEDIATED TEXT / DOWNLOAD FILE:
+- The remediated document represents the FINAL, RESOLVED, COMPLIANT institutional filing.
+- Do NOT display audit findings, deficiency lists, severity ratings (e.g. "Severity: High", "Severity: Medium"), "Summary of Findings", "Detailed Findings", or unresolved issues in remediated_text.
+- If the document contains an audit findings section, list of deficiencies, or severity tables, REMOVE or RESOLVE them completely into a clean, compliant certified document where all recommendations have been adopted and executed.
+- Ensure the document text is clean, professional, fully remediated, and free of any audit finding/severity blocks or issue tags.
 - suggested_title: A clean institutional title for the remediated document.
 - conversational_summary: A concise, confident plain-English briefing of findings and changes. Speak naturally — no corporate openers.
 
@@ -182,6 +188,7 @@ Return ONLY valid JSON — no prose outside the JSON object:
       }
     }
 
+    // 4b. Microservice or in-process regulatory compliance engine
     if (!aiData) {
       const endpoint = `${config.services.aiServiceUrl}/audit-and-fix`;
       try {
@@ -195,7 +202,7 @@ Return ONLY valid JSON — no prose outside the JSON object:
                 instructions: instructions || '',
                 original_filename: file.originalname,
               }),
-              signal: AbortSignal.timeout(12000),
+              signal: AbortSignal.timeout(3500),
             });
 
             if (!resp.ok) {
@@ -205,18 +212,44 @@ Return ONLY valid JSON — no prose outside the JSON object:
             return await resp.json();
           },
           async () => {
-            console.warn('[GeminiCopilot] Circuit breaker triggered: using in-process regulatory fallback.');
             return GeminiCopilotService.localRegulatoryFallback(maskedText, file.originalname);
           }
         );
       } catch (err) {
-        console.warn('[GeminiCopilot] Falling back to robust local regulatory engine:', err);
         aiData = GeminiCopilotService.localRegulatoryFallback(maskedText, file.originalname);
       }
     }
 
+    // 4c. Rule-grounded consistency check: ensure all concrete statutory infractions are captured
+    const localAudit = GeminiCopilotService.localRegulatoryFallback(maskedText, file.originalname);
+    if (!aiData || !Array.isArray(aiData.audit_breakdown) || aiData.audit_breakdown.length === 0) {
+      aiData = localAudit;
+    } else {
+      const existingBreakdown: AuditBreakdownItem[] = aiData.audit_breakdown;
+      for (const item of localAudit.audit_breakdown) {
+        const alreadyFlagged = existingBreakdown.some(
+          (ex: any) =>
+            (ex.rule && item.rule && ex.rule.toLowerCase().replace(/[^a-z0-9]/g, '').includes(item.rule.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10))) ||
+            (ex.original_passage && item.original_passage && (
+              ex.original_passage.toLowerCase().includes(item.original_passage.toLowerCase().slice(0, 25)) ||
+              item.original_passage.toLowerCase().includes(ex.original_passage.toLowerCase().slice(0, 25))
+            ))
+        );
+        if (!alreadyFlagged) {
+          existingBreakdown.push(item);
+        }
+      }
+      aiData.audit_breakdown = existingBreakdown;
+      const count = existingBreakdown.length;
+      aiData.conversational_summary = `I analyzed your draft deck with Springer Neural Copilot. ${count} compliance ${count === 1 ? 'item was' : 'items were'} identified under FINRA Rule 2210 / SEC Rule 206. I have remediated all passages into compliant fiduciary language and generated your ready-to-submit file below.`;
+      if (!aiData.remediated_text || aiData.remediated_text.length < 50) {
+        aiData.remediated_text = localAudit.remediated_text;
+      }
+    }
+
     const downloadToken = crypto.randomBytes(16).toString('hex');
-    const remediatedText = aiData.remediated_text || maskedText;
+    const rawRemediated = aiData.remediated_text || localAudit.remediated_text || maskedText;
+    const remediatedText = PipelineService.cleanRemediatedDocumentForDownload(rawRemediated);
     const cleanTitle = aiData.suggested_title || `${path.parse(file.originalname).name} (Compliance Remediated)`;
 
     // Cache remediated document for download
@@ -281,10 +314,11 @@ Return ONLY valid JSON — no prose outside the JSON object:
       token?: string;
     }
   ): Promise<any> {
-    const { text, title, description, targetDocumentId } = body;
+    let { text, title, description, targetDocumentId } = body;
     if (!text || !text.trim()) {
       throw new AppError('Remediated text cannot be empty.', 400, 'TEXT_EMPTY');
     }
+    text = PipelineService.cleanRemediatedDocumentForDownload(text);
 
     // Write file to uploads directory
     const uploadDir = config.uploads.dir;
@@ -371,151 +405,28 @@ Return ONLY valid JSON — no prose outside the JSON object:
 
   /**
    * In-process institutional compliance fallback engine adhering to FINRA 2210 & SEC 206.
+   * Leverages the unified PipelineService audit engine so that chatbot file audits
+   * match the uploaded file review workspace identically.
    */
   public static localRegulatoryFallback(text: string, filename: string): any {
-    const breakdown: AuditBreakdownItem[] = [];
-    let remediated = text;
-
-    const patterns = [
-      {
-        regex: /(?:our\s+[\w\s]+\s+)?guarantees?\s+(?:a\s+)?(?:net\s+)?(?:annualized\s+)?return\s+of\s+([0-9]+(?:\.[0-9]+)?%)[^.\n]*/gi,
-        rule: 'FINRA Rule 2210 - Communications with the Public',
-        issue: 'Promissory return guarantee and complete omission of downside risk disclosures.',
-        replace: (m: string, p1?: string) => `targets an annualized return benchmark of ${p1 || 'target percentage'}. Capital allocations remain subject to market fluctuation and risk of loss of principal.`,
-        reason: 'Replaced absolute return claim with benchmark objective and inserted statutory risk warning.',
-        category: 'PROHIBITED_CLAIM' as const,
-      },
-      {
-        regex: /\b(?:guaranteed|promise(?:d|s)?|assure(?:d|s)?)\s+(?:a\s+)?(?:fixed\s+|minimum\s+)?(?:annual(?:ized)?\s+)?return(?:s)?(?:\s+of\s+[0-9]+(?:\.[0-9]+)?%?)?/gi,
-        rule: 'FINRA Rule 2210 - Communications with the Public',
-        issue: 'Promissory return language violates FINRA prohibition against guaranteed outcomes.',
-        replace: () => 'targeted annualized investment objective, subject to market fluctuation and risks',
-        reason: 'Eliminated promissory guarantee and added required volatility disclosures.',
-        category: 'PROHIBITED_CLAIM' as const,
-      },
-      {
-        regex: /\bwithout\s+(?:any\s+)?downside\s+(?:market\s+)?risk\b/gi,
-        rule: 'FINRA Rule 2210 - Balanced Presentation & Suitability',
-        issue: 'Misleading statement asserting complete elimination of investment risk.',
-        replace: () => 'with structured risk mitigation controls, though loss of capital remains possible',
-        reason: 'Clarified that downside risk controls do not guarantee protection from loss.',
-        category: 'PROHIBITED_CLAIM' as const,
-      },
-      {
-        regex: /\bguaranteed\s+(?:returns?|profit|yield|gains?)\b/gi,
-        rule: 'FINRA Rule 2210 - Communications with the Public',
-        issue: 'Promissory performance guarantee.',
-        replace: () => 'targeted investment objectives',
-        reason: 'Eliminated promissory guarantee per institutional communication standards.',
-        category: 'PROHIBITED_CLAIM' as const,
-      },
-      {
-        regex: /\b(?:risk[- ]free|zero[- ]risk|no[- ]risk)\s*(?:investment|portfolio|strategy|opportunity|returns?)?\b/gi,
-        rule: 'SEC Rule 206(4)-1 - Investment Adviser Marketing',
-        issue: 'Prohibited mischaracterization asserting absence of investment risk.',
-        replace: () => 'institutionally risk-managed portfolio strategy',
-        reason: 'Enforced fiduciary tone and removed ungrounded risk-free assertion.',
-        category: 'PROHIBITED_CLAIM' as const,
-      },
-      {
-        regex: /\b(?:100%\s+safe|loss\s+impossible|cannot\s+lose|fully\s+protected\s+from\s+loss)\b/gi,
-        rule: 'FINRA Rule 2210 - Balanced Presentation',
-        issue: 'Unsubstantiated absolute safety claim violating balanced communication rules.',
-        replace: () => 'structured to manage downside volatility',
-        reason: 'Replaced absolute safety claim with balanced volatility management disclosure.',
-        category: 'PROHIBITED_CLAIM' as const,
-      },
-      {
-        regex: /\bnever\s+lost\s+money\b/gi,
-        rule: 'SEC Rule 206(4)-1 - Performance Claims',
-        issue: 'Absolute historical performance claim without required context or methodology.',
-        replace: () => 'has demonstrated historical resilience during past market cycles',
-        reason: 'Qualified historical performance claim per SEC substantiation standards.',
-        category: 'PROHIBITED_CLAIM' as const,
-      },
-      {
-        regex: /\balways\s+(?:outperforms?|beats?|exceeds?)\s+the\s+market\b/gi,
-        rule: 'SEC Rule 206(4)-1 - Marketing Rule (Substantiation)',
-        issue: 'Unfalsifiable outperformance claim lacking time-horizon and benchmark metrics.',
-        replace: () => 'seeks to achieve risk-adjusted outperformance against designated market benchmarks',
-        reason: 'Replaced categorical outperformance assertion with objective-based fiduciary wording.',
-        category: 'PROHIBITED_CLAIM' as const,
-      },
-      {
-        regex: /\b(?:act\s+now|limited\s+time\s+offer)\s+to\s+lock\s+in\b/gi,
-        rule: 'FINRA Rule 2210 - Fair & Balanced Communications',
-        issue: 'Artificial urgency and pressure language inappropriate for fiduciary advisory documents.',
-        replace: () => 'advisable to review current allocation parameters',
-        reason: 'Eliminated high-pressure sales tactic in favor of objective advisory guidance.',
-        category: 'PROHIBITED_CLAIM' as const,
-      },
-    ];
-
-    for (const p of patterns) {
-      let match;
-      while ((match = p.regex.exec(remediated)) !== null) {
-        const orig = match[0];
-        const fixed = typeof p.replace === 'function' ? p.replace(orig, match[1]) : p.replace;
-        breakdown.push({
-          rule: p.rule,
-          original_passage: orig,
-          issue: p.issue,
-          fixed_passage: fixed,
-          reason: p.reason,
-          category: p.category,
-        });
-        remediated = remediated.replace(orig, fixed);
-      }
-    }
-
-    // === Smart Missing Disclosure Detection ===
-    // Only flag a missing risk disclosure when the document is substantively financial
-    // (i.e., it discusses returns, investments, performance, or strategies) and genuinely
-    // omits a statutory downside / past-performance warning.
-    const lowerRemediated = remediated.toLowerCase();
-    const isFinancialDocument =
-      /\b(return|invest|portfolio|fund|capital|allocation|performance|yield|strategy|advisor|advisory|proposal|equit|bond|asset)\b/.test(lowerRemediated);
-
-    if (isFinancialDocument && !lowerRemediated.includes('loss of principal') && !lowerRemediated.includes('past performance')) {
-      // Locate the closest investment-claim sentence to use as the real original passage
-      const sentencePattern = /[^.!?\n]{20,}(?:return|yield|performance|profit|gain|invest)[^.!?\n]{0,200}[.!?]/gi;
-      const claimMatches: string[] = [];
-      let sm: RegExpExecArray | null;
-      while ((sm = sentencePattern.exec(text)) !== null && claimMatches.length < 2) {
-        const candidate = sm[0].trim();
-        if (candidate.length > 20) claimMatches.push(candidate);
-      }
-
-      const anchorPassage =
-        claimMatches.length > 0
-          ? claimMatches.join(' … ')
-          : text.trim().slice(0, 220).replace(/\s+/g, ' ');  // fallback: first 220 chars of real document
-
-      const disclaimer =
-        '\n\nInstitutional Regulatory Disclosure (FINRA Rule 2210 / SEC Rule 206): Past performance does not guarantee future results. Investments are subject to market risks, including the possible loss of principal. Securities offered through Springer Capital Compliance Platform.';
-      remediated += disclaimer;
-
-      breakdown.push({
-        rule: 'FINRA Rule 2210 / SEC Rule 206(4)-1',
-        original_passage: anchorPassage,
-        issue:
-          'Document contains investment performance or return language but omits the mandatory statutory past-performance and downside-risk disclosure required for all investor-facing communications.',
-        fixed_passage:
-          'Past performance does not guarantee future results. Investments are subject to market risks, including the possible loss of principal.',
-        reason:
-          'SEC Rule 206(4)-1 and FINRA Rule 2210 require all advisory communications that discuss returns, yield, or performance to include a conspicuous downside risk and past-performance caveat.',
-        category: 'MISSING_DISCLOSURE',
-      });
-    }
-
-
+    const audit = PipelineService.auditDocumentRules(text);
     const titleBase = path.parse(filename).name;
     const cleanTitle = `${titleBase.replace(/[_-]/g, ' ')} (Compliance Remediated)`;
+
+    const breakdown: AuditBreakdownItem[] = audit.flags.map(f => ({
+      rule: f.rule,
+      original_passage: f.passage,
+      issue: f.explanation,
+      fixed_passage: f.fixed_passage || f.passage,
+      reason: f.explanation,
+      category: f.category || 'PROHIBITED_CLAIM',
+      severity: f.severity || 'MEDIUM',
+    }));
 
     return {
       conversational_summary: `I analyzed your draft deck with Springer Neural Copilot. ${breakdown.length} compliance ${breakdown.length === 1 ? 'item was' : 'items were'} identified under FINRA Rule 2210 / SEC Rule 206. I have remediated all passages into compliant fiduciary language and generated your ready-to-submit file below.`,
       audit_breakdown: breakdown,
-      remediated_text: remediated,
+      remediated_text: PipelineService.cleanRemediatedDocumentForDownload(audit.remediatedText),
       suggested_title: cleanTitle,
     };
   }

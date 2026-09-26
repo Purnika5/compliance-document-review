@@ -75,7 +75,10 @@ export class SearchEngineService {
       return { startDate: null, endDate: null };
     }
 
-    const clean = rangeStr.trim().toLowerCase();
+    let clean = rangeStr.trim().toLowerCase();
+    // Strip leading conversational phrases like "uploaded in", "uploaded on", "uploaded", "in", "from"
+    clean = clean.replace(/^(?:uploaded\s+in|uploaded\s+on|uploaded\s+at|uploaded\s+|files\s+in|files\s+from|in\s+|from\s+)/i, '').trim();
+
     const now = new Date();
 
     if (clean === 'today') {
@@ -118,17 +121,67 @@ export class SearchEngineService {
       return { startDate: start, endDate: end };
     }
 
+    if (clean === 'last year' || clean === 'past year') {
+      const yr = now.getFullYear() - 1;
+      const start = new Date(yr, 0, 1, 0, 0, 0, 0);
+      const end = new Date(yr, 11, 31, 23, 59, 59, 999);
+      return { startDate: start, endDate: end };
+    }
+
+    if (clean === 'this year') {
+      const yr = now.getFullYear();
+      const start = new Date(yr, 0, 1, 0, 0, 0, 0);
+      const end = new Date(yr, 11, 31, 23, 59, 59, 999);
+      return { startDate: start, endDate: end };
+    }
+
     if (clean === 'quarter to date' || clean === 'qtd') {
       const currentQuarter = Math.floor(now.getMonth() / 3);
       const start = new Date(now.getFullYear(), currentQuarter * 3, 1, 0, 0, 0, 0);
       return { startDate: start, endDate: now };
     }
 
-    if (/^202[0-9]$/.test(clean)) {
+    // Pure 4-digit year: e.g. "2024", "2025", "2026"
+    if (/^(19|20)\d{2}$/.test(clean)) {
       const yr = parseInt(clean, 10);
       const start = new Date(yr, 0, 1, 0, 0, 0, 0);
       const end = new Date(yr, 11, 31, 23, 59, 59, 999);
       return { startDate: start, endDate: end };
+    }
+
+    // YYYY-MM (e.g. 2026-09)
+    const ymMatch = clean.match(/^(\d{4})-(\d{1,2})$/);
+    if (ymMatch) {
+      const yr = parseInt(ymMatch[1], 10);
+      const mo = parseInt(ymMatch[2], 10) - 1;
+      const start = new Date(yr, mo, 1, 0, 0, 0, 0);
+      const end = new Date(yr, mo + 1, 0, 23, 59, 59, 999);
+      return { startDate: start, endDate: end };
+    }
+
+    // Month names (e.g., "september 2026", "september", "sep 2026", "january 2025")
+    const monthPatterns = [
+      { regex: /\b(?:september|sept|sep)\b/i, index: 8 },
+      { regex: /\b(?:october|oct)\b/i, index: 9 },
+      { regex: /\b(?:november|nov)\b/i, index: 10 },
+      { regex: /\b(?:december|dec)\b/i, index: 11 },
+      { regex: /\b(?:january|jan)\b/i, index: 0 },
+      { regex: /\b(?:february|feb)\b/i, index: 1 },
+      { regex: /\b(?:march|mar)\b/i, index: 2 },
+      { regex: /\b(?:april|apr)\b/i, index: 3 },
+      { regex: /\b(?:may)\b/i, index: 4 },
+      { regex: /\b(?:june|jun)\b/i, index: 5 },
+      { regex: /\b(?:july|jul)\b/i, index: 6 },
+      { regex: /\b(?:august|aug)\b/i, index: 7 },
+    ];
+    for (const m of monthPatterns) {
+      if (m.regex.test(clean)) {
+        const yrMatch = clean.match(/\b(19\d\d|20\d\d)\b/);
+        const yr = yrMatch ? parseInt(yrMatch[1], 10) : now.getFullYear();
+        const start = new Date(yr, m.index, 1, 0, 0, 0, 0);
+        const end = new Date(yr, m.index + 1, 0, 23, 59, 59, 999);
+        return { startDate: start, endDate: end };
+      }
     }
 
     // Interval check: "YYYY-MM-DD to YYYY-MM-DD"
@@ -142,7 +195,7 @@ export class SearchEngineService {
       }
     }
 
-    // Direct ISO string check
+    // Direct single date check: e.g. "2026-09-25", "09/25/2026"
     const directDate = new Date(clean);
     if (!isNaN(directDate.getTime())) {
       const start = new Date(directDate.getFullYear(), directDate.getMonth(), directDate.getDate(), 0, 0, 0, 0);
@@ -176,27 +229,38 @@ export class SearchEngineService {
     const userRole = user?.role || 'Advisor';
     const userId = user?.id;
 
-    if (userRole === 'Advisor' && userId) {
-      // Advisors are strictly locked to their own submissions
-      conditions.push(`d.advisor_id = $${idx++}`);
-      values.push(userId);
-    } else if (uploaded_by) {
-      const cleanUpload = uploaded_by.trim().toLowerCase();
-      if ((cleanUpload === 'my uploads' || cleanUpload === 'my files' || cleanUpload === 'my submissions') && userId) {
+    if (userRole === 'Advisor') {
+      // Advisors are strictly locked to their own submissions ONLY — never expose other advisors' files
+      if (userId) {
         conditions.push(`d.advisor_id = $${idx++}`);
         values.push(userId);
-      } else if (cleanUpload.length > 0 && cleanUpload !== 'all' && cleanUpload !== 'my uploads' && cleanUpload !== 'my files' && cleanUpload !== 'my submissions') {
-        // Can match advisor UUID, email, or name
-        conditions.push(`(u.name ILIKE $${idx} OR u.email ILIKE $${idx} OR d.advisor_id::text = $${idx})`);
-        values.push(`%${cleanUpload}%`);
-        idx++;
+      }
+    } else {
+      // Supervisory Officers have platform-wide review scope and can filter across all advisors or by specific advisor
+      if (uploaded_by) {
+        const cleanUpload = uploaded_by.trim().toLowerCase();
+        if ((cleanUpload === 'my uploads' || cleanUpload === 'my files' || cleanUpload === 'my submissions') && userId) {
+          conditions.push(`d.advisor_id = $${idx++}`);
+          values.push(userId);
+        } else if (cleanUpload.length > 0 && cleanUpload !== 'all') {
+          // Can match advisor UUID, email, or name
+          conditions.push(`(u.name ILIKE $${idx} OR u.email ILIKE $${idx} OR d.advisor_id::text = $${idx})`);
+          values.push(`%${cleanUpload}%`);
+          idx++;
+        }
       }
     }
 
     // 2. Title matching
-    if (titleQuery && titleQuery.trim()) {
+    let sanitizedTitle = (titleQuery || '').trim();
+    const noiseWordsRegex = /^(?:this|that|these|those|there|here|what|which|who|whom|whose|when|where|why|how|how\s+many|is|are|was|were|be|been|being|have|has|had|do|does|did|can|could|will|would|should|want|wants|know|knows|tell|check|total|totals|count|counts|number|numbers|amount|amounts|sum|sums|overall|summary|stats|statistics|status|statuses|records?|items?|data|database|query|search|filter|list|show|get|display|view|fetch|find|give|all|any|the|a|an|year|years|month|months|day|days|date|dates|of|in|for|on|at|by|from|to|with|and|or|uploaded|upload|uploads|documents?|filings?|submissions?|proposals?|files?|approved|pending|needs\s+revision|rejected)$/i;
+    if (noiseWordsRegex.test(sanitizedTitle)) {
+      sanitizedTitle = '';
+    }
+
+    if (sanitizedTitle) {
       conditions.push(`d.title ILIKE $${idx++}`);
-      values.push(`%${titleQuery.trim()}%`);
+      values.push(`%${sanitizedTitle}%`);
     }
 
     // 3. Multi-status filtering
@@ -211,14 +275,22 @@ export class SearchEngineService {
       }
     }
 
-    // 4. Date ranges
-    if (startDate) {
-      conditions.push(`d.created_at >= $${idx++}`);
-      values.push(startDate.toISOString());
-    }
-    if (endDate) {
-      conditions.push(`d.created_at <= $${idx++}`);
-      values.push(endDate.toISOString());
+    // 4. Date ranges & Flexible Year matching (matches upload year OR title containing the year)
+    const isYearOnly = date_range && /^(19|20)\d{2}$/.test(date_range.trim());
+    if (isYearOnly && startDate && endDate) {
+      const yearStr = date_range.trim();
+      conditions.push(`((d.created_at >= $${idx} AND d.created_at <= $${idx + 1}) OR d.title ILIKE $${idx + 2})`);
+      values.push(startDate.toISOString(), endDate.toISOString(), `%${yearStr}%`);
+      idx += 3;
+    } else {
+      if (startDate) {
+        conditions.push(`d.created_at >= $${idx++}`);
+        values.push(startDate.toISOString());
+      }
+      if (endDate) {
+        conditions.push(`d.created_at <= $${idx++}`);
+        values.push(endDate.toISOString());
+      }
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -414,14 +486,20 @@ export class SearchEngineService {
 
     if (!conversationalReply) {
       const datePart = date_range ? ` for ${date_range}` : '';
-      const queryPart = titleQuery ? ` matching "${titleQuery}"` : '';
+      const queryPart = sanitizedTitle ? ` matching "${sanitizedTitle}"` : '';
+      const authorPart = uploaded_by && uploaded_by !== 'all' && uploaded_by !== 'my uploads' && uploaded_by !== 'my files' && uploaded_by !== 'my submissions' ? ` submitted by ${uploaded_by}` : '';
 
       // If filtering by a single status, focus the reply on just that status
       if (statusFilter.length === 1) {
         const singleStatus = statusFilter[0];
-        conversationalReply = `I found ${totalMatches} ${singleStatus} filing${totalMatches !== 1 ? 's' : ''}${queryPart}${datePart}. ${flaggedCount > 0 ? `${flaggedCount} document(s) have active compliance risk flags under FINRA 2210 / SEC 206.` : 'All matches comply with baseline regulatory standards.'}`;
+        conversationalReply = `I found ${totalMatches} ${singleStatus} filing${totalMatches !== 1 ? 's' : ''}${authorPart}${queryPart}${datePart}. ${flaggedCount > 0 ? `${flaggedCount} document(s) have active compliance risk flags under FINRA 2210 / SEC 206.` : 'All matches comply with baseline regulatory standards.'}`;
       } else {
-        conversationalReply = `I located ${totalMatches} filing${totalMatches !== 1 ? 's' : ''}${queryPart}${datePart}. Status distribution: ${breakdown.Approved} Approved, ${breakdown.Pending} Pending, and ${breakdown.NeedsRevision} Needs Revision. ${flaggedCount > 0 ? `${flaggedCount} document(s) have active compliance risk flags under FINRA 2210 / SEC 206.` : 'All matches comply with baseline regulatory standards.'}`;
+        conversationalReply = `I located ${totalMatches} filing${totalMatches !== 1 ? 's' : ''}${authorPart}${queryPart}${datePart}. Status distribution: ${breakdown.Approved} Approved, ${breakdown.Pending} Pending, ${breakdown.NeedsRevision} Needs Revision, and ${breakdown.Rejected} Rejected. ${flaggedCount > 0 ? `${flaggedCount} document(s) have active compliance risk flags under FINRA 2210 / SEC 206.` : 'All matches comply with baseline regulatory standards.'}`;
+      }
+
+      if (finalDocuments.length > 0) {
+        const titleList = finalDocuments.slice(0, 5).map((d, i) => `${i + 1}. **${d.title}** (v${d.version} • ${d.status})`).join('\n');
+        conversationalReply += `\n\n**Document Titles**:\n${titleList}`;
       }
     }
 

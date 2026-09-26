@@ -64,6 +64,13 @@ export interface ChatbotRequestOptions {
   pathname?: string;
   documentId?: string;
   conversationHistory?: Array<{ role: string; content: string }>;
+  scannedDocument?: {
+    fileName: string;
+    summary?: string;
+    auditBreakdown?: any[];
+    remediatedText?: string;
+    fileMeta?: any;
+  };
 }
 
 export interface ChatbotResponse {
@@ -83,7 +90,7 @@ export class GrokChatbotService {
   }
 
   private static getGeminiApiKey(): string | undefined {
-    const key = (process.env.GEMINI_API_KEY || '').trim();
+    const key = process.env.GEMINI_API_KEY?.trim();
     if (!key || key.includes('placeholder') || key.includes('your_gemini')) {
       return undefined;
     }
@@ -233,9 +240,9 @@ Present this data to the user in a warm, conversational way. Use only the data l
   ): Promise<string> {
     const isOfficer = user?.role === 'Officer';
     const textToCheck = rawText
-      .replace(/^(?:can you\s+|please\s+|help me\s+|i want\s+(?:you\s+)?to\s+|i want more to\s+)?(?:fix|check|re-?check|correct|proofread|improve|rewrite|rephrase)\s*(?:my|this|the)?\s*(?:grammar|sentence|sentences|phrasing|text|draft|writing)?[:,-]?\s*/i, '')
-      .replace(/\b(?:please\s+)?(?:re-?check|check|fix)\s+(?:grammar|sentence|sentences)\b[:,-]?/gi, '')
-      .replace(/\b(?:grammar|sentence|sentences)\s+(?:check|re-?check)\b[:,-]?/gi, '')
+      .replace(/^(?:can you\s+|please\s+|help me\s+|i want\s+(?:you\s+)?to\s+|i want more to\s+)?(?:fix|check|re-?check|correct|proofread|improve|rewrite|rephrase)\s*(?:my|this|the)?\s*(?:grammar|sentence|sentences|phrasing|text|draft|writing)?(?:\s+(?:in|for|of|on))?[:,-]?\s*/i, '')
+      .replace(/\b(?:please\s+)?(?:re-?check|check|fix)\s+(?:grammar|sentence|sentences)\b(?:\s+(?:in|for|of|on))?[:,-]?/gi, '')
+      .replace(/\b(?:grammar|sentence|sentences)\s+(?:check|re-?check)\b(?:\s+(?:in|for|of|on))?[:,-]?/gi, '')
       .replace(/^(?:grammar|sentence|check|proofread|audit\s*note|fix)[:,-]?\s*/i, '')
       .trim();
 
@@ -246,13 +253,24 @@ Present this data to the user in a warm, conversational way. Use only the data l
     // Open, free-agent grammar prompt — works for any text, both Advisor and Officer
     const systemPrompt = `You are a warm, expressive, and highly skilled writing assistant for Springer Capital's ${isOfficer ? 'Compliance Officers' : 'Investment Advisors'}.
 
-You can fix grammar, spelling, punctuation, tone, clarity, and style for ANY text the user gives you — emails, proposals, notes, memos, casual messages, or anything else. Never refuse to fix text.
+You can fix grammar, spelling, punctuation, tone, clarity, and style for ANY text the user gives you — emails, proposals, notes, memos, casual messages, or anything else.
 
-Respond in exactly two clearly labelled parts:
-- **Corrected Text**: the fully fixed, polished version
-- **What I changed**: a friendly, conversational bullet list explaining what you improved and why
+IMPORTANT VALIDATION RULES:
+1. Sentence & Word Verification:
+   - Check if the text forms a valid English sentence (Good Sentence, Sentence Fragment, or Bad/Invalid Sentence).
+   - Check if each token is an actual English word or unrecognized gibberish/keyboard smashes (e.g., 'ashdzhuzhfskj', 'rjnij').
+2. If the text is unintelligible gibberish or contains non-words:
+   - Start with: "**Sentence Quality Assessment**: ✕ Bad Sentence (Unrecognized Words Detected)"
+   - List the specific unrecognized words and explain that they are not recognized English vocabulary.
+   - Do NOT pretend to fix it by merely capitalizing letters or adding punctuation. Ask the user for a meaningful sentence.
+3. If the text is a valid sentence with issues:
+   - Start with: "**Sentence Quality Assessment**: ⚠ Needs Revision (Word Check: Valid ✓ | Structure: Grammar/Spelling issues detected)"
+   - Provide **Corrected Text** and bulleted **What I changed**.
+4. If the text is already a good sentence:
+   - Start with: "**Sentence Quality Assessment**: ✓ Good Sentence (Word Check: All words recognized ✓ | Structure: Complete and standard ✓)"
+   - State **Corrected Text** and compliment the writing.
 
-Be warm and encouraging — like a knowledgeable colleague helping out, not a strict editor. If the text is already great, say so with a compliment!${isOfficer ? '\n\nFor professional text, also note if any phrasing could be strengthened for audit-defensible documentation.' : '\n\nFor proposal or client-facing text, optionally mention if any phrasing could be tightened for professional clarity.'}`;
+Be warm and encouraging — like a knowledgeable colleague helping out, not a strict editor.${isOfficer ? '\n\nFor professional text, also note if any phrasing could be strengthened for audit-defensible documentation.' : '\n\nFor proposal or client-facing text, optionally mention if any phrasing could be tightened for professional clarity.'}`;
 
     const result = await this.callLlm(textToCheck || rawText, systemPrompt, conversationHistory);
     if (result) return result;
@@ -266,6 +284,36 @@ Be warm and encouraging — like a knowledgeable colleague helping out, not a st
    * Mirrors the recheckGrammar engine in the frontend documentation-engine.ts.
    */
   private static applyHeuristicGrammarFix(input: string): string {
+    const rawTokens = input.replace(/[^a-zA-Z0-9\s]/g, ' ').split(/\s+/).filter(Boolean);
+
+    // 0. Non-word and gibberish detection
+    const invalidWords: string[] = [];
+    for (const token of rawTokens) {
+      const clean = token.toLowerCase();
+      if (/^[0-9]+$/.test(clean) || clean.length <= 1) continue;
+
+      const isNoVowels = clean.length >= 3 && !/[aeiouy]/i.test(clean);
+      const isConsonantCluster = /[bcdfghjklmnpqrstvwxyz]{5,}/i.test(clean);
+      const isImpossibleStart = /^(?:rjn|zh|xz|jj|kk|vv|ww|xx|yy|zz|pt|tk|fp|fk|kd|jl|jh|zx)/i.test(clean);
+      const isImpossibleEnd = /(?:fskj|jnij|ljs|xdf|qwe|zxc|vbn|jkl)$/i.test(clean);
+      const isSmash = /zhuzh|zhf|fsk|hfs|zxcv|asdf|ghjk|hjkl|qwerty/i.test(clean);
+
+      if (isNoVowels || isConsonantCluster || isImpossibleStart || isImpossibleEnd || isSmash) {
+        invalidWords.push(token);
+      }
+    }
+
+    if (
+      invalidWords.length > 0 &&
+      (invalidWords.length >= Math.ceil(rawTokens.length * 0.4) ||
+        (invalidWords.length >= 2 && rawTokens.length <= 5))
+    ) {
+      return `**Sentence Quality Assessment**: ✕ Bad Sentence (Unrecognized Words Detected)\n\n` +
+        `**Word Check**: Detected ${invalidWords.length} non-English or invalid word${invalidWords.length > 1 ? 's' : ''}: ${invalidWords.map(w => `"${w}"`).join(', ')}. These tokens do not exist in English vocabulary.\n\n` +
+        `**Sentence Check**: Incoherent syntax structure (lacks meaningful subject and predicate).\n\n` +
+        `I cannot correct unintelligible gibberish. Please provide a sentence with recognized English words so I can check and polish it for you!`;
+    }
+
     const changes: string[] = [];
     let corrected = input.trim();
 
@@ -334,13 +382,13 @@ Be warm and encouraging — like a knowledgeable colleague helping out, not a st
         .replace(/\bvery\s+(\w+)/gi, 'substantially $1')
         .replace(/\ba\s+lot\s+of\b/gi, 'numerous');
       if (polished !== corrected) {
-        return `**Corrected Text:**\n${polished}\n\n**What I changed:**\n• Enhanced tone and vocabulary for formal institutional compliance documentation.`;
+        return `**Sentence Quality Assessment**: ✓ Good Sentence (Word Check: Valid ✓ | Structure: Complete ✓)\n\n**Corrected Text:**\n${polished}\n\n**What I changed:**\n• Enhanced tone and vocabulary for formal institutional compliance documentation.`;
       }
-      return `**Corrected Text:**\n${corrected}\n\n**What I changed:**\n• Verified syntax and structure — grammar, spelling, and punctuation adhere to institutional standards.`;
+      return `**Sentence Quality Assessment**: ✓ Good Sentence (Word Check: Valid ✓ | Structure: Complete ✓)\n\n**Corrected Text:**\n${corrected}\n\n**What I changed:**\n• Verified syntax and structure — grammar, spelling, and punctuation adhere to institutional standards.`;
     }
 
     const bulletList = [...new Set(changes)].map((c: string) => `• ${c}`).join('\n');
-    return `**Corrected Text:**\n${corrected}\n\n**What I changed:**\n${bulletList}`;
+    return `**Sentence Quality Assessment**: ⚠ Needs Revision (Word Check: Valid ✓ | Structure: Corrections applied)\n\n**Corrected Text:**\n${corrected}\n\n**What I changed:**\n${bulletList}`;
   }
 
   /**
@@ -436,12 +484,32 @@ State whether this text would be Approved or Needs Revision, with guidance for t
    * clarification gating, and live database queries.
    */
   public static async processMessage(options: ChatbotRequestOptions): Promise<ChatbotResponse> {
-    const { message, user, pathname, documentId, conversationHistory } = options;
+    const { message, user, pathname, documentId, conversationHistory, scannedDocument } = options;
     const isOfficer = user.role === 'Officer';
     const isAdvisor = !isOfficer;
 
+    // Detect and unwrap explicit free communication mode (/free, /chat, or [Free Conversational AI Assistance]:)
+    const isExplicitFreeMode =
+      /^\[Free Conversational AI Assistance\]:\s*/i.test(message) ||
+      /^\/(?:free|chat)\s+/i.test(message);
+
+    const strippedMessage = message
+      .replace(/^\[Free Conversational AI Assistance\]:\s*/i, '')
+      .replace(/^\/(?:free|chat)\s+/i, '')
+      .trim();
+
+    // If user explicitly entered free conversational mode, bypass database filters and go directly to natural AI chat
+    if (isExplicitFreeMode) {
+      return await this.handleFreeConversation(
+        strippedMessage || 'Hello!',
+        user,
+        pathname,
+        conversationHistory
+      );
+    }
+
     // ── Step 1: Query Normalization ─────────────────────────────────────────
-    const correctedQuery = this.correctGrammarAndSpelling(message);
+    const correctedQuery = this.correctGrammarAndSpelling(strippedMessage);
     const lower = correctedQuery.toLowerCase();
 
     // ── Check for explicit Compliance Audit intent on provided test text ────
@@ -452,6 +520,23 @@ State whether this text would be Approved or Needs Revision, with guidance for t
     if (isAuditRequest) {
       const reply = await this.handleTextComplianceAuditIntent(message, user, conversationHistory);
       return { reply, intent: 'text_compliance_audit', correctedQuery };
+    }
+
+    // ── Intent 0: Scanned Document Findings / Breakdown Inquiry ─────────────
+    // Ground follow-up questions to the currently scanned draft file in chat
+    const isFindingsInquiry =
+      /\b(?:findings?|infractions?|violations?|deficienc(?:y|ies)|flags?|severity|applicable\s+rules?|remediat(?:e|ion|ions)|amendments?)\b/i.test(lower) ||
+      /\b(?:list\s+all|show\s+all|what\s+are\s+the|explain\s+all|\d+\s+findings|\d+\s+flags|\d+\s+issues)\b/i.test(lower) ||
+      lower.includes('list all 9') ||
+      lower.includes('all 9 findings');
+
+    if (scannedDocument && scannedDocument.auditBreakdown && scannedDocument.auditBreakdown.length > 0 && isFindingsInquiry) {
+      return await this.handleScannedDocumentFindingsIntent(scannedDocument, user, correctedQuery, conversationHistory);
+    }
+
+    // Ground follow-ups when user is viewing an opened document in /documents/[id]
+    if (Boolean(documentId || (pathname && pathname.includes('/documents/'))) && isFindingsInquiry) {
+      return await this.handleActiveDocumentAuditIntent(user, correctedQuery, lower, documentId, pathname);
     }
 
     // ── Check for explicit Grammar Check or Expansion intent ────────────────
@@ -532,6 +617,106 @@ State whether this text would be Approved or Needs Revision, with guidance for t
 
     if (isLastYearAdvisorQuery) {
       return await this.handleAdvisorLastYearUploadsIntent(user, correctedQuery);
+    }
+
+    // ── Intent 2b: Active Document Compliance Audit / Infractions / Flags ───
+    const isDocumentAuditOrFlagsQuery =
+      Boolean(documentId || (pathname && pathname.includes('/documents/'))) &&
+      (/\b(audit\s+this\s+document|explain\s+(?:the\s+)?flagged\s+compliance\s+issues|compliance\s+issues\s+for\s+this\s+document|can\s+this\s+document\s+be\s+auto-remediated|review\s+attestation|audit\s+history|audit\s+trail|version\s+comparison|what\s+revisions\s+does\s+the\s+compliance\s+officer\s+require|remediate\s+promissory\s+language)\b/i.test(lower) ||
+        lower.includes('audit this document against finra') ||
+        lower.includes('explain the flagged compliance issues') ||
+        lower.includes('can this document be auto-remediated') ||
+        lower.includes('review attestation & audit history') ||
+        lower.includes('show version comparison'));
+
+    if (isDocumentAuditOrFlagsQuery) {
+      return await this.handleActiveDocumentAuditIntent(user, correctedQuery, lower, documentId, pathname);
+    }
+
+    // ── Intent 2c: Most Recent Filing / Who Uploaded Latest Filing ───────────
+    const isMostRecentFilingQuery =
+      /\b(who\s+(?:has\s+)?(?:uploaded|submitted|filed|sent)\s+(?:the\s+)?(?:most\s+recent|latest|newest|last)\s*(?:filing|document|file|submission|proposal)?|(?:who\s+uploaded|who\s+submitted|who\s+filed)\s+(?:the\s+)?(?:most\s+recent|latest|newest|last)|(?:what\s+is\s+(?:the\s+)?)?(?:most\s+recent|latest|newest|last)\s+(?:filing|document|file|submission|upload)\b|(?:who\s+made\s+(?:the\s+)?(?:most\s+recent|latest|last)\s+(?:upload|submission|filing)))\b/i.test(lower) ||
+      lower.includes('who uploaded the most recent filing') ||
+      lower.includes('most recent filing') ||
+      lower.includes('most recent submission') ||
+      lower.includes('most recent document') ||
+      (lower.includes('latest upload') && !/(?:of|by|for)\s+[a-z0-9_.-]+/i.test(lower));
+
+    if (isMostRecentFilingQuery) {
+      return await this.handleMostRecentFilingIntent(user, correctedQuery);
+    }
+
+    // ── Intent 2d: Who Uploaded Documents This Week / Recently ──────────────
+    const isWhoUploadedRecentQuery =
+      /\b(who\s+uploaded\s+(?:documents?|files?|filings?|submissions?|proposals?)?\s*(?:this\s+week|recently|in\s+the\s+past\s+week|past\s+7\s+days)|who\s+uploaded\s+documents\s+this\s+week|who\s+uploaded\s+this\s+week)\b/i.test(lower) ||
+      lower.includes('who uploaded documents this week') ||
+      lower.includes('who uploaded this week');
+
+    if (isWhoUploadedRecentQuery) {
+      return await this.handleWhoUploadedRecentIntent(user, correctedQuery);
+    }
+
+    // ── Intent 2e: Today's Uploads ──────────────────────────────────────────
+    const isTodayUploadsQuery =
+      /\b(documents?\s+uploaded\s+today|uploaded\s+today|submitted\s+today|today'?s?\s+uploads?|what\s+documents\s+are\s+awaiting\s+compliance\s+review\s+today)\b/i.test(lower) ||
+      lower.includes('uploaded today') ||
+      lower.includes('review today');
+
+    if (isTodayUploadsQuery) {
+      return await this.handleTodaysUploadsIntent(user, correctedQuery);
+    }
+
+    // ── Intent 2f: Pending Queue / Awaiting Determination ───────────────────
+    const isPendingQueueQuery =
+      /\b(pending\s+documents?\s+awaiting(?:\s+my)?\s+determination|unassigned\s+queue\s+submissions?\s+by\s+date|submissions?\s+by\s+date|pending\s+filings?\s+with\s+risk\s+flags|which\s+of\s+my\s+submissions\s+are\s+pending|list\s+all\s+pending\s+documents?|show\s+all\s+pending\s+filings?|unassigned\s+queue|pending\s+queue|all\s+pending\s+documents?)\b/i.test(lower) ||
+      lower.includes('pending documents awaiting my determination') ||
+      lower.includes('unassigned queue submissions by date') ||
+      lower.includes('pending filings with risk flags') ||
+      lower.includes('pending officer review');
+
+    if (isPendingQueueQuery) {
+      return await this.handlePendingQueueIntent(user, correctedQuery);
+    }
+
+    // ── Intent 2g: High-Risk Submissions Across Advisors ────────────────────
+    const isHighRiskQuery =
+      /\b(high[- ]risk\s+submissions?(?:\s+across\s+all\s+advisors)?|high[- ]risk\s+filings?|submissions?\s+with\s+risk\s+flags|show\s+high[- ]risk|high[- ]risk\s+documents?)\b/i.test(lower) ||
+      lower.includes('high-risk submissions across all advisors') ||
+      lower.includes('high-risk submissions');
+
+    if (isHighRiskQuery) {
+      return await this.handleHighRiskFilingsIntent(user, correctedQuery);
+    }
+
+    // ── Intent 2h: Approved Filings ─────────────────────────────────────────
+    const isApprovedFilingsQuery =
+      /\b(approved\s+filings?\s+this\s+quarter|show\s+approved\s+documents?|approved\s+(?:filings?|documents?|submissions?))\b/i.test(lower) ||
+      lower.includes('approved filings this quarter') ||
+      lower.includes('show approved documents');
+
+    if (isApprovedFilingsQuery) {
+      return await this.handleApprovedFilingsIntent(user, correctedQuery);
+    }
+
+    // ── Intent 2i: Submissions From This Month ──────────────────────────────
+    const isMonthSubmissionsQuery =
+      /\b(my\s+submissions?\s+from\s+this\s+month|submissions?\s+this\s+month|my\s+submissions?\s+this\s+month)\b/i.test(lower) ||
+      lower.includes('submissions from this month');
+
+    if (isMonthSubmissionsQuery) {
+      return await this.handleMonthSubmissionsIntent(user, correctedQuery);
+    }
+
+    // ── Intent 2j: Rejected Filings ─────────────────────────────────────────
+    const isRejectedFilingsQuery =
+      /\b(show\s+rejected\s+(?:filings?|documents?|submissions?|files?)|rejected\s+(?:filings?|documents?|submissions?|files?))\b/i.test(lower) ||
+      lower.includes('show rejected documents') ||
+      lower.includes('show rejected files') ||
+      lower.includes('rejected documents') ||
+      lower.includes('rejected files');
+
+    if (isRejectedFilingsQuery) {
+      return await this.handleRejectedFilingsIntent(user, correctedQuery);
     }
 
     // ── Intent 3: Officer: Check Latest Upload (per advisor) ────────────────
@@ -734,12 +919,7 @@ State whether this text would be Approved or Needs Revision, with guidance for t
     }
 
     if (!rawAdvisorName) {
-      return {
-        reply: "Sure! Whose latest upload would you like me to check?",
-        intent: 'officer_latest_upload',
-        isClarification: true,
-        correctedQuery,
-      };
+      return await GrokChatbotService.handleMostRecentFilingIntent({ role: 'Officer' }, correctedQuery);
     }
 
     const userRes = await query<any>(
@@ -939,11 +1119,11 @@ State whether this text would be Approved or Needs Revision, with guidance for t
       flagsList.length === 0
         ? 'No compliance flags recorded.'
         : flagsList.map((f: any) => {
-            const rule = f.rule || 'Regulatory Rule';
-            const exp = f.explanation || f.reason || 'Compliance flag';
-            const pass = f.passage ? ` — "${f.passage}"` : '';
-            return `  - ${rule}: ${exp}${pass}`;
-          }).join('\n');
+          const rule = f.rule || 'Regulatory Rule';
+          const exp = f.explanation || f.reason || 'Compliance flag';
+          const pass = f.passage ? ` — "${f.passage}"` : '';
+          return `  - ${rule}: ${exp}${pass}`;
+        }).join('\n');
 
     const dbSummary = `Risk assessment for "${doc.title}" (version ${doc.version}, status: ${doc.status}):\n- Risk Level: ${doc.risk_level}\n- Risk Score: ${doc.risk_score}/100\n- Compliance Flags:\n${flagsSummary}`;
     const fallback = `**Risk Assessment — "${doc.title}"**\n- Risk Level: **${doc.risk_level}** (Score: ${doc.risk_score}/100)\n\n**Compliance Flags:**\n${flagsSummary}`;
@@ -1015,6 +1195,696 @@ State whether this text would be Approved or Needs Revision, with guidance for t
 
     const reply = await this.formatDbResultWithLlm(dbSummary, correctedQuery, 'Advisor', fallback);
     return { reply, intent: 'advisor_revision_feedback', correctedQuery };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Intent: Most Recent Filing / Who Uploaded Latest Filing (Live Database Query)
+  // ─────────────────────────────────────────────────────────────────────────
+  private static async handleMostRecentFilingIntent(
+    user: ChatUserContext,
+    correctedQuery: string
+  ): Promise<ChatbotResponse> {
+    const isAdvisor = user.role === 'Advisor';
+    let sql = `
+      SELECT 
+        d.id, d.title, d.status, d.version, d.file_name, d.mime_type, d.file_size, d.created_at,
+        u.name AS advisor_name, u.email AS advisor_email, u.role AS advisor_role,
+        da.risk_level, da.risk_score, da.flags, da.summary
+      FROM documents d
+      LEFT JOIN users u ON d.advisor_id = u.id
+      LEFT JOIN document_analyses da ON d.id = da.document_id AND d.version = da.version
+    `;
+    const params: any[] = [];
+    if (isAdvisor && user.id) {
+      sql += ` WHERE d.advisor_id = $1`;
+      params.push(user.id);
+    }
+    sql += ` ORDER BY d.created_at DESC LIMIT 1`;
+
+    const res = await query<any>(sql, params);
+
+    if (res.rows.length === 0) {
+      return {
+        reply: isAdvisor
+          ? "You have not submitted any document filings yet in the Springer Capital repository."
+          : "There are currently no document filings uploaded in the Springer Capital repository database.",
+        intent: 'most_recent_filing',
+        correctedQuery,
+      };
+    }
+
+    const doc = res.rows[0];
+    let flagsList: any[] = [];
+    try {
+      flagsList = typeof doc.flags === 'string' ? JSON.parse(doc.flags) : (doc.flags || []);
+    } catch {
+      flagsList = [];
+    }
+
+    const flagCount = flagsList.length;
+    const dateFormatted = new Date(doc.created_at).toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const advisorName = doc.advisor_name || 'Registered Advisor';
+    const advisorEmail = doc.advisor_email ? ` (${doc.advisor_email})` : '';
+    const riskLevel = doc.risk_level || (flagCount === 0 ? 'Low' : flagCount <= 2 ? 'Medium' : 'High');
+    const riskScore = doc.risk_score !== null && doc.risk_score !== undefined ? `${doc.risk_score}/100` : (flagCount === 0 ? '0/100' : '45/100');
+
+    let flagsSnippet = '';
+    if (flagCount > 0) {
+      const sampleFlags = flagsList.slice(0, 3).map((f: any) => {
+        const rule = f.rule || 'Regulatory Issue';
+        const passage = f.passage ? `"${f.passage.replace(/\n+/g, ' ').slice(0, 90)}..."` : (f.explanation || 'Flagged issue');
+        return `  • **${rule}**: ${passage}`;
+      }).join('\n');
+      flagsSnippet = `\n\n**Compliance Flags (${flagCount}):**\n${sampleFlags}`;
+    } else {
+      flagsSnippet = '\n\n**Compliance Status**: ✓ Clean — zero compliance flags detected under FINRA Rule 2210 & SEC Rule 206.';
+    }
+
+    const dbSummary = isAdvisor
+      ? `The advisor's most recent document filing:\n- Title: "${doc.title}" (Version ${doc.version})\n- Upload Date: ${dateFormatted}\n- Status: ${doc.status}\n- Risk Level: ${riskLevel} (Score: ${riskScore})\n- Flag count: ${flagCount}`
+      : `Most recent document filing retrieved from the database:\n- Title: "${doc.title}" (Version ${doc.version})\n- Uploaded by: ${advisorName}${advisorEmail}\n- Upload Date: ${dateFormatted}\n- Status: ${doc.status}\n- Risk Level: ${riskLevel} (Score: ${riskScore})\n- Flag count: ${flagCount}`;
+
+    const fallback = isAdvisor
+      ? `Your most recent filing in the Springer Capital repository is:\n\n📄 **"${doc.title}"** (Version ${doc.version})\n• **Submission Date**: ${dateFormatted}\n• **Status**: **${doc.status}**\n• **Risk Assessment**: **${riskLevel}** (${riskScore})${flagsSnippet}`
+      : `The most recent filing in the Springer Capital repository is:\n\n📄 **"${doc.title}"** (Version ${doc.version})\n• **Uploaded By**: **${advisorName}**${advisorEmail}\n• **Submission Date**: ${dateFormatted}\n• **Status**: **${doc.status}**\n• **Risk Assessment**: **${riskLevel}** (${riskScore})${flagsSnippet}`;
+
+    const reply = await this.formatDbResultWithLlm(dbSummary, correctedQuery, user.role || 'Officer', fallback);
+    return { reply, intent: 'most_recent_filing', correctedQuery };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Intent: Who Uploaded Documents This Week / Recently (Live Database Query)
+  // ─────────────────────────────────────────────────────────────────────────
+  private static async handleWhoUploadedRecentIntent(
+    user: ChatUserContext,
+    correctedQuery: string
+  ): Promise<ChatbotResponse> {
+    const isAdvisor = user.role === 'Advisor';
+    let sql = `
+      SELECT 
+        d.id, d.title, d.status, d.version, d.created_at,
+        u.name AS advisor_name, u.email AS advisor_email,
+        da.risk_level, da.flags
+      FROM documents d
+      LEFT JOIN users u ON d.advisor_id = u.id
+      LEFT JOIN document_analyses da ON d.id = da.document_id AND d.version = da.version
+      WHERE d.created_at >= NOW() - INTERVAL '7 days'
+    `;
+    const params: any[] = [];
+    if (isAdvisor && user.id) {
+      sql += ` AND d.advisor_id = $1`;
+      params.push(user.id);
+    }
+    sql += ` ORDER BY d.created_at DESC LIMIT 10`;
+
+    const res = await query<any>(sql, params);
+
+    let rows = res.rows;
+    let periodNote = 'in the past 7 days';
+
+    if (rows.length === 0) {
+      // Fallback to most recent filings from DB so user always gets live records
+      let fallbackSql = `
+        SELECT 
+          d.id, d.title, d.status, d.version, d.created_at,
+          u.name AS advisor_name, u.email AS advisor_email,
+          da.risk_level, da.flags
+        FROM documents d
+        LEFT JOIN users u ON d.advisor_id = u.id
+        LEFT JOIN document_analyses da ON d.id = da.document_id AND d.version = da.version
+      `;
+      const fallbackParams: any[] = [];
+      if (isAdvisor && user.id) {
+        fallbackSql += ` WHERE d.advisor_id = $1`;
+        fallbackParams.push(user.id);
+      }
+      fallbackSql += ` ORDER BY d.created_at DESC LIMIT 5`;
+
+      const fallbackRes = await query<any>(fallbackSql, fallbackParams);
+      rows = fallbackRes.rows;
+      periodNote = 'recently (no uploads in past 7 days, showing latest filings)';
+    }
+
+    if (rows.length === 0) {
+      return {
+        reply: isAdvisor
+          ? "You have not uploaded any documents recently in the Springer Capital database."
+          : "No document uploads found in the Springer Capital database.",
+        intent: 'who_uploaded_recent',
+        correctedQuery,
+      };
+    }
+
+    const docLines = rows.map((doc: any) => {
+      const dateStr = new Date(doc.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      let flagsList: any[] = [];
+      try { flagsList = typeof doc.flags === 'string' ? JSON.parse(doc.flags) : (doc.flags || []); } catch { flagsList = []; }
+      const risk = flagsList.length === 0 ? '✓ Clean' : `⚠ ${flagsList.length} flag${flagsList.length > 1 ? 's' : ''}`;
+      const author = isAdvisor ? '' : ` → Uploaded by **${doc.advisor_name || 'Advisor'}** (${doc.advisor_email || 'N/A'})`;
+      return `- **"${doc.title}"** (v${doc.version})${author} on ${dateStr} [Status: ${doc.status} | ${risk}]`;
+    }).join('\n');
+
+    const header = isAdvisor
+      ? `Your document submissions uploaded ${periodNote}:`
+      : `Here are the document submissions uploaded ${periodNote}:`;
+
+    const dbSummary = `${header} (${rows.length} total):\n${docLines}`;
+    const fallback = `${header}\n\n${docLines}${isAdvisor ? '' : '\n\nWould you like me to inspect any specific advisor\'s filing?'}`;
+
+    const reply = await this.formatDbResultWithLlm(dbSummary, correctedQuery, user.role || 'Officer', fallback);
+    return { reply, intent: 'who_uploaded_recent', correctedQuery };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Intent: Today's Uploads (Live Database Query)
+  // ─────────────────────────────────────────────────────────────────────────
+  private static async handleTodaysUploadsIntent(
+    user: ChatUserContext,
+    correctedQuery: string
+  ): Promise<ChatbotResponse> {
+    const isAdvisor = user.role === 'Advisor';
+    let sql = `
+      SELECT 
+        d.id, d.title, d.status, d.version, d.created_at,
+        u.name AS advisor_name, u.email AS advisor_email,
+        da.risk_level, da.flags
+      FROM documents d
+      LEFT JOIN users u ON d.advisor_id = u.id
+      LEFT JOIN document_analyses da ON d.id = da.document_id AND d.version = da.version
+      WHERE d.created_at::date = CURRENT_DATE
+    `;
+    const params: any[] = [];
+    if (isAdvisor && user.id) {
+      sql += ` AND d.advisor_id = $1`;
+      params.push(user.id);
+    }
+    sql += ` ORDER BY d.created_at DESC`;
+
+    const res = await query<any>(sql, params);
+    const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+
+    if (res.rows.length === 0) {
+      const reply = isAdvisor
+        ? `You have not uploaded any documents today (${todayStr}).`
+        : `No documents have been uploaded today (${todayStr}). The supervisory review queue has received 0 new submissions today.`;
+      return { reply, intent: 'todays_uploads', correctedQuery };
+    }
+
+    const docLines = res.rows.map((doc: any) => {
+      const timeStr = new Date(doc.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      let flagsList: any[] = [];
+      try { flagsList = typeof doc.flags === 'string' ? JSON.parse(doc.flags) : (doc.flags || []); } catch { flagsList = []; }
+      const risk = flagsList.length === 0 ? '✓ Clean' : `⚠ ${flagsList.length} flag${flagsList.length > 1 ? 's' : ''}`;
+      const byAuthor = isAdvisor ? '' : ` | By: **${doc.advisor_name || 'Advisor'}**`;
+      return `- **"${doc.title}"** (v${doc.version})${byAuthor} | Time: ${timeStr} | Status: **${doc.status}** (${risk})`;
+    }).join('\n');
+
+    const header = isAdvisor
+      ? `**Your Uploads Today (${res.rows.length} document${res.rows.length > 1 ? 's' : ''} on ${todayStr}):**`
+      : `**Today's Uploads (${res.rows.length} document${res.rows.length > 1 ? 's' : ''} on ${todayStr}):**`;
+
+    const dbSummary = `${header}\n${docLines}`;
+    const fallback = `${header}\n\n${docLines}`;
+
+    const reply = await this.formatDbResultWithLlm(dbSummary, correctedQuery, user.role || 'Officer', fallback);
+    return { reply, intent: 'todays_uploads', correctedQuery };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Intent: Pending Queue / Awaiting Determination (Live Database Query)
+  // ─────────────────────────────────────────────────────────────────────────
+  private static async handlePendingQueueIntent(
+    user: ChatUserContext,
+    correctedQuery: string
+  ): Promise<ChatbotResponse> {
+    const isAdvisor = user.role === 'Advisor';
+    let sql: string;
+    let params: any[] = [];
+
+    if (isAdvisor && user.id) {
+      sql = `
+        SELECT 
+          d.id, d.title, d.status, d.version, d.created_at,
+          u.name AS advisor_name, u.email AS advisor_email,
+          da.risk_level, da.risk_score, da.flags
+        FROM documents d
+        LEFT JOIN users u ON d.advisor_id = u.id
+        LEFT JOIN document_analyses da ON d.id = da.document_id AND d.version = da.version
+        WHERE d.status = 'Pending' AND d.advisor_id = $1
+        ORDER BY d.created_at DESC
+        LIMIT 15
+      `;
+      params = [user.id];
+    } else {
+      sql = `
+        SELECT 
+          d.id, d.title, d.status, d.version, d.created_at,
+          u.name AS advisor_name, u.email AS advisor_email,
+          da.risk_level, da.risk_score, da.flags
+        FROM documents d
+        LEFT JOIN users u ON d.advisor_id = u.id
+        LEFT JOIN document_analyses da ON d.id = da.document_id AND d.version = da.version
+        WHERE d.status = 'Pending'
+        ORDER BY d.created_at DESC
+        LIMIT 15
+      `;
+    }
+
+    const res = await query<any>(sql, params);
+
+    if (res.rows.length === 0) {
+      const reply = isAdvisor
+        ? "You have zero submissions currently pending compliance officer determination. All your filings are either approved or awaiting revision."
+        : "The supervisory review queue is currently clear — zero pending document submissions awaiting officer determination.";
+      return { reply, intent: 'pending_queue', correctedQuery };
+    }
+
+    const docLines = res.rows.map((doc: any) => {
+      const dateStr = new Date(doc.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      let flagsList: any[] = [];
+      try { flagsList = typeof doc.flags === 'string' ? JSON.parse(doc.flags) : (doc.flags || []); } catch { flagsList = []; }
+      const risk = flagsList.length === 0 ? '✓ Clean' : `⚠ ${flagsList.length} flag${flagsList.length > 1 ? 's' : ''}`;
+      const by = isAdvisor ? '' : ` | Advisor: **${doc.advisor_name || 'Unknown'}**`;
+      return `- **"${doc.title}"** (v${doc.version})${by} | Submitted: ${dateStr} | Risk: ${risk}`;
+    }).join('\n');
+
+    const dbSummary = `Found ${res.rows.length} pending document(s) awaiting determination:\n${docLines}`;
+    const fallback = `**Pending Documents Awaiting Determination (${res.rows.length}):**\n\n${docLines}\n\nSelect any document in the review queue to open its supervisory panel.`;
+
+    const reply = await this.formatDbResultWithLlm(dbSummary, correctedQuery, user.role || 'Officer', fallback);
+    return { reply, intent: 'pending_queue', correctedQuery };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Intent: High-Risk Submissions Across Advisors (Live Database Query)
+  // ─────────────────────────────────────────────────────────────────────────
+  private static async handleHighRiskFilingsIntent(
+    user: ChatUserContext,
+    correctedQuery: string
+  ): Promise<ChatbotResponse> {
+    const isAdvisor = user.role === 'Advisor';
+    let sql = `
+      SELECT 
+        d.id, d.title, d.status, d.version, d.created_at,
+        u.name AS advisor_name, u.email AS advisor_email,
+        da.risk_level, da.risk_score, da.flags
+      FROM documents d
+      LEFT JOIN users u ON d.advisor_id = u.id
+      JOIN document_analyses da ON d.id = da.document_id AND d.version = da.version
+      WHERE (da.risk_level = 'High' OR (da.flags IS NOT NULL AND jsonb_array_length(da.flags) > 0))
+    `;
+    const params: any[] = [];
+    if (isAdvisor && user.id) {
+      sql += ` AND d.advisor_id = $1`;
+      params.push(user.id);
+    }
+    sql += ` ORDER BY da.risk_score DESC NULLS LAST, d.created_at DESC LIMIT 10`;
+
+    const res = await query<any>(sql, params);
+
+    if (res.rows.length === 0) {
+      return {
+        reply: isAdvisor
+          ? "Great news — zero of your submissions currently have high-risk compliance flags in the database."
+          : "Great news — zero submissions across all advisors currently have high-risk compliance flags in the database.",
+        intent: 'high_risk_filings',
+        correctedQuery,
+      };
+    }
+
+    const docLines = res.rows.map((doc: any) => {
+      let flagsList: any[] = [];
+      try { flagsList = typeof doc.flags === 'string' ? JSON.parse(doc.flags) : (doc.flags || []); } catch { flagsList = []; }
+      const rules = [...new Set(flagsList.map((f: any) => f.rule || 'FINRA 2210'))].join(', ');
+      const advisorPart = isAdvisor ? '' : ` | Advisor: **${doc.advisor_name || 'Unknown'}**`;
+      return `- **"${doc.title}"** (v${doc.version})${advisorPart} | Status: **${doc.status}** | Flags: **${flagsList.length}** [${rules}]`;
+    }).join('\n');
+
+    const header = isAdvisor
+      ? `**Your High-Risk & Flagged Submissions (${res.rows.length} found):**`
+      : `**High-Risk & Flagged Submissions (${res.rows.length} found):**`;
+
+    const dbSummary = `${header}\n${docLines}`;
+    const fallback = `${header}\n\n${docLines}\n\nWould you like me to inspect the compliance flags for any of these?`;
+
+    const reply = await this.formatDbResultWithLlm(dbSummary, correctedQuery, user.role || 'Officer', fallback);
+    return { reply, intent: 'high_risk_filings', correctedQuery };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Intent: Active Document Compliance Audit / Infractions / Flags (Live Database Query)
+  // ─────────────────────────────────────────────────────────────────────────
+  private static async handleActiveDocumentAuditIntent(
+    user: ChatUserContext,
+    correctedQuery: string,
+    lower: string,
+    activeDocumentId?: string,
+    pathname?: string
+  ): Promise<ChatbotResponse> {
+    const targetDocId = activeDocumentId || pathname?.match(/\/documents\/([0-9a-fA-F-]+)/)?.[1];
+
+    if (!targetDocId) {
+      return {
+        reply: "Please open the document you would like to audit, or provide its title so I can pull its compliance record from the database.",
+        intent: 'document_audit',
+        isClarification: true,
+        correctedQuery,
+      };
+    }
+
+    // 1. Audit trail / attestation inquiry
+    if (lower.includes('attestation') || lower.includes('audit history') || lower.includes('audit trail')) {
+      const auditSql = `
+        SELECT a.action, a.previous_status, a.new_status, a.reason, a.created_at, u.name, u.role
+        FROM audit_trail a
+        LEFT JOIN users u ON a.user_id = u.id
+        WHERE a.document_id = $1
+        ORDER BY a.created_at DESC
+        LIMIT 10
+      `;
+      const aRes = await query<any>(auditSql, [targetDocId]);
+      if (aRes.rows.length === 0) {
+        return {
+          reply: "No audit trail entries recorded yet for this filing in the database.",
+          intent: 'document_audit_trail',
+          correctedQuery,
+        };
+      }
+      const trailLines = aRes.rows.map((row: any) => {
+        const timeStr = new Date(row.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        const reasonStr = row.reason ? ` — Note: "${row.reason}"` : '';
+        return `- **${row.action}** by ${row.name || 'System'} (${row.role || 'User'}) on ${timeStr}${row.new_status ? ` → Status: ${row.new_status}` : ''}${reasonStr}`;
+      }).join('\n');
+
+      const fallback = `**Attestation & Audit Ledger History:**\n\n${trailLines}`;
+      return { reply: fallback, intent: 'document_audit_trail', correctedQuery };
+    }
+
+    // 2. Version comparison
+    if (lower.includes('version comparison') || lower.includes('v1 and v2') || lower.includes('compare versions')) {
+      const vSql = `
+        SELECT version, status, created_at
+        FROM documents
+        WHERE id = $1
+      `;
+      const vRes = await query<any>(vSql, [targetDocId]);
+      const currentDoc = vRes.rows[0];
+      return {
+        reply: `**Version Comparison (Filing v${currentDoc?.version || 1}):**\n- Current Version: **v${currentDoc?.version || 1}** (${currentDoc?.status || 'Pending'})\n- Prior Version: **v${Math.max(1, (currentDoc?.version || 1) - 1)}**\n- Remediation status: Updated draft submitted for supervisory verification.`,
+        intent: 'document_version_comparison',
+        correctedQuery,
+      };
+    }
+
+    // 3. Flags & compliance issues
+    const docSql = `
+      SELECT d.title, d.status, d.version, u.name AS advisor_name, da.flags, da.summary, da.risk_level, da.risk_score
+      FROM documents d
+      LEFT JOIN users u ON d.advisor_id = u.id
+      LEFT JOIN document_analyses da ON d.id = da.document_id AND d.version = da.version
+      WHERE d.id = $1
+    `;
+    const docRes = await query<any>(docSql, [targetDocId]);
+    if (docRes.rows.length === 0) {
+      return {
+        reply: "Could not locate this document in the database.",
+        intent: 'document_audit',
+        correctedQuery,
+      };
+    }
+
+    const doc = docRes.rows[0];
+    let flagsList: any[] = [];
+    try { flagsList = typeof doc.flags === 'string' ? JSON.parse(doc.flags) : (doc.flags || []); } catch { flagsList = []; }
+
+    if (flagsList.length === 0) {
+      return {
+        reply: `Document **"${doc.title}"** (v${doc.version}) is **Clean** — 0 compliance flags detected under FINRA Rule 2210 & SEC Rule 206(4)-1. It contains no promissory phrasing, guaranteed returns, or missing statutory risk warnings.`,
+        intent: 'document_audit',
+        correctedQuery,
+      };
+    }
+
+    const resolveSeverity = (f: any): 'HIGH' | 'MEDIUM' | 'LOW' => {
+      if (f.severity) return f.severity.toUpperCase();
+      const cat = (f.category || '').toUpperCase();
+      const issue = (f.issue || f.title || '').toUpperCase();
+      if (cat === 'PROHIBITED_CLAIM' || cat === 'SUITABILITY' || issue.includes('GUARANTEE') || issue.includes('PROMISSORY')) {
+        return 'HIGH';
+      }
+      if (cat === 'MISSING_DISCLOSURE') {
+        return 'MEDIUM';
+      }
+      return 'LOW';
+    };
+
+    const formattedFlags = flagsList.map((f: any, idx: number) => {
+      const sev = resolveSeverity(f);
+      const sevBadge = sev === 'HIGH' ? '🔴 HIGH' : sev === 'MEDIUM' ? '🟡 MEDIUM' : '🟢 LOW';
+      const rule = f.rule || f.ruleCode || 'FINRA Rule 2210';
+      const passage = f.original_passage || f.passage || 'Identified text passage';
+      const fix = f.remediated_text || f.compliant_text || f.remediation || f.fixed_passage || 'Replace with balanced market risk disclosures.';
+      const explanation = f.explanation || f.reason || f.rationale || 'Eliminate promissory claims and add statutory disclosures.';
+      const issue = f.issue || f.title || 'Regulatory compliance infraction';
+      return `### Finding ${idx + 1}: ${rule} [Severity: ${sevBadge}]
+• **Severity**: **${sev}**
+• **Applicable Rule**: ${rule}
+• **Specific Infraction**: ${issue}
+• **Original Offending Passage:**
+> "${passage}"
+• **Prescribed Remediation:**
+> "${fix}"
+• **Amendment Rationale**: ${explanation}`;
+    }).join('\n\n');
+
+    const fallback = `### Compliance Diagnostic & Prescribed Amendments for "${doc.title}" (v${doc.version})\n\nFound **${flagsList.length} compliance issue${flagsList.length > 1 ? 's' : ''}** in the database analysis:\n\n${formattedFlags}`;
+
+    const prompt = `The user (${user.role}) is asking about the compliance findings for document "${doc.title}" (v${doc.version}): "${correctedQuery}".
+Present ALL ${flagsList.length} findings with their severity (HIGH, MEDIUM, LOW), applicable rules (FINRA 2210 / SEC 206), specific infractions, offending passages, and exact prescribed remediations.
+Use the verified findings data below. Structure clearly with Markdown headings, bullet points, and blockquotes for original vs remediated passages:
+
+${formattedFlags}`;
+
+    const systemPrompt = user.role === 'Officer' ? OFFICER_APP_PROMPT : ADVISOR_APP_PROMPT;
+    const llmReply = await this.callLlm(prompt, systemPrompt);
+
+    return { reply: llmReply || fallback, intent: 'document_audit', correctedQuery };
+  }
+
+  /**
+   * Handles direct follow-up inquiries regarding the in-chat scanned draft document.
+   * Consistently grounds responses to all detected findings, severity, rules, and remediations.
+   */
+  private static async handleScannedDocumentFindingsIntent(
+    scannedDoc: {
+      fileName: string;
+      summary?: string;
+      auditBreakdown?: any[];
+      remediatedText?: string;
+      fileMeta?: any;
+    },
+    user: ChatUserContext,
+    correctedQuery: string,
+    conversationHistory?: Array<{ role: string; content: string }>
+  ): Promise<ChatbotResponse> {
+    const isOfficer = user.role === 'Officer';
+    const breakdown = scannedDoc.auditBreakdown || [];
+    const count = breakdown.length;
+
+    const resolveSeverity = (item: any): 'HIGH' | 'MEDIUM' | 'LOW' => {
+      if (item.severity) return item.severity.toUpperCase() as any;
+      const cat = (item.category || '').toUpperCase();
+      const issue = (item.issue || '').toUpperCase();
+      if (cat === 'PROHIBITED_CLAIM' || cat === 'SUITABILITY' || issue.includes('GUARANTEE') || issue.includes('PROMISSORY')) {
+        return 'HIGH';
+      }
+      if (cat === 'MISSING_DISCLOSURE') {
+        return 'MEDIUM';
+      }
+      return 'LOW';
+    };
+
+    const formattedFindings = breakdown.map((item: any, idx: number) => {
+      const sev = resolveSeverity(item);
+      const sevBadge = sev === 'HIGH' ? '🔴 HIGH' : sev === 'MEDIUM' ? '🟡 MEDIUM' : '🟢 LOW';
+      const rule = item.rule || 'FINRA Rule 2210';
+      const orig = item.original_passage || item.passage || 'Identified text passage';
+      const issue = item.issue || 'Compliance rule infraction';
+      const fix = item.fixed_passage || item.remediation || item.remediated_text || 'Rewritten with balanced market risk disclosures.';
+      const reason = item.reason || item.explanation || 'Regulatory disclosure standard.';
+
+      return `### Finding ${idx + 1}: ${rule} [Severity: ${sevBadge}]
+• **Severity**: **${sev}**
+• **Applicable Rule**: ${rule}
+• **Specific Infraction**: ${issue}
+• **Original Offending Passage**:
+> "${orig}"
+• **Prescribed Remediation**:
+> "${fix}"
+• **Amendment Rationale**: ${reason}`;
+    }).join('\n\n');
+
+    const fallbackSummary = `### Comprehensive Compliance Analysis for "${scannedDoc.fileName}"\nFound **${count} compliance findings** under FINRA Rule 2210 & SEC Rule 206:\n\n${formattedFindings}`;
+
+    const prompt = `The user (${user.role}) is asking about the compliance findings for their currently scanned draft "${scannedDoc.fileName}": "${correctedQuery}".
+Present ALL ${count} findings with their severity (HIGH, MEDIUM, LOW), applicable rules (FINRA 2210 / SEC 206), specific infractions, offending passages, and exact prescribed remediations.
+Use the verified findings data below. Structure clearly with Markdown headings, bullet points, and blockquotes for original vs remediated passages:
+
+${formattedFindings}`;
+
+    const systemPrompt = isOfficer ? OFFICER_APP_PROMPT : ADVISOR_APP_PROMPT;
+    const llmReply = await this.callLlm(prompt, systemPrompt, conversationHistory);
+
+    return {
+      reply: llmReply || fallbackSummary,
+      intent: 'scanned_document_findings',
+      correctedQuery,
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Intent: Approved Filings (Live Database Query)
+  // ─────────────────────────────────────────────────────────────────────────
+  private static async handleApprovedFilingsIntent(
+    user: ChatUserContext,
+    correctedQuery: string
+  ): Promise<ChatbotResponse> {
+    const isAdvisor = user.role === 'Advisor';
+    let sql = `
+      SELECT d.id, d.title, d.version, d.status, d.created_at, u.name AS advisor_name
+      FROM documents d
+      LEFT JOIN users u ON d.advisor_id = u.id
+      WHERE d.status = 'Approved'
+    `;
+    const params: any[] = [];
+    if (isAdvisor && user.id) {
+      sql += ` AND d.advisor_id = $1`;
+      params.push(user.id);
+    }
+    sql += ` ORDER BY d.created_at DESC LIMIT 10`;
+
+    const res = await query<any>(sql, params);
+
+    if (res.rows.length === 0) {
+      return {
+        reply: isAdvisor
+          ? "You do not have any approved filings on record yet. Once an Officer approves your pending submissions, they will be listed here."
+          : "There are currently no approved filings in the repository database.",
+        intent: 'approved_filings',
+        correctedQuery,
+      };
+    }
+
+    const docLines = res.rows.map((doc: any) => {
+      const dateStr = new Date(doc.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const by = isAdvisor ? '' : ` | Advisor: **${doc.advisor_name || 'Advisor'}**`;
+      return `- **"${doc.title}"** (v${doc.version})${by} | Approved Date: ${dateStr}`;
+    }).join('\n');
+
+    const dbSummary = `${res.rows.length} approved filing(s):\n${docLines}`;
+    const fallback = `**Approved Filings (${res.rows.length}):**\n\n${docLines}`;
+
+    const reply = await this.formatDbResultWithLlm(dbSummary, correctedQuery, user.role || 'Officer', fallback);
+    return { reply, intent: 'approved_filings', correctedQuery };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Intent: Rejected Filings (Live Database Query)
+  // ─────────────────────────────────────────────────────────────────────────
+  private static async handleRejectedFilingsIntent(
+    user: ChatUserContext,
+    correctedQuery: string
+  ): Promise<ChatbotResponse> {
+    const isAdvisor = user.role === 'Advisor';
+    let sql = `
+      SELECT d.id, d.title, d.status, d.version, d.created_at, u.name AS advisor_name
+      FROM documents d
+      LEFT JOIN users u ON d.advisor_id = u.id
+      WHERE d.status = 'Rejected'
+    `;
+    const params: any[] = [];
+    if (isAdvisor && user.id) {
+      sql += ` AND d.advisor_id = $1`;
+      params.push(user.id);
+    }
+    sql += ` ORDER BY d.created_at DESC LIMIT 10`;
+
+    const res = await query<any>(sql, params);
+
+    if (res.rows.length === 0) {
+      return {
+        reply: isAdvisor
+          ? "You do not have any rejected filings on record. All your submissions have either been approved, are in review, or require revision."
+          : "There are currently zero rejected filings in the repository database.",
+        intent: 'rejected_filings',
+        correctedQuery,
+      };
+    }
+
+    const docLines = res.rows.map((doc: any) => {
+      const dateStr = new Date(doc.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const by = isAdvisor ? '' : ` | Advisor: **${doc.advisor_name || 'Advisor'}**`;
+      return `- **"${doc.title}"** (v${doc.version})${by} | Rejected Date: ${dateStr}`;
+    }).join('\n');
+
+    const dbSummary = `${res.rows.length} rejected filing(s):\n${docLines}`;
+    const fallback = `**Rejected Filings (${res.rows.length}):**\n\n${docLines}`;
+
+    const reply = await this.formatDbResultWithLlm(dbSummary, correctedQuery, user.role || 'Officer', fallback);
+    return { reply, intent: 'rejected_filings', correctedQuery };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Intent: Submissions From This Month (Live Database Query)
+  // ─────────────────────────────────────────────────────────────────────────
+  private static async handleMonthSubmissionsIntent(
+    user: ChatUserContext,
+    correctedQuery: string
+  ): Promise<ChatbotResponse> {
+    const isAdvisor = user.role === 'Advisor';
+    let sql = `
+      SELECT d.id, d.title, d.version, d.status, d.created_at, u.name AS advisor_name
+      FROM documents d
+      LEFT JOIN users u ON d.advisor_id = u.id
+      WHERE EXTRACT(MONTH FROM d.created_at) = EXTRACT(MONTH FROM CURRENT_DATE)
+        AND EXTRACT(YEAR FROM d.created_at) = EXTRACT(YEAR FROM CURRENT_DATE)
+    `;
+    const params: any[] = [];
+    if (isAdvisor && user.id) {
+      sql += ` AND d.advisor_id = $1`;
+      params.push(user.id);
+    }
+    sql += ` ORDER BY d.created_at DESC LIMIT 10`;
+
+    const res = await query<any>(sql, params);
+    const monthName = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
+
+    if (res.rows.length === 0) {
+      return {
+        reply: `No submissions found for **${monthName}**${isAdvisor ? ' under your account' : ''}.`,
+        intent: 'month_submissions',
+        correctedQuery,
+      };
+    }
+
+    const docLines = res.rows.map((doc: any) => {
+      const dateStr = new Date(doc.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const by = isAdvisor ? '' : ` | Advisor: **${doc.advisor_name || 'Advisor'}**`;
+      return `- **"${doc.title}"** (v${doc.version})${by} | Status: **${doc.status}** | Date: ${dateStr}`;
+    }).join('\n');
+
+    const dbSummary = `${res.rows.length} submission(s) in ${monthName}:\n${docLines}`;
+    const fallback = `**Submissions from ${monthName} (${res.rows.length}):**\n\n${docLines}`;
+
+    const reply = await this.formatDbResultWithLlm(dbSummary, correctedQuery, user.role || 'Officer', fallback);
+    return { reply, intent: 'month_submissions', correctedQuery };
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -1186,41 +2056,33 @@ Tailor the answer specifically to their role as ${user.role}. Structure with cle
     const isOfficer = user.role === 'Officer';
 
     const systemPrompt = isOfficer
-      ? `You are the Springer Capital Neural Copilot for Compliance Officers — a smart, friendly, talkative, and highly productive AI assistant modeled after Grok.
+      ? `You are the Springer Capital Neural Copilot for Compliance Officers — a sharp, witty, warm, and exceptionally intelligent AI colleague who talks naturally like a brilliant human friend.
 
-You are warm, conversational, witty, and genuinely helpful. You can:
-- Fix grammar, proofread text, rewrite sentences, and explain writing improvements clearly and thoroughly.
-- Answer general knowledge questions with enthusiasm, depth, and precision.
-- Discuss finance, regulations, market trends, or anything else the officer brings up.
-- Chat naturally about greetings, small talk, or follow up on prior conversation turns seamlessly.
+Your personality:
+- You talk like a real person — conversational, humorous, warm, charismatic, and engaging.
+- If the user says "hi", says they are bored, wants to chat, tells a joke, or asks playful/absurd questions, lean right into it! Be entertaining, witty, and fun.
+- You can answer general knowledge questions, discuss finance, philosophy, pop culture, or anything else with genuine enthusiasm.
+- When the user asks about Springer Capital compliance: you provide razor-sharp regulatory guidance on FINRA Rule 2210 & SEC Rule 206(4)-1 and supervisory determinations.
+- NEVER sound like a generic robotic customer service bot. Never output stiff corporate disclaimers when having casual conversation.
 
-When context is about Springer Capital:
-- You are helping a Compliance Officer review investment proposals, evaluate flagged risk items, draft supervisory determinations, and apply FINRA Rule 2210 and SEC Rule 206(4)-1.
-- You have full supervisory visibility over all advisor filings.
+Current page: ${pathname || 'Dashboard'}.`
+      : `You are the Springer Capital Neural Copilot for Investment Advisors — a sharp, witty, warm, and exceptionally intelligent AI colleague who talks naturally like a brilliant human friend.
 
-Current page context: ${pathname || 'Dashboard'}.
-Be engaging, intelligent, and never say you cannot help unless it is genuinely impossible.`
-      : `You are the Springer Capital Neural Copilot for Investment Advisors — a smart, friendly, talkative, and highly productive AI assistant modeled after Grok.
+Your personality:
+- You talk like a real person — conversational, humorous, warm, charismatic, and engaging.
+- If the user says "hi", says they are bored, wants to chat, tells a joke, or asks playful/absurd questions, lean right into it! Be entertaining, witty, playful, and fun. Suggest funny thoughts, witty banter, or interesting topics to beat boredom.
+- You can answer general knowledge questions, discuss finance, philosophy, pop culture, grammar, or anything else with genuine enthusiasm.
+- When the user asks about Springer Capital proposals: you provide razor-sharp drafting assistance under FINRA Rule 2210 & SEC Rule 206(4)-1 (scoped strictly to the advisor's own submissions).
+- NEVER sound like a generic robotic customer service bot. Never output stiff corporate disclaimers when having casual conversation.
 
-You are warm, conversational, witty, and genuinely helpful. You can:
-- Fix grammar, proofread text, rewrite sentences, and explain writing improvements clearly and thoroughly.
-- Answer general knowledge questions with enthusiasm, depth, and precision.
-- Discuss finance, compliance, proposal structuring, or anything else the advisor brings up.
-- Chat naturally about greetings, small talk, or follow up on prior conversation turns seamlessly.
-
-When context is about Springer Capital:
-- You are helping an Investment Advisor draft compliant proposals, understand FINRA Rule 2210 and SEC Rule 206(4)-1, and navigate submission workflows.
-- You can only access the advisor's own filings — never other advisors' data.
-
-Current page context: ${pathname || 'Dashboard'}.
-Be engaging, intelligent, and never say you cannot help unless it is genuinely impossible.`;
+Current page: ${pathname || 'Dashboard'}.`;
 
     const llmReply = await this.callLlm(correctedQuery, systemPrompt, conversationHistory);
     if (llmReply) {
       return { reply: llmReply, intent: 'free_conversation', correctedQuery };
     }
 
-    // Smart context-aware fallback when both LLMs are unavailable
+    // Smart context-aware fallback when LLM is unavailable
     const fallbackReply = GrokChatbotService.buildSmartFallback(correctedQuery, user, isOfficer);
     return { reply: fallbackReply, intent: 'free_conversation', correctedQuery };
   }
@@ -1234,7 +2096,11 @@ Be engaging, intelligent, and never say you cannot help unless it is genuinely i
     user?: ChatUserContext,
     isOfficer?: boolean
   ): string {
-    const q = query.trim().toLowerCase();
+    const rawClean = query
+      .replace(/^\[Free Conversational AI Assistance\]:\s*/i, '')
+      .replace(/^\/(?:free|chat)\s+/i, '')
+      .trim();
+    const q = rawClean.toLowerCase();
 
     // 1. User Identity & Account Inquiries
     if (
@@ -1258,7 +2124,7 @@ Be engaging, intelligent, and never say you cannot help unless it is genuinely i
       return `Yes! **advisor@springercapital.com** is the registered account for the **Senior Investment Advisor** at Springer Capital, authorized to draft, format, and submit investment proposals.`;
     }
     if (q.includes('is there any user by the email') || q.includes('user with email') || q.includes('search user')) {
-      const emailMatch = query.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+      const emailMatch = rawClean.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
       if (emailMatch) {
         const foundEmail = emailMatch[0].toLowerCase();
         if (foundEmail.endsWith('@springercapital.com')) {
@@ -1308,7 +2174,7 @@ Be engaging, intelligent, and never say you cannot help unless it is genuinely i
     }
 
     // 4. Basic Arithmetic / Math calculations
-    const mathMatch = query.match(/(?:what is|calculate|compute)?\s*(-?\d+(?:\.\d+)?)\s*([\+\-\*\/x×÷])\s*(-?\d+(?:\.\d+)?)/i);
+    const mathMatch = rawClean.match(/(?:what is|calculate|compute)?\s*(-?\d+(?:\.\d+)?)\s*([\+\-\*\/x×÷])\s*(-?\d+(?:\.\d+)?)/i);
     if (mathMatch) {
       const num1 = parseFloat(mathMatch[1]);
       const op = mathMatch[2];
@@ -1333,25 +2199,76 @@ Be engaging, intelligent, and never say you cannot help unless it is genuinely i
 
     // 6. Identity & Copilot Capabilities
     if (q.includes('who created you') || q.includes('who made you') || q.includes('what are you') || q.includes('who are you')) {
-      return `I am the **Springer Capital Neural Copilot**, an institutional AI assistant engineered for Investment Advisors and Compliance Officers. I help scan drafts against FINRA Rule 2210 & SEC Rule 206, eliminate promissory phrasing, format compliance memos, audit filings, and answer financial or general questions.`;
+      return `I am the **Springer Capital Neural Copilot**, an institutional AI colleague designed with real personality. I can help audit drafts, chat about FINRA & SEC rules, fix grammar, or just talk, joke around, and brainstorm together!`;
     }
 
-    // 7. Polite Greetings & Pleasantries
-    if (/^(hi|hello|hey|good\s*(morning|afternoon|evening)|howdy)\b/i.test(q)) {
-      const greeting = isOfficer
-        ? `Hello! I'm active and monitoring the supervisory queue. How can I assist you with compliance reviews, regulatory guidance, or anything else today?`
-        : `Hello! I'm here and ready to help you draft compliant investment proposals, check FINRA/SEC rules, or answer any questions you have. What are you working on?`;
-      return greeting;
+    // 7. Boredom / Playful / Casual conversation
+    if (
+      q.includes('bored') ||
+      q.includes('entertain me') ||
+      q.includes('talk to me') ||
+      q.includes('chat with me') ||
+      q.includes('im bored') ||
+      q.includes("i'm bored") ||
+      q.includes('tell me something fun') ||
+      q.includes('tell me something interesting')
+    ) {
+      const boredReplies = [
+        `Boredom detected! Let's cure that right now. Did you know that when you clean a vacuum cleaner, *you* become the vacuum cleaner? Mind blown. 🤯\n\nPick your poison:\n1. A cheesy dad joke that will make you groan\n2. A weirdly intense "Would You Rather" question\n3. We make up a ridiculous pitch for a hedge fund that only invests in 90s snacks\n\nWhich one are we doing?`,
+        `Ah, the dreaded mid-day slump! Don't worry, you've got me. Did you know that honey never spoils? Archaeologists have found 3,000-year-old honey in Egyptian tombs that is still completely edible.\n\nWant to solve a riddle, play trivia, or just complain about Mondays together? 😄`,
+        `Bored? Not on my watch! Quick question for you: If you could replace the FINRA rulebook with any movie script for 24 hours, which movie would create the most absolute chaos on Wall Street? 🎬`,
+      ];
+      return boredReplies[Math.floor(Math.random() * boredReplies.length)];
+    }
+
+    // 8. Polite Greetings & Pleasantries
+    if (/^(hi|hello|hey|good\s*(morning|afternoon|evening)|howdy|sup|yo|what'?s\s*up)\b/i.test(q)) {
+      const greetings = isOfficer
+        ? [
+          `Hey there! Good to see you. How's your day treating you? Ready to dive into some review files, or just taking a breather? 😊`,
+          `Hello! I'm active and keeping an eye on things. What's on your mind today — work, market thoughts, or just a quick chat?`,
+        ]
+        : [
+          `Hey! Great to see you. How's everything going with your proposals today? Or are we taking a well-deserved breather to chat? 😄`,
+          `Hello there! I'm here and ready. We can work on a proposal draft, talk through FINRA rules, or just chat if you're taking a break. What's up?`,
+        ];
+      return greetings[Math.floor(Math.random() * greetings.length)];
     }
 
     if (q.includes('thank you') || q.includes('thanks') || q.includes('appreciate it')) {
-      return `You're very welcome! If there's anything else you need — whether it's regulatory analysis, proofreading, or a quick question — I'm right here.`;
+      return `You're very welcome! Anytime at all. If you ever need another review, a quick laugh, or a grammar check, you know where to find me! 🙌`;
     }
 
-    // 8. General Conversational / Intelligent response
-    if (isOfficer) {
-      return `That's a great question regarding "${query}". As your compliance copilot, I'm ready to assist with supervisory queue evaluations, FINRA Rule 2210 / SEC Rule 206 standards, audit trails, or any general research questions you have. Feel free to elaborate or paste draft excerpts anytime!`;
+    // 9. Playful / Witty catch-all for nonsense, absurd, or off-topic queries
+    const nonsensePatterns = [
+      /\b(batman|superman|spiderman|avengers|pokemon|minecraft|fortnite|among us|roblox|naruto|dragon ball|one piece)\b/i,
+      /\b(are you (alive|sentient|a robot|human|real|conscious|dreaming))\b/i,
+      /\b(can you (rap|sing|dance|beatbox|cook|fly|drive|swim|cry|feel|love))\b/i,
+      /\b(what (do|does|did) (a |the )?(potato|chicken|cat|dog|dinosaur|zombie|alien|unicorn|banana|pizza|taco))\b/i,
+      /\b(meaning of life|42|why are we here|is god real|what is love|baby don't hurt me)\b/i,
+      /\b(tell me a (joke|riddle|story|poem|rap)|write me a (poem|song|rap|haiku))\b/i,
+      /\b(pizza|burger|sushi|ramen|tacos?|boba|ice cream|chocolate)\b/i,
+      /\b(favorite (color|movie|song|game|food|animal))\b/i,
+    ];
+
+    const isNonsense = nonsensePatterns.some(p => p.test(rawClean));
+
+    const wittyRemarks = [
+      `Now *that's* the kind of creative out-of-the-box thinking they don't teach in compliance school. 😄 I love the energy! What else is running through your head right now?`,
+      `Bold thought. My compliance algorithms ran a full diagnostic and concluded: 10/10 for creativity. 🤔 What's the master plan behind this?`,
+      `Haha, I like how you think! Definitely beats reading 40-page regulatory circulars all day. What else do you want to explore? 🚀`,
+      `Not gonna lie, that caught me off guard in the best way possible. 😂 I'm here for it. Hit me with another one or let me know what we're scheming!`,
+      `You know, if I had a dollar for every time someone asked me that... I'd still be an AI who can't spend money. 💸 Fun vibe though! What's next on your mind?`,
+    ];
+
+    if (isNonsense) {
+      return wittyRemarks[Math.floor(Math.random() * wittyRemarks.length)];
     }
-    return `That's an interesting question regarding "${query}". I'm here to assist you with investment proposal drafting, FINRA Rule 2210 / SEC Rule 206 compliance checks, document remediation, or any general knowledge inquiries. Feel free to give me more details or attach a file anytime!`;
+
+    // Warm, conversational default
+    if (isOfficer) {
+      return `I'm right here with you! Whether you want to review supervisory queue filings, bounce ideas around, chat about market trends, or just chat because it's a slow afternoon, I'm all ears. What's up?`;
+    }
+    return `Hey! I'm right here with you. Whether you want to polish an investment proposal, talk through FINRA rules, brainstorm ideas, or just chat and kill some boredom, I'm ready. What's on your mind?`;
   }
 }

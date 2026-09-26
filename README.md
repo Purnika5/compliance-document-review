@@ -12,7 +12,7 @@ On any fresh machine with **Docker** installed, the entire multi-service applica
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/Purnika5/compliance-document-review.git
+git clone https://github.com/keithlachica/compliance-document-review.git
 cd compliance-document-review
 
 # 2. Launch all 6 microservices
@@ -195,4 +195,11 @@ The application includes a zero-configuration Infrastructure-as-Code Blueprint (
    - **`compliance-frontend`** Next.js 16 Web Service.
    - **`compliance-pii-masker`** & **`compliance-mock-ai`** Private Web Services.
 3. **Deploy-on-Push**: GitHub Actions workflow (`.github/workflows/render-deploy.yml`) runs tests, security audits, and triggers Render deployment automatically on push to `staging` or `main`.
+ 
+---
 
+## 👨‍💻 Author
+
+- **Keith Lachica**: [https://github.com/keithlachica](https://github.com/keithlachica)
+
+  

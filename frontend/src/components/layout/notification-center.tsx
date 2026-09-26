@@ -28,9 +28,10 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { authStore } from "@/lib/auth/auth-store";
-import { getMySubmissionsAction } from "@/lib/actions/document-actions";
+import { getMySubmissionsAction, getQueueAction } from "@/lib/actions/document-actions";
 import type { DocumentItem } from "@/lib/validation/document";
 import {
   notificationService,
@@ -72,8 +73,29 @@ function getActiveRevisionDocuments(docs: DocumentItem[]): DocumentItem[] {
 }
 
 export function NotificationCenter() {
+  const pathname = usePathname();
+  const activeDocumentId = React.useMemo(() => {
+    if (!pathname) return null;
+    const match = pathname.match(/\/documents\/([^\/\?#]+)/);
+    return match ? match[1] : null;
+  }, [pathname]);
+
   const [notifications, setNotifications] = useState<INotificationItem[]>([]);
   const [revisionItems, setRevisionItems] = useState<DocumentItem[]>([]);
+  const [docTypeMap, setDocTypeMap] = useState<
+    Record<string, { fileName?: string; fileFormat?: string; mimeType?: string; title?: string }>
+  >({});
+  const [viewedRevisionIds, setViewedRevisionIds] = useState<Set<string>>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = sessionStorage.getItem("viewed_revision_doc_ids");
+        return stored ? new Set(JSON.parse(stored)) : new Set();
+      } catch {
+        return new Set();
+      }
+    }
+    return new Set();
+  });
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isDismissed, setIsDismissed] = useState<boolean>(false);
@@ -101,7 +123,21 @@ export function NotificationCenter() {
     setIsLoading(true);
     try {
       const res = await notificationService.getNotifications(false, 1, 40);
-      setNotifications(res.notifications);
+      let items = res.notifications;
+      if (activeDocumentId) {
+        let hasMarked = false;
+        items = items.map((n) => {
+          if (n.documentId === activeDocumentId && !n.read) {
+            hasMarked = true;
+            return { ...n, read: true };
+          }
+          return n;
+        });
+        if (hasMarked) {
+          notificationService.markDocumentAsRead(activeDocumentId).catch(() => {});
+        }
+      }
+      setNotifications(items);
     } catch (err) {
       console.error("[NotificationCenter] Failed to fetch notifications:", err);
     } finally {
@@ -113,13 +149,61 @@ export function NotificationCenter() {
       try {
         const myDocs = await getMySubmissionsAction();
         setRevisionItems(getActiveRevisionDocuments(myDocs));
+        const map: Record<string, { fileName?: string; fileFormat?: string; mimeType?: string; title?: string }> = {};
+        for (const d of myDocs) {
+          map[d.id] = {
+            fileName: d.fileName,
+            fileFormat: d.fileFormat,
+            mimeType: d.mimeType,
+            title: d.title,
+          };
+        }
+        setDocTypeMap((prev) => ({ ...prev, ...map }));
       } catch (err) {
         console.error("[NotificationCenter] Failed to fetch revision submissions:", err);
       }
     } else {
       setRevisionItems([]);
+      try {
+        const queueDocs = await getQueueAction();
+        const map: Record<string, { fileName?: string; fileFormat?: string; mimeType?: string; title?: string }> = {};
+        for (const d of queueDocs) {
+          map[d.id] = {
+            fileName: d.fileName,
+            fileFormat: d.fileFormat,
+            mimeType: d.mimeType,
+            title: d.title,
+          };
+        }
+        setDocTypeMap((prev) => ({ ...prev, ...map }));
+      } catch (err) {
+        console.error("[NotificationCenter] Failed to fetch queue submissions:", err);
+      }
     }
-  }, []);
+  }, [activeDocumentId]);
+
+  // When activeDocumentId changes (viewing a document), automatically mark its notifications as read
+  useEffect(() => {
+    if (!activeDocumentId) return;
+
+    setViewedRevisionIds((prev) => {
+      if (prev.has(activeDocumentId)) return prev;
+      const next = new Set(prev);
+      next.add(activeDocumentId);
+      try {
+        sessionStorage.setItem("viewed_revision_doc_ids", JSON.stringify(Array.from(next)));
+      } catch {}
+      return next;
+    });
+
+    setNotifications((prev) => {
+      const hasUnread = prev.some((n) => n.documentId === activeDocumentId && !n.read);
+      if (!hasUnread) return prev;
+      return prev.map((n) => (n.documentId === activeDocumentId ? { ...n, read: true } : n));
+    });
+
+    notificationService.markDocumentAsRead(activeDocumentId).catch(() => {});
+  }, [activeDocumentId]);
 
   /**
    * DOCU: Subscribes to live SSE notification stream and updates internal state on arrival.
@@ -139,6 +223,10 @@ export function NotificationCenter() {
 
       disconnectSSE = notificationService.connectSSE(
         (newItem: INotificationItem) => {
+          if (activeDocumentId && newItem.documentId === activeDocumentId) {
+            newItem.read = true;
+            notificationService.markDocumentAsRead(activeDocumentId).catch(() => {});
+          }
           setNotifications((prev) => {
             const exists = prev.some((n) => n.id === newItem.id);
             if (exists) {
@@ -214,17 +302,239 @@ export function NotificationCenter() {
     await notificationService.markAsRead(id);
   };
 
+  const renderFileBadge = (
+    type: "pdf" | "doc" | "txt" | "xls" | "generic",
+    statusBadge?: "approval" | "revision" | "ai"
+  ) => {
+    let badgeClasses = "";
+    let iconSvg: React.ReactNode = null;
+    let label = "";
+
+    switch (type) {
+      case "pdf":
+        badgeClasses = "bg-red-50 border-red-200 text-red-600";
+        label = "PDF";
+        iconSvg = (
+          <svg
+            className="h-3 w-3 text-red-600"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+          </svg>
+        );
+        break;
+      case "doc":
+        badgeClasses = "bg-blue-50 border-blue-200 text-blue-600";
+        label = "DOC";
+        iconSvg = (
+          <svg
+            className="h-3 w-3 text-blue-600"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+          </svg>
+        );
+        break;
+      case "txt":
+        badgeClasses = "bg-amber-50 border-amber-200 text-amber-700";
+        label = "TXT";
+        iconSvg = (
+          <svg
+            className="h-3 w-3 text-amber-600"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
+          </svg>
+        );
+        break;
+      case "xls":
+        badgeClasses = "bg-emerald-50 border-emerald-200 text-emerald-600";
+        label = "XLS";
+        iconSvg = (
+          <svg
+            className="h-3 w-3 text-emerald-600"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+          </svg>
+        );
+        break;
+      default:
+        badgeClasses = "bg-[#183028]/5 border-[#183028]/15 text-[#183028]/70";
+        label = "FILE";
+        iconSvg = <FileText className="h-3 w-3 text-[#183028]/70" />;
+        break;
+    }
+
+    return (
+      <div className="relative inline-flex shrink-0">
+        <div
+          className={cn(
+            "h-7 w-7 rounded-md border flex flex-col items-center justify-center shrink-0 shadow-2xs select-none transition-transform group-hover:scale-105",
+            badgeClasses
+          )}
+        >
+          {iconSvg}
+          <span className="text-[7px] font-black tracking-wider leading-none mt-0.5 font-sans uppercase">
+            {label}
+          </span>
+        </div>
+        {statusBadge === "approval" && (
+          <span
+            className="absolute -bottom-1 -right-1 bg-emerald-600 text-white rounded-full p-0.5 shadow-2xs ring-1 ring-white"
+            title="Approved"
+          >
+            <CheckCircle2 className="h-2.5 w-2.5" />
+          </span>
+        )}
+        {statusBadge === "revision" && (
+          <span
+            className="absolute -bottom-1 -right-1 bg-amber-500 text-white rounded-full p-0.5 shadow-2xs ring-1 ring-white"
+            title="Revision Required"
+          >
+            <AlertCircle className="h-2.5 w-2.5" />
+          </span>
+        )}
+        {statusBadge === "ai" && (
+          <span
+            className="absolute -bottom-1 -right-1 bg-amber-500 text-white rounded-full p-0.5 shadow-2xs ring-1 ring-white"
+            title="AI Alert"
+          >
+            <ShieldAlert className="h-2.5 w-2.5" />
+          </span>
+        )}
+      </div>
+    );
+  };
+
   const getCategoryIcon = (category: INotificationItem["category"]) => {
     switch (category) {
       case "ai":
-        return <ShieldAlert className="h-3.5 w-3.5 text-amber-500 shrink-0" />;
+        return (
+          <div className="h-7 w-7 rounded-md bg-amber-50 border border-amber-200 flex items-center justify-center shrink-0 shadow-2xs">
+            <ShieldAlert className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+          </div>
+        );
       case "approval":
-        return <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />;
+        return (
+          <div className="h-7 w-7 rounded-md bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0 shadow-2xs">
+            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+          </div>
+        );
       case "revision":
-        return <AlertCircle className="h-3.5 w-3.5 text-amber-600 shrink-0" />;
+        return (
+          <div className="h-7 w-7 rounded-md bg-amber-50 border border-amber-200 flex items-center justify-center shrink-0 shadow-2xs">
+            <AlertCircle className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+          </div>
+        );
       default:
-        return <FileText className="h-3.5 w-3.5 text-[#183028]/60 shrink-0" />;
+        return (
+          <div className="h-7 w-7 rounded-md bg-[#183028]/5 border border-[#183028]/15 flex items-center justify-center shrink-0 shadow-2xs">
+            <FileText className="h-3.5 w-3.5 text-[#183028]/60 shrink-0" />
+          </div>
+        );
     }
+  };
+
+  const getNotificationIcon = (notif: INotificationItem) => {
+    const docInfo = notif.documentId ? docTypeMap[notif.documentId] : undefined;
+    const fileName = (notif.fileName || notif.file_name || docInfo?.fileName || "").trim();
+    const mimeType = (notif.mimeType || notif.mime_type || docInfo?.mimeType || "").trim().toLowerCase();
+    const fileFormat = (docInfo?.fileFormat || "").trim().toUpperCase();
+    const title = notif.title || docInfo?.title || "";
+    const description = notif.description || "";
+    const combined = `${fileName} ${mimeType} ${fileFormat} ${title} ${description}`.toUpperCase();
+
+    const isPdf =
+      fileName.toLowerCase().endsWith(".pdf") ||
+      mimeType.includes("pdf") ||
+      fileFormat === "PDF" ||
+      combined.includes(".PDF") ||
+      /\bPDF\b/i.test(title);
+
+    const isDoc =
+      fileName.toLowerCase().endsWith(".doc") ||
+      fileName.toLowerCase().endsWith(".docx") ||
+      mimeType.includes("msword") ||
+      mimeType.includes("wordprocessingml") ||
+      fileFormat === "DOC" ||
+      fileFormat === "DOCX" ||
+      combined.includes(".DOCX") ||
+      combined.includes(".DOC") ||
+      /\bDOCX\b/i.test(title) ||
+      /\bWORD\b/i.test(title);
+
+    const isTxt =
+      fileName.toLowerCase().endsWith(".txt") ||
+      mimeType.includes("text/plain") ||
+      fileFormat === "TXT" ||
+      combined.includes(".TXT") ||
+      /\bTXT\b/i.test(title);
+
+    const isXls =
+      fileName.toLowerCase().endsWith(".xls") ||
+      fileName.toLowerCase().endsWith(".xlsx") ||
+      fileName.toLowerCase().endsWith(".csv") ||
+      mimeType.includes("spreadsheet") ||
+      mimeType.includes("ms-excel") ||
+      mimeType.includes("csv") ||
+      fileFormat === "XLS" ||
+      fileFormat === "XLSX" ||
+      combined.includes(".XLSX") ||
+      combined.includes(".XLS") ||
+      combined.includes(".CSV");
+
+    let statusBadge: "approval" | "revision" | "ai" | undefined;
+    if (notif.category === "approval" || notif.rawType?.includes("APPROVED")) {
+      statusBadge = "approval";
+    } else if (
+      notif.category === "revision" ||
+      notif.rawType?.includes("REVISION") ||
+      notif.title.toLowerCase().includes("revision") ||
+      notif.description.toLowerCase().includes("needs revision")
+    ) {
+      statusBadge = "revision";
+    } else if (notif.category === "ai") {
+      statusBadge = "ai";
+    }
+
+    if (isPdf) return renderFileBadge("pdf", statusBadge);
+    if (isDoc) return renderFileBadge("doc", statusBadge);
+    if (isTxt) return renderFileBadge("txt", statusBadge);
+    if (isXls) return renderFileBadge("xls", statusBadge);
+
+    // If it's associated with a document, default to institutional PDF badge
+    if (notif.documentId) {
+      return renderFileBadge("pdf", statusBadge);
+    }
+
+    return getCategoryIcon(notif.category);
   };
 
   const userRole = authStore.getRole();
@@ -283,25 +593,33 @@ export function NotificationCenter() {
     return rawTitle.trim() || "Notification";
   };
 
+  const unviewedRevisionDocs = React.useMemo(() => {
+    return revisionItems.filter(
+      (item) => item.id !== activeDocumentId && !viewedRevisionIds.has(item.id)
+    );
+  }, [revisionItems, activeDocumentId, viewedRevisionIds]);
+
   const topRevisionItem = React.useMemo(() => {
-    if (!isAdvisor || revisionItems.length === 0) return null;
+    if (!isAdvisor || unviewedRevisionDocs.length === 0) return null;
+    const target = unviewedRevisionDocs[0];
     return {
-      id: revisionItems[0].id,
-      title: cleanNoticeTitle(revisionItems[0].title),
-      notifId: undefined as string | undefined,
+      id: target.id,
+      title: cleanNoticeTitle(target.title),
+      notifId: notifications.find((n) => n.documentId === target.id)?.id,
     };
-  }, [isAdvisor, revisionItems]);
+  }, [isAdvisor, unviewedRevisionDocs, notifications]);
 
   const officerUnreadNotifs = React.useMemo(() => {
     return notifications.filter(
       (n) =>
         !n.read &&
+        n.documentId !== activeDocumentId &&
         (n.category === "revision" ||
           n.category === "document" ||
           n.rawType === "REVISION_COMMENT" ||
           n.rawType === "STATUS_CHANGE")
     );
-  }, [notifications]);
+  }, [notifications, activeDocumentId]);
 
   const topOfficerItem = React.useMemo(() => {
     if (!isOfficer || officerUnreadNotifs.length === 0) return null;
@@ -313,18 +631,13 @@ export function NotificationCenter() {
     };
   }, [isOfficer, officerUnreadNotifs]);
 
-  const totalBadgeCount =
-    activeRevisionCount > 0
-      ? Math.max(unreadCount, activeRevisionCount)
-      : unreadCount;
-
   const displayedRevisionItem = topRevisionItem;
   const displayedOfficerItem = topOfficerItem;
 
   return (
     <div className="flex items-center gap-2 sm:gap-2.5">
       {/* Information Alert (Outside notification, beside notification bell) */}
-      {isAdvisor && activeRevisionCount > 0 && displayedRevisionItem && !isDismissed && (
+      {isAdvisor && unviewedRevisionDocs.length > 0 && displayedRevisionItem && !isDismissed && (
         <div
           role="status"
           aria-live="polite"
@@ -415,19 +728,22 @@ export function NotificationCenter() {
       <Popover>
         <PopoverTrigger asChild>
           <button
+            data-tour="header-notifications"
             className={cn(
               "relative h-8 w-8 rounded-full border bg-[#FFFFFF] text-[#183028] hover:bg-[#C5E86C] hover:text-[#183028] hover:border-[#C5E86C] flex items-center justify-center transition-all cursor-pointer shadow-2xs outline-none",
-              activeRevisionCount > 0
+              unreadCount > 0 && revisionNotifs.length > 0
                 ? "border-orange-300 text-orange-700 bg-orange-50/50 ring-2 ring-orange-400/20"
                 : isOfficer && officerUnreadNotifs.length > 0
                 ? "border-emerald-300 text-emerald-800 bg-emerald-50/50 ring-2 ring-emerald-400/20"
+                : unreadCount > 0
+                ? "border-[#183028]/25 text-[#183028] bg-white ring-1 ring-[#183028]/10"
                 : "border-[#E6E8E7]"
             )}
             title={
-              activeRevisionCount > 0
-                ? `${activeRevisionCount} submission(s) require revision attention`
-                : isOfficer && officerUnreadNotifs.length > 0
-                ? `${officerUnreadNotifs.length} document/revision update(s) require officer review`
+              unreadCount > 0 && revisionNotifs.length > 0
+                ? `${unreadCount} unread notification(s) (${revisionNotifs.length} revision action required)`
+                : unreadCount > 0
+                ? `${unreadCount} unread notification(s)`
                 : isConnected
                 ? "Notifications (Live Stream Connected)"
                 : "Notifications"
@@ -435,13 +751,13 @@ export function NotificationCenter() {
             aria-label="Open notifications"
           >
             <Bell className="h-4 w-4" />
-            {activeRevisionCount > 0 ? (
+            {unreadCount > 0 && revisionNotifs.length > 0 ? (
               <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-orange-600 text-white text-[9px] font-bold font-mono flex items-center justify-center ring-2 ring-white">
-                {activeRevisionCount > 99 ? "99+" : activeRevisionCount}
+                {unreadCount > 99 ? "99+" : unreadCount}
               </span>
-            ) : totalBadgeCount > 0 ? (
+            ) : unreadCount > 0 ? (
               <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-[#183028] text-white text-[9px] font-bold font-mono flex items-center justify-center ring-2 ring-white">
-                {totalBadgeCount > 99 ? "99+" : totalBadgeCount}
+                {unreadCount > 99 ? "99+" : unreadCount}
               </span>
             ) : null}
           </button>
@@ -508,7 +824,7 @@ export function NotificationCenter() {
                   )}
                   onClick={() => markAsRead(notif.id)}
                 >
-                  <div className="mt-0.5 shrink-0">{getCategoryIcon(notif.category)}</div>
+                  <div className="mt-0.5 shrink-0">{getNotificationIcon(notif)}</div>
                   <div className="flex-1 min-w-0 space-y-0.5">
                     <div className="flex items-center justify-between gap-1">
                       <p className="text-xs font-semibold text-[#183028] truncate">

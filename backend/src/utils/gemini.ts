@@ -6,11 +6,11 @@
  */
 
 export const ACTIVE_GEMINI_MODELS = [
-  'gemini-2.0-flash',
-  'gemini-1.5-flash',
-  'gemini-1.5-pro',
-  'gemini-2.0-flash-lite',
+  'gemini-flash-latest',
+  'gemini-flash-lite-latest',
   'gemini-2.5-flash',
+  'gemini-3.5-flash',
+  'gemini-3.5-flash-lite',
 ];
 
 /**
@@ -43,12 +43,16 @@ export class GeminiClient {
     prompt: string,
     options: GeminiGenerateOptions = {}
   ): Promise<GeminiGenerateResult | null> {
-    const rawKey = process.env.GEMINI_API_KEY?.trim();
+    const rawKey = (
+      process.env.GEMINI_API_KEY ||
+      process.env.GOOGLE_GEMINI_KEY ||
+      ''
+    ).trim();
     if (!rawKey || rawKey.includes('your_gemini') || rawKey.includes('test-ci')) {
       return null;
     }
 
-    const timeoutMs = options.timeoutMs ?? 35000;
+    const timeoutMs = options.timeoutMs ?? 25000;
 
     // Build multi-turn contents if conversationHistory is provided
     const rawContents: Array<{ role: string; parts: Array<{ text: string }> }> = [];

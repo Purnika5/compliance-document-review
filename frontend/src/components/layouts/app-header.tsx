@@ -70,12 +70,15 @@ export function AppHeader({
 
 
       {/* Right Area: Status / Actions / User Menu */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5">
         <NotificationCenter />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex cursor-pointer items-center gap-2 rounded-full border border-[#E6E8E7] bg-[#FFFFFF] pl-1.5 pr-2.5 py-1 shadow-2xs outline-none transition-all hover:bg-[#C5E86C]/20">
+            <button
+              data-tour="header-user-menu"
+              className="flex cursor-pointer items-center gap-2 rounded-full border border-[#E6E8E7] bg-[#FFFFFF] pl-1.5 pr-2.5 py-1 shadow-2xs outline-none transition-all hover:bg-[#C5E86C]/20"
+            >
               <div className="flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold text-[#C5E86C] bg-[#183028]">
                 {getInitials(session?.name)}
               </div>
@@ -91,6 +94,7 @@ export function AppHeader({
               <div className="text-[10px] text-[#183028]/60 font-mono">{session?.email || ""}</div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator className="bg-[#E6E8E7]" />
+
 
             <DropdownMenuItem
               variant="destructive"

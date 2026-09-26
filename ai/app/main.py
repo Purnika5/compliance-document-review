@@ -36,6 +36,37 @@ def clean_grammar_notes(text: str) -> str:
         cleaned = cleaned[0].upper() + cleaned[1:]
     return cleaned
 
+def extract_surrounding_sentence(text: str, match_text: str) -> str:
+    """Extract full authentic grammatical sentence surrounding match_text."""
+    if not text or not match_text:
+        return match_text
+    idx = text.find(match_text)
+    if idx == -1:
+        return match_text
+    start = idx
+    while start > 0:
+        prev = text[start - 1]
+        if prev == '\n':
+            break
+        if prev in ('.', '!', '?'):
+            prev_word = text[max(0, start - 4):start]
+            if not re.search(r'\b(?:Ms|Mr|Dr|vs|eg|ie)\.', prev_word, re.IGNORECASE):
+                break
+        start -= 1
+    end = idx + len(match_text)
+    while end < len(text):
+        char = text[end]
+        if char == '\n':
+            break
+        if char in ('.', '!', '?'):
+            prev_word = text[max(0, end - 3):end + 1]
+            if not re.search(r'\b(?:Ms|Mr|Dr|vs|eg|ie)\.', prev_word, re.IGNORECASE):
+                end += 1
+                break
+        end += 1
+    sentence = text[start:end].strip()
+    return sentence if len(sentence) >= len(match_text) else match_text
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2] if len(Path(__file__).resolve().parents) > 2 else AI_DIR
 
 # Load .env from project root or AI directory
@@ -255,8 +286,8 @@ def analyze_document(request: AnalyzeRequest):
     # Use active Gemini models with multi-model fallback
     GEMINI_MODELS = [
         os.getenv("GEMINI_MODEL", "gemini-3.6-flash"),
-        "gemini-3.5-flash",
-        "gemini-3.1-flash-lite",
+        "gemini-3.7-flash",
+        "gemini-flash-latest",
     ]
 
     def call_gemini(model_prompt: str, is_json: bool = False):
@@ -709,7 +740,7 @@ def audit_and_fix_endpoint(request: AuditAndFixRequest):
     full_prompt = f"{AUDIT_AND_FIX_SYSTEM_PROMPT}\n\nDocument Filename: {request.original_filename or 'draft_document.docx'}{custom_notes}\n\nDocument Text to Audit:\n{raw_text}\n\nJSON Output:"
 
     # Attempt Gemini LLM structured audit
-    for model_name in ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.1-flash-lite"]:
+    for model_name in ["gemini-3.6-flash", "gemini-3.7-flash", "gemini-flash-latest"]:
         try:
             active_client = get_client()
             resp = active_client.models.generate_content(
@@ -722,7 +753,7 @@ def audit_and_fix_endpoint(request: AuditAndFixRequest):
                 breakdown = [
                     AuditBreakdownItem(
                         rule=str(b.get("rule", "FINRA Rule 2210")),
-                        original_passage=str(b.get("original_passage", "")),
+                        original_passage=extract_surrounding_sentence(raw_text, str(b.get("original_passage", ""))),
                         issue=str(b.get("issue", "Compliance concern")),
                         fixed_passage=str(b.get("fixed_passage", "")),
                         reason=str(b.get("reason", "Fiduciary alignment")),
@@ -789,12 +820,15 @@ def audit_and_fix_endpoint(request: AuditAndFixRequest):
             orig = match.group(0)
             replacement = repl_func(match)
             remediated = remediated.replace(orig, replacement)
+            full_passage = extract_surrounding_sentence(raw_text, orig)
+            cat = "PROHIBITED_CLAIM" if ("2210" in rule or "guarantee" in issue.lower()) else ("MISSING_DISCLOSURE" if "disclosure" in issue.lower() else "SUITABILITY")
             fallback_breakdown.append(AuditBreakdownItem(
                 rule=rule,
-                original_passage=orig,
+                original_passage=full_passage,
                 issue=issue,
                 fixed_passage=replacement,
-                reason=reason
+                reason=reason,
+                category=cat
             ))
 
     # If no violations detected, add standard institutional disclosures if missing
@@ -802,12 +836,14 @@ def audit_and_fix_endpoint(request: AuditAndFixRequest):
         disclaimer = "\n\nInstitutional Regulatory Disclosure (FINRA Rule 2210 / SEC Rule 206): Past performance does not guarantee future results. Investments are subject to market risks, including the possible loss of principal. Securities offered through Springer Capital Compliance Platform."
         remediated += disclaimer
         if not fallback_breakdown:
+            anchor_sentence = extract_surrounding_sentence(raw_text, "return") if "return" in raw_text.lower() else (raw_text[:200].strip() + "...")
             fallback_breakdown.append(AuditBreakdownItem(
                 rule="FINRA Rule 2210 & SEC Rule 206 Disclosures",
-                original_passage="Missing standard statutory risk disclosure.",
+                original_passage=anchor_sentence,
                 issue="Absence of mandatory institutional fiduciary risk disclaimer.",
                 fixed_passage=disclaimer.strip(),
-                reason="Appended required regulatory risk disclaimer."
+                reason="Appended required regulatory risk disclaimer.",
+                category="MISSING_DISCLOSURE"
             ))
 
     count = len(fallback_breakdown)

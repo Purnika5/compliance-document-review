@@ -46,6 +46,13 @@ interface LiveTelemetryData {
     flags?: any[];
     flag_count: number;
   } | null;
+  scannedDoc?: {
+    fileName: string;
+    summary?: string;
+    auditBreakdown?: any[];
+    remediatedText?: string;
+    fileMeta?: any;
+  } | null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -91,36 +98,96 @@ function generateContextualComplianceReply(
 ): string {
   const lower = message.toLowerCase().trim();
   const isOfficer = role === 'Officer';
-  const { statusCounts, recentDocs, todaysDocs, activeDoc } = data;
+  const { statusCounts, recentDocs, todaysDocs, activeDoc, scannedDoc } = data;
+
+  // 0. Active scanned document in chat session
+  if (scannedDoc && scannedDoc.auditBreakdown && scannedDoc.auditBreakdown.length > 0 &&
+    /\b(?:findings?|infractions?|violations?|deficienc(?:y|ies)|flags?|rules?|severity|remediat(?:e|ion|ions)|amendments?|this document|this file|scanned document|scan|draft)\b/i.test(lower)) {
+    const breakdown = scannedDoc.auditBreakdown;
+    const resolveSeverity = (item: any): string => {
+      if (item.severity) return item.severity.toUpperCase();
+      const cat = (item.category || '').toUpperCase();
+      const issue = (item.issue || '').toUpperCase();
+      if (cat === 'PROHIBITED_CLAIM' || cat === 'SUITABILITY' || issue.includes('GUARANTEE') || issue.includes('PROMISSORY')) {
+        return 'HIGH';
+      }
+      if (cat === 'MISSING_DISCLOSURE') {
+        return 'MEDIUM';
+      }
+      return 'LOW';
+    };
+
+    const findingsFormatted = breakdown.map((item: any, idx: number) => {
+      const sev = resolveSeverity(item);
+      const sevBadge = sev === 'HIGH' ? '🔴 HIGH' : sev === 'MEDIUM' ? '🟡 MEDIUM' : '🟢 LOW';
+      const rule = item.rule || 'FINRA Rule 2210';
+      const orig = item.original_passage || item.passage || 'Identified text passage';
+      const fix = item.fixed_passage || item.remediation || item.remediated_text || 'Rewritten with balanced market risk disclosures.';
+      const reason = item.reason || item.explanation || 'Regulatory disclosure standard.';
+      return `### Finding ${idx + 1}: ${rule} [Severity: ${sevBadge}]\n• **Severity**: **${sev}**\n• **Applicable Rule**: ${rule}\n• **Specific Infraction**: ${item.issue || 'Compliance rule infraction'}\n• **Original Offending Passage:**\n> "${orig}"\n• **Prescribed Remediation:**\n> "${fix}"\n• **Amendment Rationale:** ${reason}`;
+    }).join('\n\n');
+
+    return `### Comprehensive Compliance Analysis for "${scannedDoc.fileName}"\nFound **${breakdown.length} compliance findings** under FINRA Rule 2210 & SEC Rule 206:\n\n${findingsFormatted}`;
+  }
 
   // 1. Active document — infractions / flags / violations
-  if (activeDoc && /\b(this document|this file|current document|infractions?|flags?|violations?|risk|fix)\b/i.test(lower)) {
+  if (activeDoc && /\b(this document|this file|current document|infractions?|flags?|violations?|risk|fix|findings?)\b/i.test(lower)) {
     const flagCount = activeDoc.flag_count || 0;
     const byLine = activeDoc.advisor_name ? ` submitted by ${activeDoc.advisor_name}` : '';
     if (flagCount === 0) {
       return `"${activeDoc.title}"${byLine} (v${activeDoc.version}) is clean — zero compliance flags under FINRA 2210 & SEC 206. It's ready for ${isOfficer ? 'final determination' : 'submission'}.`;
     }
+    if (activeDoc.flags && activeDoc.flags.length > 0 && /\b(list|all|findings?|rules?|severity|remediation)\b/i.test(lower)) {
+      const formatted = activeDoc.flags.map((f: any, idx: number) => {
+        const rule = f.rule || f.ruleCode || 'FINRA Rule 2210';
+        const sev = f.severity || (f.category === 'PROHIBITED_CLAIM' || f.category === 'SUITABILITY' ? 'HIGH' : f.category === 'MISSING_DISCLOSURE' ? 'MEDIUM' : 'LOW');
+        const sevBadge = sev === 'HIGH' ? '🔴 HIGH' : sev === 'MEDIUM' ? '🟡 MEDIUM' : '🟢 LOW';
+        const passage = f.original_passage || f.passage || 'Identified text passage';
+        const fix = f.remediated_text || f.compliant_text || f.remediation || f.fixed_passage || 'Replace with balanced market risk disclosures.';
+        const reason = f.explanation || f.reason || f.rationale || 'Eliminate promissory claims and add statutory disclosures.';
+        return `### Finding ${idx + 1}: ${rule} [Severity: ${sevBadge}]\n• **Severity**: **${sev}**\n• **Applicable Rule**: ${rule}\n• **Specific Infraction**: ${f.title || f.issue || 'Compliance rule violation'}\n• **Original Offending Passage:**\n> "${passage}"\n• **Prescribed Remediation:**\n> "${fix}"\n• **Amendment Rationale:** ${reason}`;
+      }).join('\n\n');
+      return `### Compliance Findings for "${activeDoc.title}" (v${activeDoc.version})\nFound **${flagCount} compliance findings** under FINRA Rule 2210 & SEC Rule 206:\n\n${formatted}`;
+    }
     const sample = activeDoc.flags?.[0];
-    return `"${activeDoc.title}"${byLine} (v${activeDoc.version}) has ${flagCount} compliance flag${flagCount > 1 ? 's' : ''}. The first is under ${sample?.rule || 'FINRA Rule 2210'}: "${sample?.original_passage || sample?.passage || ''}". ${
-      isOfficer
+    return `"${activeDoc.title}"${byLine} (v${activeDoc.version}) has ${flagCount} compliance flag${flagCount > 1 ? 's' : ''}. The first is under ${sample?.rule || 'FINRA Rule 2210'}: "${sample?.original_passage || sample?.passage || ''}". ${isOfficer
         ? 'Would you like to draft a revision request or trigger an auto-remediation?'
         : 'Would you like me to auto-fix this into compliant fiduciary language?'
-    }`;
+      }`;
+  }
+
+  // 1b. Most recent filing / who uploaded most recent
+  if (
+    /\b(most\s+recent|latest|newest|last)\s*(?:filing|document|submission|upload|proposal)?\b/i.test(lower) ||
+    lower.includes("most recent filing") ||
+    lower.includes("who uploaded the most recent filing") ||
+    lower.includes("who uploaded the latest")
+  ) {
+    const mostRecent = recentDocs[0];
+    if (mostRecent) {
+      const by = mostRecent.advisor_name ? ` by **${mostRecent.advisor_name}**` : '';
+      const email = mostRecent.advisor_email ? ` (${mostRecent.advisor_email})` : '';
+      const risk = mostRecent.has_analysis
+        ? mostRecent.flag_count === 0 ? '✓ Clean (0 flags)' : `${mostRecent.flag_count} flag${mostRecent.flag_count > 1 ? 's' : ''}`
+        : 'Not yet analyzed';
+      const uploadDate = new Date(mostRecent.created_at).toLocaleString('en-US', {
+        month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
+      });
+      return `The most recent filing in the repository is **"${mostRecent.title}"** (v${mostRecent.version})${by}${email}, submitted on ${uploadDate}. Status: **${mostRecent.status}** | Risk: ${risk}.`;
+    }
+    return "There are currently no document filings uploaded in the repository database.";
   }
 
   // 2. "Who uploaded" queries
   if (/\b(who\s+uploaded|who\s+submitted|who\s+sent|uploaded\s+by|submitted\s+by)\b/i.test(lower)) {
-    if (!isOfficer) {
-      return "That information is restricted to Compliance Officers. You can see your own submissions on the My Documents page.";
-    }
     const withUploaders = recentDocs.filter((d) => d.advisor_name);
     if (withUploaders.length === 0) {
-      return "I don't have uploader data available right now. This may be a data sync issue — check the Users table.";
+      return "I don't have uploader data available right now in the database.";
     }
     const list = withUploaders.slice(0, 5).map((d) =>
       `"${d.title}" → ${d.advisor_name} (${d.status}, ${new Date(d.created_at).toLocaleDateString()})`
     ).join('; ');
-    return `Here are recent uploads with their advisors: ${list}. Want me to filter by a specific advisor or status?`;
+    return `Here are recent uploads with their advisors from the database: ${list}. Want me to filter by a specific advisor or status?`;
   }
 
   // 3. "Today's documents" queries
@@ -191,12 +258,19 @@ function generateContextualComplianceReply(
 // POST /api/chat
 // ─────────────────────────────────────────────────────────────────────────────
 router.post('/', optionalAuth, async (req: Request, res: Response) => {
-  const { message, role, pathname, documentId, conversationHistory } = req.body as {
+  const { message, role, pathname, documentId, conversationHistory, scannedDocument } = req.body as {
     message?: string;
     role?: string;
     pathname?: string;
     documentId?: string;
     conversationHistory?: Array<{ role: string; content: string }>;
+    scannedDocument?: {
+      fileName: string;
+      summary?: string;
+      auditBreakdown?: any[];
+      remediatedText?: string;
+      fileMeta?: any;
+    };
   };
 
   if (!message || !message.trim()) {
@@ -216,7 +290,7 @@ router.post('/', optionalAuth, async (req: Request, res: Response) => {
   const emailMatch = cleanMessage.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
   if (
     (/\b(user\s+(?:by|with)?\s*(?:the\s+)?email|is\s+there\s+(?:any\s+)?user|find\s+user|check\s+user|lookup\s+user)\b/i.test(lowerMsg) ||
-     /\b(?:any|a)\s+user\b/i.test(lowerMsg)) &&
+      /\b(?:any|a)\s+user\b/i.test(lowerMsg)) &&
     emailMatch
   ) {
     const targetEmail = emailMatch[0].toLowerCase();
@@ -274,10 +348,12 @@ router.post('/', optionalAuth, async (req: Request, res: Response) => {
       pathname,
       documentId,
       conversationHistory,
+      scannedDocument,
     });
 
     const isSpecificIntent =
-      grokResult.intent !== 'general_conversational' && !grokResult.isClarification;
+      grokResult.intent !== 'general_conversational' &&
+      !grokResult.isClarification;
     const isClarification = grokResult.isClarification === true;
 
     if (isSpecificIntent || isClarification) {
@@ -294,12 +370,12 @@ router.post('/', optionalAuth, async (req: Request, res: Response) => {
         isClarification: grokResult.isClarification || false,
         quota: quotaInfo
           ? {
-              used: quotaInfo.chatMessages.used,
-              limit: quotaInfo.chatMessages.limit,
-              remaining: quotaInfo.chatMessages.remaining,
-              resetsAt: quotaInfo.resetsAt,
-              resetInDays: quotaInfo.resetInDays,
-            }
+            used: quotaInfo.chatMessages.used,
+            limit: quotaInfo.chatMessages.limit,
+            remaining: quotaInfo.chatMessages.remaining,
+            resetsAt: quotaInfo.resetsAt,
+            resetInDays: quotaInfo.resetInDays,
+          }
           : undefined,
       });
       return;
@@ -319,6 +395,7 @@ router.post('/', optionalAuth, async (req: Request, res: Response) => {
     recentDocs: [],
     todaysDocs: [],
     activeDoc: null,
+    scannedDoc: scannedDocument || null,
     userId,
     userEmail,
   };
@@ -432,7 +509,7 @@ router.post('/', optionalAuth, async (req: Request, res: Response) => {
 
   const todaysFormatted = telemetryData.todaysDocs.length > 0
     ? `TODAY'S UPLOADS (${telemetryData.todaysDocs.length} document${telemetryData.todaysDocs.length > 1 ? 's' : ''}):\n` +
-      telemetryData.todaysDocs.map(formatDocForContext).join('\n')
+    telemetryData.todaysDocs.map(formatDocForContext).join('\n')
     : "TODAY'S UPLOADS: None uploaded today.";
 
   const activeDocFormatted = telemetryData.activeDoc
@@ -441,6 +518,15 @@ Title: "${telemetryData.activeDoc.title}" (v${telemetryData.activeDoc.version}, 
 ${telemetryData.activeDoc.advisor_name ? `Uploaded by: ${telemetryData.activeDoc.advisor_name}` : ''}
 Compliance Summary: ${telemetryData.activeDoc.summary || 'Not yet analyzed'}
 Risk Flags: ${telemetryData.activeDoc.flag_count} flag${telemetryData.activeDoc.flag_count !== 1 ? 's' : ''} — ${JSON.stringify(telemetryData.activeDoc.flags || [])}`
+    : '';
+
+  const scannedDocFormatted = scannedDocument && scannedDocument.auditBreakdown && scannedDocument.auditBreakdown.length > 0
+    ? `\nCURRENTLY SCANNED DRAFT (ACTIVE IN CHAT SESSION):
+File Name: "${scannedDocument.fileName}"
+Summary: ${scannedDocument.summary || 'Audited draft file'}
+Total Findings: ${scannedDocument.auditBreakdown.length}
+Detailed Findings Breakdown:
+${JSON.stringify(scannedDocument.auditBreakdown, null, 2)}`
     : '';
 
   // ── 3. Advisor Quota Check ────────────────────────────────────────────────
@@ -462,14 +548,16 @@ Risk Flags: ${telemetryData.activeDoc.flag_count} flag${telemetryData.activeDoc.
   const geminiApiKey = process.env.GEMINI_API_KEY?.trim();
   if (geminiApiKey && !geminiApiKey.includes('your_gemini') && !geminiApiKey.includes('test-ci')) {
     try {
-      const systemInstruction = `You are Springer Capital's Neural Compliance Copilot — a brilliant, warm, articulate, and friendly AI assistant and senior Wall Street colleague.
+      const systemInstruction = `You are Springer Capital's Neural Compliance Copilot — a brilliant, warm, witty, and articulate AI assistant and senior Wall Street colleague with a genuine sense of humor.
 
-Your tone is warm, engaging, and direct. Speak in natural sentences — no robotic templates, no corporate openers like "Thank you for your inquiry...".
+Your tone is engaging, direct, and clever. Speak in natural sentences — no robotic templates, no corporate openers like "Thank you for your inquiry...".
 
 CAPABILITIES:
-1. General Knowledge & Science: You enthusiastically and accurately answer general knowledge questions (e.g., astronomy, physics, distance to the sun or moon, history, math, trivia) with depth and precision. Never refuse general knowledge questions, and never say you only know about compliance.
+1. General Knowledge & Science: You enthusiastically and accurately answer general knowledge questions (e.g., astronomy, physics, distance to the sun or moon, history, math, trivia) with depth and precision. Never refuse general knowledge questions.
 2. Compliance & Workflows: You answer questions about institutional filings, review queue status, and regulatory rules (FINRA 2210, SEC 206) using the LIVE DATABASE TELEMETRY below.
-3. Conversational Fluency: You handle greetings, casual conversation, and follow-ups naturally.
+3. Scanned Document Analysis & Grounding: When a scanned draft or active document is provided, ALWAYS ground follow-up questions to its specific findings, rules, original passages, and prescribed remediations. When asked to list findings, provide all findings with their severity, applicable rule, and remediation clearly.
+4. Conversational Fluency: You handle greetings, casual conversation, and follow-ups naturally.
+5. PLAYFULNESS (critical): When someone asks a nonsensical, absurd, or clearly out-of-context question — about Batman, whether you can rap, what a potato dreams about, the meaning of life, your favorite pizza, etc. — respond with warmth and genuine wit. Be funny, self-aware, maybe throw in a light compliance pun, then optionally pivot back to offer real help. You are NOT a boring corporate bot. Lean in. Have fun. A sharp, unexpected quip beats a wall of robotic disclaimer text every single time.
 
 CONTEXT:
 - User: ${userEmail || 'authenticated user'} (Role: ${userRole})
@@ -483,17 +571,19 @@ ${todaysFormatted}
 RECENT REPOSITORY FILINGS (last 15):
 ${recentFormatted}
 ${activeDocFormatted}
+${scannedDocFormatted}
 
 CRITICAL RULES:
 - Always respond intelligently and directly to the user's actual question.
-- For platform filings or user submissions, ground your answers in the LIVE DATABASE TELEMETRY above.
-- For general knowledge questions (e.g. "how far is the sun", science, math, history), answer accurately and insightfully from your broad knowledge base.`;
+- For platform filings, scanned drafts, or user submissions, ground your answers in the LIVE DATABASE TELEMETRY above.
+- For general knowledge questions, answer accurately and insightfully.
+- For nonsense or absurd questions, be playful and witty — never cold or dismissive.`;
 
       const gResult = await GeminiClient.generateContent(cleanMessage, {
         systemInstruction,
-        temperature: 0.4,
-        maxOutputTokens: 700,
-        timeoutMs: 15000,
+        temperature: 0.75,
+        maxOutputTokens: 2500,
+        timeoutMs: 25000,
       });
 
       if (gResult?.text) {
@@ -505,12 +595,12 @@ CRITICAL RULES:
           reply: gResult.text,
           quota: quotaInfo
             ? {
-                used: quotaInfo.chatMessages.used,
-                limit: quotaInfo.chatMessages.limit,
-                remaining: quotaInfo.chatMessages.remaining,
-                resetsAt: quotaInfo.resetsAt,
-                resetInDays: quotaInfo.resetInDays,
-              }
+              used: quotaInfo.chatMessages.used,
+              limit: quotaInfo.chatMessages.limit,
+              remaining: quotaInfo.chatMessages.remaining,
+              resetsAt: quotaInfo.resetsAt,
+              resetInDays: quotaInfo.resetInDays,
+            }
             : undefined,
         });
         return;

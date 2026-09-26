@@ -4,7 +4,7 @@
  * @author Keith
  */
 import { client, getBaseBackendUrl } from "./client";
-import type { ISearchParams, ISearchResponse, IAuditAndFixResponse } from "@/types/copilot.types";
+import type { ISearchParams, ISearchResponse, IAuditAndFixResponse, IScannedDocumentContext } from "@/types/copilot.types";
 
 interface ApiResponse<T> {
   success: boolean;
@@ -19,7 +19,12 @@ export const copilotApi = {
   async sendChatMessage(
     message: string,
     role?: string,
-    context?: { pathname?: string; documentId?: string; conversationHistory?: Array<{ role: string; content: string }> }
+    context?: {
+      pathname?: string;
+      documentId?: string;
+      conversationHistory?: Array<{ role: string; content: string }>;
+      scannedDocument?: IScannedDocumentContext;
+    }
   ): Promise<{ reply: string; quota?: { used: number; limit: number; remaining: number; resetsAt: string; resetInDays: number }; quotaExceeded?: boolean }> {
     try {
       const response = await client.post<ApiResponse<{ reply: string; quota?: any; quotaExceeded?: boolean }>>("/api/chat", {
@@ -28,6 +33,7 @@ export const copilotApi = {
         pathname: context?.pathname,
         documentId: context?.documentId,
         conversationHistory: context?.conversationHistory,
+        scannedDocument: context?.scannedDocument,
       });
       if (response && response.data && response.data.reply) {
         return { reply: response.data.reply, quota: (response.data as any).quota, quotaExceeded: (response.data as any).quotaExceeded };
@@ -49,8 +55,26 @@ export const copilotApi = {
    * Search document repository with multi-dimensional filters, version lineages, and analytics.
    */
   async searchDocuments(params: ISearchParams): Promise<ISearchResponse> {
-    const response = await client.post<ApiResponse<ISearchResponse>>("/api/documents/search", params);
-    return response.data;
+    try {
+      const response = await client.post<ApiResponse<ISearchResponse>>("/api/documents/search", params);
+      if (response && response.data) {
+        return response.data;
+      }
+    } catch (err) {
+      console.warn("[Copilot searchDocuments error]", err);
+    }
+    return {
+      documents: [],
+      analytics: {
+        total_matches: 0,
+        breakdown_by_status: { Pending: 0, Approved: 0, NeedsRevision: 0, Rejected: 0 },
+        regulatory_risk_summary: 0,
+        revision_velocity: { reversioned_count: 0, reversioned_percentage: 0 },
+        temporal_aggregation: [],
+      },
+      conversational_reply: `No records found matching your query at this time.`,
+      suggested_chips: ["/query retirement portfolio", "/query needs revision", "/stats"],
+    };
   },
 
   /**
@@ -60,6 +84,11 @@ export const copilotApi = {
     file: File,
     options?: { targetDocumentId?: string; instructions?: string }
   ): Promise<IAuditAndFixResponse> {
+    if (file && file.size > 25 * 1024 * 1024) {
+      const mb = (file.size / (1024 * 1024)).toFixed(1);
+      throw new Error(`File "${file.name}" exceeds the maximum allowed size of 25 MB (${mb} MB).`);
+    }
+
     const formData = new FormData();
     formData.append("file", file);
     if (options?.targetDocumentId) {

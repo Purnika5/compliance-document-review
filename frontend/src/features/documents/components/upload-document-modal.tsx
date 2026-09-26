@@ -34,6 +34,7 @@ import { uploadDocumentSchema, type UploadDocumentInput } from "@/lib/validation
 import { cn } from "@/lib/utils";
 import { showErrorToast } from "@/components/ui/toast";
 import { copilotApi } from "@/lib/api/copilot";
+import { isScannedFile } from "@/lib/scanned-files";
 
 export interface UploadDocumentModalProps {
   isOpen: boolean;
@@ -130,6 +131,16 @@ export function UploadDocumentModal({
       return;
     }
 
+    if (files.some((f) => f.status === "invalid")) {
+      showErrorToast("Invalid Attachment", "Please remove files exceeding the 25 MB limit before proceeding.");
+      return;
+    }
+
+    if (rawFile && rawFile.size > MAX_FILE_SIZE_BYTES) {
+      showErrorToast("File Too Large", "Attached file exceeds the 25 MB maximum limit.");
+      return;
+    }
+
     setStep("validation");
     setUploadProgress(0);
 
@@ -145,8 +156,15 @@ export function UploadDocumentModal({
   };
 
   const handleFinalSubmit = async () => {
+    if (rawFile && rawFile.size > MAX_FILE_SIZE_BYTES) {
+      showErrorToast("Upload Blocked", "Attached file exceeds the 25 MB maximum limit.");
+      return;
+    }
     try {
-      await onUpload({ title, category, notes, file: rawFile || undefined });
+      const result = await onUpload({ title, category, notes, file: rawFile || undefined });
+      if (result === null) {
+        return;
+      }
       setStep("success");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Upload failed.";
@@ -166,16 +184,40 @@ export function UploadDocumentModal({
     onClose();
   };
 
+  const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB
+
   const handleFileDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const dropped = e.dataTransfer.files[0];
+      const isOverSize = dropped.size > MAX_FILE_SIZE_BYTES;
+      const formattedSize = dropped.size < 1024 * 1024 ? `${(dropped.size / 1024).toFixed(1)} KB` : `${(dropped.size / (1024 * 1024)).toFixed(2)} MB`;
+
+      if (isOverSize) {
+        showErrorToast(
+          "File Too Large",
+          `"${dropped.name}" is ${formattedSize}. Maximum allowed size is 25 MB.`
+        );
+        setRawFile(null);
+        setFiles([
+          {
+            id: `f-${Date.now()}`,
+            name: dropped.name,
+            size: formattedSize,
+            type: dropped.name.split(".").pop()?.toUpperCase() || "DOC",
+            status: "invalid",
+            message: `File exceeds 25 MB limit (${formattedSize}). Please select a file under 25 MB.`,
+          },
+        ]);
+        return;
+      }
+
       setRawFile(dropped);
       const newFile: IFileValidationItem = {
         id: `f-${Date.now()}`,
         name: dropped.name,
-        size: dropped.size < 1024 * 1024 ? `${(dropped.size / 1024).toFixed(1)} KB` : `${(dropped.size / (1024 * 1024)).toFixed(2)} MB`,
+        size: formattedSize,
         type: dropped.name.split(".").pop()?.toUpperCase() || "DOC",
         status: "valid",
         message: "File integrity and size constraints passed",
@@ -191,11 +233,34 @@ export function UploadDocumentModal({
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const selected = e.target.files[0];
+      const isOverSize = selected.size > MAX_FILE_SIZE_BYTES;
+      const formattedSize = selected.size < 1024 * 1024 ? `${(selected.size / 1024).toFixed(1)} KB` : `${(selected.size / (1024 * 1024)).toFixed(2)} MB`;
+
+      if (isOverSize) {
+        showErrorToast(
+          "File Too Large",
+          `"${selected.name}" is ${formattedSize}. Maximum allowed size is 25 MB.`
+        );
+        setRawFile(null);
+        setFiles([
+          {
+            id: `f-${Date.now()}`,
+            name: selected.name,
+            size: formattedSize,
+            type: selected.name.split(".").pop()?.toUpperCase() || "DOC",
+            status: "invalid",
+            message: `File exceeds 25 MB limit (${formattedSize}). Please select a file under 25 MB.`,
+          },
+        ]);
+        e.target.value = "";
+        return;
+      }
+
       setRawFile(selected);
       const newFile: IFileValidationItem = {
         id: `f-${Date.now()}`,
         name: selected.name,
-        size: selected.size < 1024 * 1024 ? `${(selected.size / 1024).toFixed(1)} KB` : `${(selected.size / (1024 * 1024)).toFixed(2)} MB`,
+        size: formattedSize,
         type: selected.name.split(".").pop()?.toUpperCase() || "DOC",
         status: "valid",
         message: "File integrity and size constraints passed",
@@ -205,6 +270,7 @@ export function UploadDocumentModal({
       if (!title) setTitle(newTitle);
       // Automatically classify with AI
       classifyWithAi(selected, newTitle, notes);
+      e.target.value = "";
     }
   };
 
@@ -328,14 +394,32 @@ export function UploadDocumentModal({
                     {files.map((f) => (
                       <div
                         key={f.id}
-                        className="p-2.5 rounded-xl flex items-center justify-between text-xs bg-[#F7F9F8] border border-[#E6E8E7] gap-2 min-w-0 w-full box-border"
+                        className={cn(
+                          "p-2.5 rounded-xl flex items-center justify-between text-xs gap-2 min-w-0 w-full box-border border",
+                          f.status === "invalid"
+                            ? "bg-rose-50 border-rose-300 text-rose-950"
+                            : "bg-[#F7F9F8] border-[#E6E8E7]"
+                        )}
                       >
                         <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
-                          <FileText className="h-3.5 w-3.5 text-[#183028]/60 shrink-0" />
-                          <span className="font-medium text-[#183028] truncate min-w-0 flex-1" title={f.name}>
-                            {f.name}
-                          </span>
-                          <span className="text-[10px] font-mono text-[#183028]/60 shrink-0">({f.size})</span>
+                          <FileText className={cn("h-3.5 w-3.5 shrink-0", f.status === "invalid" ? "text-rose-600" : "text-[#183028]/60")} />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="font-medium text-[#183028] truncate min-w-0 flex-1" title={f.name}>
+                                {f.name}
+                              </span>
+                              <span className={cn("text-[10px] font-mono shrink-0", f.status === "invalid" ? "text-rose-600 font-bold" : "text-[#183028]/60")}>({f.size})</span>
+                              {f.status !== "invalid" && isScannedFile(f.name) && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-[#C5E86C]/40 text-[#183028] border border-[#C5E86C] shrink-0">
+                                  <span className="h-1 w-1 rounded-full bg-[#183028]" />
+                                  Scanned
+                                </span>
+                              )}
+                            </div>
+                            {f.status === "invalid" && (
+                              <p className="text-[10px] text-rose-600 font-semibold mt-0.5">{f.message}</p>
+                            )}
+                          </div>
                         </div>
                         <button
                           type="button"
@@ -453,7 +537,15 @@ export function UploadDocumentModal({
                       {file.type}
                     </div>
                     <div className="min-w-0">
-                      <p className="font-semibold text-[#183028] truncate">{file.name}</p>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <p className="font-semibold text-[#183028] truncate">{file.name}</p>
+                        {file.status !== "invalid" && isScannedFile(file.name) && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-[#C5E86C]/40 text-[#183028] border border-[#C5E86C] shrink-0">
+                            <span className="h-1 w-1 rounded-full bg-[#183028]" />
+                            Scanned
+                          </span>
+                        )}
+                      </div>
                       <p className="text-[10px] text-[#183028]/60 mt-0.5">{file.message}</p>
                     </div>
                   </div>
@@ -484,7 +576,7 @@ export function UploadDocumentModal({
               </Button>
               <Button
                 type="button"
-                disabled={isPending || uploadProgress < 100}
+                disabled={isPending || uploadProgress < 100 || files.some((f) => f.status === "invalid")}
                 onClick={handleFinalSubmit}
                 className="h-8.5 px-4 text-xs font-semibold bg-[#183028] hover:bg-[#23453a] hover:shadow-[0_0_12px_rgba(197,232,108,0.35)] disabled:opacity-50 text-white rounded-xl transition-all shadow-2xs cursor-pointer"
               >

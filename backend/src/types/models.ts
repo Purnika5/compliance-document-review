@@ -68,6 +68,10 @@ export interface ComplianceFlag {
   passage: string;
   rule: string;
   explanation: string;
+  severity?: 'HIGH' | 'MEDIUM' | 'LOW';
+  category?: 'PROHIBITED_CLAIM' | 'MISSING_DISCLOSURE' | 'SUITABILITY' | 'PRECEDENT_MATCH';
+  fixed_passage?: string;
+  confidenceScore?: number;
 }
 
 export interface DocumentAnalysis {

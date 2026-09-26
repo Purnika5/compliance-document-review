@@ -278,7 +278,7 @@ export function AssignedReviewsView() {
                         <div className="mt-0.5">
                           <span
                             onClick={() => router.push(`/documents/${doc.id}`)}
-                            className="font-semibold text-foreground hover:text-primary transition-colors cursor-pointer text-xs leading-snug line-clamp-1"
+                            className="font-semibold text-foreground hover:text-primary transition-colors cursor-pointer text-xs leading-snug break-words [overflow-wrap:anywhere] whitespace-normal"
                           >
                             {doc.title}
                           </span>
