@@ -200,6 +200,13 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
     currentPage * pageSize
   );
 
+  const dashboardPageSize = 6;
+  const dashboardTotalPages = Math.ceil(filteredDocuments.length / dashboardPageSize) || 1;
+  const paginatedDashboardDocs = filteredDocuments.slice(
+    (currentPage - 1) * dashboardPageSize,
+    currentPage * dashboardPageSize
+  );
+
   // Active date preset and dynamic time-series calculation
   const activeDatePreset = dateFilterPreset !== "All" ? dateFilterPreset : (dateFilter as DateFilterPreset);
 
@@ -743,7 +750,7 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
                     </TableHeader>
                     <TableBody className="bg-[#FFFFFF] divide-y divide-[#E6E8E7]">
                       {filteredDocuments.length > 0 ? (
-                        filteredDocuments.slice(0, 6).map((doc, idx) => (
+                        paginatedDashboardDocs.map((doc, idx) => (
                           <TableRow
                             key={doc.id}
                             onClick={() => router.push(`/documents/${doc.id}`)}
@@ -863,9 +870,30 @@ export function MyDocumentsTable({ view }: MyDocumentsTableProps = {}) {
 
               <div className="pt-3 mt-4 border-t border-[#E6E8E7] text-xs text-[#183028]/60 flex items-center justify-between">
                 <span>
-                  Showing {Math.min(filteredDocuments.length, 6)} of {filteredDocuments.length} uploads
+                  Showing {(currentPage - 1) * dashboardPageSize + 1} - {Math.min(currentPage * dashboardPageSize, filteredDocuments.length)} of {filteredDocuments.length} uploads
                   {activeFilter !== "All" && ` • ${activeFilter}`}
                 </span>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                    className="h-7 px-2 text-xs rounded-lg border-[#E6E8E7] text-[#183028] hover:bg-[#C5E86C]/20 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    Previous
+                  </Button>
+                  <span className="px-2 font-mono text-xs text-[#183028]">{currentPage} / {dashboardTotalPages}</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage >= dashboardTotalPages}
+                    onClick={() => setCurrentPage((p) => Math.min(p + 1, dashboardTotalPages))}
+                    className="h-7 px-2 text-xs rounded-lg border-[#E6E8E7] text-[#183028] hover:bg-[#C5E86C]/20 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    Next
+                  </Button>
+                </div>
               </div>
             </div>
 

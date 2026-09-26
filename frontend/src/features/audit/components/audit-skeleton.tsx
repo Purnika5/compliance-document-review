@@ -114,6 +114,15 @@ export function AuditSkeleton() {
             </TableBody>
           </Table>
         </div>
+
+        {/* Pagination Skeleton */}
+        <div className="flex items-center justify-between p-3 border-t border-[#E6E8E7] bg-[#FAFBFB]">
+          <Skeleton className="h-3.5 w-36 rounded bg-[#E6E8E7]/60" />
+          <div className="flex items-center gap-1.5">
+            <Skeleton className="h-7 w-16 rounded-lg bg-[#E6E8E7]/60" />
+            <Skeleton className="h-7 w-16 rounded-lg bg-[#E6E8E7]/60" />
+          </div>
+        </div>
       </div>
     </div>
   );

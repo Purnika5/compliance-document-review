@@ -3,6 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "description": "Springer Capital Institutional Compliance Document Review Monorepo",
+  "author": "Keith Lachica (https://github.com/keithlachica)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/keithlachica/compliance-document-review.git"
+  },
   "scripts": {
     "build": "cd frontend && npm install && npm run build",
     "start": "cd frontend && npm run start",

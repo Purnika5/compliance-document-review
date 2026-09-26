@@ -51,6 +51,8 @@ export function AuditTrailTable({
   entries = [],
 }: AuditTrailTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 8;
   const activeEntries = entries;
 
   const filteredLogs = activeEntries.filter((entry) => {
@@ -67,6 +69,12 @@ export function AuditTrailTable({
       entry.details.toLowerCase().includes(q)
     );
   });
+
+  const totalPages = Math.ceil(filteredLogs.length / pageSize) || 1;
+  const paginatedLogs = filteredLogs.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   const handleExportCsv = () => {
     if (filteredLogs.length === 0) return;
@@ -130,7 +138,10 @@ export function AuditTrailTable({
             <Input
               placeholder="Search audit trail..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
               className="bg-white border border-[#E6E8E7] text-[#183028] placeholder:text-[#183028]/45 h-8.5 pl-8 text-xs rounded-xl focus-visible:ring-1 focus-visible:ring-[#183028] shadow-2xs"
             />
           </div>
@@ -179,7 +190,7 @@ export function AuditTrailTable({
                 </TableCell>
               </TableRow>
             ) : (
-              filteredLogs.map((log) => (
+              paginatedLogs.map((log) => (
                 <TableRow key={log.id} className="border-b border-[#E6E8E7]/70 hover:bg-[#C5E86C]/10 transition-colors">
                   <TableCell className="pl-4 font-mono text-[11px]">
                     <div className="font-semibold text-[#183028]">{log.relativeTime}</div>
@@ -221,7 +232,7 @@ export function AuditTrailTable({
             No audit log entries found.
           </div>
         ) : (
-          filteredLogs.map((log) => (
+          paginatedLogs.map((log) => (
             <article key={log.id} className="border border-[#E6E8E7] bg-white space-y-2 rounded-xl p-3 text-xs shadow-2xs">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
@@ -240,6 +251,36 @@ export function AuditTrailTable({
           ))
         )}
       </div>
+
+      {/* Pagination Controls */}
+      {filteredLogs.length > 0 && (
+        <div className="flex items-center justify-between p-3 border border-[#E6E8E7] bg-white rounded-xl text-xs text-[#183028]/60 shadow-2xs print:hidden">
+          <span>
+            Showing {(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, filteredLogs.length)} of {filteredLogs.length}
+          </span>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+              className="h-7 px-2 text-xs rounded-lg border-[#E6E8E7] text-[#183028] hover:bg-[#C5E86C]/20 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            >
+              Previous
+            </Button>
+            <span className="px-2 font-mono text-xs text-[#183028]">{currentPage} / {totalPages}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage >= totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+              className="h-7 px-2 text-xs rounded-lg border-[#E6E8E7] text-[#183028] hover:bg-[#C5E86C]/20 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

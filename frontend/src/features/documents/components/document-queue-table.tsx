@@ -72,6 +72,8 @@ export function DocumentQueueTable() {
   const [showCalendar, setShowCalendar] = useState(true);
   const [sortField] = useState<"submittedAt" | "title" | "status">("submittedAt");
   const [sortDirection] = useState<"asc" | "desc">("desc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 8;
   const [decisionDoc, setDecisionDoc] = useState<{
     id: string;
     title: string;
@@ -191,6 +193,12 @@ export function DocumentQueueTable() {
         ? a.status.localeCompare(b.status)
         : b.status.localeCompare(a.status);
     });
+
+  const totalPages = Math.ceil(filteredDocuments.length / pageSize) || 1;
+  const paginatedDocuments = filteredDocuments.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   const activeDatePreset = React.useMemo(() => {
     if (dateFilterPreset === "Custom") {
@@ -378,7 +386,10 @@ export function DocumentQueueTable() {
                 (tab) => (
                   <button
                     key={tab}
-                    onClick={() => setActiveTab(tab)}
+                    onClick={() => {
+                      setActiveTab(tab);
+                      setCurrentPage(1);
+                    }}
                     className={cn(
                       "px-3.5 py-1.5 text-xs font-semibold rounded-xl transition-all cursor-pointer whitespace-nowrap",
                       activeTab === tab
@@ -399,7 +410,10 @@ export function DocumentQueueTable() {
                 <Input
                   placeholder="Search advisor, document ID, title..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setCurrentPage(1);
+                  }}
                   className="pl-9 h-9 text-xs rounded-xl bg-[#FAFBF9] border-[#E6E8E7] text-[#183028] placeholder:text-[#183028]/40 focus:bg-white focus:border-[#183028]"
                 />
               </div>
@@ -408,7 +422,10 @@ export function DocumentQueueTable() {
                 <Filter className="h-4 w-4 text-[#183028]/50" />
                 <select
                   value={selectedPriority}
-                  onChange={(e) => setSelectedPriority(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedPriority(e.target.value);
+                    setCurrentPage(1);
+                  }}
                   className="h-9 text-xs rounded-xl px-3 font-semibold bg-[#FAFBF9] border border-[#E6E8E7] text-[#183028] outline-none cursor-pointer hover:border-[#183028]/40 focus:border-[#183028]"
                 >
                   <option value="All">All Priorities</option>
@@ -487,7 +504,7 @@ export function DocumentQueueTable() {
               </TableHeader>
 
               <TableBody className="divide-y divide-[#F0F2F0]">
-                {filteredDocuments.map((doc) => {
+                {paginatedDocuments.map((doc) => {
                   return (
                     <TableRow
                       key={doc.id}
@@ -642,6 +659,37 @@ export function DocumentQueueTable() {
             </Table>
           </div>
         )}
+
+        {/* Pagination Controls */}
+        {!isPending && filteredDocuments.length > 0 && (
+          <div className="flex items-center justify-between pt-3 border-t border-[#E6E8E7] text-xs text-[#183028]/60 px-4 pb-3">
+            <span>
+              Showing {(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, filteredDocuments.length)} of {filteredDocuments.length}
+              {activeTab !== "All" && ` • ${activeTab}`}
+            </span>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                className="h-7 px-2 text-xs rounded-lg border-[#E6E8E7] text-[#183028] hover:bg-[#C5E86C]/20 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              >
+                Previous
+              </Button>
+              <span className="px-2 font-mono text-xs text-[#183028]">{currentPage} / {totalPages}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                className="h-7 px-2 text-xs rounded-lg border-[#E6E8E7] text-[#183028] hover:bg-[#C5E86C]/20 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
           </div>
         </div>
 
@@ -657,16 +705,19 @@ export function DocumentQueueTable() {
                 setDateFilterPreset(preset);
                 setCustomStartDate("");
                 setCustomEndDate("");
+                setCurrentPage(1);
               }}
               onSelectCustomRange={(start, end) => {
                 setDateFilterPreset("Custom");
                 setCustomStartDate(start);
                 setCustomEndDate(end);
+                setCurrentPage(1);
               }}
               onClear={() => {
                 setDateFilterPreset("All");
                 setCustomStartDate("");
                 setCustomEndDate("");
+                setCurrentPage(1);
               }}
             />
           </div>

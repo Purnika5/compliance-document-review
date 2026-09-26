@@ -64,7 +64,8 @@ export function AuditHistoryView() {
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState(documentIdParam || "");
   const [statusFilter, setStatusFilter] = useState<string>("All");
-  const [categoryFilter, setCategoryFilter] = useState<string>("All");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
 
   // Adjust search query if documentIdParam changes
   const [prevDocId, setPrevDocId] = useState(documentIdParam);
@@ -72,6 +73,7 @@ export function AuditHistoryView() {
     setPrevDocId(documentIdParam);
     if (documentIdParam) {
       setSearchQuery(documentIdParam);
+      setCurrentPage(1);
     }
   }
 
@@ -172,10 +174,7 @@ export function AuditHistoryView() {
       // 1. Filter by Status
       if (statusFilter !== "All" && entry.statusResult !== statusFilter) return false;
 
-      // 2. Filter by Action Category
-      if (categoryFilter !== "All" && entry.actionCategory !== categoryFilter) return false;
-
-      // 3. Search Query matching
+      // 2. Search Query matching
       if (!searchQuery.trim()) return true;
       const q = searchQuery.toLowerCase();
       return (
@@ -190,7 +189,12 @@ export function AuditHistoryView() {
         (entry.hash?.toLowerCase().includes(q) ?? false)
       );
     });
-  }, [entries, searchQuery, statusFilter, categoryFilter]);
+  }, [entries, searchQuery, statusFilter]);
+
+  const totalPages = Math.ceil(filteredEntries.length / pageSize) || 1;
+  const paginatedEntries = useMemo(() => {
+    return filteredEntries.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  }, [filteredEntries, currentPage, pageSize]);
 
   const handleExportCsv = () => {
     if (filteredEntries.length === 0) return;
@@ -274,7 +278,10 @@ export function AuditHistoryView() {
             <Input
               placeholder="Search by ID, User, Action, or Details..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
               className="pl-8 h-8 text-xs bg-white border border-[#E6E8E7] text-[#183028] placeholder:text-[#183028]/45 rounded-xl focus-visible:ring-1 focus-visible:ring-[#183028] shadow-2xs"
             />
           </div>
@@ -283,7 +290,10 @@ export function AuditHistoryView() {
             {/* Status Filter select */}
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setCurrentPage(1);
+              }}
               className="h-8 px-2.5 text-xs rounded-xl border border-[#E6E8E7] bg-white text-[#183028] focus:outline-hidden focus:ring-1 focus:ring-[#183028] cursor-pointer shadow-2xs font-medium"
               title="Filter by status"
             >
@@ -292,21 +302,6 @@ export function AuditHistoryView() {
               <option value="Needs Revision">Needs Revision</option>
               <option value="Approved">Approved</option>
               <option value="Rejected">Rejected</option>
-            </select>
-
-            {/* Action category select */}
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="h-8 px-2.5 text-xs rounded-xl border border-[#E6E8E7] bg-white text-[#183028] focus:outline-hidden focus:ring-1 focus:ring-[#183028] cursor-pointer shadow-2xs font-medium"
-              title="Filter by action category"
-            >
-              <option value="All">All Action Categories</option>
-              <option value="Approval">Approvals &amp; Sign-offs</option>
-              <option value="Revision">Revision Requests</option>
-              <option value="Submission">Advisor Submissions</option>
-              <option value="AI_Scan">AI Rule Scans</option>
-              <option value="Metadata">Metadata Updates</option>
             </select>
           </div>
         </div>
@@ -349,7 +344,7 @@ export function AuditHistoryView() {
               </TableHeader>
 
               <TableBody>
-                {filteredEntries.map((log) => (
+                {paginatedEntries.map((log) => (
                   <TableRow
                     key={log.id}
                     className="border-b border-[#E6E8E7] hover:bg-[#C5E86C]/10 transition-colors"
@@ -400,6 +395,37 @@ export function AuditHistoryView() {
             </Table>
           )}
         </div>
+
+        {/* Pagination Controls */}
+        {isLoaded && filteredEntries.length > 0 && (
+          <div className="flex items-center justify-between p-3 border-t border-[#E6E8E7] bg-[#FAFBFB] text-xs text-[#183028]/60 print:hidden">
+            <span>
+              Showing {(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, filteredEntries.length)} of {filteredEntries.length} records
+              {statusFilter !== "All" && ` • ${statusFilter}`}
+            </span>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                className="h-7 px-2 text-xs rounded-lg border-[#E6E8E7] text-[#183028] hover:bg-[#C5E86C]/20 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              >
+                Previous
+              </Button>
+              <span className="px-2 font-mono text-xs text-[#183028]">{currentPage} / {totalPages}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                className="h-7 px-2 text-xs rounded-lg border-[#E6E8E7] text-[#183028] hover:bg-[#C5E86C]/20 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
