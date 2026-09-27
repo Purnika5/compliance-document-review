@@ -2494,14 +2494,18 @@ function AuditResultCard({ result, isCopied, onCopy }: IAuditCardProps) {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      const safeTitle = (result.remediated_content.suggested_title || "Remediated_Proposal")
+      const rawTitle = result.remediated_content.suggested_title || "Remediated_Proposal";
+      const safeTitle = rawTitle
+        .replace(/(\.txt|\.pdf|\.docx|\.doc)$/i, "")
+        .replace(/(_Compliance_Remediated)+/gi, "_Compliance_Remediated")
+        .replace(/(_Remediated)+/gi, "_Remediated")
         .replace(/[^a-zA-Z0-9_\-\s]/g, "")
         .trim();
       link.download = `${safeTitle}.txt`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
       showSuccessToast("Remediated compliant file downloaded.");
       return;
     }
