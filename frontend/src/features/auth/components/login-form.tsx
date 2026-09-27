@@ -8,6 +8,7 @@
  */
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useLogin } from "../hooks/use-login";
 import { useRedirectIfAuthenticated } from "../hooks/use-auth-guard";
 import { loginSchema, validateEmail } from "@/lib/validation/auth";
@@ -18,6 +19,7 @@ import { Mail, Lock, Eye, EyeOff, Loader2, ArrowRight, AlertCircle, Check } from
 import { cn } from "@/lib/utils";
 
 export function LoginForm() {
+  const router = useRouter();
   useRedirectIfAuthenticated();
   const { mutate, isPending, error, clearError } = useLogin();
 
@@ -89,7 +91,10 @@ export function LoginForm() {
       return;
     }
 
-    await mutate({ email, password });
+    const loggedInSession = await mutate({ email, password });
+    if (loggedInSession) {
+      router.push(loggedInSession.role === "Officer" ? "/queue" : "/dashboard");
+    }
   };
 
   return (

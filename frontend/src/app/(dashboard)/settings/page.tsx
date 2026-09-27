@@ -7,7 +7,9 @@
  * @author Keith
  */
 import React, { useState, useEffect, useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
 import { authStore, type UserSession } from "@/lib/auth/auth-store";
+import { walkthroughStore } from "@/lib/walkthrough-store";
 import type { UserProfile } from "@/entities/interfaces/auth.interface";
 import { authService } from "@/services/auth.service";
 import { Button } from "@/components/ui/button";
@@ -17,12 +19,14 @@ import {
   Save,
   Loader2,
   AlertCircle,
+  Compass,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SettingsSkeleton } from "@/features/settings/components/settings-skeleton";
 import { showSuccessToast, showErrorToast } from "@/components/ui/toast";
 
 export default function SettingsPage() {
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const session = useSyncExternalStore<UserSession | null>(
     authStore.subscribe,
@@ -232,6 +236,35 @@ export default function SettingsPage() {
               </>
             )}
           </Button>
+        </div>
+
+        {/* Onboarding & Orientation Tour */}
+        <div className="bg-white rounded-2xl border border-[#E6E8E7] p-5 shadow-xs space-y-3 mt-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-bold text-[#183028]">Platform Orientation &amp; Walkthrough</h2>
+              <p className="text-xs text-[#183028]/60 mt-0.5">
+                Re-experience the interactive guided spotlight tour designed for your {role} supervisory interface.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const userIdentifier = session?.email || "user";
+                walkthroughStore.resetCompletion(userIdentifier, role);
+                showSuccessToast("Walkthrough Reset", `Redirecting to ${role === "Officer" ? "Review Queue" : "Dashboard"} to launch the tour.`);
+                setTimeout(() => {
+                  router.push(role === "Officer" ? "/queue" : "/dashboard");
+                }, 400);
+              }}
+              className="h-9 px-4 text-xs font-semibold rounded-xl border-[#E6E8E7] hover:bg-[#C5E86C]/20 hover:border-[#C5E86C] text-[#183028] transition-all cursor-pointer shrink-0"
+            >
+              <Compass className="h-3.5 w-3.5 mr-1.5" />
+              Replay Guided Tour
+            </Button>
+          </div>
         </div>
       </form>
     </div>

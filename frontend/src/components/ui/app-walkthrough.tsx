@@ -311,31 +311,37 @@ export function AppWalkthrough() {
       session.email ||
       (session as any).userId ||
       (session as any).id ||
-      "user"
+      ""
     ).toLowerCase().trim();
-    const role = session.role || "Advisor";
+    if (!userIdentifier) return;
+
+    const role = session.role === "Officer" ? "Officer" : "Advisor";
     const currentKey = `${userIdentifier}_${role}`;
 
     if (lastCheckedKey.current === currentKey) return;
-    lastCheckedKey.current = currentKey;
 
     // Strictly display ONCE per user account and role
     const alreadyCompleted = walkthroughStore.hasCompleted(userIdentifier, role);
 
     if (!alreadyCompleted) {
+      lastCheckedKey.current = currentKey;
       const timer = setTimeout(() => {
         if (typeof window !== "undefined") {
           const currentPath = window.location.pathname;
           if (
             currentPath === "/dashboard" ||
             currentPath === "/queue" ||
-            currentPath === "/"
+            currentPath === "/" ||
+            currentPath.startsWith("/dashboard") ||
+            currentPath.startsWith("/queue")
           ) {
-            walkthroughStore.openWalkthrough(role === "Officer" ? "Officer" : "Advisor");
+            walkthroughStore.openWalkthrough(role);
           }
         }
       }, 500);
       return () => clearTimeout(timer);
+    } else {
+      lastCheckedKey.current = currentKey;
     }
   }, [session, isDashboardRoute]);
 
@@ -389,11 +395,15 @@ export function AppWalkthrough() {
       session?.email ||
       (session as any)?.userId ||
       (session as any)?.id ||
-      "user"
+      ""
     ).toLowerCase().trim();
-    const role = session?.role || "Advisor";
-    walkthroughStore.markCompleted(userIdentifier, role);
-    walkthroughStore.closeWalkthrough(userIdentifier, role);
+    const role = session?.role === "Officer" ? "Officer" : "Advisor";
+    if (userIdentifier) {
+      walkthroughStore.markCompleted(userIdentifier, role);
+      walkthroughStore.closeWalkthrough(userIdentifier, role);
+    } else {
+      walkthroughStore.closeWalkthrough();
+    }
   }, [session]);
 
   // Automatically close & save completion if user navigates away to other pages like /settings or /audit
