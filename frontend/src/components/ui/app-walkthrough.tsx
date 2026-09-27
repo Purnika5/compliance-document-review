@@ -294,8 +294,9 @@ export function AppWalkthrough() {
   const cardRef = useRef<HTMLDivElement>(null);
   const lastCheckedKey = useRef<string>("");
 
-  // Role determination
-  const isOfficer = session?.role === "Officer";
+  // Role determination (supports both Advisor and Officer)
+  const activeRole = walkthroughState.forcedRole || session?.role || "Advisor";
+  const isOfficer = activeRole === "Officer";
   const steps = isOfficer ? OFFICER_SPOTLIGHT_STEPS : ADVISOR_SPOTLIGHT_STEPS;
   const currentStep = steps[currentStepIndex] || steps[0];
   const isFirstStep = currentStepIndex === 0;
