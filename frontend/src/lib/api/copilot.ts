@@ -202,8 +202,9 @@ export const copilotApi = {
    */
   async getQuota(): Promise<{ fileAnalyses: { used: number; limit: number; remaining: number }; chatMessages: { used: number; limit: number; remaining: number }; resetsAt: string; resetInDays: number } | null> {
     try {
-      const response = await client.get<ApiResponse<any>>("/api/chat/quota");
-      return response?.data ?? null;
+      const response = await client.get<any>("/api/chat/quota");
+      const quotaData = response?.quota ?? response?.data?.quota ?? response?.data ?? null;
+      return quotaData;
     } catch {
       return null;
     }

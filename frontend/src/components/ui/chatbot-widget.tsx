@@ -655,16 +655,18 @@ interface LocalQuota {
 }
 
 function getLocalQuota(userId: string): LocalQuota {
-  if (typeof window === "undefined") return { used: 0, periodStartedAt: Date.now() };
+  if (typeof window === "undefined" || !userId || userId === "anonymous" || userId.startsWith("__")) {
+    return { used: 0, periodStartedAt: Date.now() };
+  }
   try {
-    const raw = localStorage.getItem(`${LOCAL_QUOTA_KEY}_${userId}`);
+    const raw = localStorage.getItem(`${LOCAL_QUOTA_KEY}_${userId.toLowerCase().trim()}`);
     if (!raw) return { used: 0, periodStartedAt: Date.now() };
     const parsed: LocalQuota = JSON.parse(raw);
     const periodMs = LOCAL_QUOTA_PERIOD_DAYS * 24 * 60 * 60 * 1000;
     // Auto-reset if period expired
     if (Date.now() - parsed.periodStartedAt > periodMs) {
       const fresh = { used: 0, periodStartedAt: Date.now() };
-      localStorage.setItem(`${LOCAL_QUOTA_KEY}_${userId}`, JSON.stringify(fresh));
+      localStorage.setItem(`${LOCAL_QUOTA_KEY}_${userId.toLowerCase().trim()}`, JSON.stringify(fresh));
       return fresh;
     }
     return parsed;
@@ -674,10 +676,13 @@ function getLocalQuota(userId: string): LocalQuota {
 }
 
 function incrementLocalQuota(userId: string): LocalQuota {
+  if (!userId || userId === "anonymous" || userId.startsWith("__")) {
+    return { used: 0, periodStartedAt: Date.now() };
+  }
   const current = getLocalQuota(userId);
   const updated = { ...current, used: current.used + 1 };
   try {
-    localStorage.setItem(`${LOCAL_QUOTA_KEY}_${userId}`, JSON.stringify(updated));
+    localStorage.setItem(`${LOCAL_QUOTA_KEY}_${userId.toLowerCase().trim()}`, JSON.stringify(updated));
   } catch { /* storage full — ignore */ }
   return updated;
 }
@@ -730,6 +735,25 @@ export function ChatbotWidget() {
     isLoginMode ? LOGIN_INITIAL_MESSAGES : DASHBOARD_INITIAL_MESSAGES
   );
 
+  const [inputValue, setInputValue] = useState("");
+
+  // Track user session changes — wipes state clean when registering, logging out, or switching users
+  const currentUserKey = session?.email ? `user_${session.email.toLowerCase().trim()}` : isLoginMode ? "__login__" : "__unauth__";
+  const [prevUserKey, setPrevUserKey] = useState(currentUserKey);
+  if (prevUserKey !== currentUserKey) {
+    setPrevUserKey(currentUserKey);
+    setQuota(null);
+    setFileQuota(null);
+    setActiveScannedDoc(null);
+    setPendingFile(null);
+    setMessages(isLoginMode ? LOGIN_INITIAL_MESSAGES : DASHBOARD_INITIAL_MESSAGES);
+    setIsOpen(false);
+    setIsFullscreen(false);
+    setInputValue("");
+    setUploadStatusText("");
+    setIsUploading(false);
+  }
+
   // Adjust state during render if transition between login and dashboard occurs
   const [prevIsLoginMode, setPrevIsLoginMode] = useState(isLoginMode);
   if (prevIsLoginMode !== isLoginMode) {
@@ -738,8 +762,6 @@ export function ChatbotWidget() {
     setIsOpen(false);
     setIsFullscreen(false);
   }
-
-  const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [isAwaitingGrammarInput, setIsAwaitingGrammarInput] = useState(false);
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
@@ -800,34 +822,47 @@ export function ChatbotWidget() {
     const userId = session?.email || "anonymous";
 
 
-    // 1. Immediately apply localStorage quota (works without Supabase table)
+    // 1. Immediately apply localStorage quota for this user if not yet initialized
     const localQ = getLocalQuota(userId);
     setFileQuota((prev) => {
-      // Only override if server hasn't returned a more authoritative value
-      if (prev !== null) return prev;
-      return {
-        used: localQ.used,
-        limit: LOCAL_QUOTA_LIMIT,
-        remaining: Math.max(0, LOCAL_QUOTA_LIMIT - localQ.used),
-        resetsAt: "",
-        resetInDays: LOCAL_QUOTA_PERIOD_DAYS,
-      };
+      if (prev === null) {
+        return {
+          used: localQ.used,
+          limit: LOCAL_QUOTA_LIMIT,
+          remaining: Math.max(0, LOCAL_QUOTA_LIMIT - localQ.used),
+          resetsAt: "",
+          resetInDays: LOCAL_QUOTA_PERIOD_DAYS,
+        };
+      }
+      return prev;
     });
 
-    // 2. Also fetch server quota async for Advisor role (server quota wins if available)
+    // 2. Also fetch server quota async for Advisor/Officer role (server quota is authoritative)
     if (session?.role === "Advisor" || session?.role === "Officer") {
       copilotApi.getQuota().then((info) => {
         if (!info) return;
-        // Use the stricter of server vs local counts
-        const serverUsed = info.fileAnalyses.used;
+        const serverUsed = info.fileAnalyses?.used ?? 0;
+        const serverLimit = info.fileAnalyses?.limit ?? LOCAL_QUOTA_LIMIT;
         const localUsed = getLocalQuota(userId).used;
         const effectiveUsed = Math.max(serverUsed, localUsed);
-        const effectiveRemaining = Math.max(0, info.fileAnalyses.limit - effectiveUsed);
+        const effectiveRemaining = Math.max(0, serverLimit - effectiveUsed);
 
-        if (session?.role === "Advisor") {
-          setQuota({ used: info.chatMessages.used, limit: info.chatMessages.limit, remaining: info.chatMessages.remaining, resetsAt: info.resetsAt, resetInDays: info.resetInDays });
+        if (session?.role === "Advisor" && info.chatMessages) {
+          setQuota({
+            used: info.chatMessages.used,
+            limit: info.chatMessages.limit,
+            remaining: info.chatMessages.remaining,
+            resetsAt: info.resetsAt,
+            resetInDays: info.resetInDays,
+          });
         }
-        setFileQuota({ used: effectiveUsed, limit: info.fileAnalyses.limit, remaining: effectiveRemaining, resetsAt: info.resetsAt, resetInDays: info.resetInDays });
+        setFileQuota({
+          used: effectiveUsed,
+          limit: serverLimit,
+          remaining: effectiveRemaining,
+          resetsAt: info.resetsAt,
+          resetInDays: info.resetInDays,
+        });
       }).catch(() => { /* silent — localStorage gate still works */ });
     }
   }, [isOpen, isAuthenticated, session?.email, session?.role]);

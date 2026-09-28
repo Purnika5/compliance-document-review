@@ -5,13 +5,40 @@
  * @author Keith
  */
 
-const STORAGE_KEY = "springer_scanned_files";
+import { authStore } from "@/lib/auth/auth-store";
+
 const EVENT_NAME = "compliance-file-scanned";
+
+function getStorageKey(): string {
+  if (typeof window === "undefined") return "springer_scanned_files";
+  try {
+    const session = authStore.getSession();
+    if (session?.email) {
+      return `springer_scanned_files_${session.email.toLowerCase().trim()}`;
+    }
+    return "springer_scanned_files_anonymous";
+  } catch {
+    return "springer_scanned_files";
+  }
+}
 
 export interface IScannedFileRecord {
   name: string;
   size?: number;
   timestamp: number;
+}
+
+/**
+ * Clears recorded scanned files for the active user.
+ */
+export function clearScannedFiles(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(getStorageKey());
+    window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: null }));
+  } catch {
+    // silent
+  }
 }
 
 /**
@@ -32,7 +59,7 @@ export function markFileAsScanned(name: string, size?: number): void {
   if (typeof window === "undefined" || !name) return;
 
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(getStorageKey());
     const records: IScannedFileRecord[] = raw ? JSON.parse(raw) : [];
 
     const existingIdx = records.findIndex(
@@ -56,7 +83,7 @@ export function markFileAsScanned(name: string, size?: number): void {
       records.length = 100;
     }
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+    localStorage.setItem(getStorageKey(), JSON.stringify(records));
     window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: { name, size } }));
   } catch (err) {
     console.warn("[ScannedFiles] Failed to write scanned file record:", err);
@@ -70,7 +97,7 @@ export function isScannedFile(name?: string | null): boolean {
   if (typeof window === "undefined" || !name) return false;
 
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(getStorageKey());
     if (!raw) return false;
 
     const records: IScannedFileRecord[] = JSON.parse(raw);
@@ -91,7 +118,7 @@ export function isScannedFile(name?: string | null): boolean {
 export function getScannedFiles(): IScannedFileRecord[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(getStorageKey());
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
