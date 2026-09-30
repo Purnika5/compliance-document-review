@@ -73,8 +73,9 @@ export class AuthService {
    * @author Keith
    */
   public async getMe(): Promise<UserProfile> {
-    const envelope = await this.client.get<ApiResponseEnvelope<UserProfile>>("/auth/me");
-    return envelope.data;
+    const envelope = await this.client.get<ApiResponseEnvelope<{ user: UserProfile } | UserProfile>>("/auth/me");
+    const data = envelope.data as any;
+    return (data?.user || data) as UserProfile;
   }
 
   /**

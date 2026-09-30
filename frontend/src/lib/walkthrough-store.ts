@@ -24,6 +24,8 @@ function notify() {
   listeners.forEach((listener) => listener());
 }
 
+const completedInSession = new Set<string>();
+
 export const walkthroughStore = {
   subscribe(listener: WalkthroughListener): () => void {
     listeners.add(listener);
@@ -43,7 +45,8 @@ export const walkthroughStore = {
     notify();
   },
 
-  closeWalkthrough() {
+  closeWalkthrough(userIdOrEmail?: string, role?: string) {
+    this.markCompleted(userIdOrEmail, role);
     state = { isOpen: false, forcedRole: undefined };
     notify();
   },
@@ -52,19 +55,42 @@ export const walkthroughStore = {
    * Generates a deterministic storage key per user identity and role.
    */
   getStorageKey(userIdOrEmail?: string, role?: string): string {
-    const user = (userIdOrEmail || "guest").toLowerCase().trim();
-    const userRole = (role || "user").toLowerCase().trim();
-    return `springer_guided_tour_v8_${user}_${userRole}`;
+    const user = (userIdOrEmail || "").toLowerCase().trim();
+    const userRole = (role || "Advisor").toLowerCase().trim();
+    return `springer_guided_tour_v9_${user}_${userRole}`;
   },
 
   /**
-   * Checks if the user has already completed the walkthrough.
+   * Checks if the specific user and role has already completed the walkthrough.
+   * Strictly isolated per user identity so newly created users always get the walkthrough once.
    */
   hasCompleted(userIdOrEmail?: string, role?: string): boolean {
     if (typeof window === "undefined") return true;
     try {
-      const key = this.getStorageKey(userIdOrEmail, role);
-      return localStorage.getItem(key) === "true";
+      const user = (userIdOrEmail || "").toLowerCase().trim();
+      const userRole = (role || "Advisor").toLowerCase().trim();
+
+      // If user identity is missing or unauthenticated, do not prematurely treat as completed
+      if (!user) return false;
+
+      const exactKey = this.getStorageKey(user, userRole);
+
+      // In-memory dismissal check for current SPA lifecycle for THIS specific user & role
+      if (completedInSession.has(exactKey)) {
+        return true;
+      }
+
+      // Check user-specific sessionStorage
+      if (sessionStorage.getItem(`springer_guided_tour_dismissed_${user}_${userRole}`) === "true") {
+        return true;
+      }
+
+      // Check user-specific persistent localStorage
+      if (localStorage.getItem(exactKey) === "true") {
+        return true;
+      }
+
+      return false;
     } catch {
       return false;
     }
@@ -72,27 +98,53 @@ export const walkthroughStore = {
 
   /**
    * Marks the walkthrough as completed for the current user and role.
+   * Guarantees the walkthrough displays only once per user.
    */
   markCompleted(userIdOrEmail?: string, role?: string) {
     if (typeof window === "undefined") return;
     try {
-      const key = this.getStorageKey(userIdOrEmail, role);
-      localStorage.setItem(key, "true");
+      const user = (userIdOrEmail || "").toLowerCase().trim();
+      const userRole = (role || "Advisor").toLowerCase().trim();
+      if (!user) return;
+
+      const exactKey = this.getStorageKey(user, userRole);
+
+      // Record in-memory for this specific user
+      completedInSession.add(exactKey);
+
+      // Record in sessionStorage for this specific user
+      sessionStorage.setItem(`springer_guided_tour_dismissed_${user}_${userRole}`, "true");
+
+      // Record in persistent localStorage for this specific user
+      localStorage.setItem(exactKey, "true");
     } catch (err) {
-      console.warn("[Walkthrough] Failed to save completion to localStorage:", err);
+      console.warn("[Walkthrough] Failed to save completion to storage:", err);
     }
   },
 
   /**
-   * Resets the completion status (useful for testing or full re-onboarding).
+   * Resets the completion status (useful for testing or manual re-onboarding).
    */
   resetCompletion(userIdOrEmail?: string, role?: string) {
     if (typeof window === "undefined") return;
     try {
-      const key = this.getStorageKey(userIdOrEmail, role);
-      localStorage.removeItem(key);
+      const user = (userIdOrEmail || "").toLowerCase().trim();
+      const userRole = (role || "Advisor").toLowerCase().trim();
+      if (!user) return;
+
+      const exactKey = this.getStorageKey(user, userRole);
+      completedInSession.delete(exactKey);
+      sessionStorage.removeItem(`springer_guided_tour_dismissed_${user}_${userRole}`);
+      localStorage.removeItem(exactKey);
+
+      // Clean up legacy v8 keys for this user to prevent any stale state
+      localStorage.removeItem(`springer_guided_tour_v8_${user}_${userRole}`);
+      localStorage.removeItem(`springer_guided_tour_v8_role_${userRole}`);
+      localStorage.removeItem("springer_guided_tour_v8_any");
+      localStorage.removeItem(`springer_guided_tour_v8_user_${userRole}`);
+      sessionStorage.removeItem("springer_guided_tour_dismissed");
     } catch (err) {
-      console.warn("[Walkthrough] Failed to reset completion in localStorage:", err);
+      console.warn("[Walkthrough] Failed to reset completion in storage:", err);
     }
   },
 };

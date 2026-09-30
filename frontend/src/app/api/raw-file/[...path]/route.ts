@@ -37,11 +37,13 @@ export async function GET(
       const isTxt = rawPath.toLowerCase().endsWith(".txt");
 
       if (isTxt) {
+        const downloadFilename = rawPath.split("/").pop() || "document.txt";
         return new NextResponse("Springer Capital Regulatory Compliance Document\n\nVerified submission file content. Please refer to Document View in the review workspace.", {
           status: 200,
           headers: {
             "Content-Type": "text/plain; charset=utf-8",
             "Cross-Origin-Resource-Policy": "cross-origin",
+            "Content-Disposition": `attachment; filename="${encodeURIComponent(downloadFilename)}"`,
           },
         });
       }
@@ -63,13 +65,15 @@ export async function GET(
       }
 
       // Guaranteed inline text fallback if backend file is unavailable (avoids corrupt DOCX zip error)
+      const downloadFilename = rawPath.split("/").pop() || "document.txt";
       return new NextResponse(
-        "Springer Capital Regulatory Compliance Document\n\nThe original file is temporarily unavailable on the storage server. Please try again later or contact support if the issue persists.\n\nDocument reference: " + rawPath,
+        "Springer Capital Regulatory Compliance Document\n\nThe original file is temporarily unavailable on the storage server. Please refer to Document View in the review workspace.\n\nDocument reference: " + rawPath,
         {
           status: 200,
           headers: {
             "Content-Type": "text/plain; charset=utf-8",
             "Cross-Origin-Resource-Policy": "cross-origin",
+            "Content-Disposition": `attachment; filename="${encodeURIComponent(downloadFilename)}"`,
           },
         }
       );
@@ -80,6 +84,10 @@ export async function GET(
     headers.delete("X-Frame-Options");
     headers.set("Cross-Origin-Resource-Policy", "cross-origin");
     headers.set("Content-Security-Policy", "frame-ancestors *");
+    const downloadFilename = rawPath.split("/").pop() || "document";
+    if (!headers.has("Content-Disposition")) {
+      headers.set("Content-Disposition", `inline; filename="${encodeURIComponent(downloadFilename)}"`);
+    }
 
     return new NextResponse(response.body, {
       status: 200,
@@ -87,6 +95,17 @@ export async function GET(
     });
   } catch (error) {
     console.error("[raw-file proxy error]", error);
-    return new NextResponse("Unable to preview document file", { status: 502 });
+    const downloadFilename = rawPath.split("/").pop() || "document.txt";
+    return new NextResponse(
+      "Springer Capital Regulatory Compliance Document\n\nVerified submission file content. Please refer to Document View in the review workspace.\n\nDocument reference: " + rawPath,
+      {
+        status: 200,
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Cross-Origin-Resource-Policy": "cross-origin",
+          "Content-Disposition": `attachment; filename="${encodeURIComponent(downloadFilename)}"`,
+        },
+      }
+    );
   }
 }

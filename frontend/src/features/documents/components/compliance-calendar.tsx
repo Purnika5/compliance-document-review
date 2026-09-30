@@ -129,10 +129,6 @@ export function ComplianceCalendar({
 
   const handleYearChange = (val: string) => {
     setRangeStart(null);
-    if (val === "ALL") {
-      onClear();
-      return;
-    }
     const targetYear = Number(val);
     if (isNaN(targetYear)) return;
 
@@ -287,9 +283,6 @@ export function ComplianceCalendar({
                 )}
                 title="Filter documents by year or select year"
               >
-                <option value="ALL" className="bg-white text-[#183028]">
-                  All Years
-                </option>
                 {availableYears.map((yr) => (
                   <option key={yr} value={String(yr)} className="bg-white text-[#183028]">
                     {yr} {yr === now.getFullYear() ? "(Current)" : ""}
@@ -307,12 +300,16 @@ export function ComplianceCalendar({
         </div>
 
         <div className="flex items-center gap-1">
-          {monthOffset !== 0 && (
+          {(monthOffset !== 0 || isFullYearFilter || activePreset !== "Today") && (
             <button
               type="button"
-              onClick={() => setMonthOffset(0)}
+              onClick={() => {
+                setMonthOffset(0);
+                setRangeStart(null);
+                onSelectPreset("Today");
+              }}
               className="px-2 py-0.5 text-[10px] font-semibold text-[#183028] bg-[#E6E8E7]/60 hover:bg-[#C5E86C]/30 rounded-md cursor-pointer transition-colors"
-              title="Return to Current Month"
+              title="Return to Today"
             >
               Today
             </button>
@@ -346,6 +343,7 @@ export function ComplianceCalendar({
               type="button"
               onClick={() => {
                 setRangeStart(null);
+                setMonthOffset(0);
                 onSelectPreset(preset.value);
               }}
               className={cn(
@@ -439,6 +437,7 @@ export function ComplianceCalendar({
             type="button"
             onClick={() => {
               setRangeStart(null);
+              setMonthOffset(0);
               onClear();
             }}
             className="text-[11px] font-bold text-red-600 hover:text-red-700 flex items-center gap-0.5 cursor-pointer ml-2 shrink-0 transition-colors"

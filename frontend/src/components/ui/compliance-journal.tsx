@@ -74,6 +74,11 @@ export function ComplianceJournal() {
 
     // If the visual spotlight walkthrough is currently open, wait until it finishes
     if (walkthroughState.isOpen) return;
+
+    // If the visual spotlight walkthrough has not yet completed for this user, wait for it
+    const isWalkthroughPending = !walkthroughStore.hasCompleted(userIdentifier, role);
+    if (isWalkthroughPending) return;
+
     if (hasAutoOpened) return;
 
     const isFirstTime = journalStore.isFirstTime(userIdentifier, role);

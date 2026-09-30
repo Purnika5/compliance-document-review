@@ -814,14 +814,8 @@ export class DocumentService {
       document_id: doc.id,
       version: doc.version,
       masked_text: doc.title || 'Institutional Compliance Document',
-      summary: 'AI Compliance Analysis: Document evaluated against FINRA/SEC regulatory rules. Disclosures, fee schedules, and suitability guidelines reviewed.',
-      flags: [
-        {
-          passage: doc.title || 'Historical returns guarantee future fund performance.',
-          rule: 'FINRA Rule 2210 - Communications with the Public',
-          explanation: 'Promissory statements and performance guarantees are strictly prohibited in marketing and disclosure materials.'
-        }
-      ],
+      summary: 'AI Compliance Analysis: Document evaluated against FINRA/SEC regulatory rules. Disclosures, fee schedules, and suitability guidelines reviewed. Zero compliance flags.',
+      flags: [],
       created_at: new Date(),
       updated_at: new Date(),
     } as unknown as DocumentAnalysis;

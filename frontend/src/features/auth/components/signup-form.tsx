@@ -9,6 +9,7 @@
  */
 import React, { useState, useRef, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useSignup } from "../hooks/use-signup";
 import { useRedirectIfAuthenticated } from "../hooks/use-auth-guard";
 import {
@@ -44,6 +45,7 @@ import {
 import { cn } from "@/lib/utils";
 
 export function SignupForm() {
+  const router = useRouter();
   useRedirectIfAuthenticated();
   const { mutate, isPending, error, clearError } = useSignup();
 
@@ -213,7 +215,10 @@ export function SignupForm() {
       return;
     }
 
-    await mutate({ name, email, password, confirmPassword, role });
+    const registeredSession = await mutate({ name, email, password, confirmPassword, role });
+    if (registeredSession) {
+      router.push(registeredSession.role === "Officer" ? "/queue" : "/dashboard");
+    }
   };
 
   return (

@@ -198,8 +198,13 @@ The application includes a zero-configuration Infrastructure-as-Code Blueprint (
  
 ---
 
-## 👨‍💻 Author
-
-- **Keith Lachica**: [https://github.com/keithlachica](https://github.com/keithlachica)
+## 👥 Team & Mentorship
+ 
+- **Mentor**: **Jayanth**
+- **Keith Lachica** — *Frontend / Team Lead* ([GitHub](https://github.com/keithlachica))
+- **Sahil Sonar** — *Backend / Lead* ([GitHub](https://github.com/SahilSonar-04))
+- **Kumkum Gayki** — *Backend Engineer*
+- **Purnika Naga Durga Jyothi** — *AI Engineer* ([GitHub](https://github.com/Purnika5))
+- **Udhayveer Singh Jamwal** — *Data Engineer*
 
   

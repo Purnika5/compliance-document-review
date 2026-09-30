@@ -94,6 +94,24 @@ function renderHighlightedText(text: string, passage?: string) {
     }
   }
 
+  // 3. Punctuation-tolerant match for normalized alphanumeric words
+  if (!match || match.index === undefined) {
+    const alphaWords = words
+      .map((w) => w.replace(/[^a-zA-Z0-9]/g, ""))
+      .filter((w) => w.length > 2);
+    if (alphaWords.length >= 2) {
+      for (let len = Math.min(alphaWords.length, 5); len >= 2; len--) {
+        for (let start = 0; start <= alphaWords.length - len; start++) {
+          const pattern = alphaWords.slice(start, start + len).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("[^a-zA-Z0-9]+");
+          const fuzzyRegex = new RegExp(pattern, "i");
+          match = text.match(fuzzyRegex);
+          if (match && match.index !== undefined) break;
+        }
+        if (match && match.index !== undefined) break;
+      }
+    }
+  }
+
   if (!match || match.index === undefined) {
     return text;
   }
@@ -514,13 +532,83 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
   };
 
   /**
-   * DOCU: Downloads and exports the current document.
+   * DOCU: Downloads and exports the current document with robust fallback handling.
+   * Prioritizes client-side text blob generation for text and remediated proposals
+   * to guarantee instant, 100% reliable downloads without storage server timeouts.
    */
-  const handleDownloadFile = () => {
+  const handleDownloadFile = async () => {
+    const rawFileName = currentDocItem.fileName || currentDocItem.title || "document";
+    // Clean up any repeated remediation suffixes
+    const baseName = rawFileName
+      .replace(/(\.txt|\.pdf|\.docx|\.doc)$/i, "")
+      .replace(/(_Compliance_Remediated)+/gi, "_Compliance_Remediated")
+      .replace(/(_Remediated)+/gi, "_Remediated");
+
+    const isTextDoc =
+      isText ||
+      rawFileName.toLowerCase().endsWith(".txt") ||
+      Boolean(currentDocItem.mimeType?.includes("text")) ||
+      (!isDocx && !isPdf);
+
+    // 1. For text proposals, remediated documents, or any file with extracted text:
+    // Generate instant client-side blob. This works 100% reliably even if remote storage is cold.
+    if (isTextDoc && displayedExtractedText) {
+      const cleanText = cleanRemediatedDocumentForDownload(displayedExtractedText);
+      const blob = new Blob([cleanText], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${baseName}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      // Delay revoke to give Chrome's download manager sufficient time to read the blob stream
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+      showSuccessToast("Document text downloaded successfully.");
+      return;
+    }
+
+    // 2. For binary documents (PDF / Word DOCX):
     if (currentDocItem.fileUrl) {
-      const ext = isDocx ? ".docx" : isPdf ? ".pdf" : "";
-      const baseName = currentDocItem.fileName || currentDocItem.title || "document";
-      const filename = baseName.includes(".") ? baseName : `${baseName}${ext}`;
+      const ext = isDocx ? ".docx" : isPdf ? ".pdf" : ".txt";
+      const filename = `${baseName}${ext}`;
+
+      try {
+        const resp = await fetch(currentDocItem.fileUrl);
+        if (resp.ok) {
+          const blob = await resp.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(url), 10000);
+          showSuccessToast(`${isDocx ? "Word document" : isPdf ? "PDF file" : "File"} downloaded successfully.`);
+          return;
+        }
+      } catch (err) {
+        console.warn("[ReviewWorkspace] Direct blob fetch failed, checking fallback:", err);
+      }
+
+      // If remote binary fetch fails but we have extracted text, export as .txt so user is never blocked
+      if (displayedExtractedText) {
+        const cleanText = cleanRemediatedDocumentForDownload(displayedExtractedText);
+        const blob = new Blob([cleanText], { type: "text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${baseName}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+        showSuccessToast("Document text content downloaded successfully.");
+        return;
+      }
+
+      // Direct window link fallback
       const link = document.createElement("a");
       link.href = currentDocItem.fileUrl;
       link.download = filename;
@@ -528,6 +616,18 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+    } else if (displayedExtractedText) {
+      const cleanText = cleanRemediatedDocumentForDownload(displayedExtractedText);
+      const blob = new Blob([cleanText], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${baseName}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+      showSuccessToast("Document text downloaded successfully.");
     } else {
       showInfoToast("File not available for download.");
     }
@@ -1108,14 +1208,18 @@ export function ReviewWorkspace({ documentId, initialTab }: ReviewWorkspaceProps
                               const url = URL.createObjectURL(blob);
                               const a = document.createElement("a");
                               a.href = url;
-                              const safeTitle = (currentDocItem.title || "Remediated_Proposal")
+                              const rawTitle = currentDocItem.fileName || currentDocItem.title || "Remediated_Proposal";
+                              const safeTitle = rawTitle
+                                .replace(/(\.txt|\.pdf|\.docx|\.doc)$/i, "")
+                                .replace(/(_Compliance_Remediated)+/gi, "_Compliance_Remediated")
+                                .replace(/(_Remediated)+/gi, "_Remediated")
                                 .replace(/[^a-zA-Z0-9_\-\s]/g, "")
                                 .trim();
                               a.download = `${safeTitle}.txt`;
                               document.body.appendChild(a);
                               a.click();
                               document.body.removeChild(a);
-                              URL.revokeObjectURL(url);
+                              setTimeout(() => URL.revokeObjectURL(url), 10000);
                               showSuccessToast("Document text downloaded.");
                             }}
                             className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-[#E6E8E7] bg-white text-[#183028] font-semibold hover:bg-[#C5E86C]/20 transition-all cursor-pointer shadow-2xs"

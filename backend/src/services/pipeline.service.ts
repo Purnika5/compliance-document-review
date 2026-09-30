@@ -475,9 +475,11 @@ export class PipelineService {
         }
 
         const result = (await response.json()) as { summary?: string; flags?: ComplianceFlag[] };
+        const rawFlags = Array.isArray(result.flags) ? result.flags : [];
+        const verifiedFlags = rawFlags.filter((f) => PipelineService.passageExistsInText(maskedText, f.passage));
         return {
-          summary: result.summary || 'Summary generated.',
-          flags: Array.isArray(result.flags) ? result.flags : [],
+          summary: result.summary || (verifiedFlags.length === 0 ? 'Document evaluated with zero compliance flags.' : 'Compliance review completed.'),
+          flags: verifiedFlags,
           isDegraded: false,
           circuitState: aiCircuitBreaker.getState(),
         };
@@ -557,6 +559,30 @@ export class PipelineService {
 
     const sentence = text.slice(start, end).trim().replace(/\s+/g, ' ');
     return sentence.length > matchText.length ? sentence : matchText;
+  }
+
+  /**
+   * Validates that a flagged passage actually exists in the target text.
+   * Tolerates whitespace variations, quote marks, and minor punctuation differences.
+   */
+  public static passageExistsInText(text: string, passage: string): boolean {
+    if (!text || !passage) return false;
+    const cleanPassage = passage.trim().replace(/^["'“”‘’]+|["'“”‘’]+$/g, "");
+    if (!cleanPassage) return false;
+
+    // 1. Direct or lowercase substring match
+    if (text.includes(cleanPassage) || text.toLowerCase().includes(cleanPassage.toLowerCase())) {
+      return true;
+    }
+
+    // 2. Word-sequence match (at least 3 words)
+    const words = cleanPassage.split(/\s+/).filter((w) => w.length > 2);
+    if (words.length >= 3) {
+      const sample = words.slice(0, Math.min(words.length, 5)).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("\\s+");
+      return new RegExp(sample, "i").test(text);
+    }
+
+    return false;
   }
 
   /**
@@ -731,48 +757,73 @@ export class PipelineService {
     }
 
     // 4. Suitability & Liquidity Conflict (FINRA Rule 2111 / SEC Reg BI)
+    const alreadyRemediatedSuitability =
+      lowerText.includes('suitability evaluation') ||
+      lowerText.includes('emergency access without surrender') ||
+      lowerText.includes('laddered short-duration') ||
+      lowerText.includes('partial allocation') ||
+      lowerText.includes('remediation & fiduciary standards');
+
     const hasLiquidityNeed = lowerText.includes('medical expense') || lowerText.includes('partial access') || lowerText.includes('five years');
     const recommendsAnnuity = lowerText.includes('annuity') || lowerText.includes('surrender');
     const suitabilityStmtRegex = /this\s+recommendation\s+is\s+suitable\s+for\s+[\w\s\.]+\s+investment\s+objectives\s+and\s+risk\s+tolerance[^.\n]*\.\s*the\s+annuity['’]s\s+guaranteed\s+return\s+structure\s+aligns\s+with\s+her\s+preference\s+for\s+principal\s+protection\./gi;
 
-    if (hasLiquidityNeed && recommendsAnnuity) {
+    if (!alreadyRemediatedSuitability && hasLiquidityNeed && recommendsAnnuity) {
       const suitMatch = suitabilityStmtRegex.exec(maskedText);
-      const fullPassage = suitMatch ? PipelineService.extractSurroundingSentence(maskedText, suitMatch[0]) : 'This recommendation is suitable for Ms. Whitfield\'s investment objectives and risk tolerance as discussed. The annuity\'s guaranteed return structure aligns with her preference for principal protection.';
-      const fixedPassage = 'Suitability Evaluation: While the client seeks principal protection, her identified liquidity need to fund a family medical expense within five years directly conflicts with the multi-year surrender schedule and withdrawal penalties of an annuity. A partial allocation or a laddered short-duration liquid alternative must be maintained to preserve emergency access without surrender penalties.';
+      let actualPassage = suitMatch ? PipelineService.extractSurroundingSentence(maskedText, suitMatch[0]) : '';
+      if (!actualPassage) {
+        const generalSuitMatch = maskedText.match(/[^.!?\n]{10,}(?:suitable\s+for|suitability|aligned\s+with\s+(?:her|his|their|client['’]s)\s+preference)[^.!?\n]{0,150}[.!?]/i);
+        if (generalSuitMatch) {
+          actualPassage = PipelineService.extractSurroundingSentence(maskedText, generalSuitMatch[0]);
+        }
+      }
 
-      if (!flags.some(f => f.category === 'SUITABILITY')) {
-        flags.push({
-          passage: fullPassage,
-          rule: 'FINRA Rule 2111 (Suitability) & SEC Regulation Best Interest',
-          severity: 'HIGH',
-          confidenceScore: 92,
-          category: 'SUITABILITY',
-          explanation: 'Suitability mismatch: Recommending full surrender into an annuity despite client having documented liquidity need within 5 years for family medical expenses.',
-          fixed_passage: fixedPassage,
-        });
-        remediatedText = remediatedText.replace(suitMatch ? suitMatch[0] : fullPassage, fixedPassage);
+      if (actualPassage && PipelineService.passageExistsInText(maskedText, actualPassage)) {
+        const fixedPassage = 'Suitability Evaluation: While the client seeks principal protection, her identified liquidity need to fund a family medical expense within five years directly conflicts with the multi-year surrender schedule and withdrawal penalties of an annuity. A partial allocation or a laddered short-duration liquid alternative must be maintained to preserve emergency access without surrender penalties.';
+
+        if (!flags.some(f => f.category === 'SUITABILITY')) {
+          flags.push({
+            passage: actualPassage,
+            rule: 'FINRA Rule 2111 (Suitability) & SEC Regulation Best Interest',
+            severity: 'HIGH',
+            confidenceScore: 92,
+            category: 'SUITABILITY',
+            explanation: 'Suitability mismatch: Recommending full surrender into an annuity despite client having documented liquidity need within 5 years for family medical expenses.',
+            fixed_passage: fixedPassage,
+          });
+          remediatedText = remediatedText.replace(actualPassage, fixedPassage);
+        }
       }
     }
 
     // 5. Omission of Surrender Fees & Early Withdrawal Penalties (SEC Rule 206(4)-1 / FINRA Rule 2210)
-    const costSectionRegex = /the\s+suncrest\s+horizon\s+annuity\s+carries\s+an\s+annual\s+rider\s+fee\s+of\s+0\.95%[^.\n]*\.\s*fees\s+are\s+competitive\s+with\s+similar\s+products\s+in\s+the\s+market\./gi;
-    const costMatch = costSectionRegex.exec(maskedText);
-    if (costMatch) {
-      const matchStr = costMatch[0];
-      const fullPassage = PipelineService.extractSurroundingSentence(maskedText, matchStr);
-      const fixedPassage = `${fullPassage} Important Fee & Liquidity Disclosures: Fixed indexed annuities carry surrender charges (e.g. 7% in Year 1, decreasing annually over 7 years) for withdrawals exceeding the 10% annual free-withdrawal limit. Withdrawals prior to age 59½ may also be subject to a 10% federal tax penalty. Rider fees reduce contract value. Guarantee claims are backed solely by the financial strength of the issuing insurer.`;
+    const hasSurrenderDisclosures =
+      lowerText.includes('surrender charge') ||
+      lowerText.includes('surrender fee') ||
+      lowerText.includes('withdrawal penalties') ||
+      lowerText.includes('early withdrawal tax penalty') ||
+      lowerText.includes('important fee & liquidity disclosures');
 
-      if (!flags.some(f => f.rule.includes('Fee') || f.explanation.includes('surrender'))) {
-        flags.push({
-          passage: fullPassage,
-          rule: 'SEC Rule 206(4)-1 & FINRA Rule 2210 - Fee & Restriction Disclosures',
-          severity: 'MEDIUM',
-          confidenceScore: 88,
-          category: 'MISSING_DISCLOSURE',
-          explanation: 'Discloses rider fee of 0.95% but completely omits mandatory disclosures regarding surrender charges, lock-up periods, and IRS early withdrawal penalties.',
-          fixed_passage: fixedPassage,
-        });
-        remediatedText = remediatedText.replace(matchStr, fixedPassage);
+    if (!hasSurrenderDisclosures) {
+      const costSectionRegex = /the\s+suncrest\s+horizon\s+annuity\s+carries\s+an\s+annual\s+rider\s+fee\s+of\s+0\.95%[^.\n]*\.\s*fees\s+are\s+competitive\s+with\s+similar\s+products\s+in\s+the\s+market\./gi;
+      const costMatch = costSectionRegex.exec(maskedText);
+      if (costMatch) {
+        const matchStr = costMatch[0];
+        const fullPassage = PipelineService.extractSurroundingSentence(maskedText, matchStr);
+        const fixedPassage = `${fullPassage} Important Fee & Liquidity Disclosures: Fixed indexed annuities carry surrender charges (e.g. 7% in Year 1, decreasing annually over 7 years) for withdrawals exceeding the 10% annual free-withdrawal limit. Withdrawals prior to age 59½ may also be subject to a 10% federal tax penalty. Rider fees reduce contract value. Guarantee claims are backed solely by the financial strength of the issuing insurer.`;
+
+        if (!flags.some(f => f.rule.includes('Fee') || f.explanation.includes('surrender'))) {
+          flags.push({
+            passage: fullPassage,
+            rule: 'SEC Rule 206(4)-1 & FINRA Rule 2210 - Fee & Restriction Disclosures',
+            severity: 'MEDIUM',
+            confidenceScore: 88,
+            category: 'MISSING_DISCLOSURE',
+            explanation: 'Discloses rider fee of 0.95% but completely omits mandatory disclosures regarding surrender charges, lock-up periods, and IRS early withdrawal penalties.',
+            fixed_passage: fixedPassage,
+          });
+          remediatedText = remediatedText.replace(matchStr, fixedPassage);
+        }
       }
     }
 
@@ -781,46 +832,59 @@ export class PipelineService {
     const hasTestimonialDisclosure = lowerText.includes('compensation') || lowerText.includes('material conflict') || lowerText.includes('testimonial disclosure');
     if (hasTestimonial && !hasTestimonialDisclosure) {
       const matchWord = maskedText.match(/\b(client\s+testimonial|client\s+reviews?|endorsed\s+by|customer\s+satisfaction\s+rating\s+of\s+100%)\b/i);
-      const fullPassage = matchWord ? PipelineService.extractSurroundingSentence(maskedText, matchWord[0]) : 'Client testimonial reference detected without disclosures.';
-      flags.push({
-        passage: fullPassage,
-        rule: 'SEC Rule 206(4)-1 - Investment Adviser Marketing Rule',
-        severity: 'MEDIUM',
-        confidenceScore: 85,
-        category: 'MISSING_DISCLOSURE',
-        explanation: 'Testimonials and endorsements must clearly disclose whether compensation was provided and if material conflicts of interest exist.',
-        fixed_passage: `${fullPassage} (Disclosure: Endorsement provided by non-compensated client; individual results vary and do not guarantee future performance).`,
-      });
+      const fullPassage = matchWord ? PipelineService.extractSurroundingSentence(maskedText, matchWord[0]) : '';
+      if (fullPassage && PipelineService.passageExistsInText(maskedText, fullPassage)) {
+        flags.push({
+          passage: fullPassage,
+          rule: 'SEC Rule 206(4)-1 - Investment Adviser Marketing Rule',
+          severity: 'MEDIUM',
+          confidenceScore: 85,
+          category: 'MISSING_DISCLOSURE',
+          explanation: 'Testimonials and endorsements must clearly disclose whether compensation was provided and if material conflicts of interest exist.',
+          fixed_passage: `${fullPassage} (Disclosure: Endorsement provided by non-compensated client; individual results vary and do not guarantee future performance).`,
+        });
+      }
     }
 
     // 7. Missing Statutory Risk Warning Caveats
+    const hasRiskCaveats =
+      lowerText.includes('loss of principal') ||
+      lowerText.includes('past performance does not guarantee') ||
+      lowerText.includes('investments are subject to market risks');
+
     const isFinancialDocument = /\b(return|invest|portfolio|fund|capital|allocation|performance|yield|strategy|advisor|advisory|proposal|equit|bond|asset)\b/.test(lowerText);
-    if (isFinancialDocument && !lowerText.includes('loss of principal')) {
-      const sentencePattern = /[^.!?\n]{20,}(?:return|yield|performance|profit|gain|invest)[^.!?\n]{0,200}[.!?]/gi;
+    if (isFinancialDocument && !hasRiskCaveats) {
+      const sentencePattern = /[^.!?\n]{10,}(?:return|yield|performance|profit|gain|invest|portfolio|growth|strategy|fund|capital|asset|equit|bond|allocation)[^.!?\n]{0,200}[.!?]?/gi;
       let sm: RegExpExecArray | null = sentencePattern.exec(maskedText);
-      const anchorPassage = sm ? PipelineService.extractSurroundingSentence(maskedText, sm[0].trim()) : maskedText.trim().slice(0, 200);
+      const rawAnchor = sm ? sm[0].trim() : (maskedText.split(/[.\n]/)[0] || '').trim();
+      const anchorPassage = rawAnchor ? PipelineService.extractSurroundingSentence(maskedText, rawAnchor) : '';
 
-      const disclaimer = '\n\nInstitutional Regulatory Disclosure (FINRA Rule 2210 / SEC Rule 206): Past performance does not guarantee future results. Investments are subject to market risks, including the possible loss of principal. Securities offered through Springer Capital Compliance Platform.';
-      remediatedText += disclaimer;
+      if (anchorPassage && PipelineService.passageExistsInText(maskedText, anchorPassage)) {
+        const disclaimer = '\n\nInstitutional Regulatory Disclosure (FINRA Rule 2210 / SEC Rule 206): Past performance does not guarantee future results. Investments are subject to market risks, including the possible loss of principal. Securities offered through Springer Capital Compliance Platform.';
+        remediatedText += disclaimer;
 
-      flags.push({
-        passage: anchorPassage,
-        rule: 'FINRA Rule 2210 / SEC Rule 206(4)-1',
-        severity: 'MEDIUM',
-        confidenceScore: 85,
-        category: 'MISSING_DISCLOSURE',
-        explanation: 'Document contains investment performance or return language but omits mandatory statutory past-performance and downside-risk caveats required for all investor-facing communications.',
-        fixed_passage: 'Past performance does not guarantee future results. Investments are subject to market risks, including the possible loss of principal.',
-      });
+        flags.push({
+          passage: anchorPassage,
+          rule: 'FINRA Rule 2210 / SEC Rule 206(4)-1',
+          severity: 'MEDIUM',
+          confidenceScore: 85,
+          category: 'MISSING_DISCLOSURE',
+          explanation: 'Document contains investment performance or return language but omits mandatory statutory past-performance and downside-risk caveats required for all investor-facing communications.',
+          fixed_passage: 'Past performance does not guarantee future results. Investments are subject to market risks, including the possible loss of principal.',
+        });
+      }
     }
 
-    const summary = flags.length === 0
+    // Guarantee that 100% of reported flags exist in the document text
+    const verifiedFlags = flags.filter((f) => PipelineService.passageExistsInText(maskedText, f.passage));
+
+    const summary = verifiedFlags.length === 0
       ? 'AI Compliance Analysis: Document evaluated against FINRA 2210 and SEC 206 rules. Fiduciary disclosures, risk suitability, and fee transparencies verified. Zero compliance flags.'
-      : `AI Compliance Review: Document evaluated against FINRA 2210, SEC 206, and FINRA 2111 rules. ${flags.length} compliance ${flags.length === 1 ? 'flag' : 'flags'} identified requiring supervisory attention.`;
+      : `AI Compliance Review: Document evaluated against FINRA 2210, SEC 206, and FINRA 2111 rules. ${verifiedFlags.length} compliance ${verifiedFlags.length === 1 ? 'flag' : 'flags'} identified requiring supervisory attention.`;
 
     return {
       summary,
-      flags,
+      flags: verifiedFlags,
       remediatedText: PipelineService.cleanRemediatedDocumentForDownload(remediatedText),
     };
   }
@@ -899,7 +963,8 @@ Respond ONLY with valid JSON having this exact schema:
           fixed_passage: f.fixed_passage || f.remediation,
           confidenceScore: Number(f.confidenceScore || 92),
         };
-      });
+      })
+      .filter((f: ComplianceFlag) => PipelineService.passageExistsInText(maskedText, f.passage));
 
       return { summary, flags };
     } catch (err: any) {

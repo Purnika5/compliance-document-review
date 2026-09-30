@@ -17,6 +17,7 @@ import React, {
   useCallback,
   useSyncExternalStore,
 } from "react";
+import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   UploadCloud,
@@ -272,6 +273,10 @@ interface ElementRect {
 }
 
 export function AppWalkthrough() {
+  const pathname = usePathname();
+  const isDashboardRoute =
+    pathname === "/dashboard" || pathname === "/queue" || pathname === "/";
+
   const session = useSyncExternalStore<UserSession | null>(
     authStore.subscribe,
     authStore.getSession,
@@ -289,34 +294,57 @@ export function AppWalkthrough() {
   const cardRef = useRef<HTMLDivElement>(null);
   const lastCheckedKey = useRef<string>("");
 
-  // Role determination
-  const isOfficer = session?.role === "Officer";
+  // Role determination (supports both Advisor and Officer)
+  const activeRole = walkthroughState.forcedRole || session?.role || "Advisor";
+  const isOfficer = activeRole === "Officer";
   const steps = isOfficer ? OFFICER_SPOTLIGHT_STEPS : ADVISOR_SPOTLIGHT_STEPS;
   const currentStep = steps[currentStepIndex] || steps[0];
   const isFirstStep = currentStepIndex === 0;
   const isLastStep = currentStepIndex === steps.length - 1;
 
-  // Auto-launch on first-time login without manual clicking
+  // Auto-launch on first-time login without manual clicking (ONLY on primary dashboard/queue routes)
   useEffect(() => {
     if (!session) return;
+    // Walkthrough is strictly intended for the dashboard / review queue
+    if (!isDashboardRoute) return;
 
-    const userIdentifier = session.email || (session as any).userId || (session as any).id || "user";
-    const role = session.role || "Advisor";
+    const userIdentifier = (
+      session.email ||
+      (session as any).userId ||
+      (session as any).id ||
+      ""
+    ).toLowerCase().trim();
+    if (!userIdentifier) return;
+
+    const role = session.role === "Officer" ? "Officer" : "Advisor";
     const currentKey = `${userIdentifier}_${role}`;
 
     if (lastCheckedKey.current === currentKey) return;
-    lastCheckedKey.current = currentKey;
 
     // Strictly display ONCE per user account and role
     const alreadyCompleted = walkthroughStore.hasCompleted(userIdentifier, role);
 
     if (!alreadyCompleted) {
+      lastCheckedKey.current = currentKey;
       const timer = setTimeout(() => {
-        walkthroughStore.openWalkthrough(role === "Officer" ? "Officer" : "Advisor");
+        if (typeof window !== "undefined") {
+          const currentPath = window.location.pathname;
+          if (
+            currentPath === "/dashboard" ||
+            currentPath === "/queue" ||
+            currentPath === "/" ||
+            currentPath.startsWith("/dashboard") ||
+            currentPath.startsWith("/queue")
+          ) {
+            walkthroughStore.openWalkthrough(role);
+          }
+        }
       }, 500);
       return () => clearTimeout(timer);
+    } else {
+      lastCheckedKey.current = currentKey;
     }
-  }, [session]);
+  }, [session, isDashboardRoute]);
 
   // Reset step index whenever walkthrough is freshly opened
   useEffect(() => {
@@ -364,13 +392,27 @@ export function AppWalkthrough() {
   }, [updateTargetPosition, currentStepIndex]);
 
   const handleClose = useCallback(() => {
-    if (session) {
-      const userIdentifier = session.email || (session as any).userId || (session as any).id || "user";
-      const role = session.role || "Advisor";
+    const userIdentifier = (
+      session?.email ||
+      (session as any)?.userId ||
+      (session as any)?.id ||
+      ""
+    ).toLowerCase().trim();
+    const role = session?.role === "Officer" ? "Officer" : "Advisor";
+    if (userIdentifier) {
       walkthroughStore.markCompleted(userIdentifier, role);
+      walkthroughStore.closeWalkthrough(userIdentifier, role);
+    } else {
+      walkthroughStore.closeWalkthrough();
     }
-    walkthroughStore.closeWalkthrough();
   }, [session]);
+
+  // Automatically close & save completion if user navigates away to other pages like /settings or /audit
+  useEffect(() => {
+    if (walkthroughState.isOpen && !isDashboardRoute) {
+      handleClose();
+    }
+  }, [pathname, isDashboardRoute, walkthroughState.isOpen, handleClose]);
 
   const handleNext = () => {
     if (isLastStep) {
